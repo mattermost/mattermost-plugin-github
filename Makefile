@@ -1,3 +1,6 @@
+GOOS=$(shell uname -s | tr '[:upper:]' '[:lower:]')
+GOARCH=amd64
+
 .PHONY: build test run clean stop check-style gofmt
 
 check-style: .npminstall gofmt
@@ -73,9 +76,9 @@ dist: webapp/.npminstall vendor plugin.json
 	@echo Windows plugin built at: dist/mattermost-github-plugin-windows-amd64.tar.gz
 
 localdeploy: dist
-	cp dist/mattermost-github-plugin-linux-amd64.tar.gz ../mattermost-server/plugins/
+	cp dist/mattermost-github-plugin-$(GOOS)-$(GOARCH).tar.gz ../mattermost-server/plugins/
 	rm -rf ../mattermost-server/plugins/github
-	tar -C ../mattermost-server/plugins/ -zxvf ../mattermost-server/plugins/mattermost-github-plugin-linux-amd64.tar.gz
+	tar -C ../mattermost-server/plugins/ -zxvf ../mattermost-server/plugins/mattermost-github-plugin-$(GOOS)-$(GOARCH).tar.gz
 
 run: .npminstall
 	@echo Not yet implemented
