@@ -110,11 +110,29 @@ func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse
 			Type:         model.POST_DEFAULT,
 		}
 		return resp, nil
-	case "todo":
-		err := p.HandleTodo(args.UserId, config.GithubOrg)
-		if err != nil {
-			return nil, nil
+	case "deregister":
+		p.api.KeyValueStore().Delete(args.UserId + GITHUB_TOKEN_KEY)
+		resp := &model.CommandResponse{
+			ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL,
+			Text:         "Deregistered github token.",
+			Username:     "github",
+			IconURL:      "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
+			Type:         model.POST_DEFAULT,
 		}
+		return resp, nil
+	case "todo":
+		prsToReview, err := p.HandleTodo(args.UserId, config.GithubOrg)
+		if err != nil {
+			return &model.CommandResponse{Text: err.Error(), ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL}, nil
+		}
+		resp := &model.CommandResponse{
+			ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL,
+			Text:         prsToReview,
+			Username:     "github",
+			IconURL:      "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
+			Type:         model.POST_DEFAULT,
+		}
+		return resp, nil
 	}
 
 	return nil, nil
@@ -155,17 +173,19 @@ type PullRequestWaitingReview struct {
 
 type PullRequestWaitingReviews []PullRequestWaitingReview
 
-func (p *Plugin) HandleTodo(userId, gitHubOrg string) error {
+func (p *Plugin) HandleTodo(userId, gitHubOrg string) (prToReview string, bad error) {
 	ctx := context.Background()
+
+	// TODO: not using now, need to remove the comment when we start post to the DM channel
 	// Get the user Direct Channel to post the github todos
-	dmChannel, err := p.api.GetDirectChannel(userId, userId)
-	if err != nil {
-		return err
-	}
+	// dmChannel, err := p.api.GetDirectChannel(userId, userId)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	b, err := p.api.KeyValueStore().Get(userId + GITHUB_TOKEN_KEY)
 	if err != nil {
-		return fmt.Errorf("Error retrieving the GitHub User token")
+		return "", fmt.Errorf("Error retrieving the GitHub User token")
 	}
 	gitHubUserToken := string(b)
 
@@ -174,7 +194,7 @@ func (p *Plugin) HandleTodo(userId, gitHubOrg string) error {
 	// Get the user information. We need to know the username
 	me, _, err2 := githubClient.Users.Get(ctx, "")
 	if err2 != nil {
-		return fmt.Errorf("Error retrieving the GitHub User information")
+		return "", fmt.Errorf("Error retrieving the GitHub User information")
 	}
 
 	// Get all repositories for one specific Organization and after that get an PRs for
@@ -182,7 +202,7 @@ func (p *Plugin) HandleTodo(userId, gitHubOrg string) error {
 	var repos []string
 	githubRepos, _, err2 := githubClient.Repositories.ListByOrg(ctx, gitHubOrg, nil)
 	if err2 != nil {
-		return fmt.Errorf("Error retrieving the GitHub repository")
+		return "", fmt.Errorf("Error retrieving the GitHub repository")
 	}
 	for _, repo := range githubRepos {
 		repos = append(repos, repo.GetName())
@@ -192,12 +212,12 @@ func (p *Plugin) HandleTodo(userId, gitHubOrg string) error {
 	for _, repo := range repos {
 		prs, _, err := githubClient.PullRequests.List(ctx, gitHubOrg, repo, nil)
 		if err != nil {
-			return fmt.Errorf("Error retrieving the GitHub PRs List")
+			return "", fmt.Errorf("Error retrieving the GitHub PRs List")
 		}
 		for _, pull := range prs {
 			prReviewers, _, err := githubClient.PullRequests.ListReviewers(ctx, gitHubOrg, repo, pull.GetNumber(), nil)
 			if err != nil {
-				return fmt.Errorf("Error retrieving the GitHub PRs Reviewers")
+				return "", fmt.Errorf("Error retrieving the GitHub PRs Reviewers")
 			}
 			for _, reviewer := range prReviewers.Users {
 				if reviewer.GetLogin() == me.GetLogin() {
@@ -207,23 +227,28 @@ func (p *Plugin) HandleTodo(userId, gitHubOrg string) error {
 		}
 	}
 
+	if len(prWaitingReviews) == 0 {
+		return "No pending PRs to review. Go and grab a coffee :smile:", nil
+	}
+
 	var buffer bytes.Buffer
 	for _, toReview := range prWaitingReviews {
-		buffer.WriteString(fmt.Sprintf("[%v] PRs waiting %v review: PR-%v url: %v\n", toReview.GitHubRepo, toReview.GitHubUserName, toReview.PullRequestNumber, toReview.PullRequestURL))
+		buffer.WriteString(fmt.Sprintf("[**%v**] PRs waiting %v's review: **PR-%v** url: %v\n", toReview.GitHubRepo, toReview.GitHubUserName, toReview.PullRequestNumber, toReview.PullRequestURL))
 	}
 
-	post := &model.Post{
-		UserId:    userId,
-		ChannelId: dmChannel.Id,
-		Message:   buffer.String(),
-		Type:      "github_todo",
-	}
+	// TODO: post to the direct channel
+	// post := &model.Post{
+	// 	UserId:    userId,
+	// 	ChannelId: dmChannel.Id,
+	// 	Message:   buffer.String(),
+	// 	Type:      "github_todo",
+	// }
 
-	if _, err := p.api.CreatePost(post); err != nil {
-		return fmt.Errorf("Error creating the post")
-	}
+	// if _, err := p.api.CreatePost(post); err != nil {
+	// 	return fmt.Errorf("Error creating the post")
+	// }
 
-	return nil
+	return buffer.String(), nil
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
