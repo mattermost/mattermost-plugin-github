@@ -72,6 +72,11 @@ dist: webapp/.npminstall vendor plugin.json
 	@echo Linux plugin built at: dist/mattermost-github-plugin-linux-amd64.tar.gz
 	@echo Windows plugin built at: dist/mattermost-github-plugin-windows-amd64.tar.gz
 
+localdeploy: dist
+	cp dist/mattermost-github-plugin-linux-amd64.tar.gz ../mattermost-server/plugins/
+	rm -rf ../mattermost-server/plugins/github
+	tar -C ../mattermost-server/plugins/ -zxvf ../mattermost-server/plugins/mattermost-github-plugin-linux-amd64.tar.gz
+
 run: .npminstall
 	@echo Not yet implemented
 
