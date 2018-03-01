@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -158,6 +159,8 @@ func (p *Plugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch path := r.URL.Path; path {
 	case "/webhook":
 		p.handleWebhook(w, r)
+	case "/api/v1/pr/reviewers":
+		p.handleReviewers(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -295,4 +298,47 @@ func (p *Plugin) pullRequestOpened(repo string, pullRequest *github.PullRequest)
 		post.ChannelId = channel
 		p.api.CreatePost(post)
 	}
+}
+
+type AddReviewersToPR struct {
+	PullRequestId int      `json:"pull_request_id"`
+	Org           string   `json:"org"`
+	Repo          string   `json:"repo"`
+	Reviewers     []string `json:"reviewers"`
+}
+
+func (p *Plugin) handleReviewers(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	var req AddReviewersToPR
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	userId := r.Header.Get("Mattermost-User-Id")
+	if userId == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	b, err := p.api.KeyValueStore().Get(userId + GITHUB_TOKEN_KEY)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	gitHubUserToken := string(b)
+
+	githubClient := githubConnect(gitHubUserToken)
+
+	reviewers := github.ReviewersRequest{
+		Reviewers: req.Reviewers,
+	}
+
+	pr, _, err2 := githubClient.PullRequests.RequestReviewers(ctx, req.Org, req.Repo, req.PullRequestId, reviewers)
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write([]byte(fmt.Sprintf("%v", pr.GetHTMLURL())))
 }
