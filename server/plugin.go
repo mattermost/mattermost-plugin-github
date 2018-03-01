@@ -80,8 +80,10 @@ func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse
 		}
 	case "register":
 	case "todo":
-		listPRToReview, err := HandleTodo(args.UserId)
-
+		err := HandleTodo(args.UserId)
+		if err != nil {
+			return nil, nil
+		}
 	}
 
 	resp := &model.CommandResponse{
