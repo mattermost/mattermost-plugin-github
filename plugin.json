@@ -11,6 +11,12 @@
     },
     "settings_schema": {
         "settings": [
+            {
+                "key": "GithubToken",
+                "display_name": "Github Token",
+                "type": "text",
+                "help_text": "The Github token the server will use. It will be used to fetch PRs/Issues/Comments from Github on behaf of users that subscribe to repositories or post issue links. It should have access to all the repositores you users may want to subscribe to."
+            }
         ],
         "footer": ""
     }
