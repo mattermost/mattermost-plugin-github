@@ -44,6 +44,8 @@ func (s *Subscriptions) Add(channelId string, repository string) {
 	if value, ok := s.Repositories[repository]; ok {
 		value = append(value, channelId)
 		s.Repositories[repository] = value
+	} else {
+		s.Repositories[repository] = []string{channelId}
 	}
 }
 

@@ -28,6 +28,12 @@
                 "display_name": "Webhook Secret",
                 "type": "text",
                 "help_text": "The webook secret set in Github."
+            },
+            {
+                "key": "Username",
+                "display_name": "User",
+                "type": "username",
+                "help_test": "Select the username that this integration is attached to."
             }
         ],
         "footer": ""

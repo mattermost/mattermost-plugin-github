@@ -23,6 +23,7 @@ type Plugin struct {
 	api           plugin.API
 	configuration atomic.Value
 	githubClient  *github.Client
+	userId        string
 }
 
 func githubConnect(token string) *github.Client {
@@ -57,6 +58,14 @@ func (p *Plugin) OnActivate(api plugin.API) error {
 		DisplayName: "Github",
 		Description: "Integration with Github.",
 	})
+
+	// Get our userId
+	user, err := p.api.GetUserByUsername(config.Username)
+	if err != nil {
+		return err
+	}
+
+	p.userId = user.Id
 
 	return nil
 }
@@ -251,6 +260,22 @@ func (p *Plugin) HandleTodo(userId, gitHubOrg string) (prToReview string, bad er
 	return buffer.String(), nil
 }
 
+func NewString(st string) *string {
+	return &st
+}
+
+func (p *Plugin) postFromPullRequest(pullRequest *github.PullRequest) *model.Post {
+	props := map[string]interface{}{}
+	//props["number"] =
+
+	return &model.Post{
+		UserId:  p.userId,
+		Message: "Joram screwed up",
+		Type:    model.POST_DEFAULT,
+		Props:   props,
+	}
+}
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.config()
 
@@ -273,5 +298,12 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) pullRequestOpened(repo string, pullRequest *github.PullRequest) {
+	subscriptions, _ := NewSubscriptionsFromKVStore(p.api.KeyValueStore())
 
+	channels := subscriptions.GetChannelsForRepository(repo)
+	post := p.postFromPullRequest(pullRequest)
+	for _, channel := range channels {
+		post.ChannelId = channel
+		p.api.CreatePost(post)
+	}
 }
