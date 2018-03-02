@@ -2,14 +2,12 @@
     "id": "github",
     "name": "Github",
     "description": "Github plugin for Mattermost",
-    "version": "0.1.4",
-    "backend": {
-        "executable": "server/plugin.exe"
-    },
+    "version": "0.0.1",
     "webapp": {
-        "bundle_path": "/static/github_bindle.js"
+        "bundle_path": "/static/github_bundle.js"
     },
     "settings_schema": {
+        "header": "",
         "settings": [
             {
                 "key": "GithubToken",
