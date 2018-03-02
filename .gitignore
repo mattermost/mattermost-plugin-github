@@ -22,3 +22,5 @@ server/vendor
 node_modules                                                                                                                            
 .npminstall                                                                                                                             
 webapp/dist 
+
+*.swp
