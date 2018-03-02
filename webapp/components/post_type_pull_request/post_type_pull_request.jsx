@@ -222,7 +222,7 @@ export default class PostTypePullRequest extends React.PureComponent {
         const style = getStyle(this.props.theme);
         const post = {...this.props.post};
         //const props = post.props || {};
-        post.message = `#### Summary
+        /*post.message = `#### Summary
 Integration of team icon upload / get mechanics. Several additions in api, model, i18n and tests. Already existing code of profile image was taken into account.
 
 #### Ticket Link
@@ -231,7 +231,7 @@ https://github.com/mattermost/mattermost-server/issues/7616
 #### Reference PR
 https://github.com/mattermost/mattermost-webapp/pull/796
 https://github.com/mattermost/mattermost-redux/pull/403
-https://github.com/mattermost/mattermost-api-reference/pull/334`;
+https://github.com/mattermost/mattermost-api-reference/pull/334`;*/
 
         const reviewers = this.state.reviewers.map((r) => ({name: r, state: 'R'}));
 
@@ -253,7 +253,10 @@ https://github.com/mattermost/mattermost-api-reference/pull/334`;
             submitted_at: '3 hours ago'
         };
 
-        const formattedText = formatText(post.message || '');
+        props.title = post.props.title
+        props.number = post.props.number
+
+        const formattedText = formatText(post.props.summary || '');
 
         return (
             <div>

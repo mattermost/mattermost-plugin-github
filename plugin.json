@@ -3,6 +3,9 @@
     "name": "Github",
     "description": "Github plugin for Mattermost",
     "version": "0.0.1",
+    "backend": {
+        "executable": "server/plugin.exe"
+    },
     "webapp": {
         "bundle_path": "/static/github_bundle.js"
     },

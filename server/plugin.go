@@ -294,7 +294,7 @@ func (p *Plugin) postFromPullRequest(org, repository string, pullRequest *github
 	return &model.Post{
 		UserId:  p.userId,
 		Message: "Joram screwed up",
-		Type:    model.POST_DEFAULT,
+		Type:    "custom_github_pull_request",
 		Props:   props,
 	}
 }
