@@ -1,6 +1,7 @@
 GOOS=$(shell uname -s | tr '[:upper:]' '[:lower:]')
 GOARCH=amd64
 
+
 .PHONY: build test run clean stop check-style gofmt
 
 check-style: .npminstall gofmt
