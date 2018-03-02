@@ -1,5 +1,9 @@
 # mattermost-github
-Mattermost plugin for Github
+Experimental Mattermost plugin for Github written for Mattercon Hackathon 2018
+
+This is an unreleased project for an official GitHub plugin for Mattermost.
+
+We welcome external contributions to improve the plugin, but do not yet recommend for use in production.
 
 # Plan
 - Features
