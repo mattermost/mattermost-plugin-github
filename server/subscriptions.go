@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 
 	"github.com/mattermost/mattermost-server/plugin"
 )
@@ -23,7 +24,12 @@ func NewSubscriptionsFromKVStore(store plugin.KeyValueStore) (*Subscriptions, er
 		return nil, err
 	}
 
-	json.NewDecoder(bytes.NewReader(value)).Decode(subscriptions)
+	if value == nil {
+		subscriptions = &Subscriptions{}
+	} else {
+		json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+	}
+
 	return subscriptions, nil
 }
 
@@ -37,10 +43,16 @@ func (s *Subscriptions) StoreInKVStore(store plugin.KeyValueStore) error {
 }
 
 func (s *Subscriptions) GetChannelsForRepository(repository string) []string {
+	fmt.Println("rep:")
+	fmt.Println(s.Repositories)
+	fmt.Println(s.Repositories[repository])
 	return s.Repositories[repository]
 }
 
 func (s *Subscriptions) Add(channelId string, repository string) {
+	if s.Repositories == nil {
+		s.Repositories = make(map[string][]string)
+	}
 	if value, ok := s.Repositories[repository]; ok {
 		value = append(value, channelId)
 		s.Repositories[repository] = value

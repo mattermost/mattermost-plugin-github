@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/subtle"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -285,8 +287,8 @@ func (p *Plugin) postFromPullRequest(org, repository string, pullRequest *github
 	props["assignees"] = githubUserListToUsernames(pullRequest.Assignees)
 	prReviewers, _, _ := p.githubClient.PullRequests.ListReviewers(context.Background(), org, repository, pullRequest.GetNumber(), nil)
 	props["reviewers"] = githubUserListToUsernames(prReviewers.Users)
-	labels, _, _ := p.githubClient.Issues.ListLabelsByIssue(context.Background(), org, repository, pullRequest.GetNumber(), nil)
-	props["labels"] = processLables(labels)
+	//labels, _, _ := p.githubClient.Issues.ListLabelsByIssue(context.Background(), org, repository, pullRequest.GetNumber(), nil)
+	//props["labels"] = processLables(labels)
 	props["submitted_at"] = fmt.Sprint(pullRequest.CreatedAt.Unix())
 
 	return &model.Post{
@@ -310,23 +312,48 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, _ := github.ValidatePayload(r, []byte(config.WebhookSecret))
-	event, _ := github.ParseWebHook(github.WebHookType(r), payload)
+	/*payload, err := github.ValidatePayload(r, []byte(config.WebhookSecret))
+	if err != nil {
+		fmt.Println("Err: " + err.Error())
+	}*/
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		fmt.Println("Err: " + err.Error())
+	}
+	event, err := github.ParseWebHook(github.WebHookType(r), body)
+	if err != nil {
+		fmt.Println("Err2: " + err.Error())
+	}
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
+		fmt.Println("Stufff")
+		fmt.Println(*event)
+		fmt.Println(*event.Repo)
 		p.pullRequestOpened(event.GetRepo().GetFullName(), event.PullRequest)
 	}
 }
 
 func (p *Plugin) pullRequestOpened(repo string, pullRequest *github.PullRequest) {
-	subscriptions, _ := NewSubscriptionsFromKVStore(p.api.KeyValueStore())
+	subscriptions, err := NewSubscriptionsFromKVStore(p.api.KeyValueStore())
+	if err != nil {
+		fmt.Println("Error: " + err.Error())
+	}
+	fmt.Println("Subscriptions:")
+	fmt.Println(*subscriptions)
+	fmt.Println("Repo: " + repo)
+
+	gob.Register([]map[string]string{})
 
 	channels := subscriptions.GetChannelsForRepository(repo)
 	values := strings.Split(repo, "/")
 	post := p.postFromPullRequest(values[0], values[1], pullRequest)
 	for _, channel := range channels {
 		post.ChannelId = channel
-		p.api.CreatePost(post)
+		_, err := p.api.CreatePost(post)
+		fmt.Println("Chan: " + channel)
+		if err != nil {
+			fmt.Println("Chanerr: " + err.Error())
+		}
 	}
 }
 
