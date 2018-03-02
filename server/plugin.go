@@ -256,9 +256,38 @@ func NewString(st string) *string {
 	return &st
 }
 
-func (p *Plugin) postFromPullRequest(pullRequest *github.PullRequest) *model.Post {
+func githubUserListToUsernames(users []*github.User) *[]string {
+	var output []string
+	for _, user := range users {
+		output = append(output, *user.Login)
+	}
+	return &output
+}
+
+func processLables(labels []*github.Label) *[]map[string]string {
+	var output []map[string]string
+	for _, label := range labels {
+		entry := map[string]string{
+			"text":  *label.Name,
+			"color": *label.Color,
+		}
+		output = append(output, entry)
+	}
+
+	return &output
+}
+
+func (p *Plugin) postFromPullRequest(org, repository string, pullRequest *github.PullRequest) *model.Post {
 	props := map[string]interface{}{}
-	//props["number"] =
+	props["number"] = fmt.Sprint(*pullRequest.Number)
+	props["summary"] = pullRequest.Body
+	props["title"] = pullRequest.Title
+	props["assignees"] = githubUserListToUsernames(pullRequest.Assignees)
+	prReviewers, _, _ := p.githubClient.PullRequests.ListReviewers(context.Background(), org, repository, pullRequest.GetNumber(), nil)
+	props["reviewers"] = githubUserListToUsernames(prReviewers.Users)
+	labels, _, _ := p.githubClient.Issues.ListLabelsByIssue(context.Background(), org, repository, pullRequest.GetNumber(), nil)
+	props["labels"] = processLables(labels)
+	props["submitted_at"] = fmt.Sprint(pullRequest.CreatedAt.Unix())
 
 	return &model.Post{
 		UserId:  p.userId,
@@ -293,7 +322,8 @@ func (p *Plugin) pullRequestOpened(repo string, pullRequest *github.PullRequest)
 	subscriptions, _ := NewSubscriptionsFromKVStore(p.api.KeyValueStore())
 
 	channels := subscriptions.GetChannelsForRepository(repo)
-	post := p.postFromPullRequest(pullRequest)
+	values := strings.Split(repo, "/")
+	post := p.postFromPullRequest(values[0], values[1], pullRequest)
 	for _, channel := range channels {
 		post.ChannelId = channel
 		p.api.CreatePost(post)
