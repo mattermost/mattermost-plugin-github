@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -29,6 +33,7 @@ type Plugin struct {
 	Username                string
 	GitHubOAuthClientID     string
 	GitHubOAuthClientSecret string
+	WebhookSecret           string
 }
 
 func githubConnect(token string) *github.Client {
@@ -71,8 +76,8 @@ func (p *Plugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	switch path := r.URL.Path; path {
-	//case "/webhook":
-	//	p.handleWebhook(w, r)
+	case "/webhook":
+		p.handleWebhook(w, r)
 	case "/oauth/connect":
 		p.connectUserToGitHub(w, r)
 	case "/oauth/complete":
@@ -181,6 +186,24 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 
 	p.API.KVSet(userID+GITHUB_TOKEN_KEY, jsonInfo)
 
+	// Post intro post
+	channel, _ := p.API.GetDirectChannel(userID, userID)
+	post := &model.Post{
+		UserId:    userID,
+		ChannelId: channel.Id,
+		Message:   "##### Welcome to the Mattermost GitHub Plugin!\nCheck out the buttons in the bottom left corner of Mattermost.\n* The first button there tells you how many pull requests are awaiting your review\n* The second tracks the number of open issues/pull requests you have mentions in\n* The third will refresh the numbers\n\nClick on them!",
+		Type:      "custom_git_welcome",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": "GitHub Plugin",
+			"override_icon_url": "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
+		},
+	}
+
+	if _, err := p.API.CreatePost(post); err != nil {
+		mlog.Error(err.Error())
+	}
+
 	http.Redirect(w, r, "http://localhost:8065", http.StatusFound)
 }
 
@@ -211,6 +234,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 type ConnectedResponse struct {
 	Connected      bool   `json:"connected"`
 	GitHubUsername string `json:"github_username"`
+	GitHubClientID string `json:"github_client_id"`
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
@@ -226,6 +250,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 	if info != nil && info.Token != nil {
 		resp.Connected = true
 		resp.GitHubUsername = info.GitHubUsername
+		resp.GitHubClientID = p.GitHubOAuthClientID
 	}
 
 	b, _ := json.Marshal(resp)
@@ -252,7 +277,7 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, fmt.Sprintf("is:pr is:open org:mattermost mentioned:%v archived:false", username), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, fmt.Sprintf("is:open mentions:%v archived:false", username), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
@@ -281,7 +306,7 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, fmt.Sprintf("is:pr is:open org:mattermost review-requested:%v archived:false", username), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, fmt.Sprintf("is:pr is:open review-requested:%v archived:false", username), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
@@ -304,6 +329,58 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
 		}*/
+}
+
+func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
+
+	const signaturePrefix = "sha1="
+	const signatureLength = 45
+
+	if len(signature) != signatureLength || !strings.HasPrefix(signature, signaturePrefix) {
+		fmt.Println(signature)
+		fmt.Println(len(signature))
+		fmt.Println("HIT0")
+		return false
+	}
+
+	actual := make([]byte, 20)
+	hex.Decode(actual, []byte(signature[5:]))
+
+	return hmac.Equal(signBody(secret, body), actual)
+}
+
+func signBody(secret, body []byte) []byte {
+	computed := hmac.New(sha1.New, secret)
+	computed.Write(body)
+	return []byte(computed.Sum(nil))
+}
+
+func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	signature := r.Header.Get("X-Hub-Signature")
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Bad request body", http.StatusBadRequest)
+		return
+	}
+
+	if !verifyWebhookSignature([]byte(p.WebhookSecret), signature, body) {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	event, err := github.ParseWebHook(github.WebHookType(r), body)
+	if err != nil {
+		fmt.Println("Err2: " + err.Error())
+		return
+	}
+
+	switch event := event.(type) {
+	case *github.PullRequestEvent:
+		fmt.Println("Stufff")
+		fmt.Println(*event)
+		fmt.Println(*event.Repo)
+	}
 }
 
 /*
@@ -362,36 +439,6 @@ func (p *Plugin) postFromPullRequest(org, repository string, pullRequest *github
 		Message: "Joram screwed up",
 		Type:    "custom_github_pull_request",
 		Props:   props,
-	}
-}
-
-func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	config := p.config()
-
-	if subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("secret")), []byte(config.WebhookSecret)) != 1 {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Bad request body", http.StatusBadRequest)
-		return
-	}
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		fmt.Println("Err: " + err.Error())
-	}
-	event, err := github.ParseWebHook(github.WebHookType(r), body)
-	if err != nil {
-		fmt.Println("Err2: " + err.Error())
-	}
-	switch event := event.(type) {
-	case *github.PullRequestEvent:
-		fmt.Println("Stufff")
-		fmt.Println(*event)
-		fmt.Println(*event.Repo)
-		p.pullRequestOpened(event.GetRepo().GetFullName(), event.PullRequest)
 	}
 }
 

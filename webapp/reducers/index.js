@@ -20,6 +20,15 @@ function username(state = '', action) {
     }
 }
 
+function clientId(state = '', action) {
+    switch(action.type) {
+    case ActionTypes.RECEIVED_CONNECTED:
+        return action.data.github_client_id;
+    default:
+        return state;
+    }
+}
+
 function reviews(state = [], action) {
     switch(action.type) {
     case ActionTypes.RECEIVED_REVIEWS:
@@ -29,8 +38,19 @@ function reviews(state = [], action) {
     }
 }
 
+function mentions(state = [], action) {
+    switch(action.type) {
+    case ActionTypes.RECEIVED_MENTIONS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
     connected,
     username,
+    clientId,
     reviews,
+    mentions,
 });

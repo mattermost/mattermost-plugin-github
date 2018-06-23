@@ -13,6 +13,10 @@ export default class Client {
         return this.doGet(`${this.url}/reviews`);
     }
 
+    getMentions = async () => {
+        return this.doGet(`${this.url}/mentions`);
+    }
+
     doGet = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
 
