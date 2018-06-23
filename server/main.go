@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/mattermost/mattermost-server/plugin/rpcplugin"
+	"github.com/mattermost/mattermost-server/plugin"
 )
 
 func main() {
-	rpcplugin.Main(&Plugin{})
+	plugin.ClientMain(&Plugin{})
 }

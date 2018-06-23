@@ -1,35 +1,52 @@
-import {PostTypes} from 'mattermost-redux/action_types';
-import {getPost} from 'mattermost-redux/selectors/entities/posts';
-
 import Client from '../client';
+import ActionTypes from '../action_types';
 
-export function requestReviewers(postId, prId, reviewers, org, repo) {
+export function getConnected() {
     return async (dispatch, getState) => {
-        const post = getPost(getState(), postId);
-
+        let data;
         try {
-            await Client.requestReviewers(prId, reviewers, org, repo);
+            data = await Client.getConnected();
         } catch (error) {
             return {error};
         }
 
-        if (!post) {
-            return {data: true};
-        }
-
-        const props = {...(post.props || {}), reviewers};
-
-        dispatch({
-            type: PostTypes.RECEIVED_POSTS,
-            data: {
-                order: [],
-                posts: {
-                    [post.id]: {...post, props}
-                }
-            },
-            channelId: post.channel_id
+        store.dispatch({
+            type: ActionTypes.RECEIVED_CONNECTED,
+            data: data,
         });
 
-        return {data: true};
+        return {data};
+    };
+}
+
+export function getReviews() {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getReviews();
+        } catch (error) {
+            return {error};
+        }
+
+        let actions = [];
+
+        let connected = true;
+        if (data.id === 'not_connected') {
+            store.dispatch({
+                type: ActionTypes.RECEIVED_CONNECTED,
+                data: {
+                    connected: false,
+                    github_username: '',
+                },
+            });
+            return {data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_REVIEWS,
+            data,
+        });
+
+        return {data};
     };
 }

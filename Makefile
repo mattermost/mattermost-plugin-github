@@ -1,3 +1,5 @@
+.PHONY: dist
+
 GOOS=$(shell uname -s | tr '[:upper:]' '[:lower:]')
 GOARCH=amd64
 
@@ -38,7 +40,7 @@ vendor: server/Gopkg.toml
 	cd server && go get -u github.com/golang/dep/cmd/dep
 	cd server && $(shell go env GOPATH)/bin/dep ensure
 
-dist: webapp/.npminstall vendor plugin.json
+dist: webapp/.npminstall plugin.json
 	@echo Building plugin
 
 	# Clean old dist

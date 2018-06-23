@@ -1,32 +1,34 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"crypto/subtle"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync/atomic"
 
-	"github.com/google/go-github/github"
+	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
+
+	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
 const (
-	GITHUB_TOKEN_KEY = "_githubtoken"
+	GITHUB_TOKEN_KEY           = "_githubtoken"
+	GITHUB_STATE_KEY           = "_githubstate"
+	API_ERROR_ID_NOT_CONNECTED = "not_connected"
 )
 
 type Plugin struct {
-	api           plugin.API
-	configuration atomic.Value
-	githubClient  *github.Client
-	userId        string
+	plugin.MattermostPlugin
+	githubClient *github.Client
+
+	GitHubOrg               string
+	Username                string
+	GitHubOAuthClientID     string
+	GitHubOAuthClientSecret string
 }
 
 func githubConnect(token string) *github.Client {
@@ -41,212 +43,276 @@ func githubConnect(token string) *github.Client {
 	return client
 }
 
-func (p *Plugin) OnActivate(api plugin.API) error {
-	p.api = api
-	if err := p.OnConfigurationChange(); err != nil {
-		return err
+func (p *Plugin) IsValid() error {
+	/*if p.GitHubOrg == "" {
+		return fmt.Errorf("Must have a github org")
+	}*/
+
+	if p.GitHubOAuthClientID == "" {
+		return fmt.Errorf("Must have a github oauth client id")
 	}
 
-	config := p.config()
-	if err := config.IsValid(); err != nil {
-		return err
+	if p.GitHubOAuthClientSecret == "" {
+		return fmt.Errorf("Must have a github oauth client secret")
 	}
 
-	// Connect to github
-	p.githubClient = githubConnect(config.GithubToken)
-
-	// Register commands
-	p.api.RegisterCommand(&model.Command{
-		Trigger:     "github",
-		DisplayName: "Github",
-		Description: "Integration with Github.",
-	})
-
-	// Get our userId
-	user, err := p.api.GetUserByUsername(config.Username)
-	if err != nil {
-		return err
-	}
-
-	p.userId = user.Id
+	/*if p.Username == "" {
+		return fmt.Errorf("Need a username to make posts as.")
+	}*/
 
 	return nil
 }
 
-func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	config := p.config()
-	split := strings.Split(args.Command, " ")
-	command := split[0]
-	parameters := []string{}
-	action := ""
-	if len(split) > 1 {
-		action = split[1]
-	}
-	if len(split) > 2 {
-		parameters = split[2:]
-	}
-
-	if command != "/github" {
-		return nil, nil
-	}
-
-	switch action {
-	case "subscribe":
-		if len(parameters) != 1 {
-			return &model.CommandResponse{Text: "Wrong number of parameters.", ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL}, nil
-		}
-		subscriptions, _ := NewSubscriptionsFromKVStore(p.api.KeyValueStore())
-
-		subscriptions.Add(args.ChannelId, parameters[0])
-
-		subscriptions.StoreInKVStore(p.api.KeyValueStore())
-
-		resp := &model.CommandResponse{
-			ResponseType: model.COMMAND_RESPONSE_TYPE_IN_CHANNEL,
-			Text:         "You have subscribed to the repository.",
-			Username:     "github",
-			IconURL:      "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
-			Type:         model.POST_DEFAULT,
-		}
-		return resp, nil
-	case "register":
-		if len(parameters) != 1 {
-			return &model.CommandResponse{Text: "Wrong number of parameters.", ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL}, nil
-		}
-		p.api.KeyValueStore().Set(args.UserId+GITHUB_TOKEN_KEY, []byte(parameters[0]))
-		resp := &model.CommandResponse{
-			ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL,
-			Text:         "Registered github token.",
-			Username:     "github",
-			IconURL:      "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
-			Type:         model.POST_DEFAULT,
-		}
-		return resp, nil
-	case "deregister":
-		p.api.KeyValueStore().Delete(args.UserId + GITHUB_TOKEN_KEY)
-		resp := &model.CommandResponse{
-			ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL,
-			Text:         "Deregistered github token.",
-			Username:     "github",
-			IconURL:      "https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png",
-			Type:         model.POST_DEFAULT,
-		}
-		return resp, nil
-	case "todo":
-		go p.HandleTodo(args.UserId, config.GithubOrg)
-		return &model.CommandResponse{Text: "Checking GitHub for your pending PRs reviews. Get a :coffee:", ResponseType: model.COMMAND_RESPONSE_TYPE_EPHEMERAL}, nil
-	}
-
-	return nil, nil
-}
-
-func (p *Plugin) config() *Configuration {
-	return p.configuration.Load().(*Configuration)
-}
-
-func (p *Plugin) OnConfigurationChange() error {
-	var configuration Configuration
-	err := p.api.LoadPluginConfiguration(&configuration)
-	p.configuration.Store(&configuration)
-	return err
-}
-
 func (p *Plugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	config := p.config()
-	if err := config.IsValid(); err != nil {
+	if err := p.IsValid(); err != nil {
 		http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
-		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 
 	switch path := r.URL.Path; path {
-	case "/webhook":
-		p.handleWebhook(w, r)
-	case "/api/v1/pr/reviewers":
-		p.handleReviewers(w, r)
+	//case "/webhook":
+	//	p.handleWebhook(w, r)
+	case "/oauth/connect":
+		p.connectUserToGitHub(w, r)
+	case "/oauth/complete":
+		p.completeConnectUserToGitHub(w, r)
+	case "/api/v1/connected":
+		p.getConnected(w, r)
+	case "/api/v1/reviews":
+		p.getReviews(w, r)
+	case "/api/v1/mentions":
+		p.getMentions(w, r)
 	default:
 		http.NotFound(w, r)
 	}
 }
 
-type PullRequestWaitingReview struct {
+func (p *Plugin) getOAuthConfig() *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     p.GitHubOAuthClientID,
+		ClientSecret: p.GitHubOAuthClientSecret,
+		Scopes:       []string{"repo"},
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://github.com/login/oauth/authorize",
+			TokenURL: "https://github.com/login/oauth/access_token",
+		},
+	}
+}
+
+/*type PullRequestWaitingReview struct {
 	GitHubRepo        string `url:"github_repo"`
 	GitHubUserName    string `url:"github_username"`
 	PullRequestNumber int    `url:"pullrequest_number"`
 	PullRequestURL    string `url:"pullrequest_url"`
 }
 
-type PullRequestWaitingReviews []PullRequestWaitingReview
-
-func (p *Plugin) HandleTodo(userId, gitHubOrg string) {
-	ctx := context.Background()
-
-	dmChannel, err := p.api.GetDirectChannel(userId, userId)
-	if err != nil {
-		fmt.Println("Error to get the DM channel")
+type PullRequestWaitingReviews []PullRequestWaitingReview*/
+func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
 
-	b, err := p.api.KeyValueStore().Get(userId + GITHUB_TOKEN_KEY)
-	if err != nil {
-		p.SendTodoPost("Error retrieving the GitHub User token", p.userId, dmChannel.Id)
-	}
-	gitHubUserToken := string(b)
+	conf := p.getOAuthConfig()
 
-	githubClient := githubConnect(gitHubUserToken)
+	state := fmt.Sprintf("%v_%v", model.NewId(), userID)
 
-	// Get the user information. We need to know the username
-	me, _, err2 := githubClient.Users.Get(ctx, "")
-	if err2 != nil {
-		p.SendTodoPost("Error retrieving the GitHub User information", p.userId, dmChannel.Id)
-	}
+	p.API.KVSet(state, []byte(state))
 
-	// Get all repositories for one specific Organization and after that get an PRs for
-	// each repository that are waiting review from the user.
-	var repos []string
-	githubRepos, _, err2 := githubClient.Repositories.ListByOrg(ctx, gitHubOrg, nil)
-	if err2 != nil {
-		p.SendTodoPost("Error retrieving the GitHub repository", p.userId, dmChannel.Id)
-	}
-	for _, repo := range githubRepos {
-		repos = append(repos, repo.GetName())
-	}
+	url := conf.AuthCodeURL(state, oauth2.AccessTypeOffline)
 
-	var prWaitingReviews PullRequestWaitingReviews
-	for _, repo := range repos {
-		prs, _, err := githubClient.PullRequests.List(ctx, gitHubOrg, repo, nil)
-		if err != nil {
-			p.SendTodoPost("Error retrieving the GitHub PRs List", p.userId, dmChannel.Id)
-		}
-		for _, pull := range prs {
-			prReviewers, _, err := githubClient.PullRequests.ListReviewers(ctx, gitHubOrg, repo, pull.GetNumber(), nil)
-			if err != nil {
-				p.SendTodoPost("Error retrieving the GitHub PRs Reviewers", p.userId, dmChannel.Id)
-			}
-			for _, reviewer := range prReviewers.Users {
-				if reviewer.GetLogin() == me.GetLogin() {
-					prWaitingReviews = append(prWaitingReviews, PullRequestWaitingReview{repo, reviewer.GetLogin(), pull.GetNumber(), pull.GetHTMLURL()})
-				}
-			}
-		}
-	}
-
-	if len(prWaitingReviews) != 0 {
-		var buffer bytes.Buffer
-		for _, toReview := range prWaitingReviews {
-			buffer.WriteString(fmt.Sprintf("[**%v**] PRs waiting %v's review: **PR-%v** url: %v\n", toReview.GitHubRepo, toReview.GitHubUserName, toReview.PullRequestNumber, toReview.PullRequestURL))
-		}
-		p.SendTodoPost(buffer.String(), p.userId, dmChannel.Id)
-	} else {
-		p.SendTodoPost("No pending PRs to review. Go and grab a coffee :smile:", p.userId, dmChannel.Id)
-	}
+	http.Redirect(w, r, url, http.StatusFound)
 }
 
-func (p *Plugin) SendTodoPost(message, userId, channelId string) {
+type GitHubUserInfo struct {
+	Token          *oauth2.Token
+	GitHubUsername string
+}
+
+func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	conf := p.getOAuthConfig()
+
+	code := r.URL.Query().Get("code")
+	if len(code) == 0 {
+		http.Error(w, "missing authorization code", http.StatusBadRequest)
+		return
+	}
+
+	state := r.URL.Query().Get("state")
+
+	if storedState, err := p.API.KVGet(state); err != nil {
+		http.Error(w, "missing stored state", http.StatusBadRequest)
+		return
+	} else if string(storedState) != state {
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	userID := strings.Split(state, "_")[1]
+
+	p.API.KVDelete(state)
+
+	tok, err := conf.Exchange(ctx, code)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	githubClient := githubConnect(tok.AccessToken)
+	user, _, err := githubClient.Users.Get(ctx, "")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	userInfo := &GitHubUserInfo{
+		Token:          tok,
+		GitHubUsername: *user.Login,
+	}
+
+	jsonInfo, err := json.Marshal(userInfo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	p.API.KVSet(userID+GITHUB_TOKEN_KEY, jsonInfo)
+
+	http.Redirect(w, r, "http://localhost:8065", http.StatusFound)
+}
+
+type APIErrorResponse struct {
+	ID         string `json:"id"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"status_code"`
+}
+
+func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
+	b, _ := json.Marshal(err)
+	w.WriteHeader(err.StatusCode)
+	w.Write(b)
+}
+
+func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorResponse) {
+	var userInfo GitHubUserInfo
+
+	if infoBytes, err := p.API.KVGet(userID + GITHUB_TOKEN_KEY); err != nil || infoBytes == nil {
+		return nil, &APIErrorResponse{ID: API_ERROR_ID_NOT_CONNECTED, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
+	} else if err := json.Unmarshal(infoBytes, &userInfo); err != nil {
+		return nil, &APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
+	}
+
+	return &userInfo, nil
+}
+
+type ConnectedResponse struct {
+	Connected      bool   `json:"connected"`
+	GitHubUsername string `json:"github_username"`
+}
+
+func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+		return
+	}
+
+	resp := &ConnectedResponse{Connected: false}
+
+	info, _ := p.getGitHubUserInfo(userID)
+	if info != nil && info.Token != nil {
+		resp.Connected = true
+		resp.GitHubUsername = info.GitHubUsername
+	}
+
+	b, _ := json.Marshal(resp)
+	w.Write(b)
+}
+
+func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+	username := ""
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = githubConnect(info.Token.AccessToken)
+		username = info.GitHubUsername
+	}
+
+	result, _, err := githubClient.Search.Issues(ctx, fmt.Sprintf("is:pr is:open org:mattermost mentioned:%v archived:false", username), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result.Issues)
+	w.Write(resp)
+}
+
+func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+	username := ""
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = githubConnect(info.Token.AccessToken)
+		username = info.GitHubUsername
+	}
+
+	result, _, err := githubClient.Search.Issues(ctx, fmt.Sprintf("is:pr is:open org:mattermost review-requested:%v archived:false", username), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result.Issues)
+	w.Write(resp)
+
+	/*
+		message := fmt.Sprintf("You have %v pull requests awaiting your review\n", result.GetTotal())
+		for _, issue := range result.Issues {
+			message += fmt.Sprintf("* %v\n", issue.GetHTMLURL())
+		}
+
+		post := &model.Post{
+			UserID:    userID,
+			ChannelID: "agahtb7e7b8uiccjy7a9mahptr",
+			Message:   message,
+		}
+
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}*/
+}
+
+/*
+func (p *Plugin) SendTodoPost(message, userID, channelID string) {
 	props := map[string]interface{}{}
 
 	post := &model.Post{
-		UserId:    userId,
-		ChannelId: channelId,
+		UserID:    userID,
+		ChannelID: channelID,
 		Message:   message,
 		Type:      model.POST_DEFAULT,
 		Props:     props,
@@ -292,7 +358,7 @@ func (p *Plugin) postFromPullRequest(org, repository string, pullRequest *github
 	props["submitted_at"] = fmt.Sprint(pullRequest.CreatedAt.Unix())
 
 	return &model.Post{
-		UserId:  p.userId,
+		UserID:  p.userID,
 		Message: "Joram screwed up",
 		Type:    "custom_github_pull_request",
 		Props:   props,
@@ -312,10 +378,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*payload, err := github.ValidatePayload(r, []byte(config.WebhookSecret))
-	if err != nil {
-		fmt.Println("Err: " + err.Error())
-	}*/
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Println("Err: " + err.Error())
@@ -348,7 +410,7 @@ func (p *Plugin) pullRequestOpened(repo string, pullRequest *github.PullRequest)
 	values := strings.Split(repo, "/")
 	post := p.postFromPullRequest(values[0], values[1], pullRequest)
 	for _, channel := range channels {
-		post.ChannelId = channel
+		post.ChannelID = channel
 		_, err := p.api.CreatePost(post)
 		fmt.Println("Chan: " + channel)
 		if err != nil {
@@ -358,7 +420,7 @@ func (p *Plugin) pullRequestOpened(repo string, pullRequest *github.PullRequest)
 }
 
 type AddReviewersToPR struct {
-	PullRequestId int      `json:"pull_request_id"`
+	PullRequestID int      `json:"pull_request_id"`
 	Org           string   `json:"org"`
 	Repo          string   `json:"repo"`
 	Reviewers     []string `json:"reviewers"`
@@ -372,13 +434,13 @@ func (p *Plugin) handleReviewers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId := r.Header.Get("Mattermost-User-Id")
-	if userId == "" {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
 
-	b, err := p.api.KeyValueStore().Get(userId + GITHUB_TOKEN_KEY)
+	b, err := p.api.KeyValueStore().Get(userID + GITHUB_TOKEN_KEY)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -391,7 +453,7 @@ func (p *Plugin) handleReviewers(w http.ResponseWriter, r *http.Request) {
 		Reviewers: req.Reviewers,
 	}
 
-	pr, _, err2 := githubClient.PullRequests.RequestReviewers(ctx, req.Org, req.Repo, req.PullRequestId, reviewers)
+	pr, _, err2 := githubClient.PullRequests.RequestReviewers(ctx, req.Org, req.Repo, req.PullRequestID, reviewers)
 	if err2 != nil {
 		http.Error(w, err2.Error(), http.StatusBadRequest)
 		return
@@ -399,3 +461,4 @@ func (p *Plugin) handleReviewers(w http.ResponseWriter, r *http.Request) {
 
 	w.Write([]byte(fmt.Sprintf("%v", pr.GetHTMLURL())))
 }
+*/

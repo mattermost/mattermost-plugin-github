@@ -7,7 +7,7 @@
         "executable": "server/plugin.exe"
     },
     "webapp": {
-        "bundle_path": "/static/github_bundle.js"
+        "bundle_path": "/webapp/github_bundle.js"
     },
     "settings_schema": {
         "header": "",

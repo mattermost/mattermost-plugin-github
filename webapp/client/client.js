@@ -5,16 +5,27 @@ export default class Client {
         this.url = '/plugins/github/api/v1';
     }
 
-    requestReviewers = async (prId, reviewers, org, repo) => {
-        return this.doPost(`${this.url}/pr/reviewers`, {pull_request_id: prId, reviewers, org, repo});
+    getConnected = async () => {
+        return this.doGet(`${this.url}/connected`);
     }
 
-    removeReviewers = async (prId, reviewers, org, repo) => {
-        return this.doDelete(`${this.url}/pr/reviewers`, {pull_request_id: prId, reviewers, org, repo});
+    getReviews = async () => {
+        return this.doGet(`${this.url}/reviews`);
     }
 
-    editPr = async (prId, labels, assignees, milestone, org, repo) => {
-        return this.doPost(`${this.url}/pr`, {pull_request_id: prId, labels, assignees, milestone, org, repo});
+    doGet = async (url, body, headers = {}) => {
+        headers['X-Requested-With'] = 'XMLHttpRequest';
+
+        try {
+            const response = await request.
+                get(url).
+                set(headers).
+                accept('application/json');
+
+            return response.body;
+        } catch (err) {
+            throw err;
+        }
     }
 
     doPost = async (url, body, headers = {}) => {

@@ -24,3 +24,5 @@ node_modules
 webapp/dist 
 
 *.swp
+
+.DS_Store

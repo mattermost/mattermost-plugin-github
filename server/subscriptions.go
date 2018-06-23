@@ -1,13 +1,5 @@
 package main
 
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-
-	"github.com/mattermost/mattermost-server/plugin"
-)
-
 const (
 	SUBSCRIPTIONS_KEY = "subscriptions"
 )
@@ -16,6 +8,7 @@ type Subscriptions struct {
 	Repositories map[string][]string
 }
 
+/*
 func NewSubscriptionsFromKVStore(store plugin.KeyValueStore) (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
@@ -66,3 +59,4 @@ func (s *Subscriptions) Remove(channelId string, repository string) {
 
 func (s *Subscriptions) RemoveAll(channelId string, repository string) {
 }
+*/

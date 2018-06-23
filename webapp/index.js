@@ -1,11 +1,17 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
 
-import PostTypePullRequest from './components/post_type_pull_request';
+import TeamSidebar from './components/team_sidebar';
+import Reducer from './reducers';
+import {getConnected} from './actions';
 
 class PluginClass {
-    initialize(registerComponents, store) {
-        registerComponents({}, {custom_github_pull_request: PostTypePullRequest});
+    async initialize(registry, store) {
+        registry.registerReducer(Reducer);
+
+        await getConnected()(store.dispatch, store.getState);
+
+        registry.registerBottomTeamSidebarComponent(TeamSidebar);
     }
 }
 
