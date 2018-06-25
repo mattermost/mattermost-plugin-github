@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
 
 	"github.com/google/go-github/github"
@@ -13,8 +14,10 @@ import (
 )
 
 const (
-	GITHUB_TOKEN_KEY = "_githubtoken"
-	GITHUB_STATE_KEY = "_githubstate"
+	GITHUB_TOKEN_KEY    = "_githubtoken"
+	GITHUB_STATE_KEY    = "_githubstate"
+	WS_EVENT_CONNECT    = "connect"
+	WS_EVENT_DISCONNECT = "disconnect"
 )
 
 type Plugin struct {
@@ -105,6 +108,11 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 func (p *Plugin) disconnectGitHubAccount(userID string) {
 	p.API.KVDelete(userID + GITHUB_TOKEN_KEY)
+	p.API.PublishWebSocketEvent(
+		WS_EVENT_DISCONNECT,
+		nil,
+		&model.WebsocketBroadcast{UserId: userID},
+	)
 }
 
 /*

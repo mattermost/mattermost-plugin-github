@@ -147,6 +147,16 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		mlog.Error(err.Error())
 	}
 
+	p.API.PublishWebSocketEvent(
+		WS_EVENT_CONNECT,
+		map[string]interface{}{
+			"connected":        true,
+			"github_username":  userInfo.GitHubUsername,
+			"github_client_id": p.GitHubOAuthClientID,
+		},
+		&model.WebsocketBroadcast{UserId: userID},
+	)
+
 	http.Redirect(w, r, "http://localhost:8065", http.StatusFound)
 }
 

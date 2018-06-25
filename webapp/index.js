@@ -4,6 +4,7 @@
 import TeamSidebar from './components/team_sidebar';
 import Reducer from './reducers';
 import {getConnected} from './actions';
+import {handleConnect, handleDisconnect} from './websocket';
 
 class PluginClass {
     async initialize(registry, store) {
@@ -12,6 +13,9 @@ class PluginClass {
         await getConnected()(store.dispatch, store.getState);
 
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
+
+        registry.registerWebSocketEventHandler('connect', handleConnect(store));
+        registry.registerWebSocketEventHandler('disconnect', handleDisconnect(store));
     }
 }
 
