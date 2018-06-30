@@ -109,18 +109,33 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	githubClient := githubConnect(tok.AccessToken)
+	fmt.Println(tok.AccessToken)
+
+	encryptedToken, err := encrypt([]byte(p.EncryptionKey), tok.AccessToken)
+	if err != nil {
+		mlog.Error(err.Error())
+		http.Error(w, "Error encrypting access token", http.StatusInternalServerError)
+		return
+	}
+
+	githubClient := githubConnect(*tok)
 	user, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	fmt.Println("HIT0")
+
+	tok.AccessToken = encryptedToken
+
+	fmt.Println("HIT1")
 
 	userInfo := &GitHubUserInfo{
 		Token:          tok,
 		GitHubUsername: *user.Login,
 	}
 
+	fmt.Println("HIT2")
 	jsonInfo, err := json.Marshal(userInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -202,7 +217,7 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	} else {
-		githubClient = githubConnect(info.Token.AccessToken)
+		githubClient = githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 
@@ -231,7 +246,7 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	} else {
-		githubClient = githubConnect(info.Token.AccessToken)
+		githubClient = githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 

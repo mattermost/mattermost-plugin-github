@@ -14,8 +14,8 @@ class PluginClass {
 
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
 
-        registry.registerWebSocketEventHandler('connect', handleConnect(store));
-        registry.registerWebSocketEventHandler('disconnect', handleDisconnect(store));
+        registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
+        registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));
     }
 }
 

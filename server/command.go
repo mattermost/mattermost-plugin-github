@@ -63,7 +63,7 @@ func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse
 		}
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	} else {
-		githubClient = githubConnect(info.Token.AccessToken)
+		githubClient = githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 

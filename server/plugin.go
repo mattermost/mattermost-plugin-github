@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/mattermost/mattermost-server/mlog"
+
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
 
@@ -29,13 +31,12 @@ type Plugin struct {
 	GitHubOAuthClientID     string
 	GitHubOAuthClientSecret string
 	WebhookSecret           string
+	EncryptionKey           string
 }
 
-func githubConnect(token string) *github.Client {
+func githubConnect(token oauth2.Token) *github.Client {
 	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: token},
-	)
+	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(ctx, ts)
 
 	client := github.NewClient(tc)
@@ -59,6 +60,10 @@ func (p *Plugin) IsValid() error {
 
 	if p.GitHubOAuthClientSecret == "" {
 		return fmt.Errorf("Must have a github oauth client secret")
+	}
+
+	if p.EncryptionKey == "" {
+		return fmt.Errorf("Must have an encryption key")
 	}
 
 	/*if p.Username == "" {
@@ -102,6 +107,15 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 	} else if err := json.Unmarshal(infoBytes, &userInfo); err != nil {
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
 	}
+
+	unencryptedToken, err := decrypt([]byte(p.EncryptionKey), userInfo.Token.AccessToken)
+	if err != nil {
+		mlog.Error(err.Error())
+		return nil, &APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
+	}
+
+	fmt.Println(unencryptedToken)
+	userInfo.Token.AccessToken = unencryptedToken
 
 	return &userInfo, nil
 }
