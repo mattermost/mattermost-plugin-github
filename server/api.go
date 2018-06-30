@@ -52,6 +52,8 @@ func (p *Plugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.completeConnectUserToGitHub(w, r)
 	case "/api/v1/connected":
 		p.getConnected(w, r)
+	case "/api/v1/todo":
+		p.postToDo(w, r)
 	case "/api/v1/reviews":
 		p.getReviews(w, r)
 	case "/api/v1/mentions":
@@ -266,22 +268,53 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 
 	resp, _ := json.Marshal(result.Issues)
 	w.Write(resp)
+}
 
-	/*
-		message := fmt.Sprintf("You have %v pull requests awaiting your review\n", result.GetTotal())
-		for _, issue := range result.Issues {
-			message += fmt.Sprintf("* %v\n", issue.GetHTMLURL())
-		}
+func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+		return
+	}
 
-		post := &model.Post{
-			UserID:    userID,
-			ChannelID: "agahtb7e7b8uiccjy7a9mahptr",
-			Message:   message,
-		}
+	var githubClient *github.Client
+	username := ""
 
-		if _, err := p.API.CreatePost(post); err != nil {
-			mlog.Error(err.Error())
-		}*/
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = githubConnect(*info.Token)
+		username = info.GitHubUsername
+	}
+
+	text, err := p.GetToDo(context.Background(), username, githubClient)
+	if err != nil {
+		mlog.Error(err.Error())
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error getting the to do items.", StatusCode: http.StatusUnauthorized})
+		return
+	}
+
+	channel, _ := p.API.GetDirectChannel(userID, userID)
+	post := &model.Post{
+		UserId:    userID,
+		ChannelId: channel.Id,
+		Message:   text,
+		Type:      "custom_git_todo",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+	}
+
+	if _, err := p.API.CreatePost(post); err != nil {
+		mlog.Error(err.Error())
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error posting the to do items.", StatusCode: http.StatusUnauthorized})
+		return
+	}
+
+	w.Write([]byte("{\"status\": \"OK\"}"))
 }
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {

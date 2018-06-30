@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
 
@@ -97,6 +98,7 @@ type PullRequestWaitingReviews []PullRequestWaitingReview*/
 type GitHubUserInfo struct {
 	Token          *oauth2.Token
 	GitHubUsername string
+	LastToDoPostAt int64
 }
 
 func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorResponse) {
@@ -132,4 +134,52 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
+}
+
+func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
+	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	text := "##### Review Requests\n"
+
+	if issueResults.GetTotal() == 0 {
+		text += "You have don't have any pull requests awaiting your review."
+	} else {
+		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
+
+		for _, pr := range issueResults.Issues {
+			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+		}
+	}
+
+	text += "##### Unread Messages\n"
+
+	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	notificationCount := 0
+	notificationContent := ""
+	for _, n := range notifications {
+		if n.GetReason() == "subscribed" {
+			continue
+		}
+
+		url := strings.Replace(n.GetSubject().GetURL(), " https://api.github.com/repos/", "https://github.com/", -1)
+
+		notificationContent += fmt.Sprintf("* %v\n", url)
+		notificationCount++
+	}
+
+	if notificationCount == 0 {
+		text += "You don't have any unread messages."
+	} else {
+		text += fmt.Sprintf("You have %v unread messages:\n", notificationCount)
+		text += notificationContent
+	}
+
+	return text, nil
 }

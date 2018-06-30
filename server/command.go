@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
-	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
+
+	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/model"
 )
 
@@ -74,17 +74,11 @@ func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse
 		p.disconnectGitHubAccount(args.UserId)
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Unlinked your GitHub account."), nil
 	case "todo":
-		result, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+		text, err := p.GetToDo(ctx, username, githubClient)
 		if err != nil {
 			mlog.Error(err.Error())
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
 		}
-
-		text := fmt.Sprintf("You have %v pull requests awaiting your review:\n", result.GetTotal())
-
-		for _, pr := range result.Issues {
-			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
-		}
-
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	}
 
