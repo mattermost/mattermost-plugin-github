@@ -82,7 +82,7 @@ func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse
 		text := fmt.Sprintf("You have %v pull requests awaiting your review:\n", result.GetTotal())
 
 		for _, pr := range result.Issues {
-			text += fmt.Sprintf("* %v\n", pr.GetURL())
+			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
 		}
 
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil

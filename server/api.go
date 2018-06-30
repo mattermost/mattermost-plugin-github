@@ -109,8 +109,6 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fmt.Println(tok.AccessToken)
-
 	encryptedToken, err := encrypt([]byte(p.EncryptionKey), tok.AccessToken)
 	if err != nil {
 		mlog.Error(err.Error())
@@ -119,23 +117,34 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	}
 
 	githubClient := githubConnect(*tok)
-	user, _, err := githubClient.Users.Get(ctx, "")
+	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println("HIT0")
 
 	tok.AccessToken = encryptedToken
 
-	fmt.Println("HIT1")
+	if user, err := p.API.GetUser(userID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else {
+		if user.Props == nil {
+			user.Props = model.StringMap{}
+		}
+		user.Props["git_user"] = *gitUser.Login
+		_, err = p.API.UpdateUser(user)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
 	userInfo := &GitHubUserInfo{
 		Token:          tok,
-		GitHubUsername: *user.Login,
+		GitHubUsername: *gitUser.Login,
 	}
 
-	fmt.Println("HIT2")
 	jsonInfo, err := json.Marshal(userInfo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -281,9 +290,6 @@ func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
 	const signatureLength = 45
 
 	if len(signature) != signatureLength || !strings.HasPrefix(signature, signaturePrefix) {
-		fmt.Println(signature)
-		fmt.Println(len(signature))
-		fmt.Println("HIT0")
 		return false
 	}
 
