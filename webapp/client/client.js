@@ -19,6 +19,7 @@ export default class Client {
 
     doGet = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
+        headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
         try {
             const response = await request.
@@ -34,6 +35,7 @@ export default class Client {
 
     doPost = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
+        headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
         try {
             const response = await request.
@@ -51,6 +53,7 @@ export default class Client {
 
     doDelete = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
+        headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
         try {
             const response = await request.
@@ -68,6 +71,7 @@ export default class Client {
 
     doPut = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
+        headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
         try {
             const response = await request.

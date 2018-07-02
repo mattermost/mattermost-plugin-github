@@ -96,9 +96,30 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 type PullRequestWaitingReviews []PullRequestWaitingReview*/
 
 type GitHubUserInfo struct {
+	UserID         string
 	Token          *oauth2.Token
 	GitHubUsername string
 	LastToDoPostAt int64
+}
+
+func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
+	encryptedToken, err := encrypt([]byte(p.EncryptionKey), info.Token.AccessToken)
+	if err != nil {
+		return err
+	}
+
+	info.Token.AccessToken = encryptedToken
+
+	jsonInfo, err := json.Marshal(info)
+	if err != nil {
+		return err
+	}
+
+	if err := p.API.KVSet(info.UserID+GITHUB_TOKEN_KEY, jsonInfo); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorResponse) {
@@ -136,6 +157,36 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	)
 }
 
+func (p *Plugin) PostToDo(info *GitHubUserInfo) {
+	text, err := p.GetToDo(context.Background(), info.GitHubUsername, githubConnect(*info.Token))
+	if err != nil {
+		mlog.Error(err.Error())
+		return
+	}
+
+	channel, _ := p.API.GetDirectChannel(info.UserID, info.UserID)
+	if channel == nil {
+		mlog.Error("Couldn't get user's self DM channel", mlog.String("user_id", info.UserID))
+		return
+	}
+
+	post := &model.Post{
+		UserId:    info.UserID,
+		ChannelId: channel.Id,
+		Message:   text,
+		Type:      "custom_git_todo",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+	}
+
+	if _, err := p.API.CreatePost(post); err != nil {
+		mlog.Error(err.Error())
+	}
+}
+
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
@@ -168,7 +219,10 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
-		url := strings.Replace(n.GetSubject().GetURL(), " https://api.github.com/repos/", "https://github.com/", -1)
+		url := n.GetSubject().GetURL()
+		fmt.Println(url)
+		url = strings.Replace(url, "https://api.github.com/repos/", "https://github.com/", 1)
+		url = strings.Replace(url, "/pulls/", "/pull/", 1)
 
 		notificationContent += fmt.Sprintf("* %v\n", url)
 		notificationCount++

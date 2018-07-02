@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
@@ -111,21 +113,12 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	encryptedToken, err := encrypt([]byte(p.EncryptionKey), tok.AccessToken)
-	if err != nil {
-		mlog.Error(err.Error())
-		http.Error(w, "Error encrypting access token", http.StatusInternalServerError)
-		return
-	}
-
 	githubClient := githubConnect(*tok)
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	tok.AccessToken = encryptedToken
 
 	if user, err := p.API.GetUser(userID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -143,17 +136,17 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	}
 
 	userInfo := &GitHubUserInfo{
+		UserID:         userID,
 		Token:          tok,
 		GitHubUsername: *gitUser.Login,
+		LastToDoPostAt: model.GetMillis(),
 	}
 
-	jsonInfo, err := json.Marshal(userInfo)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := p.storeGitHubUserInfo(userInfo); err != nil {
+		mlog.Error(err.Error())
+		http.Error(w, "Unable to connect user to GitHub", http.StatusInternalServerError)
 		return
 	}
-
-	p.API.KVSet(userID+GITHUB_TOKEN_KEY, jsonInfo)
 
 	// Post intro post
 	channel, _ := p.API.GetDirectChannel(userID, userID)
@@ -206,6 +199,23 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		resp.Connected = true
 		resp.GitHubUsername = info.GitHubUsername
 		resp.GitHubClientID = p.GitHubOAuthClientID
+		lastPostAt := info.LastToDoPostAt
+
+		var timezone *time.Location
+		offset, err := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
+		if err == nil {
+			timezone = time.FixedZone("local", -60*offset)
+		}
+
+		// Post to do message if it's the next day
+		now := model.GetMillis()
+		nt := time.Unix(now/1000, 0).In(timezone)
+		lt := time.Unix(lastPostAt/1000, 0).In(timezone)
+		if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
+			p.PostToDo(info)
+			info.LastToDoPostAt = now
+			p.storeGitHubUserInfo(info)
+		}
 	}
 
 	b, _ := json.Marshal(resp)
