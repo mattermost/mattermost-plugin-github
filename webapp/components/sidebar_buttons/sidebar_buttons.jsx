@@ -56,6 +56,11 @@ export default class SidebarButtons extends React.PureComponent {
         this.setState({refreshing: false});
     }
 
+    openConnectWindow = (e) => {
+        e.preventDefault();
+        window.open('/plugins/github/oauth/connect', 'Connect Mattermost to GitHub', 'height=570,width=520');
+    }
+
     render() {
         const style = getStyle(this.props.theme);
         const isTeamSidebar = this.props.isTeamSidebar;
@@ -79,6 +84,7 @@ export default class SidebarButtons extends React.PureComponent {
                     >
                         <a
                             href='/plugins/github/oauth/connect'
+                            onClick={this.openConnectWindow}
                             style={button}
                         >
                             <i className='fa fa-github fa-2x'/>
@@ -90,6 +96,7 @@ export default class SidebarButtons extends React.PureComponent {
                     <div style={container}>
                         <a
                             href='/plugins/github/oauth/connect'
+                            onClick={this.openConnectWindow}
                             style={button}
                         >
                             <i className='fa fa-github fa-lg'/>

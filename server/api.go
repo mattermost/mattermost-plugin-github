@@ -177,7 +177,22 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		&model.WebsocketBroadcast{UserId: userID},
 	)
 
-	http.Redirect(w, r, "http://localhost:8065", http.StatusFound)
+	html := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<script>
+			window.close();
+		</script>
+	</head>
+	<body>
+		<p>Completed connecting to GitHub.</p>
+	</body>
+</html>
+`
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
 }
 
 type ConnectedResponse struct {

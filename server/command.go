@@ -17,7 +17,7 @@ func getCommand() *model.Command {
 		DisplayName:      "Github",
 		Description:      "Integration with Github.",
 		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: register, deregister, todo, me, settings, help",
+		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
 		AutoCompleteHint: "[command]",
 	}
 }
@@ -48,7 +48,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return nil, nil
 	}
 
-	if action == "register" {
+	if action == "connect" {
 		resp := getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "[Click here to link your GitHub account.](http://localhost:8065/plugins/github/oauth/connect)")
 		return resp, nil
 	}
@@ -60,7 +60,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	if info, err := p.getGitHubUserInfo(args.UserId); err != nil {
 		text := "Unknown error."
 		if err.ID == API_ERROR_ID_NOT_CONNECTED {
-			text = "You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter `/github register`."
+			text = "You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter `/github connect`."
 		}
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	} else {
@@ -71,9 +71,11 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	switch action {
 	case "subscribe":
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Not yet implemented."), nil
-	case "deregister":
+	case "unsubscribe":
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Not yet implemented."), nil
+	case "disconnect":
 		p.disconnectGitHubAccount(args.UserId)
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Unlinked your GitHub account."), nil
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Disconnected your GitHub account."), nil
 	case "todo":
 		text, err := p.GetToDo(ctx, username, githubClient)
 		if err != nil {
