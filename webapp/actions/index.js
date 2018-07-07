@@ -85,3 +85,28 @@ export function getMentions() {
         return {data};
     };
 }
+
+export function getUnreads() {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getUnreads();
+        } catch (error) {
+            return {error};
+        }
+
+        let actions = [];
+
+        let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_UNREADS,
+            data,
+        });
+
+        return {data};
+    };
+}

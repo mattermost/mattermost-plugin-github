@@ -1,7 +1,7 @@
 const {connect} = window['react-redux'];
 const {bindActionCreators} = window.redux;
 
-import {getReviews, getMentions} from '../../actions';
+import {getReviews, getUnreads} from '../../actions';
 
 import SidebarButtons from './sidebar_buttons.jsx';
 
@@ -11,7 +11,7 @@ function mapStateToProps(state, ownProps) {
         username: state['plugins-github'].username,
         clientId: state['plugins-github'].clientId,
         reviews: state['plugins-github'].reviews,
-        mentions: state['plugins-github'].mentions,
+        unreads: state['plugins-github'].unreads,
     };
 }
 
@@ -19,7 +19,7 @@ function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators({
             getReviews,
-            getMentions,
+            getUnreads,
         }, dispatch)
     };
 }

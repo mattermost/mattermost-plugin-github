@@ -47,10 +47,20 @@ function mentions(state = [], action) {
     }
 }
 
+function unreads(state = [], action) {
+    switch(action.type) {
+    case ActionTypes.RECEIVED_UNREADS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
     connected,
     username,
     clientId,
     reviews,
     mentions,
+    unreads,
 });

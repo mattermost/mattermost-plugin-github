@@ -17,6 +17,10 @@ export default class Client {
         return this.doGet(`${this.url}/mentions`);
     }
 
+    getUnreads = async () => {
+        return this.doGet(`${this.url}/unreads`);
+    }
+
     doGet = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();

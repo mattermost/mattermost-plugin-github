@@ -61,6 +61,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getReviews(w, r)
 	case "/api/v1/mentions":
 		p.getMentions(w, r)
+	case "/api/v1/unreads":
+		p.getUnreads(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -264,6 +266,42 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, _ := json.Marshal(result.Issues)
+	w.Write(resp)
+}
+
+func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = githubConnect(*info.Token)
+	}
+
+	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	filteredNotifications := []*github.Notification{}
+	for _, n := range notifications {
+		if n.GetReason() == "subscribed" {
+			continue
+		}
+
+		filteredNotifications = append(filteredNotifications, n)
+	}
+
+	resp, _ := json.Marshal(filteredNotifications)
 	w.Write(resp)
 }
 

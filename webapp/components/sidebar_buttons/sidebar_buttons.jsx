@@ -11,11 +11,11 @@ export default class SidebarButtons extends React.PureComponent {
         username: PropTypes.string,
         clientId: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
-        mentions: PropTypes.arrayOf(PropTypes.object),
+        unreads: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,
         actions: PropTypes.shape({
             getReviews: PropTypes.func.isRequired,
-            getMentions: PropTypes.func.isRequired,
+            getUnreads: PropTypes.func.isRequired,
         }).isRequired
     };
 
@@ -51,7 +51,7 @@ export default class SidebarButtons extends React.PureComponent {
         this.setState({refreshing: true});
         await Promise.all([
             this.props.actions.getReviews(),
-            this.props.actions.getMentions(),
+            this.props.actions.getUnreads(),
         ]);
         this.setState({refreshing: false});
     }
@@ -108,7 +108,7 @@ export default class SidebarButtons extends React.PureComponent {
         }
 
         const prs = this.props.reviews || [];
-        const mentions = this.props.mentions || [];
+        const unreads = this.props.unreads || [];
         const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
         return (
@@ -136,17 +136,17 @@ export default class SidebarButtons extends React.PureComponent {
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
-                    key='githubMentionsLink'
+                    key='githubUnreadsLink'
                     placement={placement}
-                    overlay={<Tooltip id="mentionsTooltip">Issues and pull requests you've been mentioned in</Tooltip>}
+                    overlay={<Tooltip id="unreadsTooltip">Unread messages</Tooltip>}
                 >
                     <a
                         href={'https://github.com/pulls?q=is%3Aopen+mentions%3A' + this.props.username + '+archived%3Afalse'}
                         target='_blank'
                         style={button}
                     >
-                        <i className='fa fa-at'/>
-                        {' ' + mentions.length}
+                        <i className='fa fa-envelope'/>
+                        {' ' + unreads.length}
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
