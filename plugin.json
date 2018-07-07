@@ -2,39 +2,45 @@
     "id": "github",
     "name": "Github",
     "description": "Github plugin for Mattermost",
-    "version": "0.0.1",
+    "version": "0.5.0",
     "backend": {
         "executable": "server/plugin.exe"
     },
     "webapp": {
-        "bundle_path": "/webapp/github_bundle.js"
+        "bundle_path": "webapp/github_bundle.js"
     },
     "settings_schema": {
-        "header": "",
+        "header": "To set up the GitHub plugin, you need to register a GitHub OAuth app here https://github.com/settings/applications/new.",
         "settings": [
             {
-                "key": "GithubToken",
-                "display_name": "Github Token",
+                "key": "GitHubOAuthClientID",
+                "display_name": "GitHub OAuth Client ID",
                 "type": "text",
-                "help_text": "The Github token the server will use. It will be used to fetch PRs/Issues/Comments from Github on behaf of users that subscribe to repositories or post issue links. It should have access to all the repositores you users may want to subscribe to."
+                "help_text": "The client ID for the OAuth app registered with GitHub."
             },
             {
-                "key": "GithubOrg",
-                "display_name": "Github Organization",
+                "key": "GitHubOAuthClientSecret",
+                "display_name": "GitHub OAuth Client Secret",
                 "type": "text",
-                "help_text": "The Github Organization."
+                "help_text": "The client secret for the OAuth app registered with GitHub."
             },
             {
                 "key": "WebhookSecret",
                 "display_name": "Webhook Secret",
                 "type": "text",
-                "help_text": "The webook secret set in Github."
+                "help_text": "The webook secret set in GitHub."
             },
             {
-                "key": "Username",
-                "display_name": "User",
-                "type": "username",
-                "help_test": "Select the username that this integration is attached to."
+                "key": "GithubOrg",
+                "display_name": "GitHub Organization",
+                "type": "text",
+                "help_text": "(Optional) Set to lock the plugin to a single GitHub organization."
+            },
+            {
+                "key": "EncryptionKey",
+                "display_name": "At Rest Encryption Key",
+                "type": "generated",
+                "help_text": "The AES encryption key used to encrypt stored access tokens."
             }
         ],
         "footer": ""
