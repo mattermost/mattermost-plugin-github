@@ -1,12 +1,12 @@
 const {connect} = window['react-redux'];
 
-import TeamSidebar from './team_sidebar.jsx';
+import SidebarHeader from './sidebar_header.jsx';
 
 function mapStateToProps(state, ownProps) {
     const members = state.entities.teams.myMembers || {};
     return {
-        show: Object.keys(members).length > 1,
+        show: Object.keys(members).length <= 1,
     };
 }
 
-export default connect(mapStateToProps)(TeamSidebar);
+export default connect(mapStateToProps)(SidebarHeader);

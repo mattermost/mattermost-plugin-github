@@ -1,6 +1,7 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
 
+import SidebarHeader from './components/sidebar_header';
 import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import Reducer from './reducers';
@@ -17,6 +18,7 @@ class PluginClass {
 
         await getConnected()(store.dispatch, store.getState);
 
+        registry.registerLeftSidebarHeaderComponent(SidebarHeader);
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
 
@@ -35,7 +37,6 @@ class PluginClass {
     }
 
     deinitialize() {
-        console.log('deinit');
         document.removeEventListener('click', activityFunc);
     }
 }

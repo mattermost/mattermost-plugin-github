@@ -16,6 +16,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/plugin"
 
 	"golang.org/x/oauth2"
 )
@@ -38,7 +39,7 @@ func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 	w.Write(b)
 }
 
-func (p *Plugin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if err := p.IsValid(); err != nil {
 		http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
 	}

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
+	"github.com/mattermost/mattermost-server/plugin"
 
 	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/model"
@@ -31,7 +32,7 @@ func getCommandResponse(responseType, text string) *model.CommandResponse {
 	}
 }
 
-func (p *Plugin) ExecuteCommand(args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	split := strings.Split(args.Command, " ")
 	command := split[0]
 	//parameters := []string{}
