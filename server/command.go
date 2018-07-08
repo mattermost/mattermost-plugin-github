@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
@@ -33,16 +34,16 @@ func getCommandResponse(responseType, text string) *model.CommandResponse {
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	split := strings.Split(args.Command, " ")
+	split := strings.Fields(args.Command)
 	command := split[0]
-	//parameters := []string{}
+	parameters := []string{}
 	action := ""
 	if len(split) > 1 {
 		action = split[1]
 	}
-	/*if len(split) > 2 {
+	if len(split) > 2 {
 		parameters = split[2:]
-	}*/
+	}
 
 	if command != "/github" {
 		return nil, nil
@@ -70,9 +71,34 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch action {
 	case "subscribe":
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Not yet implemented."), nil
+		features := "pulls,issues"
+
+		if len(parameters) == 0 {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
+		} else if len(parameters) > 1 {
+			features = strings.Join(parameters[1:], ",")
+		}
+
+		repo := parameters[0]
+
+		if err := p.Subscribe(context.Background(), githubClient, args.UserId, repo, args.ChannelId, features); err != nil {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+		}
+
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to %s.", repo)), nil
 	case "unsubscribe":
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Not yet implemented."), nil
+		if len(parameters) == 0 {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
+		}
+
+		repo := parameters[0]
+
+		if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
+			mlog.Error(err.Error())
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error trying to unsubscribe. Please try again."), nil
+		}
+
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Succesfully unsubscribed from %s.", repo)), nil
 	case "disconnect":
 		p.disconnectGitHubAccount(args.UserId)
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Disconnected your GitHub account."), nil

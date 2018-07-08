@@ -86,15 +86,6 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	}
 }
 
-/*type PullRequestWaitingReview struct {
-	GitHubRepo        string `url:"github_repo"`
-	GitHubUserName    string `url:"github_username"`
-	PullRequestNumber int    `url:"pullrequest_number"`
-	PullRequestURL    string `url:"pullrequest_url"`
-}
-
-type PullRequestWaitingReviews []PullRequestWaitingReview*/
-
 type GitHubUserInfo struct {
 	UserID         string
 	Token          *oauth2.Token

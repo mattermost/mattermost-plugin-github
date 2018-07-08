@@ -2,12 +2,8 @@ package main
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -379,53 +375,4 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte("{\"status\": \"OK\"}"))
-}
-
-func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
-
-	const signaturePrefix = "sha1="
-	const signatureLength = 45
-
-	if len(signature) != signatureLength || !strings.HasPrefix(signature, signaturePrefix) {
-		return false
-	}
-
-	actual := make([]byte, 20)
-	hex.Decode(actual, []byte(signature[5:]))
-
-	return hmac.Equal(signBody(secret, body), actual)
-}
-
-func signBody(secret, body []byte) []byte {
-	computed := hmac.New(sha1.New, secret)
-	computed.Write(body)
-	return []byte(computed.Sum(nil))
-}
-
-func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	signature := r.Header.Get("X-Hub-Signature")
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Bad request body", http.StatusBadRequest)
-		return
-	}
-
-	if !verifyWebhookSignature([]byte(p.WebhookSecret), signature, body) {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
-	event, err := github.ParseWebHook(github.WebHookType(r), body)
-	if err != nil {
-		fmt.Println("Err2: " + err.Error())
-		return
-	}
-
-	switch event := event.(type) {
-	case *github.PullRequestEvent:
-		fmt.Println("Stufff")
-		fmt.Println(*event)
-		fmt.Println(*event.Repo)
-	}
 }
