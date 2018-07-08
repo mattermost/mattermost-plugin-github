@@ -152,7 +152,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	post := &model.Post{
 		UserId:    userID,
 		ChannelId: channel.Id,
-		Message:   "##### Welcome to the Mattermost GitHub Plugin!\nCheck out the buttons in the bottom left corner of Mattermost.\n* The first button there tells you how many pull requests are awaiting your review\n* The second tracks the number of open issues/pull requests you have mentions in\n* The third will refresh the numbers\n\nClick on them!",
+		Message:   fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n##### Daily Reminders\nThe first time you log in each day, you will get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n\n##### Sidebar Buttons\nCheck out the buttons in the left-hand sidebar of Mattermost.\n* The first button tells you how many pull requests are awaiting your review\n* The second tracks the number of unread messages you have\n* The third will refresh the numbers\n\nClick on them!\n\n##### Slash Commands\n"+strings.Replace(COMMAND_HELP, "|", "`", -1), gitUser.GetLogin(), gitUser.GetHTMLURL()),
 		Type:      "custom_git_welcome",
 		Props: map[string]interface{}{
 			"from_webhook":      "true",

@@ -184,19 +184,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", err
 	}
 
-	text := "##### Review Requests\n"
-
-	if issueResults.GetTotal() == 0 {
-		text += "You have don't have any pull requests awaiting your review."
-	} else {
-		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
-
-		for _, pr := range issueResults.Issues {
-			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
-		}
-	}
-
-	text += "##### Unread Messages\n"
+	text := "##### Unread Messages\n"
 
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
@@ -224,6 +212,18 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	} else {
 		text += fmt.Sprintf("You have %v unread messages:\n", notificationCount)
 		text += notificationContent
+	}
+
+	text += "##### Review Requests\n"
+
+	if issueResults.GetTotal() == 0 {
+		text += "You have don't have any pull requests awaiting your review."
+	} else {
+		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
+
+		for _, pr := range issueResults.Issues {
+			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+		}
 	}
 
 	return text, nil

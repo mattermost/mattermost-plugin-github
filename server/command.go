@@ -12,6 +12,18 @@ import (
 	"github.com/mattermost/mattermost-server/model"
 )
 
+const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to your GitHub account
+* |/github disconnect| - Disconnect your Mattermost account from your GitHub account
+* |/github todo| - Get a list of unread messages and pull requests awaiting your review
+* |/github subscribe owner/repo [feature]| - Subscribe the current channel to receive notifications about opened pull requests and issues for a repository
+  * |feature| is a comma-delimited list of one or more the following:
+    * issues
+	* pulls
+  * Defaults to "pulls,issues"
+* |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
+* |/github me| - Display the connected GitHub account
+* |/github settings| - Connect your Mattermost account to a GitHub account`
+
 func getCommand() *model.Command {
 	return &model.Command{
 		Trigger:          "github",
@@ -108,6 +120,18 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			mlog.Error(err.Error())
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
 		}
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+	case "me":
+		gitUser, _, err := githubClient.Users.Get(ctx, "")
+		if err != nil {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your GitHub profile."), nil
+		}
+
+		text := fmt.Sprintf("You are connected to GitHub as:\n# [![image](%s =40x40) [%s](%s)](%s)", gitUser.GetAvatarURL(), gitUser.GetLogin(), gitUser.GetHTMLURL(), gitUser.GetHTMLURL())
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+	case "help":
+		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
+
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	}
 
