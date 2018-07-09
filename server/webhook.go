@@ -109,7 +109,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if !strings.Contains(sub.Features, "pulls") {
 			continue
 		}
-		post.ChannelId = sub.ChannelId
+		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
 		}
@@ -162,7 +162,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		post.ChannelId = sub.ChannelId
+		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
 		}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
 
@@ -17,7 +16,7 @@ const (
 )
 
 type Subscription struct {
-	ChannelId string
+	ChannelID string
 	Features  string
 }
 
@@ -25,23 +24,15 @@ type Subscriptions struct {
 	Repositories map[string][]*Subscription
 }
 
-func parseOwnerAndRepo(full string) (string, string, string) {
-	full = strings.TrimSuffix(strings.TrimSpace(strings.Replace(full, "https://github.com/", "", 1)), "/")
-	splitStr := strings.Split(full, "/")
-	if len(splitStr) != 2 {
-		return "", "", ""
-	}
-	owner := splitStr[0]
-	repo := splitStr[1]
-
-	return fmt.Sprintf("%s/%s", owner, repo), owner, repo
-}
-
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, ownerAndRepo, channelId, features string) error {
-	_, owner, repo := parseOwnerAndRepo(ownerAndRepo)
+func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, ownerAndRepo, channelID, features string) error {
+	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, p.EnterpriseBaseURL)
 
 	if owner == "" {
 		return fmt.Errorf("Invalid repository")
+	}
+
+	if err := p.checkOrg(owner); err != nil {
+		return err
 	}
 
 	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
@@ -52,7 +43,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	sub := &Subscription{
-		ChannelId: channelId,
+		ChannelID: channelID,
 		Features:  features,
 	}
 
@@ -75,7 +66,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 	} else {
 		exists := false
 		for index, s := range repoSubs {
-			if s.ChannelId == sub.ChannelId {
+			if s.ChannelID == sub.ChannelID {
 				repoSubs[index] = sub
 				exists = true
 				break
@@ -131,8 +122,8 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repository string) []*Subscr
 	return subs.Repositories[repository]
 }
 
-func (p *Plugin) Unsubscribe(channelId string, repo string) error {
-	repo, _, _ = parseOwnerAndRepo(repo)
+func (p *Plugin) Unsubscribe(channelID string, repo string) error {
+	repo, _, _ = parseOwnerAndRepo(repo, p.EnterpriseBaseURL)
 
 	if repo == "" {
 		return fmt.Errorf("Invalid repository")
@@ -150,7 +141,7 @@ func (p *Plugin) Unsubscribe(channelId string, repo string) error {
 
 	removed := false
 	for index, sub := range repoSubs {
-		if sub.ChannelId == channelId {
+		if sub.ChannelID == channelID {
 			repoSubs = append(repoSubs[:index], repoSubs[index+1:]...)
 			removed = true
 			break

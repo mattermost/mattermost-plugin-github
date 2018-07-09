@@ -111,11 +111,16 @@ export default class SidebarButtons extends React.PureComponent {
         const unreads = this.props.unreads || [];
         const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
+        let baseURL = 'https://github.com';
+        if (this.props.enterpriseURL) {
+            baseURL = enterpriseURL;
+        }
+
         return (
             <div style={container}>
                 <a
                     key='githubHeader'
-                    href={'https://github.com/settings/connections/applications/' + this.props.clientId}
+                    href={baseURL + '/settings/connections/applications/' + this.props.clientId}
                     target='_blank'
                     style={button}
                 >
@@ -127,7 +132,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id="reviewTooltip">Pull requests needing review</Tooltip>}
                 >
                     <a
-                        href='https://github.com/pulls/review-requested'
+                        href={baseURL + '/pulls/review-requested'}
                         target='_blank'
                         style={button}
                     >
@@ -141,7 +146,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id="unreadsTooltip">Unread messages</Tooltip>}
                 >
                     <a
-                        href={'https://github.com/pulls?q=is%3Aopen+mentions%3A' + this.props.username + '+archived%3Afalse'}
+                        href={baseURL + '/pulls?q=is%3Aopen+mentions%3A' + this.props.username + '+archived%3Afalse'}
                         target='_blank'
                         style={button}
                     >

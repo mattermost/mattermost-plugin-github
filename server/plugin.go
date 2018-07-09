@@ -33,15 +33,24 @@ type Plugin struct {
 	GitHubOAuthClientSecret string
 	WebhookSecret           string
 	EncryptionKey           string
+	EnterpriseBaseURL       string
+	EnterpriseUploadURL     string
 }
 
-func githubConnect(token oauth2.Token) *github.Client {
+func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(ctx, ts)
 
-	client := github.NewClient(tc)
+	if len(p.EnterpriseBaseURL) == 0 || len(p.EnterpriseUploadURL) == 0 {
+		return github.NewClient(tc)
+	}
 
+	client, err := github.NewEnterpriseClient(p.EnterpriseBaseURL, p.EnterpriseUploadURL, tc)
+	if err != nil {
+		mlog.Error(err.Error())
+		return github.NewClient(tc)
+	}
 	return client
 }
 
@@ -67,21 +76,26 @@ func (p *Plugin) IsValid() error {
 		return fmt.Errorf("Must have an encryption key")
 	}
 
-	/*if p.Username == "" {
-		return fmt.Errorf("Need a username to make posts as.")
-	}*/
+	if p.Username == "" {
+		return fmt.Errorf("Need a username to make posts as")
+	}
 
 	return nil
 }
 
 func (p *Plugin) getOAuthConfig() *oauth2.Config {
+	baseURL := "https://github.com/"
+	if len(p.EnterpriseBaseURL) > 0 {
+		baseURL = p.EnterpriseBaseURL
+	}
+
 	return &oauth2.Config{
 		ClientID:     p.GitHubOAuthClientID,
 		ClientSecret: p.GitHubOAuthClientSecret,
 		Scopes:       []string{"repo"},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  "https://github.com/login/oauth/authorize",
-			TokenURL: "https://github.com/login/oauth/access_token",
+			AuthURL:  baseURL + "login/oauth/authorize",
+			TokenURL: baseURL + "login/oauth/access_token",
 		},
 	}
 }
@@ -149,7 +163,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 }
 
 func (p *Plugin) PostToDo(info *GitHubUserInfo) {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, githubConnect(*info.Token))
+	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
 	if err != nil {
 		mlog.Error(err.Error())
 		return
@@ -198,9 +212,13 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
+			continue
+		}
+
 		url := n.GetSubject().GetURL()
-		fmt.Println(url)
-		url = strings.Replace(url, "https://api.github.com/repos/", "https://github.com/", 1)
+		url = strings.Replace(url, "api.", "", 1)
+		url = strings.Replace(url, "repos/", "", 1)
 		url = strings.Replace(url, "/pulls/", "/pull/", 1)
 
 		notificationContent += fmt.Sprintf("* %v\n", url)
@@ -208,7 +226,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	}
 
 	if notificationCount == 0 {
-		text += "You don't have any unread messages."
+		text += "You don't have any unread messages.\n"
 	} else {
 		text += fmt.Sprintf("You have %v unread messages:\n", notificationCount)
 		text += notificationContent
@@ -227,4 +245,13 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	}
 
 	return text, nil
+}
+
+func (p *Plugin) checkOrg(org string) error {
+	configOrg := strings.TrimSpace(p.GitHubOrg)
+	if configOrg != "" && configOrg != org {
+		return fmt.Errorf("Only repositories in the %v organization are supported", configOrg)
+	}
+
+	return nil
 }

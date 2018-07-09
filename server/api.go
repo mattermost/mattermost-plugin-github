@@ -112,7 +112,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	githubClient := githubConnect(*tok)
+	githubClient := p.githubConnect(*tok)
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -194,9 +194,10 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 }
 
 type ConnectedResponse struct {
-	Connected      bool   `json:"connected"`
-	GitHubUsername string `json:"github_username"`
-	GitHubClientID string `json:"github_client_id"`
+	Connected         bool   `json:"connected"`
+	GitHubUsername    string `json:"github_username"`
+	GitHubClientID    string `json:"github_client_id"`
+	EnterpriseBaseURL string `json:"enterprise_base_url,omitempty"`
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +207,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := &ConnectedResponse{Connected: false}
+	resp := &ConnectedResponse{Connected: false, EnterpriseBaseURL: p.EnterpriseBaseURL}
 
 	info, _ := p.getGitHubUserInfo(userID)
 	if info != nil && info.Token != nil {
@@ -252,7 +253,7 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	} else {
-		githubClient = githubConnect(*info.Token)
+		githubClient = p.githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 
@@ -280,7 +281,7 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	} else {
-		githubClient = githubConnect(*info.Token)
+		githubClient = p.githubConnect(*info.Token)
 	}
 
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
@@ -291,6 +292,10 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 	filteredNotifications := []*github.Notification{}
 	for _, n := range notifications {
 		if n.GetReason() == "subscribed" {
+			continue
+		}
+
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
 			continue
 		}
 
@@ -317,7 +322,7 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	} else {
-		githubClient = githubConnect(*info.Token)
+		githubClient = p.githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 
@@ -344,7 +349,7 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
 		writeAPIError(w, err)
 		return
 	} else {
-		githubClient = githubConnect(*info.Token)
+		githubClient = p.githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 

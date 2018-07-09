@@ -77,7 +77,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		}
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	} else {
-		githubClient = githubConnect(*info.Token)
+		githubClient = p.githubConnect(*info.Token)
 		username = info.GitHubUsername
 	}
 

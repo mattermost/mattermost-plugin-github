@@ -31,16 +31,34 @@
                 "help_text": "The webook secret set in GitHub."
             },
             {
-                "key": "GithubOrg",
-                "display_name": "GitHub Organization",
-                "type": "text",
-                "help_text": "(Optional) Set to lock the plugin to a single GitHub organization."
+                "key": "Username",
+                "display_name": "User",
+                "type": "username",
+                "help_test": "Select the username of the user that the plugin will post with. This can be any user, the name and icon will be overridden when posting."
             },
             {
                 "key": "EncryptionKey",
                 "display_name": "At Rest Encryption Key",
                 "type": "generated",
                 "help_text": "The AES encryption key used to encrypt stored access tokens."
+            },
+            {
+                "key": "GithubOrg",
+                "display_name": "GitHub Organization",
+                "type": "text",
+                "help_text": "(Optional) Set to lock the plugin to a single GitHub organization."
+            },
+            {
+                "key": "EnterpriseBaseURL",
+                "display_name": "Enterprise Base URL",
+                "type": "text",
+                "help_text": "(Optional) The base URL for using the plugin with a GitHub Enterprise installation."
+            },
+            {
+                "key": "EnterpriseUploadURL",
+                "display_name": "Enterprise Upload URL",
+                "type": "text",
+                "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation."
             }
         ],
         "footer": ""

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 func getMentionSearchQuery(username, org string) string {
@@ -91,4 +92,19 @@ func decrypt(key []byte, text string) (string, error) {
 	}
 
 	return string(unpadMsg), nil
+}
+
+func parseOwnerAndRepo(full, baseURL string) (string, string, string) {
+	if baseURL == "" {
+		baseURL = "https://github.com/"
+	}
+	full = strings.TrimSuffix(strings.TrimSpace(strings.Replace(full, baseURL, "", 1)), "/")
+	splitStr := strings.Split(full, "/")
+	if len(splitStr) != 2 {
+		return "", "", ""
+	}
+	owner := splitStr[0]
+	repo := splitStr[1]
+
+	return fmt.Sprintf("%s/%s", owner, repo), owner, repo
 }
