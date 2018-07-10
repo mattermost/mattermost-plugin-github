@@ -28,6 +28,7 @@ function checkAndHandleNotConnected(data) {
                     connected: false,
                     github_username: '',
                     github_client_id: '',
+                    settings: {},
                 },
             });
             return false;

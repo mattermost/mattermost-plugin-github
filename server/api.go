@@ -59,6 +59,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getMentions(w, r)
 	case "/api/v1/unreads":
 		p.getUnreads(w, r)
+	case "/api/v1/settings":
+		p.updateSettings(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -139,6 +141,10 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		Token:          tok,
 		GitHubUsername: *gitUser.Login,
 		LastToDoPostAt: model.GetMillis(),
+		Settings: &UserSettings{
+			SidebarButtons: SETTING_BUTTONS_TEAM,
+			DailyReminder:  true,
+		},
 	}
 
 	if err := p.storeGitHubUserInfo(userInfo); err != nil {
@@ -194,10 +200,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 }
 
 type ConnectedResponse struct {
-	Connected         bool   `json:"connected"`
-	GitHubUsername    string `json:"github_username"`
-	GitHubClientID    string `json:"github_client_id"`
-	EnterpriseBaseURL string `json:"enterprise_base_url,omitempty"`
+	Connected         bool          `json:"connected"`
+	GitHubUsername    string        `json:"github_username"`
+	GitHubClientID    string        `json:"github_client_id"`
+	EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
+	Settings          *UserSettings `json:"settings"`
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +221,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		resp.Connected = true
 		resp.GitHubUsername = info.GitHubUsername
 		resp.GitHubClientID = p.GitHubOAuthClientID
+		resp.Settings = info.Settings
 		lastPostAt := info.LastToDoPostAt
 
 		var timezone *time.Location
@@ -380,4 +388,35 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte("{\"status\": \"OK\"}"))
+}
+
+func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	var settings *UserSettings
+	json.NewDecoder(r.Body).Decode(&settings)
+	if settings == nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	info, err := p.getGitHubUserInfo(userID)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+
+	info.Settings = settings
+
+	if err := p.storeGitHubUserInfo(info); err != nil {
+		mlog.Error(err.Error())
+		http.Error(w, "Encountered error updating settings", http.StatusInternalServerError)
+	}
+
+	resp, _ := json.Marshal(info.Settings)
+	w.Write(resp)
 }

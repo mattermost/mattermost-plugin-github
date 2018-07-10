@@ -133,6 +133,10 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
 
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+	case "settings":
+		resp := getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "The settings for the GitHub Mattermost plugin can only be edited on the web or desktop apps.")
+		resp.Type = "custom_git_settings"
+		return resp, nil
 	}
 
 	return nil, nil

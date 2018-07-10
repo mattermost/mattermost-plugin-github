@@ -10,6 +10,7 @@ export default class SidebarButtons extends React.PureComponent {
         connected: PropTypes.bool,
         username: PropTypes.string,
         clientId: PropTypes.string,
+        enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,

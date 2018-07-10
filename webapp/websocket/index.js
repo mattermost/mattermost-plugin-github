@@ -1,4 +1,5 @@
 import ActionTypes from '../action_types';
+import Constants from '../constants';
 import {getConnected, getReviews, getUnreads} from '../actions';
 
 export function handleConnect(store) {
@@ -9,7 +10,7 @@ export function handleConnect(store) {
 
         store.dispatch({
             type: ActionTypes.RECEIVED_CONNECTED,
-            data: msg.data,
+            data: {...msg.data, settings: {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true}},
         });
     }
 }
@@ -22,6 +23,7 @@ export function handleDisconnect(store) {
                 connected: false,
                 github_username: '',
                 github_client_id: '',
+                settings: {},
             }
         });
     }

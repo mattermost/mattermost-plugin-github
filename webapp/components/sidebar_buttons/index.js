@@ -12,6 +12,7 @@ function mapStateToProps(state, ownProps) {
         clientId: state['plugins-github'].clientId,
         reviews: state['plugins-github'].reviews,
         unreads: state['plugins-github'].unreads,
+        enterpriseURL: state['plugins-github'].enterpriseURL,
     };
 }
 

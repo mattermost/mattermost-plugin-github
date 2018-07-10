@@ -1,6 +1,7 @@
 const {combineReducers} = window.redux;
 
-import ActionTypes from '../action_types'
+import ActionTypes from '../action_types';
+import Constants from '../constants';
 
 function connected(state = false, action) {
     switch(action.type) {
@@ -15,6 +16,15 @@ function username(state = '', action) {
     switch(action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return action.data.github_username;
+    default:
+        return state;
+    }
+}
+
+function settings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true}, action) {
+    switch(action.type) {
+    case ActionTypes.RECEIVED_CONNECTED:
+        return action.data.settings;
     default:
         return state;
     }
@@ -59,6 +69,7 @@ function unreads(state = [], action) {
 export default combineReducers({
     connected,
     username,
+    settings,
     clientId,
     reviews,
     mentions,
