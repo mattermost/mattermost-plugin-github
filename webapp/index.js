@@ -9,14 +9,14 @@ import {getConnected} from './actions';
 import {handleConnect, handleDisconnect, handleReconnect} from './websocket';
 
 let activityFunc;
-let lastActivityTime = 0;
+let lastActivityTime = Number.MAX_SAFE_INTEGER;
 const activityTimeout = 60*60*1000; // 1 hour
 
 class PluginClass {
     async initialize(registry, store) {
         registry.registerReducer(Reducer);
 
-        await getConnected()(store.dispatch, store.getState);
+        await getConnected(true)(store.dispatch, store.getState);
 
         registry.registerLeftSidebarHeaderComponent(SidebarHeader);
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
@@ -26,10 +26,10 @@ class PluginClass {
         registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));
         registry.registerReconnectHandler(handleReconnect(store));
 
-        activityFunc = (store) => {
+        activityFunc = () => {
             const now = new Date().getTime();
             if (now - lastActivityTime > activityTimeout) {
-                handleReconnect(store)();
+                handleReconnect(store, true)();
             }
             lastActivityTime = now;
         };

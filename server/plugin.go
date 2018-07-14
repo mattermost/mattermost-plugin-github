@@ -61,10 +61,6 @@ func (p *Plugin) OnActivate() error {
 }
 
 func (p *Plugin) IsValid() error {
-	/*if p.GitHubOrg == "" {
-		return fmt.Errorf("Must have a github org")
-	}*/
-
 	if p.GitHubOAuthClientID == "" {
 		return fmt.Errorf("Must have a github oauth client id")
 	}
@@ -93,7 +89,7 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     p.GitHubOAuthClientID,
 		ClientSecret: p.GitHubOAuthClientSecret,
-		Scopes:       []string{"repo"},
+		Scopes:       []string{"public_repo,notifications"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  baseURL + "login/oauth/authorize",
 			TokenURL: baseURL + "login/oauth/access_token",

@@ -57,18 +57,25 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
-		p.postPullRequestEvent(event)
-		p.handlePullRequestNotification(event)
+		if !event.GetRepo().GetPrivate() {
+			p.postPullRequestEvent(event)
+			p.handlePullRequestNotification(event)
+		}
 	case *github.IssuesEvent:
-		p.postIssueEvent(event)
-		p.handleIssueNotification(event)
+		if !event.GetRepo().GetPrivate() {
+			p.postIssueEvent(event)
+			p.handleIssueNotification(event)
+		}
 	case *github.IssueCommentEvent:
-		p.handleCommentMentionNotification(event)
-		p.handleCommentAuthorNotification(event)
+		if !event.GetRepo().GetPrivate() {
+			p.handleCommentMentionNotification(event)
+			p.handleCommentAuthorNotification(event)
+		}
 	case *github.PullRequestReviewEvent:
-		p.handlePullRequestReviewNotification(event)
+		if !event.GetRepo().GetPrivate() {
+			p.handlePullRequestReviewNotification(event)
+		}
 	}
-
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {

@@ -5,8 +5,8 @@ export default class Client {
         this.url = '/plugins/github/api/v1';
     }
 
-    getConnected = async () => {
-        return this.doGet(`${this.url}/connected`);
+    getConnected = async (reminder = false) => {
+        return this.doGet(`${this.url}/connected?reminder=` + reminder);
     }
 
     getReviews = async () => {

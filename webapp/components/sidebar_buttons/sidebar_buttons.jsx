@@ -92,18 +92,7 @@ export default class SidebarButtons extends React.PureComponent {
                     </OverlayTrigger>
                 )
             } else {
-                return (
-                    <div style={container}>
-                        <a
-                            href='/plugins/github/oauth/connect'
-                            onClick={this.openConnectWindow}
-                            style={button}
-                        >
-                            <i className='fa fa-github fa-lg'/>
-                            {' Connect to GitHub'}
-                        </a>
-                    </div>
-                )
+                return null;
             }
         }
 

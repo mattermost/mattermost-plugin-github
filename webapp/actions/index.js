@@ -1,11 +1,11 @@
 import Client from '../client';
 import ActionTypes from '../action_types';
 
-export function getConnected() {
+export function getConnected(reminder = false) {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client.getConnected();
+            data = await Client.getConnected(reminder);
         } catch (error) {
             return {error};
         }

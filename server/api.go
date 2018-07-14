@@ -218,22 +218,23 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		resp.Connected = true
 		resp.GitHubUsername = info.GitHubUsername
 		resp.GitHubClientID = p.GitHubOAuthClientID
-		lastPostAt := info.LastToDoPostAt
 
-		var timezone *time.Location
-		offset, err := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
-		if err == nil {
+		if r.URL.Query().Get("reminder") == "true" {
+			lastPostAt := info.LastToDoPostAt
+
+			var timezone *time.Location
+			offset, _ := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
 			timezone = time.FixedZone("local", -60*offset)
-		}
 
-		// Post to do message if it's the next day
-		now := model.GetMillis()
-		nt := time.Unix(now/1000, 0).In(timezone)
-		lt := time.Unix(lastPostAt/1000, 0).In(timezone)
-		if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
-			p.PostToDo(info)
-			info.LastToDoPostAt = now
-			p.storeGitHubUserInfo(info)
+			// Post to do message if it's the next day
+			now := model.GetMillis()
+			nt := time.Unix(now/1000, 0).In(timezone)
+			lt := time.Unix(lastPostAt/1000, 0).In(timezone)
+			if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
+				p.PostToDo(info)
+				info.LastToDoPostAt = now
+				p.storeGitHubUserInfo(info)
+			}
 		}
 	}
 
