@@ -31,4 +31,4 @@
 
 [[constraint]]
   name = "github.com/google/go-github"
-  version = "15.0.0"
+  revision = "fe267204ab6dc819efe645730b03eb44cbca91f1"

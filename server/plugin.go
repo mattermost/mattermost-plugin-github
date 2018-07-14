@@ -19,6 +19,7 @@ import (
 const (
 	GITHUB_TOKEN_KEY    = "_githubtoken"
 	GITHUB_STATE_KEY    = "_githubstate"
+	GITHUB_USERNAME_KEY = "_githubusername"
 	WS_EVENT_CONNECT    = "connect"
 	WS_EVENT_DISCONNECT = "disconnect"
 )
@@ -147,8 +148,26 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 	return &userInfo, nil
 }
 
+func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error {
+	if err := p.API.KVSet(githubUsername+GITHUB_USERNAME_KEY, []byte(userID)); err != nil {
+		return fmt.Errorf("Encountered error saving github username mapping")
+	}
+	return nil
+}
+
+func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
+	userID, _ := p.API.KVGet(githubUsername + GITHUB_USERNAME_KEY)
+	return string(userID)
+}
+
 func (p *Plugin) disconnectGitHubAccount(userID string) {
+	userInfo, _ := p.getGitHubUserInfo(userID)
+	if userInfo == nil {
+		return
+	}
+
 	p.API.KVDelete(userID + GITHUB_TOKEN_KEY)
+	p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY)
 
 	if user, err := p.API.GetUser(userID); err == nil && user.Props != nil && len(user.Props["git_user"]) > 0 {
 		delete(user.Props, "git_user")

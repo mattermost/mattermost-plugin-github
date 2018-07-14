@@ -137,7 +137,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	userInfo := &GitHubUserInfo{
 		UserID:         userID,
 		Token:          tok,
-		GitHubUsername: *gitUser.Login,
+		GitHubUsername: gitUser.GetLogin(),
 		LastToDoPostAt: model.GetMillis(),
 	}
 
@@ -145,6 +145,10 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		mlog.Error(err.Error())
 		http.Error(w, "Unable to connect user to GitHub", http.StatusInternalServerError)
 		return
+	}
+
+	if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), userID); err != nil {
+		mlog.Error(err.Error())
 	}
 
 	// Post intro post
