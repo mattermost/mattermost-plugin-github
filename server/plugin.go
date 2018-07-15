@@ -17,11 +17,14 @@ import (
 )
 
 const (
-	GITHUB_TOKEN_KEY    = "_githubtoken"
-	GITHUB_STATE_KEY    = "_githubstate"
-	GITHUB_USERNAME_KEY = "_githubusername"
-	WS_EVENT_CONNECT    = "connect"
-	WS_EVENT_DISCONNECT = "disconnect"
+	GITHUB_TOKEN_KEY        = "_githubtoken"
+	GITHUB_STATE_KEY        = "_githubstate"
+	GITHUB_USERNAME_KEY     = "_githubusername"
+	WS_EVENT_CONNECT        = "connect"
+	WS_EVENT_DISCONNECT     = "disconnect"
+	SETTING_BUTTONS_TEAM    = "team"
+	SETTING_BUTTONS_CHANNEL = "channel"
+	SETTING_BUTTONS_OFF     = "off"
 )
 
 type Plugin struct {
@@ -102,6 +105,12 @@ type GitHubUserInfo struct {
 	Token          *oauth2.Token
 	GitHubUsername string
 	LastToDoPostAt int64
+	Settings       *UserSettings
+}
+
+type UserSettings struct {
+	SidebarButtons string `json:"sidebar_buttons"`
+	DailyReminder  bool   `json:"daily_reminder"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
