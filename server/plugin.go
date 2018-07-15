@@ -35,6 +35,8 @@ type Plugin struct {
 	plugin.MattermostPlugin
 	githubClient *github.Client
 
+	BotUserID string
+
 	GitHubOrg               string
 	Username                string
 	GitHubOAuthClientID     string
@@ -63,7 +65,17 @@ func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 }
 
 func (p *Plugin) OnActivate() error {
+	if err := p.IsValid(); err != nil {
+		return err
+	}
 	p.API.RegisterCommand(getCommand())
+	user, err := p.API.GetUserByUsername(p.Username)
+	if err != nil {
+		mlog.Error(err.Error())
+		return fmt.Errorf("Unable to find user with configured username: %v", p.Username)
+	}
+
+	p.BotUserID = user.Id
 	return nil
 }
 
@@ -81,7 +93,7 @@ func (p *Plugin) IsValid() error {
 	}
 
 	if p.Username == "" {
-		return fmt.Errorf("Need a username to make posts as")
+		return fmt.Errorf("Need a user to make posts as")
 	}
 
 	return nil
@@ -191,24 +203,18 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	)
 }
 
-func (p *Plugin) PostToDo(info *GitHubUserInfo) {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppError {
+	channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 	if err != nil {
-		mlog.Error(err.Error())
-		return
-	}
-
-	channel, _ := p.API.GetDirectChannel(info.UserID, info.UserID)
-	if channel == nil {
-		mlog.Error("Couldn't get user's self DM channel", mlog.String("user_id", info.UserID))
-		return
+		mlog.Error("Couldn't get bot's DM channel", mlog.String("user_id", userID))
+		return err
 	}
 
 	post := &model.Post{
-		UserId:    info.UserID,
+		UserId:    p.BotUserID,
 		ChannelId: channel.Id,
-		Message:   text,
-		Type:      "custom_git_todo",
+		Message:   message,
+		Type:      postType,
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
@@ -218,7 +224,20 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 
 	if _, err := p.API.CreatePost(post); err != nil {
 		mlog.Error(err.Error())
+		return err
 	}
+
+	return nil
+}
+
+func (p *Plugin) PostToDo(info *GitHubUserInfo) {
+	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+	if err != nil {
+		mlog.Error(err.Error())
+		return
+	}
+
+	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {

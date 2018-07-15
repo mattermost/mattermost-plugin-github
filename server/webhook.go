@@ -190,6 +190,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 	message := fmt.Sprintf("[%s](%s) mentioned you on [%s#%v](%s):\n>%s", event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetComment().GetHTMLURL(), body)
 
 	post := &model.Post{
+		UserId:  p.BotUserID,
 		Message: message,
 		Type:    "custom_git_mention",
 		Props: map[string]interface{}{
@@ -215,12 +216,11 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userID, userID)
+		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 		if err != nil {
 			continue
 		}
 
-		post.UserId = userID
 		post.ChannelId = channel.Id
 		_, err = p.API.CreatePost(post)
 		if err != nil {
@@ -253,29 +253,9 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 		message = "[%s](%s) commented on your issue [%s#%v](%s)"
 	}
 
-	post := &model.Post{
-		UserId:  authorUserID,
-		Message: fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL()),
-		Type:    "custom_git_review",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
-		},
-	}
+	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
 
-	channel, err := p.API.GetDirectChannel(authorUserID, authorUserID)
-	if err != nil {
-		mlog.Error("Error getting channel for author comment post: " + err.Error())
-	}
-
-	post.ChannelId = channel.Id
-
-	_, err = p.API.CreatePost(post)
-	if err != nil {
-		mlog.Error("Error creating author comment post: " + err.Error())
-	}
-
+	p.CreateBotDMPost(authorUserID, message, "custom_git_author")
 }
 
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
@@ -313,29 +293,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	}
 
 	if len(requestedUserID) > 0 {
-		post := &model.Post{
-			UserId:  requestedUserID,
-			Message: message,
-			Type:    "custom_git_review_request",
-			Props: map[string]interface{}{
-				"from_webhook":      "true",
-				"override_username": GITHUB_USERNAME,
-				"override_icon_url": GITHUB_ICON_URL,
-			},
-		}
-
-		channel, err := p.API.GetDirectChannel(requestedUserID, requestedUserID)
-		if err != nil {
-			mlog.Error("Error getting channel for review request post: " + err.Error())
-			return
-		}
-
-		post.ChannelId = channel.Id
-
-		_, err = p.API.CreatePost(post)
-		if err != nil {
-			mlog.Error("Error creating review request post: " + err.Error())
-		}
+		p.CreateBotDMPost(requestedUserID, message, "custom_git_review_request")
 	}
 
 	p.postIssueNotification(message, authorUserID, assigneeUserID)
@@ -368,55 +326,11 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 
 func (p *Plugin) postIssueNotification(message, authorUserID, assigneeUserID string) {
 	if len(authorUserID) > 0 {
-		post := &model.Post{
-			UserId:  authorUserID,
-			Message: message,
-			Type:    "custom_git_author",
-			Props: map[string]interface{}{
-				"from_webhook":      "true",
-				"override_username": GITHUB_USERNAME,
-				"override_icon_url": GITHUB_ICON_URL,
-			},
-		}
-
-		channel, err := p.API.GetDirectChannel(authorUserID, authorUserID)
-		if err != nil {
-			mlog.Error("Error getting channel for author post: " + err.Error())
-			return
-		}
-
-		post.ChannelId = channel.Id
-
-		_, err = p.API.CreatePost(post)
-		if err != nil {
-			mlog.Error("Error creating author post: " + err.Error())
-		}
+		p.CreateBotDMPost(authorUserID, message, "custom_git_author")
 	}
 
 	if len(assigneeUserID) > 0 {
-		post := &model.Post{
-			UserId:  assigneeUserID,
-			Message: message,
-			Type:    "custom_git_assigned",
-			Props: map[string]interface{}{
-				"from_webhook":      "true",
-				"override_username": GITHUB_USERNAME,
-				"override_icon_url": GITHUB_ICON_URL,
-			},
-		}
-
-		channel, err := p.API.GetDirectChannel(assigneeUserID, assigneeUserID)
-		if err != nil {
-			mlog.Error("Error getting channel for assign post: " + err.Error())
-			return
-		}
-
-		post.ChannelId = channel.Id
-
-		_, err = p.API.CreatePost(post)
-		if err != nil {
-			mlog.Error("Error creating assign post: " + err.Error())
-		}
+		p.CreateBotDMPost(assigneeUserID, message, "custom_git_assigned")
 	}
 }
 
@@ -445,26 +359,5 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		message = "[%s](%s) commented on your pull request [%s#%v](%s)"
 	}
 
-	post := &model.Post{
-		UserId:  authorUserID,
-		Message: fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetHTMLURL()),
-		Type:    "custom_git_review",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
-		},
-	}
-
-	channel, err := p.API.GetDirectChannel(authorUserID, authorUserID)
-	if err != nil {
-		mlog.Error("Error getting channel for review post: " + err.Error())
-	}
-
-	post.ChannelId = channel.Id
-
-	_, err = p.API.CreatePost(post)
-	if err != nil {
-		mlog.Error("Error creating review post: " + err.Error())
-	}
+	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 }
