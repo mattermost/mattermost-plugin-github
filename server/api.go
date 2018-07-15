@@ -144,6 +144,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		Settings: &UserSettings{
 			SidebarButtons: SETTING_BUTTONS_TEAM,
 			DailyReminder:  true,
+			Notifications:  true,
 		},
 	}
 
@@ -227,14 +228,14 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		resp.GitHubClientID = p.GitHubOAuthClientID
 		resp.Settings = info.Settings
 
-		if r.URL.Query().Get("reminder") == "true" {
+		if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
 			lastPostAt := info.LastToDoPostAt
 
 			var timezone *time.Location
 			offset, _ := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
 			timezone = time.FixedZone("local", -60*offset)
 
-			// Post to do message if it's the next day
+			// Post to do message if it's the next day and been more than an hour since the last post
 			now := model.GetMillis()
 			nt := time.Unix(now/1000, 0).In(timezone)
 			lt := time.Unix(lastPostAt/1000, 0).In(timezone)

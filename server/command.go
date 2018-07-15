@@ -22,7 +22,9 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
   * Defaults to "pulls,issues"
 * |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
 * |/github me| - Display the connected GitHub account
-* |/github settings| - Connect your Mattermost account to a GitHub account`
+* |/github settings [setting] [value]| - Update your user settings
+  * |setting| can be "notifications" or "reminders"
+  * |value| can be "on" or "off"`
 
 func getCommand() *model.Command {
 	return &model.Command{
@@ -68,18 +70,17 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	ctx := context.Background()
 	var githubClient *github.Client
-	username := ""
 
-	if info, err := p.getGitHubUserInfo(args.UserId); err != nil {
+	info, apiErr := p.getGitHubUserInfo(args.UserId)
+	if apiErr != nil {
 		text := "Unknown error."
-		if err.ID == API_ERROR_ID_NOT_CONNECTED {
+		if apiErr.ID == API_ERROR_ID_NOT_CONNECTED {
 			text = "You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter `/github connect`."
 		}
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
-	} else {
-		githubClient = p.githubConnect(*info.Token)
-		username = info.GitHubUsername
 	}
+
+	githubClient = p.githubConnect(*info.Token)
 
 	switch action {
 	case "subscribe":
@@ -115,7 +116,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		p.disconnectGitHubAccount(args.UserId)
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Disconnected your GitHub account."), nil
 	case "todo":
-		text, err := p.GetToDo(ctx, username, githubClient)
+		text, err := p.GetToDo(ctx, info.GitHubUsername, githubClient)
 		if err != nil {
 			mlog.Error(err.Error())
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
@@ -134,9 +135,38 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "settings":
-		resp := getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "The settings for the GitHub Mattermost plugin can only be edited on the web or desktop apps.")
-		resp.Type = "custom_git_settings"
-		return resp, nil
+		if len(parameters) < 2 {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify both a setting and value. Use `/github help` for more usage information."), nil
+		}
+
+		setting := parameters[0]
+		if setting != SETTING_NOTIFICATIONS && setting != SETTING_REMINDERS {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Unknown setting."), nil
+		}
+
+		strValue := parameters[1]
+		value := false
+		if strValue == SETTING_ON {
+			value = true
+		} else if strValue != SETTING_OFF {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Invalid value. Accepted values are: \"on\" or \"off\"."), nil
+		}
+
+		if setting == SETTING_NOTIFICATIONS {
+			if value {
+				p.storeGitHubToUserIDMapping(info.GitHubUsername, info.UserID)
+			} else {
+				p.API.KVDelete(info.GitHubUsername + GITHUB_USERNAME_KEY)
+			}
+
+			info.Settings.Notifications = value
+		} else if setting == SETTING_REMINDERS {
+			info.Settings.DailyReminder = value
+		}
+
+		p.storeGitHubUserInfo(info)
+
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Settings updated."), nil
 	}
 
 	return nil, nil

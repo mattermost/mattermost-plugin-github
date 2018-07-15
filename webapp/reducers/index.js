@@ -21,7 +21,7 @@ function username(state = '', action) {
     }
 }
 
-function settings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true}, action) {
+function settings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true, notifications: true}, action) {
     switch(action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return action.data.settings;

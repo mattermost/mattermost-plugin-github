@@ -25,6 +25,10 @@ const (
 	SETTING_BUTTONS_TEAM    = "team"
 	SETTING_BUTTONS_CHANNEL = "channel"
 	SETTING_BUTTONS_OFF     = "off"
+	SETTING_NOTIFICATIONS   = "notifications"
+	SETTING_REMINDERS       = "reminders"
+	SETTING_ON              = "on"
+	SETTING_OFF             = "off"
 )
 
 type Plugin struct {
@@ -111,6 +115,7 @@ type GitHubUserInfo struct {
 type UserSettings struct {
 	SidebarButtons string `json:"sidebar_buttons"`
 	DailyReminder  bool   `json:"daily_reminder"`
+	Notifications  bool   `json:"notifications"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
