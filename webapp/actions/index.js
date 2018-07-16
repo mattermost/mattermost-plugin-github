@@ -10,7 +10,7 @@ export function getConnected(reminder = false) {
             return {error};
         }
 
-        store.dispatch({
+        dispatch({
             type: ActionTypes.RECEIVED_CONNECTED,
             data: data,
         });
@@ -22,7 +22,7 @@ export function getConnected(reminder = false) {
 function checkAndHandleNotConnected(data) {
     return async (dispatch, getState) => {
         if (data && data.id === 'not_connected') {
-            store.dispatch({
+            dispatch({
                 type: ActionTypes.RECEIVED_CONNECTED,
                 data: {
                     connected: false,
