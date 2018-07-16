@@ -365,6 +365,8 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		message = "[%s](%s) commented on your pull request [%s#%v](%s)"
 	}
 
+	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetHTMLURL())
+
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)
 }
