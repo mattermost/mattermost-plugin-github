@@ -1,7 +1,7 @@
 {
     "id": "github",
-    "name": "Github",
-    "description": "Github plugin for Mattermost",
+    "name": "GitHub",
+    "description": "GitHub plugin for Mattermost.",
     "version": "0.5.0",
     "backend": {
         "executable": "server/plugin.exe"
@@ -27,8 +27,8 @@
             {
                 "key": "WebhookSecret",
                 "display_name": "Webhook Secret",
-                "type": "text",
-                "help_text": "The webook secret set in GitHub."
+                "type": "generated",
+                "help_text": "The webhook secret set in GitHub."
             },
             {
                 "key": "Username",
