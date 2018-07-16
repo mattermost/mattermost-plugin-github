@@ -64,7 +64,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		resp := getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "[Click here to link your GitHub account.](http://localhost:8065/plugins/github/oauth/connect)")
+		config := p.API.GetConfig()
+		if config.ServiceSettings.SiteURL == nil {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error connecting to GitHub."), nil
+		}
+
+		resp := getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect)", *config.ServiceSettings.SiteURL))
 		return resp, nil
 	}
 
