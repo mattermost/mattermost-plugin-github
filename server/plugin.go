@@ -22,6 +22,7 @@ const (
 	GITHUB_USERNAME_KEY     = "_githubusername"
 	WS_EVENT_CONNECT        = "connect"
 	WS_EVENT_DISCONNECT     = "disconnect"
+	WS_EVENT_REFRESH        = "refresh"
 	SETTING_BUTTONS_TEAM    = "team"
 	SETTING_BUTTONS_CHANNEL = "channel"
 	SETTING_BUTTONS_OFF     = "off"
@@ -302,4 +303,12 @@ func (p *Plugin) checkOrg(org string) error {
 	}
 
 	return nil
+}
+
+func (p *Plugin) sendRefreshEvent(userID string) {
+	p.API.PublishWebSocketEvent(
+		WS_EVENT_REFRESH,
+		nil,
+		&model.WebsocketBroadcast{UserId: userID},
+	)
 }

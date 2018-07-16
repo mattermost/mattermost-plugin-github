@@ -226,6 +226,8 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		if err != nil {
 			mlog.Error("Error creating mention post: " + err.Error())
 		}
+
+		p.sendRefreshEvent(userID)
 	}
 }
 
@@ -256,6 +258,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_author")
+	p.sendRefreshEvent(authorUserID)
 }
 
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
@@ -294,6 +297,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 
 	if len(requestedUserID) > 0 {
 		p.CreateBotDMPost(requestedUserID, message, "custom_git_review_request")
+		p.sendRefreshEvent(requestedUserID)
 	}
 
 	p.postIssueNotification(message, authorUserID, assigneeUserID)
@@ -327,10 +331,12 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 func (p *Plugin) postIssueNotification(message, authorUserID, assigneeUserID string) {
 	if len(authorUserID) > 0 {
 		p.CreateBotDMPost(authorUserID, message, "custom_git_author")
+		p.sendRefreshEvent(authorUserID)
 	}
 
 	if len(assigneeUserID) > 0 {
 		p.CreateBotDMPost(assigneeUserID, message, "custom_git_assigned")
+		p.sendRefreshEvent(assigneeUserID)
 	}
 }
 
@@ -360,4 +366,5 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 	}
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
+	p.sendRefreshEvent(authorUserID)
 }

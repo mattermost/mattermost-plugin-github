@@ -6,7 +6,7 @@ import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import Reducer from './reducers';
 import {getConnected} from './actions';
-import {handleConnect, handleDisconnect, handleReconnect} from './websocket';
+import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
 
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
@@ -24,6 +24,7 @@ class PluginClass {
 
         registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
         registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));
+        registry.registerWebSocketEventHandler('custom_github_refresh', handleRefresh(store));
         registry.registerReconnectHandler(handleReconnect(store));
 
         activityFunc = () => {

@@ -38,3 +38,13 @@ export function handleReconnect(store, reminder = false) {
         }
     }
 }
+
+export function handleRefresh(store) {
+    return () => {
+        console.log('refresh');
+        if (store.getState()['plugins-github'].connected) {
+            getReviews()(store.dispatch, store.getState);
+            getUnreads()(store.dispatch, store.getState);
+        }
+    }
+}
