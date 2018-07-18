@@ -263,6 +263,10 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	author := event.GetPullRequest().GetUser().GetLogin()
+	if author == event.GetSender().GetLogin() {
+		return
+	}
+
 	requestedReviewer := ""
 	requestedUserID := ""
 	message := ""
@@ -305,6 +309,9 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 
 func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	author := event.GetIssue().GetUser().GetLogin()
+	if author == event.GetSender().GetLogin() {
+		return
+	}
 	message := ""
 	authorUserID := ""
 	assigneeUserID := ""
