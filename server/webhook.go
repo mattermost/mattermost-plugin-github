@@ -185,6 +185,12 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
 	body := event.GetComment().GetBody()
+
+	// Try to parse out email footer junk
+	if strings.Contains(body, "notifications@github.com") {
+		body = strings.Split(body, "\n\nOn")[0]
+	}
+
 	mentionedUsernames := parseGitHubUsernamesFromText(body)
 
 	message := fmt.Sprintf("[%s](%s) mentioned you on [%s#%v](%s):\n>%s", event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetComment().GetHTMLURL(), body)
