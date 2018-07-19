@@ -85,7 +85,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		return
 	}
 
-	if event.GetAction() != "opened" {
+	action := event.GetAction()
+	if action != "opened" && action != "labeled" {
 		return
 	}
 
@@ -99,8 +100,9 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	pr := event.GetPullRequest()
 	prUser := pr.GetUser()
+	eventLabel := event.GetLabel().GetName()
 
-	message := fmt.Sprintf(`
+	newPRMessage := fmt.Sprintf(`
 #### %s
 ##### [%s#%v](%s)
 #new-pull-request by [%s](%s) on [%s](%s)
@@ -109,9 +111,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 `, pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), prUser.GetLogin(), prUser.GetHTMLURL(), pr.GetCreatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
 
 	post := &model.Post{
-		UserId:  userID,
-		Message: message,
-		Type:    "custom_git_pr",
+		UserId: userID,
+		Type:   "custom_git_pr",
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
@@ -120,9 +121,27 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
-		if !strings.Contains(sub.Features, "pulls") {
+		if !sub.Pulls() {
 			continue
 		}
+
+		label := sub.Label()
+		if action == "labeled" {
+			if label != "" && label == eventLabel {
+				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#pull-request-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), eventLabel, prUser.GetLogin(), prUser.GetHTMLURL(), pr.GetUpdatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
+			} else {
+				continue
+			}
+		}
+
+		if action == "opened" {
+			if label == "" {
+				post.Message = newPRMessage
+			} else {
+				continue
+			}
+		}
+
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
@@ -137,7 +156,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		return
 	}
 
-	if event.GetAction() != "opened" {
+	action := event.GetAction()
+	if action != "opened" && action != "labeled" {
 		return
 	}
 
@@ -151,8 +171,9 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	issue := event.GetIssue()
 	issueUser := issue.GetUser()
+	eventLabel := event.GetLabel().GetName()
 
-	message := fmt.Sprintf(`
+	newIssueMessage := fmt.Sprintf(`
 #### %s
 ##### [%s#%v](%s)
 #new-issue by [%s](%s) on [%s](%s)
@@ -161,9 +182,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 `, issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), issueUser.GetLogin(), issueUser.GetHTMLURL(), issue.GetCreatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
 
 	post := &model.Post{
-		UserId:  userID,
-		Message: message,
-		Type:    "custom_git_issue",
+		UserId: userID,
+		Type:   "custom_git_issue",
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
@@ -172,8 +192,25 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	for _, sub := range subs {
-		if !strings.Contains(sub.Features, "issues") {
+		if !sub.Issues() {
 			continue
+		}
+
+		label := sub.Label()
+		if action == "labeled" {
+			if label != "" && label == eventLabel {
+				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#issue-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), eventLabel, issueUser.GetLogin(), issueUser.GetHTMLURL(), issue.GetUpdatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
+			} else {
+				continue
+			}
+		}
+
+		if action == "opened" {
+			if label == "" {
+				post.Message = newIssueMessage
+			} else {
+				continue
+			}
 		}
 
 		post.ChannelId = sub.ChannelID

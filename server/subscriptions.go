@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
 
@@ -22,6 +23,27 @@ type Subscription struct {
 
 type Subscriptions struct {
 	Repositories map[string][]*Subscription
+}
+
+func (s *Subscription) Pulls() bool {
+	return strings.Contains(s.Features, "pulls")
+}
+
+func (s *Subscription) Issues() bool {
+	return strings.Contains(s.Features, "issues")
+}
+
+func (s *Subscription) Label() string {
+	if !strings.Contains(s.Features, "label:") {
+		return ""
+	}
+
+	labelSplit := strings.Split(s.Features, "\"")
+	if len(labelSplit) < 3 {
+		return ""
+	}
+
+	return labelSplit[1]
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, ownerAndRepo, channelID, features string) error {
