@@ -128,7 +128,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		label := sub.Label()
 		if action == "labeled" {
 			if label != "" && label == eventLabel {
-				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#pull-request-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), eventLabel, prUser.GetLogin(), prUser.GetHTMLURL(), pr.GetUpdatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
+				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#pull-request-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), eventLabel, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), pr.GetUpdatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
 			} else {
 				continue
 			}
@@ -199,7 +199,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		label := sub.Label()
 		if action == "labeled" {
 			if label != "" && label == eventLabel {
-				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#issue-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), eventLabel, issueUser.GetLogin(), issueUser.GetHTMLURL(), issue.GetUpdatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
+				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#issue-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), eventLabel, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), issue.GetUpdatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
 			} else {
 				continue
 			}
