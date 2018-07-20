@@ -261,16 +261,24 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
+		if n.GetRepository() == nil {
+			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			continue
+		}
+
 		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
 			continue
 		}
 
-		url := n.GetSubject().GetURL()
-		url = strings.Replace(url, "api.", "", 1)
-		url = strings.Replace(url, "repos/", "", 1)
-		url = strings.Replace(url, "/pulls/", "/pull/", 1)
+		switch n.GetSubject().GetType() {
+		case "RepositoryVulnerabilityAlert":
+			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL()))
+			notificationContent += fmt.Sprintf("* %v\n", message)
+		default:
+			url := fixGithubNotificationSubjectURL(n.GetSubject().GetURL())
+			notificationContent += fmt.Sprintf("* %v\n", url)
+		}
 
-		notificationContent += fmt.Sprintf("* %v\n", url)
 		notificationCount++
 	}
 
