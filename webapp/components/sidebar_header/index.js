@@ -1,4 +1,4 @@
-const {connect} = window['react-redux'];
+import {connect} from 'react-redux';
 
 import SidebarHeader from './sidebar_header.jsx';
 

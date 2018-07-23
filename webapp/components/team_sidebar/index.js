@@ -1,4 +1,4 @@
-const {connect} = window['react-redux'];
+import {connect} from 'react-redux';
 
 import TeamSidebar from './team_sidebar.jsx';
 

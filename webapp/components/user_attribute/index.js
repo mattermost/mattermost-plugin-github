@@ -1,4 +1,4 @@
-const {connect} = window['react-redux'];
+import {connect} from 'react-redux';
 
 import {getUser} from 'mattermost-redux/selectors/entities/users';
 

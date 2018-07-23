@@ -43,4 +43,4 @@ class PluginClass {
     }
 }
 
-global.window.plugins['github'] = new PluginClass();
+global.window.registerPlugin('github', new PluginClass());

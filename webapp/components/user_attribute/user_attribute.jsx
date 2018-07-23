@@ -1,7 +1,7 @@
-const React = window.react;
-const {Tooltip, OverlayTrigger} = window['react-bootstrap'];
-
+import React from 'react';
+import {Tooltip, OverlayTrigger} from 'react-bootstrap';
 import PropTypes from 'prop-types';
+
 import {makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
 
 export default class UserAttribute extends React.PureComponent {

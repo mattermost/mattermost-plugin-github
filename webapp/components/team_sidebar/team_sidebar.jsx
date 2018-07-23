@@ -1,5 +1,4 @@
-const React = window.react;
-
+import React from 'react';
 import PropTypes from 'prop-types';
 
 import SidebarButtons from '../sidebar_buttons';

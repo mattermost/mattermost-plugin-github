@@ -1,4 +1,4 @@
-const {combineReducers} = window.redux;
+import {combineReducers} from 'redux';
 
 import ActionTypes from '../action_types';
 import Constants from '../constants';

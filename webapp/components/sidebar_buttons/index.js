@@ -1,5 +1,5 @@
-const {connect} = window['react-redux'];
-const {bindActionCreators} = window.redux;
+import {connect} from 'react-redux';
+import {bindActionCreators} from 'redux';
 
 import {getReviews, getUnreads} from '../../actions';
 
