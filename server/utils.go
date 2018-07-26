@@ -21,6 +21,10 @@ func getReviewSearchQuery(username, org string) string {
 	return bulidSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, org)
 }
 
+func getYourPrsSearchQuery(username, org string) string {
+	return bulidSearchQuery("is:pr is:open author:%v archived:false %v", username, org)
+}
+
 func bulidSearchQuery(query, username, org string) string {
 	orgField := ""
 	if len(org) != 0 {

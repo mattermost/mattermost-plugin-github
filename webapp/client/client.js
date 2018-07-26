@@ -13,6 +13,10 @@ export default class Client {
         return this.doGet(`${this.url}/reviews`);
     }
 
+    getYourPrs = async () => {
+        return this.doGet(`${this.url}/yourprs`);
+    }
+
     getMentions = async () => {
         return this.doGet(`${this.url}/mentions`);
     }

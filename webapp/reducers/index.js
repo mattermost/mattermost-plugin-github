@@ -48,6 +48,15 @@ function reviews(state = [], action) {
     }
 }
 
+function yourPrs(state = [], action) {
+    switch(action.type) {
+    case ActionTypes.RECEIVED_YOUR_PRS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function mentions(state = [], action) {
     switch(action.type) {
     case ActionTypes.RECEIVED_MENTIONS:
@@ -72,6 +81,7 @@ export default combineReducers({
     settings,
     clientId,
     reviews,
+    yourPrs,
     mentions,
     unreads,
 });

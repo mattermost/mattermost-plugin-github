@@ -1,6 +1,6 @@
 import ActionTypes from '../action_types';
 import Constants from '../constants';
-import {getConnected, getReviews, getUnreads} from '../actions';
+import {getConnected, getReviews, getUnreads, getYourPrs} from '../actions';
 
 export function handleConnect(store) {
     return (msg) => {
@@ -35,6 +35,7 @@ export function handleReconnect(store, reminder = false) {
         if (data && data.connected) {
             getReviews()(store.dispatch, store.getState);
             getUnreads()(store.dispatch, store.getState);
+            getYourPrs()(store.dispatch, store.getState);
         }
     }
 }
@@ -45,6 +46,7 @@ export function handleRefresh(store) {
         if (store.getState()['plugins-github'].connected) {
             getReviews()(store.dispatch, store.getState);
             getUnreads()(store.dispatch, store.getState);
+            getYourPrs()(store.dispatch, store.getState);
         }
     }
 }

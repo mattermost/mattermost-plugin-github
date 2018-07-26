@@ -12,10 +12,12 @@ export default class SidebarButtons extends React.PureComponent {
         enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
+        yourPrs: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,
         actions: PropTypes.shape({
             getReviews: PropTypes.func.isRequired,
             getUnreads: PropTypes.func.isRequired,
+            getYourPrs: PropTypes.func.isRequired,
         }).isRequired
     };
 
@@ -52,6 +54,7 @@ export default class SidebarButtons extends React.PureComponent {
         await Promise.all([
             this.props.actions.getReviews(),
             this.props.actions.getUnreads(),
+            this.props.actions.getYourPrs(),
         ]);
         this.setState({refreshing: false});
     }
@@ -96,7 +99,8 @@ export default class SidebarButtons extends React.PureComponent {
             }
         }
 
-        const prs = this.props.reviews || [];
+        const reviews = this.props.reviews || [];
+        const yourPrs = this.props.yourPrs || [];
         const unreads = this.props.unreads || [];
         const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
@@ -116,6 +120,20 @@ export default class SidebarButtons extends React.PureComponent {
                     <i className='fa fa-github fa-lg'/>
                 </a>
                 <OverlayTrigger
+                    key='githubYourPrsLink'
+                    placement={placement}
+                    overlay={<Tooltip id="yourPrsTooltip">Your open pull requests</Tooltip>}
+                >
+                    <a
+                        href={baseURL + '/pulls'}
+                        target='_blank'
+                        style={button}
+                    >
+                        <i className='fa fa-compress'/>
+                        {' ' + yourPrs.length}
+                    </a>
+                </OverlayTrigger>
+                <OverlayTrigger
                     key='githubReviewsLink'
                     placement={placement}
                     overlay={<Tooltip id="reviewTooltip">Pull requests needing review</Tooltip>}
@@ -126,7 +144,7 @@ export default class SidebarButtons extends React.PureComponent {
                         style={button}
                     >
                         <i className='fa fa-code-fork'/>
-                        {' ' + prs.length}
+                        {' ' + reviews.length}
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
