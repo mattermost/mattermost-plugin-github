@@ -247,12 +247,17 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", err
 	}
 
-	text := "##### Unread Messages\n"
-
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
 		return "", err
 	}
+
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	text := "##### Unread Messages\n"
 
 	notificationCount := 0
 	notificationContent := ""
@@ -297,6 +302,18 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
+			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+		}
+	}
+
+	text += "##### Your Open Pull Requests\n"
+
+	if yourPrs.GetTotal() == 0 {
+		text += "You have don't have any open pull requests."
+	} else {
+		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
+
+		for _, pr := range yourPrs.Issues {
 			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
 		}
 	}
