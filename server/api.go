@@ -55,6 +55,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.postToDo(w, r)
 	case "/api/v1/reviews":
 		p.getReviews(w, r)
+	case "/api/v1/yourprs":
+		p.getYourPrs(w, r)
 	case "/api/v1/mentions":
 		p.getMentions(w, r)
 	case "/api/v1/unreads":
@@ -327,6 +329,35 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result.Issues)
+	w.Write(resp)
+}
+
+func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+	username := ""
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = p.githubConnect(*info.Token)
+		username = info.GitHubUsername
+	}
+
+	result, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
