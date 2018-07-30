@@ -134,7 +134,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your GitHub profile."), nil
 		}
 
-		text := fmt.Sprintf("You are connected to GitHub as:\n# [![image](%s =40x40) [%s](%s)](%s)", gitUser.GetAvatarURL(), gitUser.GetLogin(), gitUser.GetHTMLURL(), gitUser.GetHTMLURL())
+		text := fmt.Sprintf("You are connected to GitHub as:\n# [![image](%s =40x40)](%s) [%s](%s)", gitUser.GetAvatarURL(), gitUser.GetHTMLURL(), gitUser.GetLogin(), gitUser.GetHTMLURL())
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "help":
 		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
