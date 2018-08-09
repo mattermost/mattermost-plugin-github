@@ -1,41 +1,59 @@
-# mattermost-github
-Experimental Mattermost plugin for Github written for Mattercon Hackathon 2018
+# Mattermost GitHub Plugin
 
-This is an unreleased project for an official GitHub plugin for Mattermost.
+A GitHub plugin for Mattermost. The plugin is currently in beta.
 
-We welcome external contributions to improve the plugin, but do not yet recommend for use in production.
+## Features
 
-# Plan
-- Features
-    - Slash command to subscribe a channel to a repository
-        - Filters as options on slash command
-    - Link previews for:
-        - Code snipits
-        - Issues
-        - PRs
-    - Interactive dynamic posts for PRs/issues
-        - Everything you can do in Github you can do from MM
-        - See lables/assignee/fix-version/etc.
-        - Inline code for small PRs?
-        - Actions: Merge/close/change assignee/remove lables/Approve/requetchanges
-        - Links: PR main page, direct to code
-    - Comment on github is comment in MM and vice versa
-    - Daily reminders for PR reviews.
-    - Auto ticket linking. Replace pasted links with full iteractive post.
+* __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
+* __Notifications__ - get a direct message in Mattermost when omeone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
+* __Sidebar buttons__ - stay up-to-date with how many reviews, unread messaages and open pull requests you have with buttons in the Mattermost sidebar
+* __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
+    * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive posts for new pull requests and/or issues in a GitHub repository
+    * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub
+    * __Update settings__ - Use `/github settings` to update your settings for the plugin
+    * __And more!__ - Run `/github help` to see what else the slash command can do
+* __Supports GitHub Enterprise__ - Works with SaaS and Enteprise versions of GitHub
 
-- Register user token
-    - Slash command? 
-        - Problem is that slash commands have history
-        - Add ability to not record a slash command in history?
-    - Oauth
-    - Replying when we don't have token
-        - Block reply?
+## Installation
 
-- Two modes of operation, authenticated and inauthenticated.
-    - Inauthenticated
-        - No actions are available
-        - No code previews
-        - No private repsitories
-        - All posts that have disabled content have a link to how to setup a github token to work with the plugin
-    - Authenticated
-        - User can perform ations and see code from private repsitories that they have access to. (server makes requests to github as them?)
+__Requires Mattermost 5.2 or higher__
+
+__If you're using GitHub enterprise, replace all GitHub links below with your GitHub Enterprise URL__
+
+1. Install the plugin
+    1. Download the latest version of the plugin from the GitHub releases page
+    2. In Mattermost, go the System Console -> Plugins -> Management
+    3. Upload the plugin
+2. Register a GitHub OAuth app
+    1. Go to https://github.com/settings/applications/new
+        * Use "Mattermost GitHub Plugin - <your company name>" as the name
+        * Use "https://github.com/mattermost/mattermost-plugin-github" as the homepage
+        * Use "https://your-mattermost-url.com/plugins/github/oauth/complete" as the authorization callback URL, replacing `https://your-mattermost-url.com` with your Mattermost URL
+        * Submit and copy the Client ID and Secret
+    2. In Mattermost, go to System Console -> Plugins -> GitHub
+        * Fill in the Client ID and Secret and save the settings
+3. Create a GitHub webhook
+    1. In Mattermost, go to the System Console -> Plugins -> GitHub and copy the "Webhook Secret"
+    2. Go to the settings page of your GitHub organization and click on "Webhooks" in the sidebar
+        * Click "Add webhook"
+        * Use "https://your-mattermost-url.com/plugins/github/webhook" as the payload URL, replacing `https://your-mattermost-url.com` with your Mattermost URL
+        * Change content type to "application/json"
+        * Paste the webhook secret you copied before into the secret field
+        * Select the events: Issues, Issue comments, Pull requests, Pull request reviews, and Pull request review comments
+    3. Save the webhook
+4. (Optional) Lock the plugin to a GitHub organization
+    * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
+5. Enable the plugin
+    * Go to System Console -> Plugins -> Management and click "Enable" underneat the GitHub plugin
+6. Test it out
+    * In Mattermost, run the slash command `/github connect`
+
+## Developing 
+
+This plugin contains both a server and web app portion.
+
+Use `make dist` to build distributions of the plugin that you can upload to a Mattermost server.
+
+Use `make check-style` to check the style.
+
+Use `make localdeploy` to deploy the plugin to your local server. You will need to restart the server to get the changes.
