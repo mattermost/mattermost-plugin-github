@@ -257,6 +257,11 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", err
 	}
 
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		return "", err
+	}
+
 	text := "##### Unread Messages\n"
 
 	notificationCount := 0
@@ -315,6 +320,18 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 
 		for _, pr := range yourPrs.Issues {
 			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+		}
+	}
+
+	text += "##### Your Assigments\n"
+
+	if yourAssignments.GetTotal() == 0 {
+		text += "You have don't have any assignments.\n"
+	} else {
+		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
+
+		for _, assign := range yourAssignments.Issues {
+			text += fmt.Sprintf("* %v\n", assign.GetHTMLURL())
 		}
 	}
 
