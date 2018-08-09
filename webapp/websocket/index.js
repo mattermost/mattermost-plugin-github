@@ -36,6 +36,7 @@ export function handleReconnect(store, reminder = false) {
             getReviews()(store.dispatch, store.getState);
             getUnreads()(store.dispatch, store.getState);
             getYourPrs()(store.dispatch, store.getState);
+            getYourAssignments()(store.dispatch, store.getState);
         }
     }
 }
@@ -47,6 +48,7 @@ export function handleRefresh(store) {
             getReviews()(store.dispatch, store.getState);
             getUnreads()(store.dispatch, store.getState);
             getYourPrs()(store.dispatch, store.getState);
+            getYourAssignments()(store.dispatch, store.getState);
         }
     }
 }
