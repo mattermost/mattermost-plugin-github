@@ -46,8 +46,6 @@ export function getReviews() {
             return {error};
         }
 
-        let actions = [];
-
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
             return {error: data};
@@ -70,8 +68,6 @@ export function getYourPrs() {
         } catch (error) {
             return {error};
         }
-
-        let actions = [];
 
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
@@ -96,8 +92,6 @@ export function getYourAssignments() {
             return {error};
         }
 
-        let actions = [];
-
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
             return {error: data};
@@ -121,8 +115,6 @@ export function getMentions() {
             return {error};
         }
 
-        let actions = [];
-
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
             return {error: data};
@@ -145,8 +137,6 @@ export function getUnreads() {
         } catch (error) {
             return {error};
         }
-
-        let actions = [];
 
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
