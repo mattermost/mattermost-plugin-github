@@ -13,11 +13,13 @@ export default class SidebarButtons extends React.PureComponent {
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
+        yourAssignments: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,
         actions: PropTypes.shape({
             getReviews: PropTypes.func.isRequired,
             getUnreads: PropTypes.func.isRequired,
             getYourPrs: PropTypes.func.isRequired,
+            getYourAssignments: PropTypes.func.isRequired,
         }).isRequired
     };
 
@@ -55,6 +57,7 @@ export default class SidebarButtons extends React.PureComponent {
             this.props.actions.getReviews(),
             this.props.actions.getUnreads(),
             this.props.actions.getYourPrs(),
+            this.props.actions.getYourAssignments(),
         ]);
         this.setState({refreshing: false});
     }
@@ -102,6 +105,7 @@ export default class SidebarButtons extends React.PureComponent {
         const reviews = this.props.reviews || [];
         const yourPrs = this.props.yourPrs || [];
         const unreads = this.props.unreads || [];
+        const yourAssignments = this.props.yourAssignments || [];
         const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
         let baseURL = 'https://github.com';
@@ -145,6 +149,20 @@ export default class SidebarButtons extends React.PureComponent {
                     >
                         <i className='fa fa-code-fork'/>
                         {' ' + reviews.length}
+                    </a>
+                </OverlayTrigger>
+                <OverlayTrigger
+                    key='githubAssignmentsLink'
+                    placement={placement}
+                    overlay={<Tooltip id="reviewTooltip">Your assignments</Tooltip>}
+                >
+                    <a
+                        href={baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A'+ this.props.username}
+                        target='_blank'
+                        style={button}
+                    >
+                        <i className='fa fa-list-ol'/>
+                        {' ' + yourAssignments.length}
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger

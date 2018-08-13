@@ -46,8 +46,6 @@ export function getReviews() {
             return {error};
         }
 
-        let actions = [];
-
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
             return {error: data};
@@ -71,8 +69,6 @@ export function getYourPrs() {
             return {error};
         }
 
-        let actions = [];
-
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
             return {error: data};
@@ -80,6 +76,29 @@ export function getYourPrs() {
 
         dispatch({
             type: ActionTypes.RECEIVED_YOUR_PRS,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function getYourAssignments() {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getYourAssignments();
+        } catch (error) {
+            return {error};
+        }
+
+        let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_YOUR_ASSIGNMENTS,
             data,
         });
 
@@ -95,8 +114,6 @@ export function getMentions() {
         } catch (error) {
             return {error};
         }
-
-        let actions = [];
 
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
@@ -120,8 +137,6 @@ export function getUnreads() {
         } catch (error) {
             return {error};
         }
-
-        let actions = [];
 
         let connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
