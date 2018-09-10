@@ -57,3 +57,7 @@ Use `make dist` to build distributions of the plugin that you can upload to a Ma
 Use `make check-style` to check the style.
 
 Use `make localdeploy` to deploy the plugin to your local server. You will need to restart the server to get the changes.
+
+## Notes 
+
+- This plug-in was originally developed for the Mattermost 2018 hackathon using the new plug-in architecture introduced in Mattermost 5.
