@@ -15,7 +15,10 @@ function connected(state = false, action) {
 function enterpriseURL(state = '', action) {
     switch(action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        return action.data.enterprise_base_url;
+        if (action.data && action.data.enterprise_base_url) {
+            return action.data.enterprise_base_url;
+        }
+        return '';
     default:
         return state;
     }
