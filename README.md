@@ -6,19 +6,19 @@ A GitHub plugin for Mattermost. The plugin is currently in beta and does not yet
 
 * __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
 * __Notifications__ - get a direct message in Mattermost when omeone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
-* __Sidebar buttons__ - stay up-to-date with how many reviews, unread messaages and open pull requests you have with buttons in the Mattermost sidebar
+* __Sidebar buttons__ - stay up-to-date with how many reviews, unread messaages, assignments and open pull requests you have with buttons in the Mattermost sidebar
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
     * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive posts for new pull requests and/or issues in a GitHub repository
     * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub
     * __Update settings__ - Use `/github settings` to update your settings for the plugin
     * __And more!__ - Run `/github help` to see what else the slash command can do
-* __Supports GitHub Enterprise__ - Works with SaaS and Enteprise versions of GitHub
+* __Supports GitHub Enterprise__ - Works with SaaS and Enteprise versions of GitHub (Enterprise support added in version 0.6.0)
 
 ## Installation
 
 __Requires Mattermost 5.2 or higher__
 
-__If you're using GitHub enterprise, replace all GitHub links below with your GitHub Enterprise URL__
+__If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL__
 
 1. Install the plugin
     1. Download the latest version of the plugin from the GitHub releases page
@@ -41,6 +41,11 @@ __If you're using GitHub enterprise, replace all GitHub links below with your Gi
         * Paste the webhook secret you copied before into the secret field
         * Select the events: Issues, Issue comments, Pull requests, Pull request reviews, and Pull request review comments
     3. Save the webhook
+    4. __Note for each organization you want to receive notifications for or subscribe to, you must create a webhook__
+4. Configure a bot account
+    1. Create a new Mattermost user, through the regular UI or the CLI with the username "github"
+    2. Go to the System Console -> Plugins -> GitHub and select this user in the User setting
+    3. Save the settings
 4. (Optional) Lock the plugin to a GitHub organization
     * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
 5. Enable the plugin

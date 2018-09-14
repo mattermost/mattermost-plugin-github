@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/mlog"
@@ -57,7 +59,13 @@ func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 		return github.NewClient(tc)
 	}
 
-	client, err := github.NewEnterpriseClient(p.EnterpriseBaseURL, p.EnterpriseUploadURL, tc)
+	baseURL, _ := url.Parse(p.EnterpriseBaseURL)
+	baseURL.Path = path.Join(baseURL.Path, "api", "v3")
+
+	uploadURL, _ := url.Parse(p.EnterpriseUploadURL)
+	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
+
+	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), tc)
 	if err != nil {
 		mlog.Error(err.Error())
 		return github.NewClient(tc)
@@ -101,18 +109,23 @@ func (p *Plugin) IsValid() error {
 }
 
 func (p *Plugin) getOAuthConfig() *oauth2.Config {
-	baseURL := "https://github.com/"
+	authURL, _ := url.Parse("https://github.com/")
+	tokenURL, _ := url.Parse("https://github.com/")
 	if len(p.EnterpriseBaseURL) > 0 {
-		baseURL = p.EnterpriseBaseURL
+		authURL, _ = url.Parse(p.EnterpriseBaseURL)
+		tokenURL, _ = url.Parse(p.EnterpriseBaseURL)
 	}
+
+	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
+	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
 	return &oauth2.Config{
 		ClientID:     p.GitHubOAuthClientID,
 		ClientSecret: p.GitHubOAuthClientSecret,
 		Scopes:       []string{"public_repo,notifications"},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  baseURL + "login/oauth/authorize",
-			TokenURL: baseURL + "login/oauth/access_token",
+			AuthURL:  authURL.String(),
+			TokenURL: tokenURL.String(),
 		},
 	}
 }
@@ -323,7 +336,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		}
 	}
 
-	text += "##### Your Assigments\n"
+	text += "##### Your Assignments\n"
 
 	if yourAssignments.GetTotal() == 0 {
 		text += "You have don't have any assignments.\n"

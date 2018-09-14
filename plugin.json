@@ -2,7 +2,7 @@
     "id": "github",
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "backend": {
         "executable": "server/plugin.exe"
     },
@@ -34,7 +34,7 @@
                 "key": "Username",
                 "display_name": "User",
                 "type": "username",
-                "help_test": "Select the username of the user that the plugin will post with. This can be any user, the name and icon will be overridden when posting."
+                "help_text": "Select the username of the user that the plugin will post with. This can be any user, the name and icon will be overridden when posting."
             },
             {
                 "key": "EncryptionKey",
@@ -52,13 +52,13 @@
                 "key": "EnterpriseBaseURL",
                 "display_name": "Enterprise Base URL",
                 "type": "text",
-                "help_text": "(Optional) The base URL for using the plugin with a GitHub Enterprise installation."
+                "help_text": "(Optional) The base URL for using the plugin with a GitHub Enterprise installation. Example: https://github.example.com"
             },
             {
                 "key": "EnterpriseUploadURL",
                 "display_name": "Enterprise Upload URL",
                 "type": "text",
-                "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation."
+                "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation. This is often the same as your Base URL."
             }
         ],
         "footer": ""

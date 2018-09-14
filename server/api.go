@@ -38,6 +38,7 @@ func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	if err := p.IsValid(); err != nil {
 		http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -101,9 +102,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	state := r.URL.Query().Get("state")
 
 	if storedState, err := p.API.KVGet(state); err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, "missing stored state", http.StatusBadRequest)
 		return
 	} else if string(storedState) != state {
+		fmt.Println(err.Error())
 		http.Error(w, "invalid state", http.StatusBadRequest)
 		return
 	}
@@ -114,6 +117,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -121,11 +125,13 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	githubClient := p.githubConnect(*tok)
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if user, err := p.API.GetUser(userID); err != nil {
+		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else {
@@ -135,6 +141,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		user.Props["git_user"] = *gitUser.Login
 		_, err = p.API.UpdateUser(user)
 		if err != nil {
+			fmt.Println(err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -153,13 +160,13 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := p.storeGitHubUserInfo(userInfo); err != nil {
-		mlog.Error(err.Error())
+		fmt.Println(err.Error())
 		http.Error(w, "Unable to connect user to GitHub", http.StatusInternalServerError)
 		return
 	}
 
 	if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), userID); err != nil {
-		mlog.Error(err.Error())
+		fmt.Println(err.Error())
 	}
 
 	// Post intro post
@@ -185,7 +192,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		</script>
 	</head>
 	<body>
-		<p>Completed connecting to GitHub.</p>
+		<p>Completed connecting to GitHub. Please close this window.</p>
 	</body>
 </html>
 `

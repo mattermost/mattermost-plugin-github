@@ -110,7 +110,7 @@ export default class SidebarButtons extends React.PureComponent {
 
         let baseURL = 'https://github.com';
         if (this.props.enterpriseURL) {
-            baseURL = enterpriseURL;
+            baseURL = this.props.enterpriseURL;
         }
 
         return (
