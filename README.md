@@ -48,6 +48,9 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
     3. Save the settings
 4. (Optional) Lock the plugin to a GitHub organization
     * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
+4. (Enterprise only) Set your Enterprise URLs
+    * Go to System Console -> Plugins -> GitHub and set the Enterprise Base URL and Enterprise Upload URL fields to your GitHub Enterprise URLs, ex: `https://github.example.com`
+    * The Base and Upload URLs are often the same
 5. Enable the plugin
     * Go to System Console -> Plugins -> Management and click "Enable" underneat the GitHub plugin
 6. Test it out
