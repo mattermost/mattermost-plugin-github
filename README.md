@@ -1,6 +1,6 @@
 # Mattermost GitHub Plugin
 
-A GitHub plugin for Mattermost. The plugin is currently in beta and does not yet suport GitHub Enterprise.
+A GitHub plugin for Mattermost. The plugin is currently in beta.
 
 ## Features
 
