@@ -2,7 +2,7 @@
     "id": "github",
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
-    "version": "0.6.1",
+    "version": "0.6.2",
     "backend": {
         "executable": "server/plugin.exe"
     },
