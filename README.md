@@ -46,6 +46,9 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
     1. Create a new Mattermost user, through the regular UI or the CLI with the username "github"
     2. Go to the System Console -> Plugins -> GitHub and select this user in the User setting
     3. Save the settings
+4. Generate an at rest encryption key
+    1. Go to the System Console -> Plugins -> GitHub and click "Regenerate" under "At Rest Encryption Key"
+    2. Save the settings
 4. (Optional) Lock the plugin to a GitHub organization
     * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
 4. (Enterprise only) Set your Enterprise URLs
