@@ -55,7 +55,7 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
     * Go to System Console -> Plugins -> GitHub and set the Enterprise Base URL and Enterprise Upload URL fields to your GitHub Enterprise URLs, ex: `https://github.example.com`
     * The Base and Upload URLs are often the same
 5. Enable the plugin
-    * Go to System Console -> Plugins -> Management and click "Enable" underneat the GitHub plugin
+    * Go to System Console -> Plugins -> Management and click "Enable" underneath the GitHub plugin
 6. Test it out
     * In Mattermost, run the slash command `/github connect`
 
