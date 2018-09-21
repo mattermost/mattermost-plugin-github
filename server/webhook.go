@@ -15,7 +15,6 @@ import (
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
-
 	const signaturePrefix = "sha1="
 	const signatureLength = 45
 
@@ -306,9 +305,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	author := event.GetPullRequest().GetUser().GetLogin()
-	if author == event.GetSender().GetLogin() {
-		return
-	}
+	sender := event.GetSender().GetLogin()
 
 	requestedReviewer := ""
 	requestedUserID := ""
@@ -319,11 +316,15 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	switch event.GetAction() {
 	case "review_requested":
 		requestedReviewer = event.GetRequestedReviewer().GetLogin()
-		if requestedReviewer != event.GetSender().GetLogin() {
-			requestedUserID = p.getGitHubToUserIDMapping(requestedReviewer)
-			message = "[%s](%s) requested your review on [%s#%v](%s)"
+		if requestedReviewer == sender {
+			return
 		}
+		requestedUserID = p.getGitHubToUserIDMapping(requestedReviewer)
+		message = "[%s](%s) requested your review on [%s#%v](%s)"
 	case "closed":
+		if author == sender {
+			return
+		}
 		if event.GetPullRequest().GetMerged() {
 			message = "[%s](%s) merged your pull request [%s#%v](%s)"
 		} else {
@@ -331,11 +332,18 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		}
 		authorUserID = p.getGitHubToUserIDMapping(author)
 	case "reopened":
+		if author == sender {
+			return
+		}
 		message = "[%s](%s) reopened your pull request [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
 	case "assigned":
+		assignee := event.GetPullRequest().GetAssignee().GetLogin()
+		if assignee == sender {
+			return
+		}
 		message = "[%s](%s) assigned you to pull request [%s#%v](%s)"
-		assigneeUserID = p.getGitHubToUserIDMapping(event.GetPullRequest().GetAssignee().GetLogin())
+		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
 	}
 
 	if len(message) > 0 {
