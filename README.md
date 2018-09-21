@@ -5,7 +5,7 @@ A GitHub plugin for Mattermost. The plugin is currently in beta.
 ## Features
 
 * __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
-* __Notifications__ - get a direct message in Mattermost when omeone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
+* __Notifications__ - get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
 * __Sidebar buttons__ - stay up-to-date with how many reviews, unread messaages, assignments and open pull requests you have with buttons in the Mattermost sidebar
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
     * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive posts for new pull requests and/or issues in a GitHub repository
@@ -46,6 +46,9 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
     1. Create a new Mattermost user, through the regular UI or the CLI with the username "github"
     2. Go to the System Console -> Plugins -> GitHub and select this user in the User setting
     3. Save the settings
+4. Generate an at rest encryption key
+    1. Go to the System Console -> Plugins -> GitHub and click "Regenerate" under "At Rest Encryption Key"
+    2. Save the settings
 4. (Optional) Lock the plugin to a GitHub organization
     * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
 4. (Enterprise only) Set your Enterprise URLs
@@ -65,3 +68,7 @@ Use `make dist` to build distributions of the plugin that you can upload to a Ma
 Use `make check-style` to check the style.
 
 Use `make localdeploy` to deploy the plugin to your local server. You will need to restart the server to get the changes.
+
+## Feedback and Feature Requests
+
+Feel free to create a GitHub issue or [join the GitHub Plugin channel on our community Mattermost instance](https://pre-release.mattermost.com/core/channels/github-plugin) to discuss.
