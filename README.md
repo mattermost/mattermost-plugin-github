@@ -68,3 +68,7 @@ Use `make dist` to build distributions of the plugin that you can upload to a Ma
 Use `make check-style` to check the style.
 
 Use `make localdeploy` to deploy the plugin to your local server. You will need to restart the server to get the changes.
+
+## Feedback and Feature Requests
+
+Feel free to create a GitHub issue or [join the GitHub Plugin channel on our community Mattermost instance](https://pre-release.mattermost.com/core/channels/github-plugin) to discuss.
