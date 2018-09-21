@@ -8,6 +8,7 @@ export default class SidebarButtons extends React.PureComponent {
         theme: PropTypes.object.isRequired,
         connected: PropTypes.bool,
         username: PropTypes.string,
+        org: PropTypes.string,
         clientId: PropTypes.string,
         enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
@@ -113,6 +114,11 @@ export default class SidebarButtons extends React.PureComponent {
             baseURL = this.props.enterpriseURL;
         }
 
+        let orgQuery = '';
+        if (this.props.org) {
+            orgQuery = '+org%3A' + this.props.org;
+        }
+
         return (
             <div style={container}>
                 <a
@@ -129,7 +135,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id="yourPrsTooltip">Your open pull requests</Tooltip>}
                 >
                     <a
-                        href={baseURL + '/pulls'}
+                        href={baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + this.props.username + '+archived%3Afalse' + orgQuery}
                         target='_blank'
                         style={button}
                     >
@@ -143,7 +149,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id="reviewTooltip">Pull requests needing review</Tooltip>}
                 >
                     <a
-                        href={baseURL + '/pulls/review-requested'}
+                        href={baseURL + '/pulls?q=is%3Aopen+is%3Apr+review-requested%3A' + this.props.username + '+archived%3Afalse' + orgQuery}
                         target='_blank'
                         style={button}
                     >
@@ -157,7 +163,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id="reviewTooltip">Your assignments</Tooltip>}
                 >
                     <a
-                        href={baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A'+ this.props.username}
+                        href={baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A'+ this.props.username + orgQuery}
                         target='_blank'
                         style={button}
                     >
@@ -171,7 +177,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id="unreadsTooltip">Unread messages</Tooltip>}
                 >
                     <a
-                        href={baseURL + '/pulls?q=is%3Aopen+mentions%3A' + this.props.username + '+archived%3Afalse'}
+                        href={baseURL + '/pulls?q=is%3Aopen+mentions%3A' + this.props.username + '+archived%3Afalse' + orgQuery}
                         target='_blank'
                         style={button}
                     >

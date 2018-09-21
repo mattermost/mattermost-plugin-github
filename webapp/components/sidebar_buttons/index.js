@@ -15,6 +15,7 @@ function mapStateToProps(state, ownProps) {
         yourAssignments: state['plugins-github'].yourAssignments,
         unreads: state['plugins-github'].unreads,
         enterpriseURL: state['plugins-github'].enterpriseURL,
+        org: state['plugins-github'].organization,
     };
 }
 

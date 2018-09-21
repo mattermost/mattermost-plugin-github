@@ -24,6 +24,18 @@ function enterpriseURL(state = '', action) {
     }
 }
 
+function organization(state = '', action) {
+    switch(action.type) {
+    case ActionTypes.RECEIVED_CONNECTED:
+        if (action.data && action.data.organization) {
+            return action.data.organization;
+        }
+        return '';
+    default:
+        return state;
+    }
+}
+
 function username(state = '', action) {
     switch(action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
@@ -99,6 +111,7 @@ function unreads(state = [], action) {
 export default combineReducers({
     connected,
     enterpriseURL,
+    organization,
     username,
     settings,
     clientId,

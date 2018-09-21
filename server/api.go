@@ -206,6 +206,7 @@ type ConnectedResponse struct {
 	GitHubUsername    string        `json:"github_username"`
 	GitHubClientID    string        `json:"github_client_id"`
 	EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
+	Organization      string        `json:"organization"`
 	Settings          *UserSettings `json:"settings"`
 }
 
@@ -216,7 +217,11 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := &ConnectedResponse{Connected: false, EnterpriseBaseURL: p.EnterpriseBaseURL}
+	resp := &ConnectedResponse{
+		Connected:         false,
+		EnterpriseBaseURL: p.EnterpriseBaseURL,
+		Organization:      p.GitHubOrg,
+	}
 
 	info, _ := p.getGitHubUserInfo(userID)
 	if info != nil && info.Token != nil {
