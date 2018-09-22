@@ -138,7 +138,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "help":
 		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
-
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+	case "":
+		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "settings":
 		if len(parameters) < 2 {
