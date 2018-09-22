@@ -30,6 +30,6 @@ func TestParseGitHubUsernameFromText(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		assert.Equal(t, tc.Expected, pparseGitHubUsernamesFromText(tc.Text))
+		assert.Equal(t, tc.Expected, parseGitHubUsernamesFromText(tc.Text))
 	}
 }
