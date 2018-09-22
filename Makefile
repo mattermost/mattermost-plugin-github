@@ -28,7 +28,7 @@ gofmt:
 	@echo "gofmt success"; \
 
 test: webapp/.npminstall
-	@echo Not yet implemented
+	cd server && go test -v -coverprofile=coverage.txt ./...
 
 webapp/.npminstall:
 	@echo Getting dependencies using npm
