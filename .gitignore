@@ -13,15 +13,13 @@
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
-# Build                                                                                                                                 
-/coverage.txt                                                                                                                           
-/plugin.exe                                                                                                                             
-/mattermost-github-plugin*.tar.gz                                                                                                         
-/dist                                                                                                                                   
-server/vendor                                                                                                                           
-node_modules                                                                                                                            
-.npminstall                                                                                                                             
-webapp/dist 
+# Build
+/dist
+server/coverage.txt
+server/vendor
+webapp/.npminstall
+webapp/node_modules
+webapp/dist
 
 *.swp
 
