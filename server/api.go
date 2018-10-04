@@ -180,7 +180,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		"Turn off notifications with `/github settings notifications off`.\n\n"+
 		"##### Sidebar Buttons\n"+
 		"Check out the buttons in the left-hand sidebar of Mattermost.\n"+
-		"* The first button tells you how many pull requests you have submmitted.\n"+
+		"* The first button tells you how many pull requests you have submitted.\n"+
 		"* The second shows the number of PR that are awaiting your review.\n"+
 		"* The third shows the number of PR and issues your are assiged to.\n"+
 		"* The fourth tracks the number of unread messages you have.\n"+
