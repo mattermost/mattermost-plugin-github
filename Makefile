@@ -5,7 +5,7 @@ GOARCH=amd64
 
 .PHONY: build test run clean stop check-style gofmt
 
-check-style: .npminstall gofmt
+check-style: webapp/.npminstall gofmt
 	@echo Checking for style guide compliance
 
 	cd webapp && npm run check
@@ -27,8 +27,8 @@ gofmt:
 	done
 	@echo "gofmt success"; \
 
-test: .npminstall
-	@echo Not yet implemented
+test: webapp/.npminstall
+	cd server && go test -v -coverprofile=coverage.txt ./...
 
 webapp/.npminstall:
 	@echo Getting dependencies using npm
@@ -82,7 +82,7 @@ localdeploy: dist
 	rm -rf ../mattermost-server/plugins/github
 	tar -C ../mattermost-server/plugins/ -zxvf ../mattermost-server/plugins/mattermost-github-plugin-$(GOOS)-$(GOARCH).tar.gz
 
-run: .npminstall
+run: webapp/.npminstall
 	@echo Not yet implemented
 
 stop:
