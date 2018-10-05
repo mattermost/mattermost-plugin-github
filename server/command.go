@@ -61,7 +61,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if command != "/github" {
-		return nil, nil
+		return &model.CommandResponse{}, nil
 	}
 
 	if action == "connect" {
@@ -177,5 +177,5 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Settings updated."), nil
 	}
 
-	return nil, nil
+	return &model.CommandResponse{}, nil
 }
