@@ -1,0 +1,9 @@
+language: go
+go:
+  - "1.11.x"
+
+install:
+  - make vendor
+
+script:
+  - make test
