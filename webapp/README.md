@@ -8,11 +8,11 @@ Everything you need to build the webapp portion of your plugin is present in thi
 
 ### index.js
 
-This is the entry point for your webapp plugin. Includes initilization code to handle registering your plugin with the Mattermost web and desktop apps. Use this file for additional set up or initialization.
+This is the entry point for your webapp plugin. Includes initialization code to handle registering your plugin with the Mattermost web and desktop apps. Use this file for additional set up or initialization.
 
 ### package.json
 
-The minimum required dependencies will be added by default. Use this file for additional dependecies and npm targets as needed. This should be familiar if you have experience with npm, if not, [please take some time to learn about npm](https://www.npmjs.com/).
+The minimum required dependencies will be added by default. Use this file for additional dependencies and npm targets as needed. This should be familiar if you have experience with npm, if not, [please take some time to learn about npm](https://www.npmjs.com/).
 
 ### components
 

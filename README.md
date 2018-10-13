@@ -6,13 +6,13 @@ A GitHub plugin for Mattermost. The plugin is currently in beta.
 
 * __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
 * __Notifications__ - get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
-* __Sidebar buttons__ - stay up-to-date with how many reviews, unread messaages, assignments and open pull requests you have with buttons in the Mattermost sidebar
+* __Sidebar buttons__ - stay up-to-date with how many reviews, unread messages, assignments and open pull requests you have with buttons in the Mattermost sidebar
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
     * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive posts for new pull requests and/or issues in a GitHub repository
     * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub
     * __Update settings__ - Use `/github settings` to update your settings for the plugin
     * __And more!__ - Run `/github help` to see what else the slash command can do
-* __Supports GitHub Enterprise__ - Works with SaaS and Enteprise versions of GitHub (Enterprise support added in version 0.6.0)
+* __Supports GitHub Enterprise__ - Works with SaaS and Enterprise versions of GitHub (Enterprise support added in version 0.6.0)
 
 ## Installation
 
