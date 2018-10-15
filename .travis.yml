@@ -3,7 +3,8 @@ go:
   - "1.11.x"
 
 install:
-  - make vendor
+  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 script:
+  - make check-style
   - make test

@@ -1,41 +1,56 @@
+var path = require('path');
+
 module.exports = {
-    entry: './index.js',
-    output: {
-        filename: 'dist/github_bundle.js'
+    entry: [
+        './src/index.js',
+    ],
+    resolve: {
+        modules: [
+            'src',
+            'node_modules',
+        ],
+        extensions: ['*', '.js', '.jsx'],
     },
     module: {
-        loaders: [
+        rules: [
             {
-                test: /\.(js|jsx)?$/,
-                loader: 'babel-loader',
-                exclude: /(node_modules|non_npm_dependencies)/,
-                query: {
-                    presets: [
-                        'react',
-                        ['es2015', {modules: false}],
-                        'stage-0'
-                    ],
-                    plugins: ['transform-runtime']
-                }
+                test: /\.(js|jsx)$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: [
+                            'react',
+                            ['es2015', {modules: false}],
+                            'stage-0',
+                        ],
+                        plugins: ['transform-runtime'],
+                    },
+                },
             },
             {
                 test: /\.css$/,
                 use: [
                     {
-                        loader: 'style-loader'
+                        loader: 'style-loader',
                     },
                     {
-                        loader: 'css-loader'
-                    }
-                ]
-            }
-        ]
+                        loader: 'css-loader',
+                    },
+                ],
+            },
+        ],
     },
     externals: {
         react: 'React',
         redux: 'Redux',
         'react-redux': 'ReactRedux',
         'prop-types': 'PropTypes',
-        'react-bootstrap': 'ReactBootstrap'
+        'react-bootstrap': 'ReactBootstrap',
+    },
+    output: {
+        path: path.join(__dirname, '/dist'),
+        publicPath: '/',
+        filename: 'main.js',
     },
 };
