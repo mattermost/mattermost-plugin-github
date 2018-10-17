@@ -10,28 +10,12 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:b7ffca49e9cfd3dfb04a8e0a59347708c6f78f68476a32c5e0a0edca5d1b258c"
-  name = "github.com/dustin/go-humanize"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
-  version = "v1.0.0"
-
-[[projects]]
   digest = "1:1b91ae0dc69a41d4c2ed23ea5cffb721ea63f5037ca4b81e6d6771fbb8f45129"
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   pruneopts = "NUT"
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
   version = "v1.4.7"
-
-[[projects]]
-  digest = "1:d32823ccbd16481c42356a1ae7f2284761da19cae3131b554a0b7c086a650292"
-  name = "github.com/go-ini/ini"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "7b294651033cd7d9e7f0d9ffa1b75ed1e198e737"
-  version = "v1.38.3"
 
 [[projects]]
   digest = "1:63ccdfbd20f7ccd2399d0647a7d100b122f79c13bb83da9660b1598396fd9f62"
@@ -120,22 +104,6 @@
   revision = "2f1d1f20f75d5404f53b9edf6b53ed5505508675"
 
 [[projects]]
-  branch = "master"
-  digest = "1:37eb5dfae485ce9985b61640b6ede63f2a58898efdda6a9a94f1794df62f9147"
-  name = "github.com/jaytaylor/html2text"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "57d518f124b0cf46ea2021f25a01396b3522e6fb"
-
-[[projects]]
-  digest = "1:4059c14e87a2de3a434430340521b5feece186c1469eff0834c29a63870de3ed"
-  name = "github.com/konsorten/go-windows-terminal-sequences"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
-  version = "v1.0.1"
-
-[[projects]]
   digest = "1:d244f8666a838fe6ad70ec8fe77f50ebc29fdc3331a2729ba5886bef8435d10d"
   name = "github.com/magiconair/properties"
   packages = ["."]
@@ -144,7 +112,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:38ba2dacfd4596f2543e168b03af8f514da5fea53ef43af4a7b95368f759bffb"
+  digest = "1:fcaa0c4871e4b49fb30d986e688c069328c042eae6ef89d0ead9882d2d450648"
   name = "github.com/mattermost/mattermost-server"
   packages = [
     "einterfaces",
@@ -156,8 +124,8 @@
     "utils/markdown",
   ]
   pruneopts = "NUT"
-  revision = "fd21e53365d504155ab87f9bef60b1ab4faeb38d"
-  version = "v5.3.1"
+  revision = "d5b613cb1bbdaa856fa126e7102d94783b9e80b6"
+  version = "v5.4.0"
 
 [[projects]]
   branch = "mattermost"
@@ -167,37 +135,6 @@
   pruneopts = "NUT"
   revision = "362ff1e71044349d56d37d8b75cd317bff8369b9"
   source = "https://github.com/mattermost/viper"
-
-[[projects]]
-  digest = "1:bff482b22ebed387378546ba6a7850fdef87fd47f8ee58a7c62124a8e889a56b"
-  name = "github.com/mattn/go-runewidth"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb"
-  version = "v0.0.3"
-
-[[projects]]
-  digest = "1:1f0c40d355bfdaad03b57ae34fcbde4d4add97c916f34c69854984dd745e09c6"
-  name = "github.com/minio/minio-go"
-  packages = [
-    ".",
-    "pkg/credentials",
-    "pkg/encrypt",
-    "pkg/s3signer",
-    "pkg/s3utils",
-    "pkg/set",
-  ]
-  pruneopts = "NUT"
-  revision = "76305dad725fda18a9abcfc6cfc5797f251ea271"
-  version = "v6.0.8"
-
-[[projects]]
-  digest = "1:a4df73029d2c42fabcb6b41e327d2f87e685284ec03edf76921c267d9cfc9c23"
-  name = "github.com/mitchellh/go-homedir"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "ae18d6b8b3205b561c79e8e5f69bff09736185f4"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:18b773b92ac82a451c1276bd2776c1e55ce057ee202691ab33c8d6690efcc048"
@@ -237,14 +174,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:e6baebf0bd20950e285254902a8f2241b4870528fb63fdc10460c67b1f31b1a3"
-  name = "github.com/olekukonko/tablewriter"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "be2c049b30ccd4d3fd795d6bf7dce74e42eeedaa"
-
-[[projects]]
   digest = "1:93b1d84c5fa6d1ea52f4114c37714cddd84d5b78f151b62bb101128dd51399bf"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -275,14 +204,6 @@
   pruneopts = "NUT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
-
-[[projects]]
-  digest = "1:ecf78eacf406c42f07f66d6b79fda24d2b92dc711bfd0760d0c931678f9621fe"
-  name = "github.com/sirupsen/logrus"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "ad15b42461921f1fb3529b058c6786c6a45d5162"
-  version = "v1.1.1"
 
 [[projects]]
   digest = "1:330e9062b308ac597e28485699c02223bd052437a6eed32a173c9227dcb9d95a"
@@ -318,14 +239,6 @@
   pruneopts = "NUT"
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
-
-[[projects]]
-  branch = "master"
-  digest = "1:b0bd1fe27879214f4175ca8efdd73e672de8c8c662d705cdd63dcca7cd9c8f14"
-  name = "github.com/ssor/bom"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "6386211fdfcf24c0bfbdaceafd02849ed9a8a509"
 
 [[projects]]
   digest = "1:bacb8b590716ab7c33f2277240972c9582d389593ee8d66fc10074e0508b8126"
@@ -368,27 +281,22 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d652c5a89f671eb69b2697f659e83a07a5305958ba9466210f88c62f8fe3c729"
+  digest = "1:1ecf2a49df33be51e757d0033d5d51d5f784f35f68e5a38f797b2d3f03357d71"
   name = "golang.org/x/crypto"
   packages = [
-    "argon2",
     "bcrypt",
-    "blake2b",
     "blowfish",
-    "ssh/terminal",
   ]
   pruneopts = "NUT"
   revision = "a92615f3c49003920a58dedcf32cf55022cefb8d"
 
 [[projects]]
   branch = "master"
-  digest = "1:8c791e7ae578e600b7eb480cf81465935842e5b52a98230f8a23a60821505cd5"
+  digest = "1:3033eba8bb0c8f2c6720e68e4c14e55b577ae9debb5f5b7b8cc6f319d89edc82"
   name = "golang.org/x/net"
   packages = [
     "context",
     "context/ctxhttp",
-    "html",
-    "html/atom",
     "http/httpguts",
     "http2",
     "http2/hpack",
@@ -412,13 +320,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6c97de3fe104f6d2a6b24c89f08e9cc82c7ffd3f72e6d59882a1d9f5e4e459b1"
+  digest = "1:e1e75018db0765a0ac54aa7f9473417a7db770c75c9527b4bfff03d2e55f0a0a"
   name = "golang.org/x/sys"
-  packages = [
-    "cpu",
-    "unix",
-    "windows",
-  ]
+  packages = ["unix"]
   pruneopts = "NUT"
   revision = "fa43e7bc11baaae89f3f902b2b4d832b68234844"
 
@@ -505,22 +409,6 @@
   pruneopts = "NUT"
   revision = "8dea3dc473e90c8179e519d91302d0597c0ca1d1"
   version = "v1.15.0"
-
-[[projects]]
-  branch = "v3"
-  digest = "1:1244a9b3856f70d5ffb74bbfd780fc9d47f93f2049fa265c6fb602878f507bf8"
-  name = "gopkg.in/alexcesaro/quotedprintable.v3"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "2caba252f4dc53eaf6b553000885530023f54623"
-
-[[projects]]
-  digest = "1:d852dd703c644c976246382fe1539e8585cc20d642d3e68d3dff8de952237497"
-  name = "gopkg.in/gomail.v2"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "41f3572897373c5538c50a2402db15db079fa4fd"
-  version = "2.0.0"
 
 [[projects]]
   digest = "1:80c34337e8a734e190f2d1b716cae774cca74db98315166f92074434e9af0227"
