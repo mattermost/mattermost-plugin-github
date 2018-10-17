@@ -3,11 +3,15 @@
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
     "version": "0.6.2",
-    "backend": {
-        "executable": "server/plugin.exe"
+    "server": {
+      "executables": {
+          "linux-amd64": "server/dist/plugin-linux-amd64",
+          "darwin-amd64": "server/dist/plugin-darwin-amd64",
+          "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+      }
     },
     "webapp": {
-        "bundle_path": "webapp/github_bundle.js"
+        "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
         "header": "To set up the GitHub plugin, you need to register a GitHub OAuth app here https://github.com/settings/applications/new.",
@@ -61,6 +65,6 @@
                 "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation. This is often the same as your Base URL."
             }
         ],
-        "footer": ""
+        "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
     }
 }

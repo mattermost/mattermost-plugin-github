@@ -1,0 +1,11 @@
+[prune]
+  go-tests = true
+  unused-packages = true
+
+[[constraint]]
+  name = "github.com/mattermost/mattermost-server"
+  version = "~5.4.0"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "~0.8.0"

@@ -1,18 +1,35 @@
-.PHONY: dist
+GO ?= $(shell command -v go 2> /dev/null)
+DEP ?= $(shell command -v dep 2> /dev/null)
+NPM ?= $(shell command -v npm 2> /dev/null)
+HTTP ?= $(shell command -v http 2> /dev/null)
+CURL ?= $(shell command -v curl 2> /dev/null)
+MANIFEST_FILE ?= plugin.json
 
-GOOS=$(shell uname -s | tr '[:upper:]' '[:lower:]')
-GOARCH=amd64
+# Verify environment, and define PLUGIN_ID, PLUGIN_VERSION, HAS_SERVER and HAS_WEBAPP as needed.
+include build/setup.mk
 
-.PHONY: build test run clean stop check-style gofmt
+BUNDLE_NAME ?= $(PLUGIN_ID)-$(PLUGIN_VERSION).tar.gz
 
-check-style: webapp/.npminstall gofmt
+# all, the default target, tests, builds and bundles the plugin.
+all: check-style test dist
+
+# apply propagates the plugin id into the server/ and webapp/ folders as required.
+.PHONY: apply
+apply:
+	./build/bin/manifest apply
+
+.PHONY: check-style
+check-style: server/.depensure webapp/.npminstall gofmt govet
 	@echo Checking for style guide compliance
 
-	cd webapp && npm run check
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && npm run lint
+endif
 
+.PHONY: gofmt
 gofmt:
-	@echo Running GOFMT
-
+ifneq ($(HAS_SERVER),)
+	@echo Running gofmt
 	@for package in $$(go list ./server/...); do \
 		echo "Checking "$$package; \
 		files=$$(go list -f '{{range .GoFiles}}{{$$.Dir}}/{{.}} {{end}}' $$package); \
@@ -20,79 +37,127 @@ gofmt:
 			gofmt_output=$$(gofmt -d -s $$files 2>&1); \
 			if [ "$$gofmt_output" ]; then \
 				echo "$$gofmt_output"; \
-				echo "gofmt failure"; \
+				echo "Gofmt failure"; \
 				exit 1; \
 			fi; \
 		fi; \
 	done
-	@echo "gofmt success"; \
+	@echo Gofmt success
+endif
 
-test: webapp/.npminstall
-	cd server && go test -v -coverprofile=coverage.txt ./...
+.PHONY: govet
+govet:
+ifneq ($(HAS_SERVER),)
+	@echo Running govet
+	@$(GO) vet $$(go list ./server/...) || exit 1
+	@echo Govet success
+endif
 
-webapp/.npminstall:
-	@echo Getting dependencies using npm
-
-	cd webapp && npm install
+# server/.depensure ensures the server dependencies are installed
+server/.depensure:
+ifneq ($(HAS_SERVER),)
+	cd server && $(DEP) ensure
 	touch $@
+endif
 
-vendor: server/Gopkg.toml
-	cd server && go get -u github.com/golang/dep/cmd/dep
-	cd server && $(shell go env GOPATH)/bin/dep ensure
+# server builds the server, if it exists, including support for multiple architectures
+.PHONY: server
+server: server/.depensure
+ifneq ($(HAS_SERVER),)
+	mkdir -p server/dist;
+	cd server && env GOOS=linux GOARCH=amd64 $(GO) build -o dist/plugin-linux-amd64;
+	cd server && env GOOS=darwin GOARCH=amd64 $(GO) build -o dist/plugin-darwin-amd64;
+	cd server && env GOOS=windows GOARCH=amd64 $(GO) build -o dist/plugin-windows-amd64.exe;
+endif
 
-dist: webapp/.npminstall plugin.json
-	@echo Building plugin
+# webapp/.npminstall ensures NPM dependencies are installed without having to run this all the time
+webapp/.npminstall:
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && $(NPM) install
+	touch $@
+endif
 
-	# Clean old dist
-	rm -rf dist
-	rm -rf webapp/dist
-	rm -f server/plugin.exe
+# webapp builds the webapp, if it exists
+.PHONY: webapp
+webapp: webapp/.npminstall
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && $(NPM) run build;
+endif
 
-	# Build and copy files from webapp
-	cd webapp && npm run build
-	mkdir -p dist/github/webapp
-	cp webapp/dist/* dist/github/webapp/
+# bundle generates a tar bundle of the plugin for install
+.PHONY: bundle
+bundle:
+	rm -rf dist/
+	mkdir -p dist/$(PLUGIN_ID)
+	cp $(MANIFEST_FILE) dist/$(PLUGIN_ID)/
+ifneq ($(HAS_SERVER),)
+	mkdir -p dist/$(PLUGIN_ID)/server/dist;
+	cp -r server/dist/* dist/$(PLUGIN_ID)/server/dist/;
+endif
+ifneq ($(HAS_WEBAPP),)
+	mkdir -p dist/$(PLUGIN_ID)/webapp/dist;
+	cp -r webapp/dist/* dist/$(PLUGIN_ID)/webapp/dist/;
+endif
+	cd dist && tar -cvzf $(BUNDLE_NAME) $(PLUGIN_ID)
 
-	# Build files from server
-	cd server && go get github.com/mitchellh/gox
-	$(shell go env GOPATH)/bin/gox -osarch='darwin/amd64 linux/amd64 windows/amd64' -output 'dist/intermediate/plugin_{{.OS}}_{{.Arch}}' ./server
+	@echo plugin built at: dist/$(BUNDLE_NAME)
 
-	# Copy plugin files
-	cp plugin.json dist/github/
+# dist builds and bundles the plugin
+.PHONY: dist
+dist: apply \
+      server \
+      webapp \
+      bundle
 
-	# Copy server executables & compress plugin
-	mkdir -p dist/github/server
-	mv dist/intermediate/plugin_darwin_amd64 dist/github/server/plugin.exe
-	cd dist && tar -zcvf mattermost-github-plugin-darwin-amd64.tar.gz github/*
-	mv dist/intermediate/plugin_linux_amd64 dist/github/server/plugin.exe
-	cd dist && tar -zcvf mattermost-github-plugin-linux-amd64.tar.gz github/*
-	mv dist/intermediate/plugin_windows_amd64.exe dist/github/server/plugin.exe
-	cd dist && tar -zcvf mattermost-github-plugin-windows-amd64.tar.gz github/*
+# deploy installs the plugin to a (development) server, using the API if appropriate environment
+# variables are defined, or copying the files directly to a sibling mattermost-server directory
+.PHONY: deploy
+deploy: dist
+ifneq ($(and $(MM_SERVICESETTINGS_SITEURL),$(MM_ADMIN_USERNAME),$(MM_ADMIN_PASSWORD),$(HTTP)),)
+	@echo "Installing plugin via API"
+		(TOKEN=`http --print h POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/users/login login_id=$(MM_ADMIN_USERNAME) password=$(MM_ADMIN_PASSWORD) | grep Token | cut -f2 -d' '` && \
+		  http --print b GET $(MM_SERVICESETTINGS_SITEURL)/api/v4/users/me Authorization:"Bearer $$TOKEN" && \
+			http --print b DELETE $(MM_SERVICESETTINGS_SITEURL)/api/v4/plugins/$(PLUGIN_ID) Authorization:"Bearer $$TOKEN" && \
+			http --print b --check-status --form POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/plugins plugin@dist/$(BUNDLE_NAME) Authorization:"Bearer $$TOKEN" && \
+		  http --print b POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/plugins/$(PLUGIN_ID)/enable Authorization:"Bearer $$TOKEN" && \
+		  http --print b POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/users/logout Authorization:"Bearer $$TOKEN" \
+	  )
+else ifneq ($(and $(MM_SERVICESETTINGS_SITEURL),$(MM_ADMIN_USERNAME),$(MM_ADMIN_PASSWORD),$(CURL)),)
+	@echo "Installing plugin via API"
+	$(eval TOKEN := $(shell curl -i -X POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/users/login -d '{"login_id": "$(MM_ADMIN_USERNAME)", "password": "$(MM_ADMIN_PASSWORD)"}' | grep Token | cut -f2 -d' ' 2> /dev/null))
+	@curl -s -H "Authorization: Bearer $(TOKEN)" -X DELETE $(MM_SERVICESETTINGS_SITEURL)/api/v4/plugins/$(PLUGIN_ID) > /dev/null
+	@curl -s -H "Authorization: Bearer $(TOKEN)" -X POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/plugins -F "plugin=@dist/$(BUNDLE_NAME)" > /dev/null && \
+		curl -s -H "Authorization: Bearer $(TOKEN)" -X POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/plugins/$(PLUGIN_ID)/enable > /dev/null && \
+		echo "OK." || echo "Sorry, something went wrong."
+else ifneq ($(wildcard ../mattermost-server/.*),)
+	@echo "Installing plugin via filesystem. Server restart and manual plugin enabling required"
+	mkdir -p ../mattermost-server/plugins
+	tar -C ../mattermost-server/plugins -zxvf dist/$(BUNDLE_NAME)
+else
+	@echo "No supported deployment method available. Install plugin manually."
+endif
 
-	# Clean up temp files
-	rm -rf dist/github
-	rm -rf dist/intermediate
+# test runs any lints and unit tests defined for the server and webapp, if they exist
+.PHONY: test
+test: server/.depensure webapp/.npminstall
+ifneq ($(HAS_SERVER),)
+	cd server && $(GO) test -race -v -coverprofile=coverage.txt ./...
+endif
+ifneq ($(HAS_WEBAPP),)
+	cd webapp && $(NPM) run fix;
+endif
 
-	@echo MacOS X plugin built at: dist/mattermost-github-plugin-darwin-amd64.tar.gz
-	@echo Linux plugin built at: dist/mattermost-github-plugin-linux-amd64.tar.gz
-	@echo Windows plugin built at: dist/mattermost-github-plugin-windows-amd64.tar.gz
-
-localdeploy: dist
-	cp dist/mattermost-github-plugin-$(GOOS)-$(GOARCH).tar.gz ../mattermost-server/plugins/
-	rm -rf ../mattermost-server/plugins/github
-	tar -C ../mattermost-server/plugins/ -zxvf ../mattermost-server/plugins/mattermost-github-plugin-$(GOOS)-$(GOARCH).tar.gz
-
-run: webapp/.npminstall
-	@echo Not yet implemented
-
-stop:
-	@echo Not yet implemented
-
+# clean removes all build artifacts
+.PHONY: clean
 clean:
-	@echo Cleaning plugin
-
-	rm -rf dist
-	rm -rf webapp/dist
-	rm -rf webapp/node_modules
-	rm -rf webapp/.npminstall
-	rm -f server/plugin.exe
+	rm -fr dist/
+ifneq ($(HAS_SERVER),)
+	rm -fr server/dist
+	rm -fr server/.depensure
+endif
+ifneq ($(HAS_WEBAPP),)
+	rm -fr webapp/.npminstall
+	rm -fr webapp/dist
+	rm -fr webapp/node_modules
+endif
+	rm -fr build/bin/
