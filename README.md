@@ -69,6 +69,14 @@ Use `make check-style` to check the style.
 
 Use `make localdeploy` to deploy the plugin to your local server. You will need to restart the server to get the changes.
 
+## Frequently Asked Questions
+
+### How do I connect a repository instead of an organization?
+
+Set up your GitHub webhook from the repository instead of the organization. Notifications and subscriptions will then be sent only for repositories you create webhooks for.
+
+The reminder and `/github todo` will still search the whole organization, but only list items assigned to you.
+
 ## Feedback and Feature Requests
 
 Feel free to create a GitHub issue or [join the GitHub Plugin channel on our community Mattermost instance](https://pre-release.mattermost.com/core/channels/github-plugin) to discuss.
