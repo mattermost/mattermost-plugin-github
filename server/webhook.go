@@ -78,6 +78,14 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		if !event.GetRepo().GetPrivate() {
 			p.postPushEvent(event)
 		}
+	case *github.CreateEvent:
+		if !event.GetRepo().GetPrivate() {
+			p.postCreateEvent(event)
+		}
+	case *github.DeleteEvent:
+		if !event.GetRepo().GetPrivate() {
+			p.postDeleteEvent(event)
+		}
 	}
 }
 
@@ -251,11 +259,11 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 
 	fmtMessage := ``
 	if forced {
-		fmtMessage = "[%s](%s) force-pushed [%d new commits](%s) to [\\[%s:%s\\]](%s):\n"
+		fmtMessage = "[%s](%s) force-pushed [%d new commits](%s) to [\\[%s:%s\\]](%s/tree/%s):\n"
 	} else {
-		fmtMessage = "[%s](%s) pushed [%d new commits](%s) to [\\[%s:%s\\]](%s):\n"
+		fmtMessage = "[%s](%s) pushed [%d new commits](%s) to [\\[%s:%s\\]](%s/tree/%s):\n"
 	}
-	newPushMessage := fmt.Sprintf(fmtMessage, pusher.GetLogin(), pusher.GetHTMLURL(), len(commits), compare_url, repo.GetName(), branch, event.GetHeadCommit().GetURL())
+	newPushMessage := fmt.Sprintf(fmtMessage, pusher.GetLogin(), pusher.GetHTMLURL(), len(commits), compare_url, repo.GetName(), branch, repo.GetHTMLURL(), branch)
 	for _, commit := range commits {
 		newPushMessage += fmt.Sprintf("[`%s`](%s) %s - %s\n",
 			commit.GetID()[:6], commit.GetURL(), commit.GetMessage(), commit.GetCommitter().GetName())
@@ -282,7 +290,106 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			mlog.Error(err.Error())
 		}
 	}
+}
 
+func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	if subs == nil || len(subs) == 0 {
+		return
+	}
+
+	userID := ""
+	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+		mlog.Error(err.Error())
+		return
+	} else {
+		userID = user.Id
+	}
+
+	typ := event.GetRefType()
+	sender := event.GetSender()
+	name := event.GetRef()
+
+	if typ != "tag" && typ != "branch" {
+		return
+	}
+
+	newCreateMessage := fmt.Sprintf("[%s](%s) just created %s [\\[%s:%s\\]](%s/tree/%s)",
+		sender.GetLogin(), sender.GetHTMLURL(), typ, repo.GetName(), name, repo.GetHTMLURL(), name)
+
+	post := &model.Post{
+		UserId: userID,
+		Type:   "custom_git_create",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+		Message: newCreateMessage,
+	}
+
+	for _, sub := range subs {
+		if !sub.Creates() {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	if subs == nil || len(subs) == 0 {
+		return
+	}
+
+	userID := ""
+	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+		mlog.Error(err.Error())
+		return
+	} else {
+		userID = user.Id
+	}
+
+	typ := event.GetRefType()
+	sender := event.GetSender()
+	name := event.GetRef()
+
+	if typ != "tag" && typ != "branch" {
+		return
+	}
+
+	newDeleteMessage := fmt.Sprintf("[%s](%s) just deleted %s \\[%s:%s]",
+		sender.GetLogin(), sender.GetHTMLURL(), typ, repo.GetName(), name)
+
+	post := &model.Post{
+		UserId: userID,
+		Type:   "custom_git_delete",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+		Message: newDeleteMessage,
+	}
+
+	for _, sub := range subs {
+		if !sub.Deletes() {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}
+	}
 }
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {

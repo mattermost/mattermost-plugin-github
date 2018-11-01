@@ -39,7 +39,7 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
         * Use "https://your-mattermost-url.com/plugins/github/webhook" as the payload URL, replacing `https://your-mattermost-url.com` with your Mattermost URL
         * Change content type to "application/json"
         * Paste the webhook secret you copied before into the secret field
-        * Select the events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments and Pushes
+        * Select the events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments, Pushes, Branch or Tag creation and Branch or Tag deletion
     3. Save the webhook
     4. __Note for each organization you want to receive notifications for or subscribe to, you must create a webhook__
 4. Configure a bot account
