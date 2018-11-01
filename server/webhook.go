@@ -168,7 +168,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	action := event.GetAction()
-	if action != "opened" && action != "labeled" {
+	if action != "opened" && action != "labeled" && action != "closed" {
 		return
 	}
 
@@ -183,6 +183,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	issue := event.GetIssue()
 	issueUser := issue.GetUser()
 	eventLabel := event.GetLabel().GetName()
+	labels := make([]string, len(issue.Labels))
+	for i, v := range issue.Labels {
+		labels[i] = v.GetName()
+	}
 
 	newIssueMessage := fmt.Sprintf(`
 #### %s
@@ -191,6 +195,9 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 %s
 `, issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), issueUser.GetLogin(), issueUser.GetHTMLURL(), issue.GetCreatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
+
+	closedIssueMessage := fmt.Sprintf("\\[%s] Issue [%s](%s) closed by [%s](%s)",
+		repo.GetFullName(), issue.GetTitle(), issue.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL())
 
 	post := &model.Post{
 		UserId: userID,
@@ -208,6 +215,18 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 
 		label := sub.Label()
+
+		contained := false
+		for _, v := range labels {
+			if v == label {
+				contained = true
+			}
+		}
+
+		if !contained && label != "" {
+			continue
+		}
+
 		if action == "labeled" {
 			if label != "" && label == eventLabel {
 				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#issue-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), eventLabel, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), issue.GetUpdatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
@@ -217,11 +236,11 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 
 		if action == "opened" {
-			if label == "" {
-				post.Message = newIssueMessage
-			} else {
-				continue
-			}
+			post.Message = newIssueMessage
+		}
+
+		if action == "closed" {
+			post.Message = closedIssueMessage
 		}
 
 		post.ChannelId = sub.ChannelID
