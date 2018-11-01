@@ -97,7 +97,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != "opened" && action != "labeled" {
+	if action != "opened" && action != "labeled" && action != "closed" {
 		return
 	}
 
@@ -112,6 +112,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	pr := event.GetPullRequest()
 	prUser := pr.GetUser()
 	eventLabel := event.GetLabel().GetName()
+	labels := make([]string, len(pr.Labels))
+	for i, v := range pr.Labels {
+		labels[i] = v.GetName()
+	}
 
 	newPRMessage := fmt.Sprintf(`
 #### %s
@@ -120,6 +124,14 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 %s
 `, pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), prUser.GetLogin(), prUser.GetHTMLURL(), pr.GetCreatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
+
+	fmtCloseMessage := ""
+	if pr.GetMerged() {
+		fmtCloseMessage = "[%s] Pull request [#%v %s](%s) was merged by [%s](%s)"
+	} else {
+		fmtCloseMessage = "[%s] Pull request [#%v %s](%s) was closed by [%s](%s)"
+	}
+	closedPRMessage := fmt.Sprintf(fmtCloseMessage, repo.GetFullName(), pr.GetNumber(), pr.GetTitle(), pr.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL())
 
 	post := &model.Post{
 		UserId: userID,
@@ -137,6 +149,18 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		label := sub.Label()
+
+		contained := false
+		for _, v := range labels {
+			if v == label {
+				contained = true
+			}
+		}
+
+		if !contained && label != "" {
+			continue
+		}
+
 		if action == "labeled" {
 			if label != "" && label == eventLabel {
 				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#pull-request-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), eventLabel, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), pr.GetUpdatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
@@ -146,11 +170,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			if label == "" {
-				post.Message = newPRMessage
-			} else {
-				continue
-			}
+			post.Message = newPRMessage
+		}
+
+		if action == "closed" {
+			post.Message = closedPRMessage
 		}
 
 		post.ChannelId = sub.ChannelID
