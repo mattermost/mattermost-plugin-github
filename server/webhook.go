@@ -76,6 +76,10 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
+	case *github.PullRequestReviewCommentEvent:
+		if !event.GetRepo().GetPrivate() {
+			p.postPullRequestReviewCommentEvent(event)
+		}
 	case *github.PushEvent:
 		if !event.GetRepo().GetPrivate() {
 			p.postPushEvent(event)
@@ -549,6 +553,65 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	post := &model.Post{
 		UserId:  userID,
 		Type:    "custom_git_pull_review",
+		Message: newReviewMessage,
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+	}
+
+	labels := make([]string, len(event.GetPullRequest().Labels))
+	for i, v := range event.GetPullRequest().Labels {
+		labels[i] = v.GetName()
+	}
+
+	for _, sub := range subs {
+		if !sub.PullReviews() {
+			continue
+		}
+
+		label := sub.Label()
+
+		contained := false
+		for _, v := range labels {
+			if v == label {
+				contained = true
+			}
+		}
+
+		if !contained && label != "" {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+	if subs == nil || len(subs) == 0 {
+		return
+	}
+
+	userID := ""
+	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+		mlog.Error(err.Error())
+		return
+	} else {
+		userID = user.Id
+	}
+
+	newReviewMessage := fmt.Sprintf("[\\[%s\\]](%s) New review comment by [%s](%s) on [#%v %s](%s):\n\n%s\n%s",
+		repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetTitle(), event.GetPullRequest().GetHTMLURL(), event.GetComment().GetDiffHunk(), event.GetComment().GetBody())
+
+	post := &model.Post{
+		UserId:  userID,
+		Type:    "custom_git_pull_review_comment",
 		Message: newReviewMessage,
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
