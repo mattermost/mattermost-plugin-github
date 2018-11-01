@@ -74,6 +74,10 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		if !event.GetRepo().GetPrivate() {
 			p.handlePullRequestReviewNotification(event)
 		}
+	case *github.PushEvent:
+		if !event.GetRepo().GetPrivate() {
+			p.postPushEvent(event)
+		}
 	}
 }
 
@@ -217,6 +221,68 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			mlog.Error(err.Error())
 		}
 	}
+}
+
+func (p *Plugin) postPushEvent(event *github.PushEvent) {
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	if subs == nil || len(subs) == 0 {
+		return
+	}
+
+	userID := ""
+	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+		mlog.Error(err.Error())
+		return
+	} else {
+		userID = user.Id
+	}
+
+	forced := event.GetForced()
+	branch := strings.Replace(event.GetRef(), "refs/heads/", "", 1)
+	commits := event.Commits
+	compare_url := event.GetCompare()
+	pusher := event.GetSender()
+
+	if len(commits) == 0 {
+		return
+	}
+
+	fmtMessage := ``
+	if forced {
+		fmtMessage = "[%s](%s) force-pushed [%d new commits](%s) to [\\[%s:%s\\]](%s):\n"
+	} else {
+		fmtMessage = "[%s](%s) pushed [%d new commits](%s) to [\\[%s:%s\\]](%s):\n"
+	}
+	newPushMessage := fmt.Sprintf(fmtMessage, pusher.GetLogin(), pusher.GetHTMLURL(), len(commits), compare_url, repo.GetName(), branch, event.GetHeadCommit().GetURL())
+	for _, commit := range commits {
+		newPushMessage += fmt.Sprintf("[`%s`](%s) %s - %s\n",
+			commit.GetID()[:6], commit.GetURL(), commit.GetMessage(), commit.GetCommitter().GetName())
+	}
+
+	post := &model.Post{
+		UserId: userID,
+		Type:   "custom_git_push",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+		Message: newPushMessage,
+	}
+
+	for _, sub := range subs {
+		if !sub.Pushes() {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}
+	}
+
 }
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {

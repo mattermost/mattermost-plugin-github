@@ -33,6 +33,10 @@ func (s *Subscription) Issues() bool {
 	return strings.Contains(s.Features, "issues")
 }
 
+func (s *Subscription) Pushes() bool {
+	return strings.Contains(s.Features, "pushes")
+}
+
 func (s *Subscription) Label() string {
 	if !strings.Contains(s.Features, "label:") {
 		return ""
