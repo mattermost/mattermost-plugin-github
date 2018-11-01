@@ -14,22 +14,22 @@ import (
 )
 
 func getMentionSearchQuery(username, org string) string {
-	return bulidSearchQuery("is:open mentions:%v archived:false %v", username, org)
+	return buildSearchQuery("is:open mentions:%v archived:false %v", username, org)
 }
 
 func getReviewSearchQuery(username, org string) string {
-	return bulidSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, org)
+	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, org)
 }
 
 func getYourPrsSearchQuery(username, org string) string {
-	return bulidSearchQuery("is:pr is:open author:%v archived:false %v", username, org)
+	return buildSearchQuery("is:pr is:open author:%v archived:false %v", username, org)
 }
 
 func getYourAssigneeSearchQuery(username, org string) string {
-	return bulidSearchQuery("is:open assignee:%v archived:false %v", username, org)
+	return buildSearchQuery("is:open assignee:%v archived:false %v", username, org)
 }
 
-func bulidSearchQuery(query, username, org string) string {
+func buildSearchQuery(query, username, org string) string {
 	orgField := ""
 	if len(org) != 0 {
 		orgField = fmt.Sprintf("org:%v", org)
