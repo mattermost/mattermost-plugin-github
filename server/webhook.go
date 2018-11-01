@@ -73,6 +73,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewEvent:
 		if !event.GetRepo().GetPrivate() {
+			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PushEvent:
@@ -501,6 +502,82 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 		if event.GetAction() == "created" {
 			post.Message = message
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+	if subs == nil || len(subs) == 0 {
+		return
+	}
+
+	userID := ""
+	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+		mlog.Error(err.Error())
+		return
+	} else {
+		userID = user.Id
+	}
+
+	action := event.GetAction()
+	if action != "submitted" {
+		return
+	}
+
+	state := event.GetReview().GetState()
+	fmtReviewMessage := ""
+	switch state {
+	case "APPROVED":
+		fmtReviewMessage = "[\\[%s\\]](%s) [%s](%s) approved [#%v %s](%s):\n\n%s"
+	case "COMMENTED":
+		fmtReviewMessage = "[\\[%s\\]](%s) [%s](%s) commented on [#%v %s](%s):\n\n%s"
+	case "CHANGES_REQUESTED":
+		fmtReviewMessage = "[\\[%s\\]](%s) [%s](%s) requested changes on [#%v %s](%s):\n\n%s"
+	default:
+		return
+	}
+
+	newReviewMessage := fmt.Sprintf(fmtReviewMessage, repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetTitle(), event.GetPullRequest().GetHTMLURL(), event.GetReview().GetBody())
+
+	post := &model.Post{
+		UserId:  userID,
+		Type:    "custom_git_pull_review",
+		Message: newReviewMessage,
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+	}
+
+	labels := make([]string, len(event.GetPullRequest().Labels))
+	for i, v := range event.GetPullRequest().Labels {
+		labels[i] = v.GetName()
+	}
+
+	for _, sub := range subs {
+		if !sub.PullReviews() {
+			continue
+		}
+
+		label := sub.Label()
+
+		contained := false
+		for _, v := range labels {
+			if v == label {
+				contained = true
+			}
+		}
+
+		if !contained && label != "" {
+			continue
 		}
 
 		post.ChannelId = sub.ChannelID
