@@ -67,6 +67,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssueCommentEvent:
 		if !event.GetRepo().GetPrivate() {
+			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
 			p.handleCommentAuthorNotification(event)
 		}
@@ -426,6 +427,80 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 	for _, sub := range subs {
 		if !sub.Deletes() {
 			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			mlog.Error(err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	if subs == nil || len(subs) == 0 {
+		return
+	}
+
+	userID := ""
+	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+		mlog.Error(err.Error())
+		return
+	} else {
+		userID = user.Id
+	}
+
+	if event.GetAction() != "created" {
+		return
+	}
+
+	body := event.GetComment().GetBody()
+
+	// Try to parse out email footer junk
+	if strings.Contains(body, "notifications@github.com") {
+		body = strings.Split(body, "\n\nOn")[0]
+	}
+
+	message := fmt.Sprintf("[\\[%s\\]](%s) New comment by [%s](%s) on [#%v %s]:\n\n%s",
+		repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetIssue().GetNumber(), event.GetIssue().GetTitle(), body)
+
+	post := &model.Post{
+		UserId: userID,
+		Type:   "custom_git_comment",
+		Props: map[string]interface{}{
+			"from_webhook":      "true",
+			"override_username": GITHUB_USERNAME,
+			"override_icon_url": GITHUB_ICON_URL,
+		},
+	}
+
+	labels := make([]string, len(event.GetIssue().Labels))
+	for i, v := range event.GetIssue().Labels {
+		labels[i] = v.GetName()
+	}
+
+	for _, sub := range subs {
+		if !sub.IssueComments() {
+			continue
+		}
+
+		label := sub.Label()
+
+		contained := false
+		for _, v := range labels {
+			if v == label {
+				contained = true
+			}
+		}
+
+		if !contained && label != "" {
+			continue
+		}
+
+		if event.GetAction() == "created" {
+			post.Message = message
 		}
 
 		post.ChannelId = sub.ChannelID

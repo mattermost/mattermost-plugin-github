@@ -17,11 +17,12 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe owner/repo [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for a repository
   * |features| is a comma-delimited list of one or more the following:
-    * issues - includes new issues
-	* pulls - includes new pull requests
+    * issues - includes new and closed issues
+	* pulls - includes new and closed pull requests
     * pushes - includes pushes
     * creates - includes branch and tag creations
     * deletes - includes branch and tag deletions
+    * issue_comments - includes new issue comments
 	* label:"<labelname>" - must include "pulls" or "issues" in feature list when using a label
   * Defaults to "pulls,issues"
 * |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
@@ -93,7 +94,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch action {
 	case "subscribe":
-		features := "pulls,issues,pushes,creates,deletes"
+		features := "pulls,issues,pushes,creates,deletes,issue_comments"
 
 		if len(parameters) == 0 {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil

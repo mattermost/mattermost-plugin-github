@@ -45,6 +45,10 @@ func (s *Subscription) Deletes() bool {
 	return strings.Contains(s.Features, "deletes")
 }
 
+func (s *Subscription) IssueComments() bool {
+	return strings.Contains(s.Features, "issue_comments")
+}
+
 func (s *Subscription) Label() string {
 	if !strings.Contains(s.Features, "label:") {
 		return ""
