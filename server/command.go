@@ -95,7 +95,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch action {
 	case "subscribe":
-		features := "pulls,issues,pushes,creates,deletes,issue_comments,pull_reviews"
+		features := "pulls,issues,creates,deletes"
 
 		if len(parameters) == 0 {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
