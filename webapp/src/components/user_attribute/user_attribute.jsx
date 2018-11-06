@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 
 export default class UserAttribute extends React.PureComponent {
     static propTypes = {
-        theme: PropTypes.object.isRequired,
         username: PropTypes.string,
     };
 
