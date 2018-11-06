@@ -8,8 +8,6 @@ export default class UserAttribute extends React.PureComponent {
     };
 
     render() {
-        const style = getStyle(this.props.theme);
-
         const username = this.props.username;
 
         if (!username) {
@@ -30,7 +28,7 @@ export default class UserAttribute extends React.PureComponent {
     }
 }
 
-const getStyle = {
+const style = {
     container: {
         margin: '5px 0',
     },
