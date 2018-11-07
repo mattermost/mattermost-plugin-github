@@ -3,13 +3,10 @@ import PropTypes from 'prop-types';
 
 export default class UserAttribute extends React.PureComponent {
     static propTypes = {
-        theme: PropTypes.object.isRequired,
         username: PropTypes.string,
     };
 
     render() {
-        const style = getStyle(this.props.theme);
-
         const username = this.props.username;
 
         if (!username) {
@@ -30,7 +27,7 @@ export default class UserAttribute extends React.PureComponent {
     }
 }
 
-const getStyle = {
+const style = {
     container: {
         margin: '5px 0',
     },
