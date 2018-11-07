@@ -25,7 +25,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
     * issue_comments - includes new issue comments
     * pull_reviews - includes pull request reviews
 	* label:"<labelname>" - must include "pulls" or "issues" in feature list when using a label
-  * Defaults to "pulls,issues,pushes,creates,deletes,issue_comments,pull_reviews"
+  * Defaults to "pulls,issues,creates,deletes"
 * |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
 * |/github me| - Display the connected GitHub account
 * |/github settings [setting] [value]| - Update your user settings
