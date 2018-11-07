@@ -180,7 +180,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='unreadsTooltip'>Unread messages</Tooltip>}
                 >
                     <a
-                        href={baseURL + '/pulls?q=is%3Aopen+mentions%3A' + this.props.username + '+archived%3Afalse' + orgQuery}
+                        href={baseURL + '/notifications'}
                         target='_blank'
                         rel='noopener noreferrer'
                         style={button}
