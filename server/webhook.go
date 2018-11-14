@@ -791,7 +791,8 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 
 func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	author := event.GetIssue().GetUser().GetLogin()
-	if author == event.GetSender().GetLogin() {
+	sender := event.GetSender().GetLogin()
+	if author == sender {
 		return
 	}
 	message := ""
@@ -806,12 +807,16 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 		message = "[%s](%s) reopened your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
 	case "assigned":
+		assignee := event.GetAssignee().GetLogin()
+		if assignee == sender {
+			return
+		}
 		message = "[%s](%s) assigned you to issue [%s#%v](%s)"
-		assigneeUserID = p.getGitHubToUserIDMapping(event.GetAssignee().GetLogin())
+		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
 	}
 
 	if len(message) > 0 {
-		message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
+		message = fmt.Sprintf(message, sender, event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
 	}
 
 	p.postIssueNotification(message, authorUserID, assigneeUserID)
