@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/mlog"
-	"github.com/mattermost/mattermost-server/plugin"
-
 	"github.com/google/go-github/github"
+	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/plugin"
 )
 
 const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to your GitHub account
@@ -49,7 +48,7 @@ func getCommandResponse(responseType, text string) *model.CommandResponse {
 		Text:         text,
 		Username:     GITHUB_USERNAME,
 		IconURL:      GITHUB_ICON_URL,
-		Type:         model.POST_DEFAULT,
+		Type:         "custom_git_todo",
 	}
 }
 
@@ -127,12 +126,17 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		p.disconnectGitHubAccount(args.UserId)
 		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Disconnected your GitHub account."), nil
 	case "todo":
-		text, err := p.GetToDo(ctx, info.GitHubUsername, githubClient)
+		todo, err := p.GetToDo(ctx, info.GitHubUsername, githubClient)
 		if err != nil {
 			mlog.Error(err.Error())
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
 		}
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+		if err := p.CreateBotPostWithProps(args.ChannelId, args.UserId, todo.Text, "custom_git_todo", todo.Props); err != nil {
+			mlog.Error(err.Error())
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
+		}
+
+		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, ""), nil
 	case "me":
 		gitUser, _, err := githubClient.Users.Get(ctx, "")
 		if err != nil {

@@ -153,3 +153,26 @@ func fixGithubNotificationSubjectURL(url string) string {
 	url = strings.Replace(url, "/pulls/", "/pull/", 1)
 	return url
 }
+
+func getIssueTypeFromURL(url string) string {
+	if strings.Contains(url, "/issues/") {
+		return "Issue"
+	}
+	return "PullRequest"
+}
+
+func getIssueNumberFromURL(url string) string {
+	split := []string{}
+	if strings.Contains(url, "/issues/") {
+		split = strings.Split(url, "/issues/")
+	} else if strings.Contains(url, "/pull/") {
+		split = strings.Split(url, "/pull/")
+	}
+
+	if len(split) < 2 {
+		return ""
+	}
+
+	split = strings.Split(split[1], "/")
+	return split[0]
+}

@@ -13,7 +13,6 @@ import (
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
-
 	"golang.org/x/oauth2"
 )
 
@@ -444,15 +443,17 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	text, err := p.GetToDo(context.Background(), username, githubClient)
+	todo, err := p.GetToDo(context.Background(), username, githubClient)
 	if err != nil {
 		mlog.Error(err.Error())
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error getting the to do items.", StatusCode: http.StatusUnauthorized})
 		return
 	}
 
-	if err := p.CreateBotDMPost(userID, text, "custom_git_todo"); err != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error posting the to do items.", StatusCode: http.StatusUnauthorized})
+	if todo.HasUnreads {
+		if err := p.CreateBotDMPostWithProps(userID, todo.Text, "custom_git_todo", todo.Props); err != nil {
+			writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error posting the to do items.", StatusCode: http.StatusUnauthorized})
+		}
 	}
 
 	w.Write([]byte("{\"status\": \"OK\"}"))

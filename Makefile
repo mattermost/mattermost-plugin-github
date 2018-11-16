@@ -112,7 +112,13 @@ dist: apply \
 # deploy installs the plugin to a (development) server, using the API if appropriate environment
 # variables are defined, or copying the files directly to a sibling mattermost-server directory
 .PHONY: deploy
-deploy: dist
+deploy: dist dodeploy
+
+# deploy-deploy installs the client-side of the plugin to a (development) server
+.PHONY: deploy-client
+deploy-client: apply webapp bundle dodeploy
+
+dodeploy:
 ifneq ($(and $(MM_SERVICESETTINGS_SITEURL),$(MM_ADMIN_USERNAME),$(MM_ADMIN_PASSWORD),$(HTTP)),)
 	@echo "Installing plugin via API"
 		(TOKEN=`http --print h POST $(MM_SERVICESETTINGS_SITEURL)/api/v4/users/login login_id=$(MM_ADMIN_USERNAME) password=$(MM_ADMIN_PASSWORD) | grep Token | cut -f2 -d' '` && \
@@ -136,6 +142,7 @@ else ifneq ($(wildcard ../mattermost-server/.*),)
 else
 	@echo "No supported deployment method available. Install plugin manually."
 endif
+
 
 # test runs any lints and unit tests defined for the server and webapp, if they exist
 .PHONY: test

@@ -9,12 +9,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
-
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
-
-	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
@@ -217,23 +215,18 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	)
 }
 
-func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppError {
-	channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
-	if err != nil {
-		mlog.Error("Couldn't get bot's DM channel", mlog.String("user_id", userID))
-		return err
-	}
+func (p *Plugin) CreateBotPostWithProps(channelID, userID, message, postType string, props map[string]interface{}) *model.AppError {
+	props["from_webhook"] = "true"
+	props["override_username"] = GITHUB_USERNAME
+	props["override_icon_url"] = GITHUB_ICON_URL
+	fmt.Println(props)
 
 	post := &model.Post{
 		UserId:    p.BotUserID,
-		ChannelId: channel.Id,
+		ChannelId: channelID,
 		Message:   message,
 		Type:      postType,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
-		},
+		Props:     props,
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
@@ -244,36 +237,60 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 	return nil
 }
 
+func (p *Plugin) CreateBotDMPostWithProps(userID, message, postType string, props map[string]interface{}) *model.AppError {
+	channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
+	if err != nil {
+		mlog.Error("Couldn't get bot's DM channel", mlog.String("user_id", userID))
+		return err
+	}
+
+	return p.CreateBotPostWithProps(channel.Id, userID, message, postType, props)
+}
+
+func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppError {
+	return p.CreateBotDMPostWithProps(userID, message, postType, map[string]interface{}{})
+}
+
 func (p *Plugin) PostToDo(info *GitHubUserInfo) {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+	todo, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
 	if err != nil {
 		mlog.Error(err.Error())
 		return
 	}
 
-	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
+	p.CreateBotDMPostWithProps(info.UserID, todo.Text, "custom_git_todo", todo.Props)
 }
 
-func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
+type ToDoMessage struct {
+	Text       string
+	HasUnreads bool
+	Props      map[string]interface{}
+}
+
+func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (ToDoMessage, error) {
+	todo := ToDoMessage{}
+
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return todo, err
 	}
 
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
-		return "", err
+		return todo, err
 	}
 
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return todo, err
 	}
 
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return todo, err
 	}
+
+	notificationProps := []map[string]interface{}{}
 
 	text := "##### Unread Messages\n"
 
@@ -293,14 +310,17 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
+		url := fixGithubNotificationSubjectURL(n.GetSubject().GetURL())
+
 		switch n.GetSubject().GetType() {
 		case "RepositoryVulnerabilityAlert":
 			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL()))
 			notificationContent += fmt.Sprintf("* %v\n", message)
 		default:
-			url := fixGithubNotificationSubjectURL(n.GetSubject().GetURL())
 			notificationContent += fmt.Sprintf("* %v\n", url)
 		}
+
+		notificationProps = append(notificationProps, map[string]interface{}{"url": url, "title": n.GetSubject().GetTitle(), "type": n.GetSubject().GetType(), "thread_id": n.GetID(), "repo": n.GetRepository().GetFullName(), "number": getIssueNumberFromURL(url)})
 
 		notificationCount++
 	}
@@ -312,6 +332,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += notificationContent
 	}
 
+	reviewProps := []map[string]interface{}{}
 	text += "##### Review Requests\n"
 
 	if issueResults.GetTotal() == 0 {
@@ -320,10 +341,13 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+			url := pr.GetHTMLURL()
+			text += fmt.Sprintf("* %v\n", url)
+			reviewProps = append(reviewProps, map[string]interface{}{"url": url, "title": pr.GetTitle(), "type": "PullRequest"})
 		}
 	}
 
+	openProps := []map[string]interface{}{}
 	text += "##### Your Open Pull Requests\n"
 
 	if yourPrs.GetTotal() == 0 {
@@ -332,10 +356,13 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
+			url := pr.GetHTMLURL()
 			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+			openProps = append(openProps, map[string]interface{}{"url": url, "title": pr.GetTitle(), "type": "PullRequest"})
 		}
 	}
 
+	assignProps := []map[string]interface{}{}
 	text += "##### Your Assignments\n"
 
 	if yourAssignments.GetTotal() == 0 {
@@ -344,11 +371,24 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
+			url := assign.GetHTMLURL()
 			text += fmt.Sprintf("* %v\n", assign.GetHTMLURL())
+			assignProps = append(assignProps, map[string]interface{}{"url": url, "title": assign.GetTitle(), "type": getIssueTypeFromURL(url)})
 		}
 	}
 
-	return text, nil
+	todo.Text = text
+	todo.Props = map[string]interface{}{}
+	b, _ := json.Marshal(notificationProps)
+	todo.Props["notifications"] = string(b)
+	b, _ = json.Marshal(reviewProps)
+	todo.Props["reviews"] = string(b)
+	b, _ = json.Marshal(openProps)
+	todo.Props["open"] = string(b)
+	b, _ = json.Marshal(assignProps)
+	todo.Props["assigns"] = string(b)
+
+	return todo, nil
 }
 
 func (p *Plugin) checkOrg(org string) error {

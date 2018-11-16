@@ -4,6 +4,7 @@
 import SidebarHeader from './components/sidebar_header';
 import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
+import TodoPostType from './components/todo/todo_post_type';
 import Reducer from './reducers';
 import {getConnected} from './actions';
 import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
@@ -21,6 +22,7 @@ class PluginClass {
         registry.registerLeftSidebarHeaderComponent(SidebarHeader);
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
+        registry.registerPostTypeComponent('custom_git_todo', TodoPostType);
 
         registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
         registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));

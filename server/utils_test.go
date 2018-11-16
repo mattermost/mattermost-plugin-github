@@ -33,3 +33,18 @@ func TestParseGitHubUsernameFromText(t *testing.T) {
 		assert.Equal(t, tc.Expected, parseGitHubUsernamesFromText(tc.Text))
 	}
 }
+
+func TestGetIssueNumberFromURL(t *testing.T) {
+	tcs := []struct {
+		Text     string
+		Expected string
+	}{
+		{Text: "https://github.com/jwilander/mattermost-webapp/pull/13", Expected: "13"},
+		{Text: "https://github.com/jwilander/mattermost-webapp/issues/42", Expected: "42"},
+		{Text: "https://github.com/jwilander/mattermost-webapp", Expected: ""},
+	}
+
+	for _, tc := range tcs {
+		assert.Equal(t, tc.Expected, getIssueNumberFromURL(tc.Text))
+	}
+}
