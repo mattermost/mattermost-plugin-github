@@ -16,7 +16,7 @@ A GitHub plugin for Mattermost. The plugin is currently in beta.
 
 ## Installation
 
-__Requires Mattermost 5.2 or higher__
+__Requires Mattermost 5.2 or higher. If you're running Mattermost 5.6+, it is strongly recommended to use plugin version 0.7.1+__
 
 __If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL__
 
