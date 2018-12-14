@@ -80,7 +80,7 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 
 	conf := p.getOAuthConfig()
 
-	state := fmt.Sprintf("%v_%v", model.NewId(), userID)
+	state := fmt.Sprintf("%v_%v", model.NewId()[0:15], userID)
 
 	p.API.KVSet(state, []byte(state))
 
@@ -106,7 +106,6 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "missing stored state", http.StatusBadRequest)
 		return
 	} else if string(storedState) != state {
-		fmt.Println(err.Error())
 		http.Error(w, "invalid state", http.StatusBadRequest)
 		return
 	}

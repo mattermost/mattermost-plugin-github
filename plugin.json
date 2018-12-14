@@ -2,7 +2,7 @@
     "id": "github",
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "server": {
       "executables": {
           "linux-amd64": "server/dist/plugin-linux-amd64",
