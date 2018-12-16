@@ -2,12 +2,28 @@
 
 
 [[projects]]
+  digest = "1:aba270497eb2d49f5cba6f4162d524b9a1195a24cbce8be20bf56a0051f47deb"
+  name = "github.com/blang/semver"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+  version = "v3.5.1"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   pruneopts = "NUT"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:665c8850f673be8d358fe61ab00412049e685202aa7466ae5c72ad50d89c84f7"
+  name = "github.com/dyatlov/go-opengraph"
+  packages = ["opengraph"]
+  pruneopts = "NUT"
+  revision = "816b6608b3c8c1e871bc9cf777f390e2532081fe"
 
 [[projects]]
   digest = "1:1b91ae0dc69a41d4c2ed23ea5cffb721ea63f5037ca4b81e6d6771fbb8f45129"
@@ -63,18 +79,18 @@
   revision = "76e4896901ef89d253d69b528d3701dd146fe2ae"
 
 [[projects]]
-  digest = "1:58ba5285227b0f635652cd4aa82c4cfd00b590191eadd823462f0c9f64e3ae07"
+  digest = "1:ce8deaa2f422b7315ee4fa91f29963ed24f33eb1e1f921fe9f27ce7987776c01"
   name = "github.com/hashicorp/go-hclog"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "69ff559dc25f3b435631604f573a5fa1efdb6433"
+  revision = "e45cbeb79f0411b1cfedd3f226ff69d5d433c762"
 
 [[projects]]
-  digest = "1:532090ffc3b05a7e4c0229dd2698d79149f2e0683df993224a8b202f607fb605"
+  digest = "1:af00abbd22cc527703068245c819a5f53567918f8c088157a4c01dd6244b58fb"
   name = "github.com/hashicorp/go-plugin"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "e8d22c780116115ae5624720c9af0c97afe4f551"
+  revision = "a4620f9913d19f03a6bf19b2f304daaaf83ea130"
 
 [[projects]]
   digest = "1:11c6c696067d3127ecf332b10f89394d386d9083f82baf71f40f2da31841a009"
@@ -112,7 +128,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:fcaa0c4871e4b49fb30d986e688c069328c042eae6ef89d0ead9882d2d450648"
+  digest = "1:7496e8dfee311245ba337d464a50a50af13ab59a7fde3c474c9933671c9a6eaa"
   name = "github.com/mattermost/mattermost-server"
   packages = [
     "einterfaces",
@@ -124,8 +140,8 @@
     "utils/markdown",
   ]
   pruneopts = "NUT"
-  revision = "d5b613cb1bbdaa856fa126e7102d94783b9e80b6"
-  version = "v5.4.0"
+  revision = "0c1207215852a8726c3f09dea157d597fec368df"
+  version = "v5.6.0"
 
 [[projects]]
   branch = "mattermost"
@@ -292,11 +308,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3033eba8bb0c8f2c6720e68e4c14e55b577ae9debb5f5b7b8cc6f319d89edc82"
+  digest = "1:8c791e7ae578e600b7eb480cf81465935842e5b52a98230f8a23a60821505cd5"
   name = "golang.org/x/net"
   packages = [
     "context",
     "context/ctxhttp",
+    "html",
+    "html/atom",
     "http/httpguts",
     "http2",
     "http2/hpack",
