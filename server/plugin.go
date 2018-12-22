@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/mattermost/mattermost-server/mlog"
-
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
 
@@ -40,29 +40,29 @@ type Plugin struct {
 
 	BotUserID string
 
-	GitHubOrg               string
-	Username                string
-	GitHubOAuthClientID     string
-	GitHubOAuthClientSecret string
-	WebhookSecret           string
-	EncryptionKey           string
-	EnterpriseBaseURL       string
-	EnterpriseUploadURL     string
+	// configurationLock synchronizes access to the configuration.
+	configurationLock sync.RWMutex
+
+	// configuration is the active plugin configuration. Consult getConfiguration and
+	// setConfiguration for usage.
+	configuration *configuration
 }
 
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
+	config := p.getConfiguration()
+
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(ctx, ts)
 
-	if len(p.EnterpriseBaseURL) == 0 || len(p.EnterpriseUploadURL) == 0 {
+	if len(config.EnterpriseBaseURL) == 0 || len(config.EnterpriseUploadURL) == 0 {
 		return github.NewClient(tc)
 	}
 
-	baseURL, _ := url.Parse(p.EnterpriseBaseURL)
+	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
 	baseURL.Path = path.Join(baseURL.Path, "api", "v3")
 
-	uploadURL, _ := url.Parse(p.EnterpriseUploadURL)
+	uploadURL, _ := url.Parse(config.EnterpriseUploadURL)
 	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
 
 	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), tc)
@@ -74,54 +74,38 @@ func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 }
 
 func (p *Plugin) OnActivate() error {
-	if err := p.IsValid(); err != nil {
+	config := p.getConfiguration()
+
+	if err := config.IsValid(); err != nil {
 		return err
 	}
 	p.API.RegisterCommand(getCommand())
-	user, err := p.API.GetUserByUsername(p.Username)
+	user, err := p.API.GetUserByUsername(config.Username)
 	if err != nil {
 		mlog.Error(err.Error())
-		return fmt.Errorf("Unable to find user with configured username: %v", p.Username)
+		return fmt.Errorf("Unable to find user with configured username: %v", config.Username)
 	}
 
 	p.BotUserID = user.Id
 	return nil
 }
 
-func (p *Plugin) IsValid() error {
-	if p.GitHubOAuthClientID == "" {
-		return fmt.Errorf("Must have a github oauth client id")
-	}
-
-	if p.GitHubOAuthClientSecret == "" {
-		return fmt.Errorf("Must have a github oauth client secret")
-	}
-
-	if p.EncryptionKey == "" {
-		return fmt.Errorf("Must have an encryption key")
-	}
-
-	if p.Username == "" {
-		return fmt.Errorf("Need a user to make posts as")
-	}
-
-	return nil
-}
-
 func (p *Plugin) getOAuthConfig() *oauth2.Config {
+	config := p.getConfiguration()
+
 	authURL, _ := url.Parse("https://github.com/")
 	tokenURL, _ := url.Parse("https://github.com/")
-	if len(p.EnterpriseBaseURL) > 0 {
-		authURL, _ = url.Parse(p.EnterpriseBaseURL)
-		tokenURL, _ = url.Parse(p.EnterpriseBaseURL)
+	if len(config.EnterpriseBaseURL) > 0 {
+		authURL, _ = url.Parse(config.EnterpriseBaseURL)
+		tokenURL, _ = url.Parse(config.EnterpriseBaseURL)
 	}
 
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
 	return &oauth2.Config{
-		ClientID:     p.GitHubOAuthClientID,
-		ClientSecret: p.GitHubOAuthClientSecret,
+		ClientID:     config.GitHubOAuthClientID,
+		ClientSecret: config.GitHubOAuthClientSecret,
 		Scopes:       []string{"public_repo,notifications"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authURL.String(),
@@ -145,7 +129,9 @@ type UserSettings struct {
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
-	encryptedToken, err := encrypt([]byte(p.EncryptionKey), info.Token.AccessToken)
+	config := p.getConfiguration()
+
+	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
 	if err != nil {
 		return err
 	}
@@ -165,6 +151,8 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 }
 
 func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorResponse) {
+	config := p.getConfiguration()
+
 	var userInfo GitHubUserInfo
 
 	if infoBytes, err := p.API.KVGet(userID + GITHUB_TOKEN_KEY); err != nil || infoBytes == nil {
@@ -173,7 +161,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
 	}
 
-	unencryptedToken, err := decrypt([]byte(p.EncryptionKey), userInfo.Token.AccessToken)
+	unencryptedToken, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken)
 	if err != nil {
 		mlog.Error(err.Error())
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
@@ -255,7 +243,9 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
-	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	config := p.getConfiguration()
+
+	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -265,12 +255,12 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", err
 	}
 
-	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		return "", err
 	}
 
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -352,7 +342,9 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 }
 
 func (p *Plugin) checkOrg(org string) error {
-	configOrg := strings.TrimSpace(p.GitHubOrg)
+	config := p.getConfiguration()
+
+	configOrg := strings.TrimSpace(config.GitHubOrg)
 	if configOrg != "" && configOrg != org {
 		return fmt.Errorf("Only repositories in the %v organization are supported", configOrg)
 	}

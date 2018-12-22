@@ -35,6 +35,8 @@ func signBody(secret, body []byte) []byte {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	signature := r.Header.Get("X-Hub-Signature")
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -43,7 +45,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !verifyWebhookSignature([]byte(p.WebhookSecret), signature, body) {
+	if !verifyWebhookSignature([]byte(config.WebhookSecret), signature, body) {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
@@ -96,6 +98,8 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 	if subs == nil || len(subs) == 0 {
@@ -108,7 +112,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -191,6 +195,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 }
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 	if subs == nil || len(subs) == 0 {
@@ -203,7 +209,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -281,6 +287,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 }
 
 func (p *Plugin) postPushEvent(event *github.PushEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 
@@ -289,7 +297,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -342,6 +350,8 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 }
 
 func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 
@@ -350,7 +360,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -392,6 +402,8 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 }
 
 func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 
@@ -400,7 +412,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -442,6 +454,8 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 }
 
 func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 
@@ -450,7 +464,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -516,6 +530,8 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 }
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 	if subs == nil || len(subs) == 0 {
@@ -523,7 +539,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {
@@ -592,6 +608,8 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 }
 
 func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
+	config := p.getConfiguration()
+
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
 	if subs == nil || len(subs) == 0 {
@@ -599,7 +617,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	}
 
 	userID := ""
-	if user, err := p.API.GetUserByUsername(p.Username); err != nil {
+	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
 		mlog.Error(err.Error())
 		return
 	} else {

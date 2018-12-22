@@ -36,7 +36,9 @@ func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 }
 
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	if err := p.IsValid(); err != nil {
+	config := p.getConfiguration()
+
+	if err := config.IsValid(); err != nil {
 		http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
 		return
 	}
@@ -90,6 +92,8 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	ctx := context.Background()
 	conf := p.getOAuthConfig()
 
@@ -194,7 +198,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		map[string]interface{}{
 			"connected":        true,
 			"github_username":  userInfo.GitHubUsername,
-			"github_client_id": p.GitHubOAuthClientID,
+			"github_client_id": config.GitHubOAuthClientID,
 		},
 		&model.WebsocketBroadcast{UserId: userID},
 	)
@@ -227,6 +231,8 @@ type ConnectedResponse struct {
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
@@ -235,15 +241,15 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 
 	resp := &ConnectedResponse{
 		Connected:         false,
-		EnterpriseBaseURL: p.EnterpriseBaseURL,
-		Organization:      p.GitHubOrg,
+		EnterpriseBaseURL: config.EnterpriseBaseURL,
+		Organization:      config.GitHubOrg,
 	}
 
 	info, _ := p.getGitHubUserInfo(userID)
 	if info != nil && info.Token != nil {
 		resp.Connected = true
 		resp.GitHubUsername = info.GitHubUsername
-		resp.GitHubClientID = p.GitHubOAuthClientID
+		resp.GitHubClientID = config.GitHubOAuthClientID
 		resp.Settings = info.Settings
 
 		if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
@@ -270,6 +276,8 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -289,7 +297,7 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, getMentionSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, getMentionSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
@@ -339,6 +347,8 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -358,7 +368,7 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
@@ -368,6 +378,8 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -387,7 +399,7 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
@@ -397,6 +409,8 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -416,7 +430,7 @@ func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, p.GitHubOrg), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}

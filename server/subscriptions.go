@@ -67,7 +67,9 @@ func (s *Subscription) Label() string {
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, ownerAndRepo, channelID, features string) error {
-	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, p.EnterpriseBaseURL)
+	config := p.getConfiguration()
+
+	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
 
 	if owner == "" {
 		return fmt.Errorf("Invalid repository")
@@ -165,7 +167,9 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repository string) []*Subscr
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	repo, _, _ = parseOwnerAndRepo(repo, p.EnterpriseBaseURL)
+	config := p.getConfiguration()
+
+	repo, _, _ = parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
 
 	if repo == "" {
 		return fmt.Errorf("Invalid repository")
