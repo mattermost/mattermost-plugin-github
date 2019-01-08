@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/hex"
@@ -56,45 +57,75 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allowPrivate := config.EnablePrivateRepo
+
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
 		}
 	case *github.IssuesEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postIssueEvent(event)
 			p.handleIssueNotification(event)
 		}
 	case *github.IssueCommentEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
 			p.handleCommentAuthorNotification(event)
 		}
 	case *github.PullRequestReviewEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postPullRequestReviewCommentEvent(event)
 		}
 	case *github.PushEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postPushEvent(event)
 		}
 	case *github.CreateEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postCreateEvent(event)
 		}
 	case *github.DeleteEvent:
-		if !event.GetRepo().GetPrivate() {
+		if !event.GetRepo().GetPrivate() || allowPrivate {
 			p.postDeleteEvent(event)
 		}
 	}
+}
+
+func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
+	config := p.getConfiguration()
+	ctx := context.Background()
+	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
+
+	if owner == "" {
+		return false
+	}
+	if err := p.checkOrg(owner); err != nil {
+		return false
+	}
+
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		return false
+	}
+	var githubClient *github.Client
+	githubClient = p.githubConnect(*info.Token)
+
+	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+		if err != nil {
+			mlog.Error(err.Error())
+		}
+		return false
+	}
+	return true
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
@@ -707,6 +738,10 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
+			continue
+		}
+
 		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 		if err != nil {
 			continue
@@ -730,6 +765,10 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 
 	authorUserID := p.getGitHubToUserIDMapping(author)
 	if authorUserID == "" {
+		return
+	}
+
+	if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
 		return
 	}
 
@@ -885,6 +924,10 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	authorUserID := p.getGitHubToUserIDMapping(author)
 	if authorUserID == "" {
+		return
+	}
+
+	if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
 		return
 	}
 

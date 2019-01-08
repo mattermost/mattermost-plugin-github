@@ -103,10 +103,16 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
+	repo := "public_repo"
+	if config.EnablePrivateRepo {
+		// means that asks scope for privaterepositories
+		repo = "repo"
+	}
+
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       []string{"public_repo,notifications"},
+		Scopes:       []string{repo, "notifications"},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authURL.String(),
 			TokenURL: tokenURL.String(),
