@@ -16,6 +16,11 @@ const (
 	SUBSCRIPTIONS_KEY = "subscriptions"
 )
 
+type SubWithRepo struct {
+	Features   string
+	Repository string
+}
+
 type Subscription struct {
 	ChannelID string
 	Features  string
@@ -96,6 +101,25 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	return nil
+}
+
+func (p *Plugin) SubscribeList(ctx context.Context, channelID string) ([]*SubWithRepo, error) {
+	var filteredSubs []*SubWithRepo
+	subs, err := p.GetSubscriptions()
+	if err != nil {
+		return filteredSubs, err
+	}
+
+	for repo, v := range subs.Repositories {
+		for _, s := range v {
+			if s.ChannelID == channelID {
+				subwith := SubWithRepo{Features: s.Features, Repository: repo}
+				filteredSubs = append(filteredSubs, &subwith)
+			}
+		}
+	}
+
+	return filteredSubs, nil
 }
 
 func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
