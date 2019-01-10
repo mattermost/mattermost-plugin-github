@@ -769,6 +769,9 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 			return
 		}
 		requestedUserID = p.getGitHubToUserIDMapping(requestedReviewer)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(requestedUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 		message = "[%s](%s) requested your review on [%s#%v](%s)"
 	case "closed":
 		if author == sender {
@@ -780,12 +783,18 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 			message = "[%s](%s) closed your pull request [%s#%v](%s)"
 		}
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 	case "reopened":
 		if author == sender {
 			return
 		}
 		message = "[%s](%s) reopened your pull request [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 	case "assigned":
 		assignee := event.GetPullRequest().GetAssignee().GetLogin()
 		if assignee == sender {
@@ -793,6 +802,9 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		}
 		message = "[%s](%s) assigned you to pull request [%s#%v](%s)"
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(assigneeUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 	}
 
 	if len(message) > 0 {
@@ -821,9 +833,15 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	case "closed":
 		message = "[%s](%s) closed your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 	case "reopened":
 		message = "[%s](%s) reopened your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 	case "assigned":
 		assignee := event.GetAssignee().GetLogin()
 		if assignee == sender {
@@ -831,6 +849,9 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 		}
 		message = "[%s](%s) assigned you to issue [%s#%v](%s)"
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(assigneeUserID, event.GetRepo().GetFullName()) {
+			return
+		}
 	}
 
 	if len(message) > 0 {
