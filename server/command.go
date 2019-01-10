@@ -101,16 +101,16 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		if len(parameters) == 0 {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository or 'list' command."), nil
 		} else if len(parameters) == 1 && parameters[0] == "list" {
-			subs, err := p.SubscribeList(context.Background(), args.ChannelId)
+			subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 			if err != nil {
 				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
 			txt := ""
 			if len(subs) == 0 {
-				txt = "Currenly there is no subscriptions in this channel"
+				txt = "Currently there are no subscriptions in this channel"
 			} else {
-				txt = "### Subscribed in this channel\n"
+				txt = "### Subscriptions in this channel\n"
 			}
 			for _, sub := range subs {
 				txt += fmt.Sprintf("* `%s` - %s\n", sub.Repository, sub.Features)

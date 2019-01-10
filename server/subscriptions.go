@@ -16,14 +16,10 @@ const (
 	SUBSCRIPTIONS_KEY = "subscriptions"
 )
 
-type SubWithRepo struct {
+type Subscription struct {
+	ChannelID  string
 	Features   string
 	Repository string
-}
-
-type Subscription struct {
-	ChannelID string
-	Features  string
 }
 
 type Subscriptions struct {
@@ -92,8 +88,9 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	sub := &Subscription{
-		ChannelID: channelID,
-		Features:  features,
+		ChannelID:  channelID,
+		Features:   features,
+		Repository: fmt.Sprintf("%s/%s", owner, repo),
 	}
 
 	if err := p.AddSubscription(fmt.Sprintf("%s/%s", owner, repo), sub); err != nil {
@@ -103,18 +100,21 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeList(ctx context.Context, channelID string) ([]*SubWithRepo, error) {
-	var filteredSubs []*SubWithRepo
+func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
+	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return filteredSubs, err
+		return nil, err
 	}
 
 	for repo, v := range subs.Repositories {
 		for _, s := range v {
 			if s.ChannelID == channelID {
-				subwith := SubWithRepo{Features: s.Features, Repository: repo}
-				filteredSubs = append(filteredSubs, &subwith)
+				// this is needed to be backwards compatible
+				if len(s.Repository) == 0 {
+					s.Repository = repo
+				}
+				filteredSubs = append(filteredSubs, s)
 			}
 		}
 	}
