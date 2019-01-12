@@ -33,3 +33,19 @@ func TestParseGitHubUsernameFromText(t *testing.T) {
 		assert.Equal(t, tc.Expected, parseGitHubUsernamesFromText(tc.Text))
 	}
 }
+
+func TestFixGithubNotificationSubjectURL(t *testing.T) {
+	tcs := []struct {
+		Text     string
+		Expected string
+	}{
+		{Text: "https://api.github.com/repos/jwilander/mattermost-webapp/issues/123", Expected: "https://github.com/jwilander/mattermost-webapp/issues/123"},
+		{Text: "https://api.github.com/repos/jwilander/mattermost-webapp/pulls/123", Expected: "https://github.com/jwilander/mattermost-webapp/pull/123"},
+		{Text: "https://enterprise.github.com/api/v3/jwilander/mattermost-webapp/issues/123", Expected: "https://enterprise.github.com/jwilander/mattermost-webapp/issues/123"},
+		{Text: "https://enterprise.github.com/api/v3/jwilander/mattermost-webapp/pull/123", Expected: "https://enterprise.github.com/jwilander/mattermost-webapp/pull/123"},
+	}
+
+	for _, tc := range tcs {
+		assert.Equal(t, tc.Expected, fixGithubNotificationSubjectURL(tc.Text))
+	}
+}
