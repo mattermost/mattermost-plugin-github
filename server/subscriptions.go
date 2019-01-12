@@ -17,8 +17,9 @@ const (
 )
 
 type Subscription struct {
-	ChannelID string
-	Features  string
+	ChannelID  string
+	Features   string
+	Repository string
 }
 
 type Subscriptions struct {
@@ -87,8 +88,9 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	sub := &Subscription{
-		ChannelID: channelID,
-		Features:  features,
+		ChannelID:  channelID,
+		Features:   features,
+		Repository: fmt.Sprintf("%s/%s", owner, repo),
 	}
 
 	if err := p.AddSubscription(fmt.Sprintf("%s/%s", owner, repo), sub); err != nil {
@@ -96,6 +98,28 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	return nil
+}
+
+func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
+	var filteredSubs []*Subscription
+	subs, err := p.GetSubscriptions()
+	if err != nil {
+		return nil, err
+	}
+
+	for repo, v := range subs.Repositories {
+		for _, s := range v {
+			if s.ChannelID == channelID {
+				// this is needed to be backwards compatible
+				if len(s.Repository) == 0 {
+					s.Repository = repo
+				}
+				filteredSubs = append(filteredSubs, s)
+			}
+		}
+	}
+
+	return filteredSubs, nil
 }
 
 func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
