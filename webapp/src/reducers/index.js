@@ -108,6 +108,18 @@ function unreads(state = [], action) {
     }
 }
 
+function githubUsers(state = {}, action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_GITHUB_USER: {
+        const nextState = {...state};
+        nextState[action.userID] = action.data;
+        return nextState;
+    }
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
     connected,
     enterpriseURL,
@@ -120,4 +132,5 @@ export default combineReducers({
     yourAssignments,
     mentions,
     unreads,
+    githubUsers,
 });

@@ -68,6 +68,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getUnreads(w, r)
 	case "/api/v1/settings":
 		p.updateSettings(w, r)
+	case "/api/v1/user":
+		p.getGitHubUser(w, r)
 	default:
 		http.NotFound(w, r)
 	}
@@ -131,23 +133,6 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		fmt.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	if user, err := p.API.GetUser(userID); err != nil {
-		fmt.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else {
-		if user.Props == nil {
-			user.Props = model.StringMap{}
-		}
-		user.Props["git_user"] = *gitUser.Login
-		_, err = p.API.UpdateUser(user)
-		if err != nil {
-			fmt.Println(err.Error())
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 	}
 
 	userInfo := &GitHubUserInfo{
@@ -228,6 +213,55 @@ type ConnectedResponse struct {
 	EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
 	Organization      string        `json:"organization"`
 	Settings          *UserSettings `json:"settings"`
+}
+
+type GitHubUserRequest struct {
+	UserID string `json:"user_id"`
+}
+
+type GitHubUserResponse struct {
+	Username string `json:"username"`
+}
+
+func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request) {
+	requestorID := r.Header.Get("Mattermost-User-ID")
+	if requestorID == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+		return
+	}
+
+	req := &GitHubUserRequest{}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil || req.UserID == "" {
+		if err != nil {
+			mlog.Error("Error decoding JSON body: " + err.Error())
+		}
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object with a non-blank user_id field.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	userInfo, apiErr := p.getGitHubUserInfo(req.UserID)
+	if apiErr != nil {
+		if apiErr.ID == API_ERROR_ID_NOT_CONNECTED {
+			writeAPIError(w, &APIErrorResponse{ID: "", Message: "User is not connected to a GitHub account.", StatusCode: http.StatusNotFound})
+		} else {
+			writeAPIError(w, apiErr)
+		}
+		return
+	}
+
+	if userInfo == nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "User is not connected to a GitHub account.", StatusCode: http.StatusNotFound})
+		return
+	}
+
+	resp := &GitHubUserResponse{Username: userInfo.GitHubUsername}
+	b, jsonErr := json.Marshal(resp)
+	if jsonErr != nil {
+		mlog.Error("Error encoding JSON response: " + jsonErr.Error())
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an unexpected error. Please try again.", StatusCode: http.StatusInternalServerError})
+	}
+	w.Write(b)
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
