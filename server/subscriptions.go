@@ -18,6 +18,7 @@ const (
 
 type Subscription struct {
 	ChannelID string
+	CreatorID string
 	Features  string
 }
 
@@ -88,6 +89,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 	sub := &Subscription{
 		ChannelID: channelID,
+		CreatorID: userId,
 		Features:  features,
 	}
 
