@@ -29,6 +29,10 @@ export default class Client {
         return this.doGet(`${this.url}/unreads`);
     }
 
+    getGitHubUser = async (userID) => {
+        return this.doPost(`${this.url}/user`, {user_id: userID});
+    }
+
     doGet = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();

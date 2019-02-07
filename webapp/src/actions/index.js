@@ -151,3 +151,44 @@ export function getUnreads() {
         return {data};
     };
 }
+
+const GITHUB_USER_GET_TIMEOUT_MILLISECONDS = 1000 * 60 * 60; // 1 hour
+
+export function getGitHubUser(userID) {
+    return async (dispatch, getState) => {
+        if (!userID) {
+            return {};
+        }
+
+        const user = getState()['plugins-github'].githubUsers[userID];
+        if (user && user.last_try && Date.now() - user.last_try < GITHUB_USER_GET_TIMEOUT_MILLISECONDS) {
+            return {};
+        }
+
+        if (user && user.username) {
+            return {data: user};
+        }
+
+        let data;
+        try {
+            data = await Client.getGitHubUser(userID);
+        } catch (error) {
+            if (error.status === 404) {
+                dispatch({
+                    type: ActionTypes.RECEIVED_GITHUB_USER,
+                    userID,
+                    data: {last_try: Date.now()},
+                });
+            }
+            return {error};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_GITHUB_USER,
+            userID,
+            data,
+        });
+
+        return {data};
+    };
+}
