@@ -1,21 +1,26 @@
 import {connect} from 'react-redux';
+import {bindActionCreators} from 'redux';
 
-import {getUser} from 'mattermost-redux/selectors/entities/users';
+import {getGitHubUser} from '../../actions';
 
 import UserAttribute from './user_attribute.jsx';
 
 function mapStateToProps(state, ownProps) {
     const id = ownProps.user ? ownProps.user.id : '';
-    const user = getUser(state, id);
-
-    let username;
-    if (user && user.props) {
-        username = user.props.git_user;
-    }
+    const user = state['plugins-github'].githubUsers[id] || {};
 
     return {
-        username,
+        id,
+        username: user.username,
     };
 }
 
-export default connect(mapStateToProps)(UserAttribute);
+function mapDispatchToProps(dispatch) {
+    return {
+        actions: bindActionCreators({
+            getGitHubUser,
+        }, dispatch),
+    };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(UserAttribute);
