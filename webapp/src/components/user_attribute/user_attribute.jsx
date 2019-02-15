@@ -3,8 +3,17 @@ import PropTypes from 'prop-types';
 
 export default class UserAttribute extends React.PureComponent {
     static propTypes = {
+        id: PropTypes.string.isRequired,
         username: PropTypes.string,
+        actions: PropTypes.shape({
+            getGitHubUser: PropTypes.func.isRequired,
+        }).isRequired,
     };
+
+    constructor(props) {
+        super(props);
+        props.actions.getGitHubUser(props.id);
+    }
 
     render() {
         const username = this.props.username;

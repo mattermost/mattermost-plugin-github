@@ -15,6 +15,7 @@ import (
 const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to your GitHub account
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
+* |/github subscribe list| - Will list the current channel subscriptions
 * |/github subscribe owner/repo [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for a repository
   * |features| is a comma-delimited list of one or more the following:
     * issues - includes new and closed issues
@@ -98,7 +99,23 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		features := "pulls,issues,creates,deletes"
 
 		if len(parameters) == 0 {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository or 'list' command."), nil
+		} else if len(parameters) == 1 && parameters[0] == "list" {
+			subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
+			if err != nil {
+				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+			}
+
+			txt := ""
+			if len(subs) == 0 {
+				txt = "Currently there are no subscriptions in this channel"
+			} else {
+				txt = "### Subscriptions in this channel\n"
+			}
+			for _, sub := range subs {
+				txt += fmt.Sprintf("* `%s` - %s\n", sub.Repository, sub.Features)
+			}
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, txt), nil
 		} else if len(parameters) > 1 {
 			features = strings.Join(parameters[1:], " ")
 		}
