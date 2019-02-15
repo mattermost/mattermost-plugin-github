@@ -17,9 +17,9 @@ const (
 )
 
 type Subscription struct {
-	ChannelID string
-	CreatorID string
-	Features  string
+	ChannelID  string
+	CreatorID  string
+	Features   string
 	Repository string
 }
 
@@ -89,9 +89,9 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	sub := &Subscription{
-		ChannelID: channelID,
-		CreatorID: userId,
-		Features:  features,
+		ChannelID:  channelID,
+		CreatorID:  userId,
+		Features:   features,
 		Repository: fmt.Sprintf("%s/%s", owner, repo),
 	}
 
