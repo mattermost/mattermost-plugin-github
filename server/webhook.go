@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/hex"
@@ -34,6 +35,20 @@ func signBody(secret, body []byte) []byte {
 	return []byte(computed.Sum(nil))
 }
 
+type GitHubEvent struct {
+	Repo *github.Repository `json:"repository,omitempty"`
+}
+
+// Hack to convert from github.PushEventRepository to github.Repository
+func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository) *github.Repository {
+	repoName := pushRepo.GetFullName()
+	private := pushRepo.GetPrivate()
+	return &github.Repository{
+		FullName: &repoName,
+		Private:  &private,
+	}
+}
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
@@ -56,52 +71,105 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var repo *github.Repository
+	var handler func()
+
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
 		}
 	case *github.IssuesEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postIssueEvent(event)
 			p.handleIssueNotification(event)
 		}
 	case *github.IssueCommentEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
 			p.handleCommentAuthorNotification(event)
 		}
 	case *github.PullRequestReviewEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
 		}
 	case *github.PushEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
+		handler = func() {
 			p.postPushEvent(event)
 		}
 	case *github.CreateEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postCreateEvent(event)
 		}
 	case *github.DeleteEvent:
-		if !event.GetRepo().GetPrivate() {
+		repo = event.GetRepo()
+		handler = func() {
 			p.postDeleteEvent(event)
 		}
 	}
+
+	if repo == nil || handler == nil {
+		return
+	}
+
+	if repo.GetPrivate() && !config.EnablePrivateRepo {
+		return
+	}
+
+	handler()
+}
+
+func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
+	if userID == "" {
+		return false
+	}
+
+	config := p.getConfiguration()
+	ctx := context.Background()
+	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
+
+	if owner == "" {
+		return false
+	}
+	if err := p.checkOrg(owner); err != nil {
+		return false
+	}
+
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		return false
+	}
+	var githubClient *github.Client
+	githubClient = p.githubConnect(*info.Token)
+
+	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+		if err != nil {
+			mlog.Error(err.Error())
+		}
+		return false
+	}
+	return true
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 	if subs == nil || len(subs) == 0 {
 		return
 	}
@@ -196,9 +264,9 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 	if subs == nil || len(subs) == 0 {
 		return
 	}
@@ -288,9 +356,9 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
 
 	if subs == nil || len(subs) == 0 {
 		return
@@ -351,9 +419,9 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 
 func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 
 	if subs == nil || len(subs) == 0 {
 		return
@@ -403,9 +471,9 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 
 	if subs == nil || len(subs) == 0 {
 		return
@@ -455,9 +523,9 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 
 func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 
 	if subs == nil || len(subs) == 0 {
 		return
@@ -531,9 +599,9 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 	if subs == nil || len(subs) == 0 {
 		return
 	}
@@ -609,9 +677,9 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 
 func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
 	config := p.getConfiguration()
-
 	repo := event.GetRepo()
-	subs := p.GetSubscribedChannelsForRepository(repo.GetFullName())
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
 	if subs == nil || len(subs) == 0 {
 		return
 	}
@@ -707,6 +775,10 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
+			continue
+		}
+
 		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 		if err != nil {
 			continue
@@ -733,6 +805,10 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 		return
 	}
 
+	if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
+		return
+	}
+
 	splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
 	if len(splitURL) < 2 {
 		return
@@ -755,6 +831,8 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	author := event.GetPullRequest().GetUser().GetLogin()
 	sender := event.GetSender().GetLogin()
+	repoName := event.GetRepo().GetFullName()
+	isPrivate := event.GetRepo().GetPrivate()
 
 	requestedReviewer := ""
 	requestedUserID := ""
@@ -770,6 +848,9 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		}
 		requestedUserID = p.getGitHubToUserIDMapping(requestedReviewer)
 		message = "[%s](%s) requested your review on [%s#%v](%s)"
+		if isPrivate && !p.permissionToRepo(requestedUserID, repoName) {
+			requestedUserID = ""
+		}
 	case "closed":
 		if author == sender {
 			return
@@ -780,12 +861,18 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 			message = "[%s](%s) closed your pull request [%s#%v](%s)"
 		}
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
+			authorUserID = ""
+		}
 	case "reopened":
 		if author == sender {
 			return
 		}
 		message = "[%s](%s) reopened your pull request [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
+			authorUserID = ""
+		}
 	case "assigned":
 		assignee := event.GetPullRequest().GetAssignee().GetLogin()
 		if assignee == sender {
@@ -793,10 +880,13 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		}
 		message = "[%s](%s) assigned you to pull request [%s#%v](%s)"
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
+		if isPrivate && !p.permissionToRepo(assigneeUserID, repoName) {
+			assigneeUserID = ""
+		}
 	}
 
 	if len(message) > 0 {
-		message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetNumber(), event.GetPullRequest().GetHTMLURL())
+		message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), repoName, event.GetNumber(), event.GetPullRequest().GetHTMLURL())
 	}
 
 	if len(requestedUserID) > 0 {
@@ -813,6 +903,9 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	if author == sender {
 		return
 	}
+	repoName := event.GetRepo().GetFullName()
+	isPrivate := event.GetRepo().GetPrivate()
+
 	message := ""
 	authorUserID := ""
 	assigneeUserID := ""
@@ -821,9 +914,15 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	case "closed":
 		message = "[%s](%s) closed your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
+			authorUserID = ""
+		}
 	case "reopened":
 		message = "[%s](%s) reopened your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
+		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
+			authorUserID = ""
+		}
 	case "assigned":
 		assignee := event.GetAssignee().GetLogin()
 		if assignee == sender {
@@ -831,10 +930,13 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 		}
 		message = "[%s](%s) assigned you to issue [%s#%v](%s)"
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
+		if isPrivate && !p.permissionToRepo(assigneeUserID, repoName) {
+			assigneeUserID = ""
+		}
 	}
 
 	if len(message) > 0 {
-		message = fmt.Sprintf(message, sender, event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
+		message = fmt.Sprintf(message, sender, event.GetSender().GetHTMLURL(), repoName, event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
 	}
 
 	p.postIssueNotification(message, authorUserID, assigneeUserID)
@@ -864,6 +966,10 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	authorUserID := p.getGitHubToUserIDMapping(author)
 	if authorUserID == "" {
+		return
+	}
+
+	if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
 		return
 	}
 

@@ -63,6 +63,12 @@
                 "display_name": "Enterprise Upload URL",
                 "type": "text",
                 "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation. This is often the same as your Base URL."
+            },
+            {
+                "key": "EnablePrivateRepo",
+                "display_name": "Enable private repositories",
+                "type": "bool",
+                "help_text": "(Optional) make it possible to enable private repositories as well. Existing users should re-grant their access to plugin."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

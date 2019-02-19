@@ -18,6 +18,7 @@ const (
 
 type Subscription struct {
 	ChannelID  string
+	CreatorID  string
 	Features   string
 	Repository string
 }
@@ -89,6 +90,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 	sub := &Subscription{
 		ChannelID:  channelID,
+		CreatorID:  userId,
 		Features:   features,
 		Repository: fmt.Sprintf("%s/%s", owner, repo),
 	}
@@ -182,12 +184,28 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	return nil
 }
 
-func (p *Plugin) GetSubscribedChannelsForRepository(repository string) []*Subscription {
+func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
+	name := repo.GetFullName()
 	subs, err := p.GetSubscriptions()
 	if err != nil {
 		return nil
 	}
-	return subs.Repositories[repository]
+
+	subsForRepo := subs.Repositories[name]
+	if subsForRepo == nil {
+		return nil
+	}
+
+	subsToReturn := []*Subscription{}
+
+	for _, sub := range subsForRepo {
+		if repo.GetPrivate() && !p.permissionToRepo(sub.CreatorID, name) {
+			continue
+		}
+		subsToReturn = append(subsToReturn, sub)
+	}
+
+	return subsToReturn
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
