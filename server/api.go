@@ -145,6 +145,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 			DailyReminder:  true,
 			Notifications:  true,
 		},
+		AllowedPrivateRepos: config.EnablePrivateRepo,
 	}
 
 	if err := p.storeGitHubUserInfo(userInfo); err != nil {
@@ -301,6 +302,23 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 				p.PostToDo(info)
 				info.LastToDoPostAt = now
 				p.storeGitHubUserInfo(info)
+			}
+		}
+
+		privateRepoStoreKey := info.UserID + GITHUB_PRIVATE_REPO_KEY
+		if config.EnablePrivateRepo && !info.AllowedPrivateRepos {
+			hasBeenNotified := false
+			if val, err := p.API.KVGet(privateRepoStoreKey); err == nil {
+				hasBeenNotified = val != nil
+			} else {
+				mlog.Error("Unable to get private repo key value, err=" + err.Error())
+			}
+
+			if !hasBeenNotified {
+				p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect`.", "")
+				if err := p.API.KVSet(privateRepoStoreKey, []byte("1")); err != nil {
+					mlog.Error("Unable to set private repo key value, err=" + err.Error())
+				}
 			}
 		}
 	}
