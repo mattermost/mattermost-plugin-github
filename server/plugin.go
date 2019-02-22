@@ -88,6 +88,7 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	p.BotUserID = user.Id
+
 	return nil
 }
 

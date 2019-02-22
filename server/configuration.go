@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/mattermost/mattermost-server/model"
 	"github.com/pkg/errors"
 )
 
@@ -28,6 +29,7 @@ type configuration struct {
 	EncryptionKey           string
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
+	PluginsDirectory        string
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -81,7 +83,7 @@ func (p *Plugin) getConfiguration() *configuration {
 // This method panics if setConfiguration is called with the existing configuration. This almost
 // certainly means that the configuration was modified without being cloned and may result in
 // an unsafe access.
-func (p *Plugin) setConfiguration(configuration *configuration) {
+func (p *Plugin) setConfiguration(configuration *configuration, serverConfiguration *model.Config) {
 	p.configurationLock.Lock()
 	defer p.configurationLock.Unlock()
 
@@ -96,6 +98,11 @@ func (p *Plugin) setConfiguration(configuration *configuration) {
 		panic("setConfiguration called with the existing configuration")
 	}
 
+	// PluginDirectory should be set based on server configuration and not the plugin configuration
+	if serverConfiguration.PluginSettings.Directory != nil {
+		configuration.PluginsDirectory = *serverConfiguration.PluginSettings.Directory
+	}
+
 	p.configuration = configuration
 }
 
@@ -108,7 +115,9 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
 
-	p.setConfiguration(configuration)
+	serverConfiguration := p.API.GetConfig()
+
+	p.setConfiguration(configuration, serverConfiguration)
 
 	return nil
 }

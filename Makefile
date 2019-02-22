@@ -90,6 +90,7 @@ bundle:
 	rm -rf dist/
 	mkdir -p dist/$(PLUGIN_ID)
 	cp $(MANIFEST_FILE) dist/$(PLUGIN_ID)/
+	cp -r assets dist/$(PLUGIN_ID)/assets
 ifneq ($(HAS_SERVER),)
 	mkdir -p dist/$(PLUGIN_ID)/server/dist;
 	cp -r server/dist/* dist/$(PLUGIN_ID)/server/dist/;
