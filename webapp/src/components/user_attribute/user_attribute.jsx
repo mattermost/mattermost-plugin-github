@@ -5,6 +5,7 @@ export default class UserAttribute extends React.PureComponent {
     static propTypes = {
         id: PropTypes.string.isRequired,
         username: PropTypes.string,
+        enterpriseURL: PropTypes.string,
         actions: PropTypes.shape({
             getGitHubUser: PropTypes.func.isRequired,
         }).isRequired,
