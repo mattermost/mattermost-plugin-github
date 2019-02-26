@@ -98,6 +98,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	case "subscribe":
 		features := "pulls,issues,creates,deletes"
 
+		txt := ""
 		if len(parameters) == 0 {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository or 'list' command."), nil
 		} else if len(parameters) == 1 && parameters[0] == "list" {
@@ -106,7 +107,6 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
-			txt := ""
 			if len(subs) == 0 {
 				txt = "Currently there are no subscriptions in this channel"
 			} else {
@@ -116,6 +116,18 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				txt += fmt.Sprintf("* `%s` - %s\n", sub.Repository, sub.Features)
 			}
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, txt), nil
+		} else if parameters[0] == "org" {
+			if len(parameters) == 1 {
+				txt = "Organization name must be provided to subscribe"
+				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, txt), nil
+			}
+
+			org := parameters[1]
+			if err := p.SubscribeAll(context.Background(), githubClient, args.UserId, org, args.ChannelId, features); err != nil {
+				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+			}
+
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to organization %s.", org)), nil
 		} else if len(parameters) > 1 {
 			features = strings.Join(parameters[1:], " ")
 		}

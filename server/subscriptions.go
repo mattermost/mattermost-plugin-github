@@ -102,6 +102,42 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
+func (p *Plugin) SubscribeAll(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
+	if org == "" {
+		return fmt.Errorf("Invalid organization")
+	}
+
+	if err := p.checkOrg(org); err != nil {
+		return err
+	}
+
+	listOrgOptions := github.RepositoryListByOrgOptions{
+		Type: "all",
+	}
+	repos, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
+	if repos == nil || err != nil {
+		if err != nil {
+			mlog.Error(err.Error())
+		}
+		return fmt.Errorf("Unknown organization %s", org)
+	}
+
+	for _, repo := range repos {
+		sub := &Subscription{
+			ChannelID:  channelID,
+			CreatorID:  userId,
+			Features:   features,
+			Repository: fmt.Sprintf("%s/%s", org, repo.GetFullName()),
+		}
+
+		if err := p.AddSubscription(fmt.Sprintf("%s/%s", org, repo), sub); err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
