@@ -103,10 +103,13 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 }
 
 func (p *Plugin) SubscribeAll(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
+	config := p.getConfiguration()
+
 	if org == "" {
 		return fmt.Errorf("Invalid organization")
 	}
 
+	_, org = parseOwner(org, config.EnterpriseBaseURL)
 	if err := p.checkOrg(org); err != nil {
 		return err
 	}
