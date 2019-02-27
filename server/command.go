@@ -16,7 +16,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe list| - Will list the current channel subscriptions
-* |/github subscribe owner [features]| - Subscribe the current channel to an organziation and receive notifications about opened pull requests and issues from all available repositories
+* |/github subscribe owner [features]| - Subscribe the current channel to all available repositories within organziation and receive notifications about opened pull requests and issues
 * |/github subscribe owner/repo [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for a repository
   * |features| is a comma-delimited list of one or more the following:
     * issues - includes new and closed issues
