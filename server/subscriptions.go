@@ -102,7 +102,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeAll(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
+func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
 	config := p.getConfiguration()
 
 	if org == "" {

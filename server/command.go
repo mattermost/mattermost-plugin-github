@@ -123,7 +123,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			}
 
 			org := parameters[1]
-			if err := p.SubscribeAll(context.Background(), githubClient, args.UserId, org, args.ChannelId, features); err != nil {
+			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, org, args.ChannelId, features); err != nil {
 				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
