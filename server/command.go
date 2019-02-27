@@ -123,7 +123,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			}
 
 			org := parameters[1]
-			if err := p.SubscribeAll(context.Background(), githubClient, args.UserId, org, args.ChannelId, features); err != nil {
+			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, org, args.ChannelId, features); err != nil {
 				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
@@ -142,6 +142,21 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	case "unsubscribe":
 		if len(parameters) == 0 {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
+		}
+
+		if parameters[0] == "org" {
+			fmt.Println("WE ARE PTINRINTINTINTN")
+			if len(parameters) == 1 {
+				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify an organization."), nil
+			}
+
+			org := parameters[1]
+			if err := p.UnsubscribeOrg(context.Background(), githubClient, args.ChannelId, org); err != nil {
+				mlog.Error(err.Error())
+				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error trying to unsubscribe from organization. Please try again."), nil
+			}
+
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Succesfully unsubscribed from org %s.", org)), nil
 		}
 
 		repo := parameters[0]

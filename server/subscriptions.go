@@ -102,7 +102,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeAll(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
+func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
 	config := p.getConfiguration()
 
 	if org == "" {
@@ -280,6 +280,61 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 		if err := p.StoreSubscriptions(subs); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (p *Plugin) UnsubscribeOrg(ctx context.Context, githubClient *github.Client, channelID, org string) error {
+	config := p.getConfiguration()
+
+	if org == "" {
+		return fmt.Errorf("Invalid organization")
+	}
+
+	_, org = parseOwner(org, config.EnterpriseBaseURL)
+	if err := p.checkOrg(org); err != nil {
+		return err
+	}
+
+	subs, err := p.GetSubscriptions()
+	if err != nil {
+		return err
+	}
+
+	// Get all repos in an organization
+	listOrgOptions := github.RepositoryListByOrgOptions{
+		Type: "all",
+	}
+	repos, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
+	if repos == nil || err != nil {
+		if err != nil {
+			mlog.Error(err.Error())
+		}
+		return fmt.Errorf("Unknown organization %s", org)
+	}
+	orgRepos := map[string]github.Repository{}
+	for _, repo := range repos {
+		orgRepos[org+"/"+repo.GetFullName()] = *repo
+	}
+
+	for repo, repoSubs := range subs.Repositories {
+		for index, sub := range repoSubs {
+			// If repo is part of organization
+			if _, ok := orgRepos[sub.Repository]; !ok {
+				continue
+			}
+
+			if sub.ChannelID == channelID {
+				repoSubs = append(repoSubs[:index], repoSubs[index+1:]...)
+			}
+		}
+
+		subs.Repositories[repo] = repoSubs
+	}
+
+	if err := p.StoreSubscriptions(subs); err != nil {
+		return err
 	}
 
 	return nil
