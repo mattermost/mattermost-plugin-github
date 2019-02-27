@@ -68,11 +68,7 @@ func (s *Subscription) Label() string {
 	return labelSplit[1]
 }
 
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, ownerAndRepo, channelID, features string) error {
-	config := p.getConfiguration()
-
-	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
-
+func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, owner, repo, channelID, features string) error {
 	if owner == "" {
 		return fmt.Errorf("Invalid repository")
 	}
@@ -103,13 +99,9 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 }
 
 func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string) error {
-	config := p.getConfiguration()
-
 	if org == "" {
 		return fmt.Errorf("Invalid organization")
 	}
-
-	_, org = parseOwner(org, config.EnterpriseBaseURL)
 	if err := p.checkOrg(org); err != nil {
 		return err
 	}
