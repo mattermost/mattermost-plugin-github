@@ -51,6 +51,9 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
     2. Save the settings
 4. (Optional) Lock the plugin to a GitHub organization
     * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
+4. (Optional) Enable private repositories
+    * Go to System Console -> Plugins -> GitHub and set Enable Private Repositories to true
+    * Note that if you do this after users have already connected their accounts to GitHub they will need to disconnect and reconnect their accounts to be able to use private repositories
 4. (Enterprise only) Set your Enterprise URLs
     * Go to System Console -> Plugins -> GitHub and set the Enterprise Base URL and Enterprise Upload URL fields to your GitHub Enterprise URLs, ex: `https://github.example.com`
     * The Base and Upload URLs are often the same
@@ -67,7 +70,13 @@ Use `make dist` to build distributions of the plugin that you can upload to a Ma
 
 Use `make check-style` to check the style.
 
-Use `make localdeploy` to deploy the plugin to your local server. You will need to restart the server to get the changes.
+Use `make deploy` to deploy the plugin to your local server. Before running `make deploy` you need to set a few environment variables:
+
+```
+export MM_SERVICESETTINGS_SITEURL=http://localhost:8065
+export MM_ADMIN_USERNAME=admin
+export MM_ADMIN_PASSWORD=password
+```
 
 ## Frequently Asked Questions
 

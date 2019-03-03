@@ -2,7 +2,7 @@
     "id": "github",
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
-    "version": "0.7.1",
+    "version": "0.8.0",
     "server": {
       "executables": {
           "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -66,9 +66,9 @@
             },
             {
                 "key": "EnablePrivateRepo",
-                "display_name": "Enable private repositories",
+                "display_name": "Enable Private Repositories",
                 "type": "bool",
-                "help_text": "(Optional) make it possible to enable private repositories as well. Existing users should re-grant their access to plugin."
+                "help_text": "(Optional) Allow the plugin to work with private repositories. Enabling private repositories will require existing users to reconnect their accounts to gain access to private repositories. A message will be automatically be sent to affected users next time they load Mattermost alerting them of this."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

@@ -22,6 +22,7 @@ const (
 	GITHUB_TOKEN_KEY        = "_githubtoken"
 	GITHUB_STATE_KEY        = "_githubstate"
 	GITHUB_USERNAME_KEY     = "_githubusername"
+	GITHUB_PRIVATE_REPO_KEY = "_githubprivate"
 	WS_EVENT_CONNECT        = "connect"
 	WS_EVENT_DISCONNECT     = "disconnect"
 	WS_EVENT_REFRESH        = "refresh"
@@ -121,11 +122,12 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 }
 
 type GitHubUserInfo struct {
-	UserID         string
-	Token          *oauth2.Token
-	GitHubUsername string
-	LastToDoPostAt int64
-	Settings       *UserSettings
+	UserID              string
+	Token               *oauth2.Token
+	GitHubUsername      string
+	LastToDoPostAt      int64
+	Settings            *UserSettings
+	AllowedPrivateRepos bool
 }
 
 type UserSettings struct {
