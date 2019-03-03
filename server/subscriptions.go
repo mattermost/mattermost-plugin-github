@@ -108,13 +108,26 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 
 	listOrgOptions := github.RepositoryListByOrgOptions{
 		Type: "all",
+		ListOptions: github.ListOptions{
+			Page: 1,
+		},
 	}
-	repos, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
-	if repos == nil || err != nil {
-		if err != nil {
-			mlog.Error(err.Error())
+	repos := []*github.Repository{}
+	fetchingRepos := true
+
+	for fetchingRepos {
+		reposFetched, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
+		if len(repos) == 0 && (reposFetched == nil || err != nil) {
+			if err != nil {
+				mlog.Error(err.Error())
+			}
+			return fmt.Errorf("Unknown organization %s", org)
+		} else if reposFetched == nil || len(reposFetched) == 0 || err != nil {
+			break
 		}
-		return fmt.Errorf("Unknown organization %s", org)
+
+		repos = append(repos, reposFetched...)
+		listOrgOptions.ListOptions.Page += 1
 	}
 
 	for _, repo := range repos {
@@ -126,6 +139,7 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 		}
 
 		if err := p.AddSubscription(fmt.Sprintf("%s/%s", org, repo), sub); err != nil {
+			mlog.Error(err.Error())
 			continue
 		}
 	}
