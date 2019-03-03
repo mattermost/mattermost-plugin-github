@@ -311,17 +311,24 @@ func (p *Plugin) UnsubscribeOrg(ctx context.Context, githubClient *github.Client
 	// Get all repos in an organization
 	listOrgOptions := github.RepositoryListByOrgOptions{
 		Type: "all",
+		ListOptions: github.ListOptions{
+			Page: 1,
+		},
 	}
-	repos, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
-	if repos == nil || err != nil {
-		if err != nil {
-			mlog.Error(err.Error())
-		}
-		return fmt.Errorf("Unknown organization %s", org)
-	}
+
 	orgRepos := map[string]github.Repository{}
-	for _, repo := range repos {
-		orgRepos[org+"/"+repo.GetFullName()] = *repo
+	fetchingRepos := true
+	for fetchingRepos {
+		reposFetched, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
+		if reposFetched == nil || len(reposFetched) == 0 || err != nil {
+			break
+		}
+
+		for _, repo := range reposFetched {
+			orgRepos[org+"/"+repo.GetFullName()] = *repo
+		}
+
+		listOrgOptions.ListOptions.Page += 1
 	}
 
 	for repo, repoSubs := range subs.Repositories {
