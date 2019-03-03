@@ -12,6 +12,7 @@ function mapStateToProps(state, ownProps) {
     return {
         id,
         username: user.username,
+        enterpriseURL: state['plugins-github'].enterpriseURL,
     };
 }
 

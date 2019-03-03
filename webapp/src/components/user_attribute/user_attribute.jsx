@@ -5,6 +5,7 @@ export default class UserAttribute extends React.PureComponent {
     static propTypes = {
         id: PropTypes.string.isRequired,
         username: PropTypes.string,
+        enterpriseURL: PropTypes.string,
         actions: PropTypes.shape({
             getGitHubUser: PropTypes.func.isRequired,
         }).isRequired,
@@ -17,6 +18,10 @@ export default class UserAttribute extends React.PureComponent {
 
     render() {
         const username = this.props.username;
+        let baseURL = 'https://github.com';
+        if (this.props.enterpriseURL) {
+            baseURL = this.props.enterpriseURL;
+        }
 
         if (!username) {
             return null;
@@ -25,7 +30,7 @@ export default class UserAttribute extends React.PureComponent {
         return (
             <div style={style.container}>
                 <a
-                    href={'https://github.com/' + username}
+                    href={baseURL + '/' + username}
                     target='_blank'
                     rel='noopener noreferrer'
                 >
