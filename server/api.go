@@ -19,7 +19,6 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
-	GITHUB_ICON_URL            = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
 	GITHUB_USERNAME            = "GitHub Plugin"
 )
 
@@ -33,6 +32,14 @@ func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 	b, _ := json.Marshal(err)
 	w.WriteHeader(err.StatusCode)
 	w.Write(b)
+}
+
+func (p *Plugin) GetIconURL() string {
+	config := p.getConfiguration()
+	if config.GithubIconURL != "" {
+		return config.GithubIconURL
+	}
+	return "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
 }
 
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {

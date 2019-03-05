@@ -228,7 +228,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": p.GetIconURL(),
 		},
 	}
 

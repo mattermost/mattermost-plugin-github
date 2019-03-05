@@ -69,6 +69,12 @@
                 "display_name": "Enable Private Repositories",
                 "type": "bool",
                 "help_text": "(Optional) Allow the plugin to work with private repositories. Enabling private repositories will require existing users to reconnect their accounts to gain access to private repositories. A message will be automatically be sent to affected users next time they load Mattermost alerting them of this."
+            },
+            {
+                "key": "GithubIconURL",
+                "display_name": "Github bot icon URL",
+                "type": "text",
+                "help_text": "(Optional) The URL to github bot icon URL."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
