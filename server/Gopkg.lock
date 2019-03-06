@@ -452,6 +452,7 @@
     "github.com/mattermost/mattermost-server/mlog",
     "github.com/mattermost/mattermost-server/model",
     "github.com/mattermost/mattermost-server/plugin",
+    "github.com/pkg/errors",
     "github.com/stretchr/testify/assert",
     "golang.org/x/oauth2",
   ]
