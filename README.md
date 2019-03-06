@@ -1,4 +1,4 @@
-# Mattermost GitHub Plugin [![CircleCI](https://circleci.com/gh/mattermost/mattermost-plugin-github.svg?style=svg)](https://circleci.com/gh/mattermost/mattermost-plugin-github)
+# Mattermost GitHub Plugin ![CircleCI branch](https://img.shields.io/circleci/project/github/mattermost/mattermost-plugin-github/master.svg)
 
 A GitHub plugin for Mattermost. The plugin is currently in beta.
 
