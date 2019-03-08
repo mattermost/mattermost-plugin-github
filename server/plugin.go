@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
+	"github.com/pkg/errors"
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
@@ -33,6 +36,7 @@ const (
 	SETTING_REMINDERS       = "reminders"
 	SETTING_ON              = "on"
 	SETTING_OFF             = "off"
+	BOT_USER_KEY            = "bot"
 )
 
 type Plugin struct {
@@ -81,13 +85,27 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 	p.API.RegisterCommand(getCommand())
-	user, err := p.API.GetUserByUsername(config.Username)
+
+	botId, ensureBotError := p.Helpers.EnsureBot(&model.Bot{
+		Username:    "github",
+		DisplayName: "GitHub",
+		Description: "Created by the GitHub plugin.",
+	})
+	if ensureBotError != nil {
+		return errors.Wrap(ensureBotError, "failed to ensure github bot")
+	}
+	p.BotUserID = botId
+
+	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
-		mlog.Error(err.Error())
-		return fmt.Errorf("Unable to find user with configured username: %v", config.Username)
+		return &model.AppError{Message: err.Error()}
 	}
 
-	p.BotUserID = user.Id
+	profileImage, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "profile.png"))
+	if err != nil {
+		return &model.AppError{Message: err.Error()}
+	}
+	p.API.SetProfileImage(botId, profileImage)
 
 	return nil
 }
@@ -221,18 +239,11 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 		return err
 	}
 
-	config := p.getConfiguration()
-
 	post := &model.Post{
 		UserId:    p.BotUserID,
 		ChannelId: channel.Id,
 		Message:   message,
 		Type:      postType,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {

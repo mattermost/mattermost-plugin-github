@@ -166,7 +166,6 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -177,14 +176,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != "opened" && action != "labeled" && action != "closed" {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	pr := event.GetPullRequest()
@@ -212,13 +203,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	closedPRMessage := fmt.Sprintf(fmtCloseMessage, repo.GetFullName(), pr.GetNumber(), pr.GetTitle(), pr.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL())
 
 	post := &model.Post{
-		UserId: userID,
+		UserId: p.BotUserID,
 		Type:   "custom_git_pr",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	for _, sub := range subs {
@@ -263,7 +249,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 }
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -274,14 +259,6 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	action := event.GetAction()
 	if action != "opened" && action != "labeled" && action != "closed" {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	issue := event.GetIssue()
@@ -304,13 +281,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		repo.GetFullName(), issue.GetTitle(), issue.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL())
 
 	post := &model.Post{
-		UserId: userID,
+		UserId: p.BotUserID,
 		Type:   "custom_git_issue",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	for _, sub := range subs {
@@ -355,21 +327,12 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 }
 
 func (p *Plugin) postPushEvent(event *github.PushEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
 
 	if subs == nil || len(subs) == 0 {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	forced := event.GetForced()
@@ -395,13 +358,8 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	}
 
 	post := &model.Post{
-		UserId: userID,
-		Type:   "custom_git_push",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
+		UserId:  p.BotUserID,
+		Type:    "custom_git_push",
 		Message: newPushMessage,
 	}
 
@@ -418,21 +376,12 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 }
 
 func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 
 	if subs == nil || len(subs) == 0 {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	typ := event.GetRefType()
@@ -447,13 +396,8 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		sender.GetLogin(), sender.GetHTMLURL(), typ, repo.GetName(), name, repo.GetHTMLURL(), name)
 
 	post := &model.Post{
-		UserId: userID,
-		Type:   "custom_git_create",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
+		UserId:  p.BotUserID,
+		Type:    "custom_git_create",
 		Message: newCreateMessage,
 	}
 
@@ -470,21 +414,12 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 }
 
 func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 
 	if subs == nil || len(subs) == 0 {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	typ := event.GetRefType()
@@ -499,13 +434,8 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		sender.GetLogin(), sender.GetHTMLURL(), typ, repo.GetName(), name)
 
 	post := &model.Post{
-		UserId: userID,
-		Type:   "custom_git_delete",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
+		UserId:  p.BotUserID,
+		Type:    "custom_git_delete",
 		Message: newDeleteMessage,
 	}
 
@@ -522,21 +452,12 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 }
 
 func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 
 	if subs == nil || len(subs) == 0 {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	if event.GetAction() != "created" {
@@ -554,13 +475,8 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetIssue().GetNumber(), event.GetIssue().GetTitle(), body)
 
 	post := &model.Post{
-		UserId: userID,
+		UserId: p.BotUserID,
 		Type:   "custom_git_comment",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	labels := make([]string, len(event.GetIssue().Labels))
@@ -598,20 +514,11 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 }
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if subs == nil || len(subs) == 0 {
 		return
-	}
-
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
 	}
 
 	action := event.GetAction()
@@ -635,14 +542,9 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	newReviewMessage := fmt.Sprintf(fmtReviewMessage, repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetTitle(), event.GetPullRequest().GetHTMLURL(), event.GetReview().GetBody())
 
 	post := &model.Post{
-		UserId:  userID,
+		UserId:  p.BotUserID,
 		Type:    "custom_git_pull_review",
 		Message: newReviewMessage,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
@@ -676,7 +578,6 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 }
 
 func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -684,26 +585,13 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	newReviewMessage := fmt.Sprintf("[\\[%s\\]](%s) New review comment by [%s](%s) on [#%v %s](%s):\n\n%s\n%s",
 		repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetTitle(), event.GetPullRequest().GetHTMLURL(), event.GetComment().GetDiffHunk(), event.GetComment().GetBody())
 
 	post := &model.Post{
-		UserId:  userID,
+		UserId:  p.BotUserID,
 		Type:    "custom_git_pull_review_comment",
 		Message: newReviewMessage,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
@@ -743,7 +631,6 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 	}
 
 	body := event.GetComment().GetBody()
-	config := p.getConfiguration()
 
 	// Try to parse out email footer junk
 	if strings.Contains(body, "notifications@github.com") {
@@ -758,11 +645,6 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		UserId:  p.BotUserID,
 		Message: message,
 		Type:    "custom_git_mention",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	for _, username := range mentionedUsernames {
@@ -776,16 +658,16 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		userID := p.getGitHubToUserIDMapping(username)
-		if userID == "" {
+		userId := p.getGitHubToUserIDMapping(username)
+		if userId == "" {
 			continue
 		}
 
-		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userId, event.GetRepo().GetFullName()) {
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
+		channel, err := p.API.GetDirectChannel(userId, p.BotUserID)
 		if err != nil {
 			continue
 		}
@@ -796,7 +678,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			mlog.Error("Error creating mention post: " + err.Error())
 		}
 
-		p.sendRefreshEvent(userID)
+		p.sendRefreshEvent(p.BotUserID)
 	}
 }
 

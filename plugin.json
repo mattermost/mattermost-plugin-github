@@ -35,12 +35,6 @@
                 "help_text": "The webhook secret set in GitHub."
             },
             {
-                "key": "Username",
-                "display_name": "User",
-                "type": "username",
-                "help_text": "Select the username of the user that the plugin will post with. This can be any user, the name and icon will be overridden when posting."
-            },
-            {
                 "key": "EncryptionKey",
                 "display_name": "At Rest Encryption Key",
                 "type": "generated",
