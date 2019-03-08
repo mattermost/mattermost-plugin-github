@@ -22,7 +22,6 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
-	GITHUB_ICON_URL            = "/plugins/github/assets/profile.png"
 	GITHUB_USERNAME            = "GitHub Plugin"
 )
 

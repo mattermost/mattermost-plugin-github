@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path"
 	"reflect"
 
 	"github.com/mattermost/mattermost-server/model"
@@ -30,6 +31,7 @@ type configuration struct {
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
 	PluginsDirectory        string
+	ProfileImageURL         string
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -98,9 +100,12 @@ func (p *Plugin) setConfiguration(configuration *configuration, serverConfigurat
 		panic("setConfiguration called with the existing configuration")
 	}
 
-	// PluginDirectory should be set based on server configuration and not the plugin configuration
+	// PluginDirectory & ProfileImageURL should be set based on server configuration and not the plugin configuration
 	if serverConfiguration.PluginSettings.Directory != nil {
 		configuration.PluginsDirectory = *serverConfiguration.PluginSettings.Directory
+	}
+	if serverConfiguration.ServiceSettings.SiteURL != nil {
+		configuration.ProfileImageURL = path.Join(*serverConfiguration.ServiceSettings.SiteURL, "/plugins/github/assets/profile.png")
 	}
 
 	p.configuration = configuration

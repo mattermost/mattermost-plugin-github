@@ -45,12 +45,12 @@ func getCommand() *model.Command {
 	}
 }
 
-func getCommandResponse(responseType, text string) *model.CommandResponse {
+func (p *Plugin) getCommandResponse(responseType, text string) *model.CommandResponse {
 	return &model.CommandResponse{
 		ResponseType: responseType,
 		Text:         text,
 		Username:     GITHUB_USERNAME,
-		IconURL:      GITHUB_ICON_URL,
+		IconURL:      p.getConfiguration().ProfileImageURL,
 		Type:         model.POST_DEFAULT,
 	}
 }
@@ -74,10 +74,10 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	if action == "connect" {
 		config := p.API.GetConfig()
 		if config.ServiceSettings.SiteURL == nil {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error connecting to GitHub."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error connecting to GitHub."), nil
 		}
 
-		resp := getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect)", *config.ServiceSettings.SiteURL))
+		resp := p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect)", *config.ServiceSettings.SiteURL))
 		return resp, nil
 	}
 
@@ -90,7 +90,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		if apiErr.ID == API_ERROR_ID_NOT_CONNECTED {
 			text = "You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter `/github connect`."
 		}
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	}
 
 	githubClient = p.githubConnect(*info.Token)
@@ -102,11 +102,11 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 		txt := ""
 		if len(parameters) == 0 {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository or 'list' command."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository or 'list' command."), nil
 		} else if len(parameters) == 1 && parameters[0] == "list" {
 			subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 			if err != nil {
-				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+				return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
 			if len(subs) == 0 {
@@ -117,7 +117,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			for _, sub := range subs {
 				txt += fmt.Sprintf("* `%s` - %s\n", sub.Repository, sub.Features)
 			}
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, txt), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, txt), nil
 		} else if len(parameters) > 1 {
 			features = strings.Join(parameters[1:], " ")
 		}
@@ -125,62 +125,62 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		_, owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
 		if repo == "" {
 			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, owner, args.ChannelId, features); err != nil {
-				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+				return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to organization %s.", owner)), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to organization %s.", owner)), nil
 		}
 
 		if err := p.Subscribe(context.Background(), githubClient, args.UserId, owner, repo, args.ChannelId, features); err != nil {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 		}
 
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to %s.", repo)), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to %s.", repo)), nil
 	case "unsubscribe":
 		if len(parameters) == 0 {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository."), nil
 		}
 
 		repo := parameters[0]
 
 		if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
 			mlog.Error(err.Error())
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error trying to unsubscribe. Please try again."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error trying to unsubscribe. Please try again."), nil
 		}
 
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Succesfully unsubscribed from %s.", repo)), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Succesfully unsubscribed from %s.", repo)), nil
 	case "disconnect":
 		p.disconnectGitHubAccount(args.UserId)
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Disconnected your GitHub account."), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Disconnected your GitHub account."), nil
 	case "todo":
 		text, err := p.GetToDo(ctx, info.GitHubUsername, githubClient)
 		if err != nil {
 			mlog.Error(err.Error())
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your to do items."), nil
 		}
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "me":
 		gitUser, _, err := githubClient.Users.Get(ctx, "")
 		if err != nil {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your GitHub profile."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Encountered an error getting your GitHub profile."), nil
 		}
 
 		text := fmt.Sprintf("You are connected to GitHub as:\n# [![image](%s =40x40)](%s) [%s](%s)", gitUser.GetAvatarURL(), gitUser.GetHTMLURL(), gitUser.GetLogin(), gitUser.GetHTMLURL())
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "help":
 		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "":
 		text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, text), nil
 	case "settings":
 		if len(parameters) < 2 {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify both a setting and value. Use `/github help` for more usage information."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify both a setting and value. Use `/github help` for more usage information."), nil
 		}
 
 		setting := parameters[0]
 		if setting != SETTING_NOTIFICATIONS && setting != SETTING_REMINDERS {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Unknown setting."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Unknown setting."), nil
 		}
 
 		strValue := parameters[1]
@@ -188,7 +188,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		if strValue == SETTING_ON {
 			value = true
 		} else if strValue != SETTING_OFF {
-			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Invalid value. Accepted values are: \"on\" or \"off\"."), nil
+			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Invalid value. Accepted values are: \"on\" or \"off\"."), nil
 		}
 
 		if setting == SETTING_NOTIFICATIONS {
@@ -205,7 +205,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 		p.storeGitHubUserInfo(info)
 
-		return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Settings updated."), nil
+		return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Settings updated."), nil
 	}
 
 	return &model.CommandResponse{}, nil
