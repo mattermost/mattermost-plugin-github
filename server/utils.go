@@ -109,7 +109,11 @@ func parseOwnerAndRepo(full, baseURL string) (string, string, string) {
 	}
 	full = strings.TrimSuffix(strings.TrimSpace(strings.Replace(full, baseURL, "", 1)), "/")
 	splitStr := strings.Split(full, "/")
-	if len(splitStr) != 2 {
+
+	if len(splitStr) == 1 {
+		owner := splitStr[0]
+		return fmt.Sprintf("%s", owner), owner, ""
+	} else if len(splitStr) != 2 {
 		return "", "", ""
 	}
 	owner := splitStr[0]

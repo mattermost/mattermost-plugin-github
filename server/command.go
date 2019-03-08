@@ -16,6 +16,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe list| - Will list the current channel subscriptions
+* |/github subscribe owner [features]| - Subscribe the current channel to all available repositories within an organization and receive notifications about opened pull requests and issues
 * |/github subscribe owner/repo [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for a repository
   * |features| is a comma-delimited list of one or more the following:
     * issues - includes new and closed issues
@@ -96,8 +97,10 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	switch action {
 	case "subscribe":
+		config := p.getConfiguration()
 		features := "pulls,issues,creates,deletes"
 
+		txt := ""
 		if len(parameters) == 0 {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, "Please specify a repository or 'list' command."), nil
 		} else if len(parameters) == 1 && parameters[0] == "list" {
@@ -106,7 +109,6 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 			}
 
-			txt := ""
 			if len(subs) == 0 {
 				txt = "Currently there are no subscriptions in this channel"
 			} else {
@@ -120,9 +122,16 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			features = strings.Join(parameters[1:], " ")
 		}
 
-		repo := parameters[0]
+		_, owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
+		if repo == "" {
+			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, owner, args.ChannelId, features); err != nil {
+				return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
+			}
 
-		if err := p.Subscribe(context.Background(), githubClient, args.UserId, repo, args.ChannelId, features); err != nil {
+			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, fmt.Sprintf("Successfully subscribed to organization %s.", owner)), nil
+		}
+
+		if err := p.Subscribe(context.Background(), githubClient, args.UserId, owner, repo, args.ChannelId, features); err != nil {
 			return getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, err.Error()), nil
 		}
 
