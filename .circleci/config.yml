@@ -3,24 +3,43 @@ jobs:
   lint:
     docker:
       - image: circleci/golang:1.12-node
-
     working_directory: /go/src/github.com/mattermost/mattermost-plugin-github
     steps:
       - checkout
-
       - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: make check-style
 
   test:
     docker:
       - image: circleci/golang:1.12-node
-
     working_directory: /go/src/github.com/mattermost/mattermost-plugin-github
     steps:
       - checkout
-
       - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: make test
+
+  build:
+    docker:
+      - image: circleci/golang:1.12-node
+    working_directory: /go/src/github.com/mattermost/mattermost-plugin-github
+    steps:
+      - checkout
+      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: make dist
+      - persist_to_workspace:
+          root: .
+          paths: ./dist/*.tar.gz
+
+  publish-github-release:
+    docker:
+      - image: cibuilds/github:0.12
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} ./dist/statuspage-*.tar.gz
 
 workflows:
   version: 2
@@ -28,3 +47,34 @@ workflows:
     jobs:
       - lint
       - test
+  tagged-build:
+    jobs:
+      - lint:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - test:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - build:
+          requires:
+            - lint
+            - test
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
