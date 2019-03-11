@@ -3,7 +3,7 @@ executors:
   default:
     working_directory: /go/src/github.com/mattermost/mattermost-plugin-github
     docker:
-      - image: circleci/golang:golang:1.12-node
+      - image: circleci/golang:1.12-node
 
 jobs:
   lint:
