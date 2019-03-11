@@ -105,7 +105,7 @@ func (p *Plugin) setConfiguration(configuration *configuration, serverConfigurat
 		configuration.PluginsDirectory = *serverConfiguration.PluginSettings.Directory
 	}
 	if serverConfiguration.ServiceSettings.SiteURL != nil {
-		configuration.ProfileImageURL = path.Join(*serverConfiguration.ServiceSettings.SiteURL, "/plugins/github/assets/profile.png")
+		configuration.ProfileImageURL = path.Join(*serverConfiguration.ServiceSettings.SiteURL, "plugins", manifest.Id, "assets", "profile.png")
 	}
 
 	p.configuration = configuration
