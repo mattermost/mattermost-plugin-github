@@ -88,6 +88,7 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	p.BotUserID = user.Id
+
 	return nil
 }
 
@@ -220,6 +221,8 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 		return err
 	}
 
+	config := p.getConfiguration()
+
 	post := &model.Post{
 		UserId:    p.BotUserID,
 		ChannelId: channel.Id,
@@ -228,7 +231,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 

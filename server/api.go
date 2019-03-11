@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +22,6 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
-	GITHUB_ICON_URL            = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
 	GITHUB_USERNAME            = "GitHub Plugin"
 )
 
@@ -48,6 +50,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	switch path := r.URL.Path; path {
 	case "/webhook":
 		p.handleWebhook(w, r)
+	case "/assets/profile.png":
+		p.handleProfileImage(w, r)
 	case "/oauth/connect":
 		p.connectUserToGitHub(w, r)
 	case "/oauth/complete":
@@ -205,6 +209,21 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
+}
+
+func (p *Plugin) handleProfileImage(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
+	img, err := os.Open(filepath.Join(config.PluginsDirectory, manifest.Id, "assets", "profile.png"))
+	if err != nil {
+		http.NotFound(w, r)
+		mlog.Error("Unable to read github profile image, err=" + err.Error())
+		return
+	}
+	defer img.Close()
+
+	w.Header().Set("Content-Type", "image/png")
+	io.Copy(w, img)
 }
 
 type ConnectedResponse struct {

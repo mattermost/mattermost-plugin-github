@@ -217,7 +217,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 
@@ -309,7 +309,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 
@@ -400,7 +400,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 		Message: newPushMessage,
 	}
@@ -452,7 +452,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 		Message: newCreateMessage,
 	}
@@ -504,7 +504,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 		Message: newDeleteMessage,
 	}
@@ -559,7 +559,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 
@@ -641,7 +641,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 
@@ -702,7 +702,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 
@@ -738,6 +738,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
 	body := event.GetComment().GetBody()
+	config := p.getConfiguration()
 
 	// Try to parse out email footer junk
 	if strings.Contains(body, "notifications@github.com") {
@@ -755,7 +756,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		Props: map[string]interface{}{
 			"from_webhook":      "true",
 			"override_username": GITHUB_USERNAME,
-			"override_icon_url": GITHUB_ICON_URL,
+			"override_icon_url": config.ProfileImageURL,
 		},
 	}
 
