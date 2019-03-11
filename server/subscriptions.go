@@ -122,10 +122,10 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 			ChannelID:  channelID,
 			CreatorID:  userId,
 			Features:   features,
-			Repository: fmt.Sprintf("%s/%s", org, repo.GetFullName()),
+			Repository: repo.GetFullName(),
 		}
 
-		if err := p.AddSubscription(fmt.Sprintf("%s/%s", org, repo), sub); err != nil {
+		if err := p.AddSubscription(sub.Repository, sub); err != nil {
 			continue
 		}
 	}
