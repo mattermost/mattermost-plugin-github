@@ -2,6 +2,8 @@
 
 A GitHub plugin for Mattermost. The plugin is currently in beta.
 
+![GitHub plugin screenshot](https://user-images.githubusercontent.com/13119842/54380268-6adab180-4661-11e9-8470-a9c615c00041.png)
+
 ## Features
 
 * __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
