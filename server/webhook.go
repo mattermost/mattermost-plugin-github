@@ -818,12 +818,12 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	message := ""
 	switch splitURL[len(splitURL)-2] {
 	case "pull":
-		message = "[%s](%s) commented on your pull request [%s#%v](%s)"
+		message = "[%s](%s) %s comment on your pull request [%s#%v](%s)"
 	case "issues":
-		message = "[%s](%s) commented on your issue [%s#%v](%s)"
+		message = "[%s](%s) %s comment on your issue [%s#%v](%s)"
 	}
 
-	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
+	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetAction(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_author")
 	p.sendRefreshEvent(authorUserID)
