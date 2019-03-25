@@ -106,18 +106,24 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 		return err
 	}
 
-	listOrgOptions := github.RepositoryListByOrgOptions{
-		Type: "all",
+	opt := &github.RepositoryListByOrgOptions{
+		ListOptions: github.ListOptions{PerPage: 50},
+		Type:        "all",
 	}
-	repos, _, err := githubClient.Repositories.ListByOrg(ctx, org, &listOrgOptions)
-	if repos == nil || err != nil {
+	var allRepos []*github.Repository
+	for {
+		repos, resp, err := githubClient.Repositories.ListByOrg(ctx, org, opt)
 		if err != nil {
-			mlog.Error(err.Error())
+			return err
 		}
-		return fmt.Errorf("Unknown organization %s", org)
+		allRepos = append(allRepos, repos...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 
-	for _, repo := range repos {
+	for _, repo := range allRepos {
 		sub := &Subscription{
 			ChannelID:  channelID,
 			CreatorID:  userId,
@@ -126,6 +132,7 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 		}
 
 		if err := p.AddSubscription(sub.Repository, sub); err != nil {
+			mlog.Error(err.Error())
 			continue
 		}
 	}
