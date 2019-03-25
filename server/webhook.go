@@ -801,6 +801,11 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 		return
 	}
 
+	action := event.GetAction()
+	if action == "edited" || action == "deleted" {
+		return
+	}
+
 	authorUserID := p.getGitHubToUserIDMapping(author)
 	if authorUserID == "" {
 		return
