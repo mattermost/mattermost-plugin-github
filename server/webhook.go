@@ -737,6 +737,11 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 }
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
+	action := event.GetAction()
+	if action == "edited" || action == "deleted" {
+		return
+	}
+
 	body := event.GetComment().GetBody()
 	config := p.getConfiguration()
 
