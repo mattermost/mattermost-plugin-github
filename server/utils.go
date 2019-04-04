@@ -112,7 +112,7 @@ func parseOwnerAndRepo(full, baseURL string) (string, string, string) {
 
 	if len(splitStr) == 1 {
 		owner := splitStr[0]
-		return fmt.Sprintf("%s", owner), owner, ""
+		return fmt.Sprintf("%s/", owner), owner, ""
 	} else if len(splitStr) != 2 {
 		return "", "", ""
 	}
@@ -157,4 +157,8 @@ func fixGithubNotificationSubjectURL(url string) string {
 	url = strings.Replace(url, "/pulls/", "/pull/", 1)
 	url = strings.Replace(url, "/api/v3", "", 1)
 	return url
+}
+
+func fullNameFromOwnerAndRepo(owner, repo string) string {
+	return fmt.Sprintf("%s/%s", owner, repo)
 }

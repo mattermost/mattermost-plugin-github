@@ -16,8 +16,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe list| - Will list the current channel subscriptions
-* |/github subscribe owner [features]| - Subscribe the current channel to all available repositories within an organization and receive notifications about opened pull requests and issues
-* |/github subscribe owner/repo [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for a repository
+* |/github subscribe owner[/repo] [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository
   * |features| is a comma-delimited list of one or more the following:
     * issues - includes new and closed issues
 	* pulls - includes new and closed pull requests
@@ -115,7 +114,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				txt = "### Subscriptions in this channel\n"
 			}
 			for _, sub := range subs {
-				txt += fmt.Sprintf("* `%s` - %s\n", sub.Repository, sub.Features)
+				txt += fmt.Sprintf("* `%s` - %s\n", strings.Trim(sub.Repository, "/"), sub.Features)
 			}
 			return p.getCommandResponse(model.COMMAND_RESPONSE_TYPE_EPHEMERAL, txt), nil
 		} else if len(parameters) > 1 {
