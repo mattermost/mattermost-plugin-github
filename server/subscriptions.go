@@ -77,21 +77,40 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		return err
 	}
 
-	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
-		if err != nil {
-			mlog.Error(err.Error())
+	var err error
+
+	if repo == "" {
+		var ghOrg *github.Organization
+		ghOrg, _, err = githubClient.Organizations.Get(ctx, owner)
+		if ghOrg == nil {
+			var ghUser *github.User
+			ghUser, _, err = githubClient.Users.Get(ctx, owner)
+			if ghUser == nil {
+				return fmt.Errorf("Unknown organization %s", owner)
+			}
 		}
-		return fmt.Errorf("Unknown repository %s/%s", owner, repo)
+	} else {
+		var ghRepo *github.Repository
+		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
+
+		if ghRepo == nil {
+			return fmt.Errorf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
+		}
+	}
+
+	if err != nil {
+		mlog.Error(err.Error())
+		return fmt.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
 	sub := &Subscription{
 		ChannelID:  channelID,
 		CreatorID:  userId,
 		Features:   features,
-		Repository: fmt.Sprintf("%s/%s", owner, repo),
+		Repository: fullNameFromOwnerAndRepo(owner, repo),
 	}
 
-	if err := p.AddSubscription(fmt.Sprintf("%s/%s", owner, repo), sub); err != nil {
+	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
 		return err
 	}
 
@@ -102,42 +121,8 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	if org == "" {
 		return fmt.Errorf("Invalid organization")
 	}
-	if err := p.checkOrg(org); err != nil {
-		return err
-	}
 
-	opt := &github.RepositoryListByOrgOptions{
-		ListOptions: github.ListOptions{PerPage: 50},
-		Type:        "all",
-	}
-	var allRepos []*github.Repository
-	for {
-		repos, resp, err := githubClient.Repositories.ListByOrg(ctx, org, opt)
-		if err != nil {
-			return err
-		}
-		allRepos = append(allRepos, repos...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.Page = resp.NextPage
-	}
-
-	for _, repo := range allRepos {
-		sub := &Subscription{
-			ChannelID:  channelID,
-			CreatorID:  userId,
-			Features:   features,
-			Repository: repo.GetFullName(),
-		}
-
-		if err := p.AddSubscription(sub.Repository, sub); err != nil {
-			mlog.Error(err.Error())
-			continue
-		}
-	}
-
-	return nil
+	return p.Subscribe(ctx, githubClient, userId, org, "", channelID, features)
 }
 
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
@@ -224,13 +209,25 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
+	org := strings.Split(name, "/")[0]
 	subs, err := p.GetSubscriptions()
 	if err != nil {
 		return nil
 	}
 
-	subsForRepo := subs.Repositories[name]
-	if subsForRepo == nil {
+	// Add subcriptions for the specific repo
+	subsForRepo := []*Subscription{}
+	if subs.Repositories[name] != nil {
+		subsForRepo = append(subsForRepo, subs.Repositories[name]...)
+	}
+
+	// Add subcriptions for the organization
+	orgKey := fullNameFromOwnerAndRepo(org, "")
+	if subs.Repositories[orgKey] != nil {
+		subsForRepo = append(subsForRepo, subs.Repositories[orgKey]...)
+	}
+
+	if len(subsForRepo) == 0 {
 		return nil
 	}
 
