@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path"
 	"reflect"
 
 	"github.com/mattermost/mattermost-server/model"
@@ -105,7 +104,9 @@ func (p *Plugin) setConfiguration(configuration *configuration, serverConfigurat
 		configuration.PluginsDirectory = *serverConfiguration.PluginSettings.Directory
 	}
 	if serverConfiguration.ServiceSettings.SiteURL != nil {
-		configuration.ProfileImageURL = path.Join(*serverConfiguration.ServiceSettings.SiteURL, "plugins", manifest.Id, "assets", "profile.png")
+		// Temporary patch until issue with image proxy is solved
+		configuration.ProfileImageURL = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+		//configuration.ProfileImageURL = path.Join(*serverConfiguration.ServiceSettings.SiteURL, "plugins", manifest.Id, "assets", "profile.png")
 	}
 
 	p.configuration = configuration
