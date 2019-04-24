@@ -89,6 +89,8 @@ func (p *Plugin) OnActivate() error {
 
 	p.BotUserID = user.Id
 
+	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
+
 	return nil
 }
 
@@ -191,6 +193,16 @@ func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error
 func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	userID, _ := p.API.KVGet(githubUsername + GITHUB_USERNAME_KEY)
 	return string(userID)
+}
+
+// getGitHubToUsernameMapping maps a GitHub username to the corresponding Mattermost username, if any.
+func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
+	user, _ := p.API.GetUser(p.getGitHubToUserIDMapping(githubUsername))
+	if user == nil {
+		return ""
+	}
+
+	return user.Username
 }
 
 func (p *Plugin) disconnectGitHubAccount(userID string) {
