@@ -79,7 +79,7 @@ If you run your Mattermost server in [High Availability mode](https://docs.matte
             "encryptionkey": "<your encryption key, from step 5 above>",
             "githuboauthclientid": "<your oauth client id, from step 2 above>",
             "githuboauthclientsecret": "<your oauth client secret, from step 2 above>",
-            "githuborg": "<your github org",
+            "githuborg": "<your github org>",
             "username": "<your user account to attach the plugin to, from step 4 above>",
             "webhooksecret": "<your webhook secret, from step 3 above>"
         },
