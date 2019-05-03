@@ -64,6 +64,36 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
 6. Test it out
     * In Mattermost, run the slash command `/github connect`
 
+### Installation Notes in HA
+
+If you run your Mattermost server in [High Availability mode](https://docs.mattermost.com/deployment/cluster.html), please review the following:
+
+1. To install the plugin in step 1 above, [use these documented steps](https://docs.mattermost.com/administration/plugins.html#plugin-uploads-in-high-availability-mode)
+2. Then, modify the config.json [using the standard doc steps](https://docs.mattermost.com/deployment/cluster.html#updating-configuration-changes-while-operating-continuously) to the following
+
+```
+"PluginSettings": {
+    ...
+    "Plugins": {
+        "github": {
+            "encryptionkey": "<your encryption key, from step 5 above>",
+            "githuboauthclientid": "<your oauth client id, from step 2 above>",
+            "githuboauthclientsecret": "<your oauth client secret, from step 2 above>",
+            "githuborg": "<your github org",
+            "username": "<your user account to attach the plugin to, from step 4 above>",
+            "webhooksecret": "<your webhook secret, from step 3 above>"
+        },
+    ...
+    "PluginStates": {
+        ...
+        "github": {
+            "Enable": true
+        },
+        ...
+    }
+},
+```
+
 ## Developing 
 
 This plugin contains both a server and web app portion.
