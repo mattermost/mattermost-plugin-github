@@ -24,7 +24,7 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
 
 1. Install the plugin
     1. Download the latest version of the plugin from the GitHub releases page
-    2. In Mattermost, go the System Console -> Plugins -> Management
+    2. In Mattermost, go to System Console -> Plugins -> Management
     3. Upload the plugin
 2. Register a GitHub OAuth app
     1. Go to https://github.com/settings/applications/new
