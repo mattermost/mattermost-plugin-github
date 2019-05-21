@@ -111,7 +111,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 func TestClosedPRMessageTemplate(t *testing.T) {
 	t.Run("merged", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was merged by [panda](https://github.com/panda).
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was merged by [panda](https://github.com/panda).
 `
 
 		actual, err := renderTemplate("closedPR", &github.PullRequestEvent{
@@ -125,7 +125,7 @@ func TestClosedPRMessageTemplate(t *testing.T) {
 
 	t.Run("closed", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was closed by [panda](https://github.com/panda).
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was closed by [panda](https://github.com/panda).
 `
 
 		actual, err := renderTemplate("closedPR", &github.PullRequestEvent{
@@ -177,7 +177,7 @@ git-get-head sounds like a great feature we should support
 
 func TestClosedIssueTemplate(t *testing.T) {
 	expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
 `
 
 	actual, err := renderTemplate("closedIssue", &github.IssuesEvent{
@@ -211,7 +211,7 @@ func TestIssueLabelledTemplate(t *testing.T) {
 func TestPushedCommitsTemplate(t *testing.T) {
 	t.Run("single commit", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) pushed [1 new commit](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\\[mattermost-plugin-github:branch\\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
+[panda](https://github.com/panda) pushed [1 new commit](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
 [` + "`a10867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240) Leverage git-get-head - panda
 `
 
@@ -238,7 +238,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 	t.Run("single commit, forced", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) force-pushed [1 new commit](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\\[mattermost-plugin-github:branch\\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
+[panda](https://github.com/panda) force-pushed [1 new commit](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
 [` + "`a10867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240) Leverage git-get-head - panda
 `
 
@@ -265,7 +265,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 	t.Run("two commits", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) pushed [2 new commits](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\\[mattermost-plugin-github:branch\\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
+[panda](https://github.com/panda) pushed [2 new commits](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
 [` + "`a10867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240) Leverage git-get-head - panda
 [` + "`a20867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a20867b14bb761a232cd80139fbd4c0d33264240) Merge master - panda
 `
@@ -301,7 +301,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 	t.Run("three commits", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) pushed [3 new commits](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\\[mattermost-plugin-github:branch\\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
+[panda](https://github.com/panda) pushed [3 new commits](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
 [` + "`a10867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240) Leverage git-get-head - panda
 [` + "`a20867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a20867b14bb761a232cd80139fbd4c0d33264240) Merge master - panda
 [` + "`a30867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a30867b14bb761a232cd80139fbd4c0d33264240) Fix build - panda
@@ -347,7 +347,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 func TestCreateMessageTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) just created branch [\\[mattermost-plugin-github:branch\\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch)
+[panda](https://github.com/panda) just created branch [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch)
 `
 
 	actual, err := renderTemplate("newCreateMessage", &github.CreateEvent{
@@ -362,7 +362,7 @@ func TestCreateMessageTemplate(t *testing.T) {
 
 func TestDeletedMessageTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) just deleted branch \\[mattermost-plugin-github:branch\\]
+[panda](https://github.com/panda) just deleted branch \[mattermost-plugin-github:branch]
 `
 
 	actual, err := renderTemplate("newDeleteMessage", &github.DeleteEvent{
@@ -378,7 +378,7 @@ func TestDeletedMessageTemplate(t *testing.T) {
 func TestIssueCommentTemplate(t *testing.T) {
 	t.Run("non-email body", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 `
@@ -397,7 +397,7 @@ git-get-head sounds like a great feature we should support
 
 	t.Run("email body", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 `
@@ -418,7 +418,7 @@ git-get-head sounds like a great feature we should support
 func TestPullRequestReviewEventTemplate(t *testing.T) {
 	t.Run("approved", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 `
@@ -438,7 +438,7 @@ Excited to see git-get-head land!
 
 	t.Run("commented", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) commented on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) commented on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 `
@@ -458,7 +458,7 @@ Excited to see git-get-head land!
 
 	t.Run("requested changes", func(t *testing.T) {
 		expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) requested changes on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) requested changes on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 `
@@ -479,7 +479,7 @@ Excited to see git-get-head land!
 
 func TestPullRequestReviewCommentEventTemplate(t *testing.T) {
 	expected := `
-[\\[mattermost-plugin-github\\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 HUNK
 Should this be here?
