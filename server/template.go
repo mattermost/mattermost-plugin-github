@@ -51,7 +51,7 @@ func init() {
 
 	// The repo template links to the corresponding repository.
 	template.Must(masterTemplate.New("repo").Parse(
-		`[\\[{{.GetFullName}}\\]]({{.GetHTMLURL}})`,
+		`[\[{{.GetFullName}}\]]({{.GetHTMLURL}})`,
 	))
 
 	// The eventRepoPullRequest links to the corresponding pull request, anchored at the repo.
@@ -115,18 +115,18 @@ func init() {
 `))
 
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} {{if .GetForced}}force-{{end}}pushed [{{len .Commits}} new commit{{if ne (len .Commits) 1}}s{{end}}]({{.GetCompare}}) to [\\[{{.GetRepo.GetFullName}}:{{.GetRef | trimRef}}\\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef | trimRef}}):
+{{template "user" .GetSender}} {{if .GetForced}}force-{{end}}pushed [{{len .Commits}} new commit{{if ne (len .Commits) 1}}s{{end}}]({{.GetCompare}}) to [\[{{.GetRepo.GetFullName}}:{{.GetRef | trimRef}}\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef | trimRef}}):
 {{range .Commits -}}
 [` + "`{{.GetID | substr 0 6}}`" + `]({{.GetURL}}) {{.GetMessage}} - {{.GetCommitter.GetName}}
 {{end -}}
 `))
 
 	template.Must(masterTemplate.New("newCreateMessage").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} just created {{.GetRefType}} [\\[{{.GetRepo.GetFullName}}:{{.GetRef}}\\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef}})
+{{template "user" .GetSender}} just created {{.GetRefType}} [\[{{.GetRepo.GetFullName}}:{{.GetRef}}\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef}})
 `))
 
 	template.Must(masterTemplate.New("newDeleteMessage").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} just deleted {{.GetRefType}} \\[{{.GetRepo.GetFullName}}:{{.GetRef}}\\]
+{{template "user" .GetSender}} just deleted {{.GetRefType}} \[{{.GetRepo.GetFullName}}:{{.GetRef}}]
 `))
 
 	template.Must(masterTemplate.New("issueComment").Funcs(funcMap).Parse(`
