@@ -2,17 +2,6 @@ version: 2.1
 
 orbs:
   plugin-ci: mattermost/plugin-ci@volatile
-jobs:
-  publish-github-release:
-    docker:
-      - image: cibuilds/github:0.12
-    steps:
-      - attach_workspace:
-          at: dist
-      - run:
-          name: "Publish Release on GitHub"
-          command: |
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${CIRCLE_TAG} ./dist/*.tar.gz
 workflows:
   ci-build:
     jobs:
@@ -48,13 +37,14 @@ workflows:
             - plugin-ci/lint
             - plugin-ci/test
             - plugin-ci/build
-      - publish-github-release:
-          requires:
-            - plugin-ci/lint
-            - plugin-ci/test
-            - plugin-ci/build
+      - plugin-ci/deploy-release-github:
           filters:
             tags:
               only: /^v.*/
             branches:
               ignore: /.*/
+          context: matterbuild-github-token
+          requires:
+            - plugin-ci/lint
+            - plugin-ci/test
+            - plugin-ci/build
