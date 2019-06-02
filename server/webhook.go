@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
+
+	"github.com/google/go-github/v25/github"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
