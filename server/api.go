@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
 
+	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
 
