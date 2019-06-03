@@ -1,6 +1,6 @@
 # Mattermost GitHub Plugin ![CircleCI branch](https://img.shields.io/circleci/project/github/mattermost/mattermost-plugin-github/master.svg)
 
-A GitHub plugin for Mattermost. The plugin is currently in beta.
+A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ![GitHub plugin screenshot](https://user-images.githubusercontent.com/13119842/54380268-6adab180-4661-11e9-8470-a9c615c00041.png)
 
@@ -10,65 +10,74 @@ A GitHub plugin for Mattermost. The plugin is currently in beta.
 * __Notifications__ - get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
 * __Sidebar buttons__ - stay up-to-date with how many reviews, unread messages, assignments and open pull requests you have with buttons in the Mattermost sidebar
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
-    * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive posts for new pull requests and/or issues in a GitHub repository
-    * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub
-    * __Update settings__ - Use `/github settings` to update your settings for the plugin
+    * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation and more in a GitHub repository.
+        - For instance, to post notifications for issues, issue comments and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use
+        
+          ```
+          /github subscribe mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
+          ```
+
+    * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review
+    * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders
     * __And more!__ - Run `/github help` to see what else the slash command can do
-* __Supports GitHub Enterprise__ - Works with SaaS and Enterprise versions of GitHub (Enterprise support added in version 0.6.0)
 
-## Installation
+To use any of the above features, first connect your Mattermost account to your GitHub account with `/github connect`.
 
-__Requires Mattermost 5.2 or higher. If you're running Mattermost 5.6+, it is strongly recommended to use plugin version 0.7.1+__
+## Configuration
 
-__If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL__
+__If you are using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL__
 
-1. Install the plugin
-    1. Download the latest version of the plugin from the GitHub releases page
-    2. In Mattermost, go to System Console -> Plugins -> Management
-    3. Upload the plugin
-2. Register a GitHub OAuth app
-    1. Go to https://github.com/settings/applications/new
-        * Use "Mattermost GitHub Plugin - <your company name>" as the name
-        * Use "https://github.com/mattermost/mattermost-plugin-github" as the homepage
-        * Use "https://your-mattermost-url.com/plugins/github/oauth/complete" as the authorization callback URL, replacing `https://your-mattermost-url.com` with your Mattermost URL
-        * Submit and copy the Client ID and Secret
-    2. In Mattermost, go to System Console -> Plugins -> GitHub
-        * Fill in the Client ID and Secret and save the settings
-3. Create a GitHub webhook
-    1. In Mattermost, go to the System Console -> Plugins -> GitHub and copy the "Webhook Secret"
-    2. Go to the settings page of your GitHub organization and click on "Webhooks" in the sidebar
-        * Click "Add webhook"
-        * Use "https://your-mattermost-url.com/plugins/github/webhook" as the payload URL, replacing `https://your-mattermost-url.com` with your Mattermost URL
-        * Change content type to "application/json"
-        * Paste the webhook secret you copied before into the secret field
-        * Select the events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments, Pushes, Branch or Tag creation and Branch or Tag deletion
-    3. Save the webhook
-    4. __Note for each organization you want to receive notifications for or subscribe to, you must create a webhook__
-4. Configure a bot account
-    1. Create a new Mattermost user, through the regular UI or the CLI with the username "github"
-    2. Go to the System Console -> Plugins -> GitHub and select this user in the User setting
-    3. Save the settings
-4. Generate an at rest encryption key
-    1. Go to the System Console -> Plugins -> GitHub and click "Regenerate" under "At Rest Encryption Key"
-    2. Save the settings
-4. (Optional) Lock the plugin to a GitHub organization
-    * Go to System Console -> Plugins -> GitHub and set the GitHub Organization field to the name of your GitHub organization
-4. (Optional) Enable private repositories
-    * Go to System Console -> Plugins -> GitHub and set Enable Private Repositories to true
-    * Note that if you do this after users have already connected their accounts to GitHub they will need to disconnect and reconnect their accounts to be able to use private repositories
-4. (Enterprise only) Set your Enterprise URLs
-    * Go to System Console -> Plugins -> GitHub and set the Enterprise Base URL and Enterprise Upload URL fields to your GitHub Enterprise URLs, ex: `https://github.example.com`
-    * The Base and Upload URLs are often the same
-5. Enable the plugin
-    * Go to System Console -> Plugins -> Management and click "Enable" underneath the GitHub plugin
-6. Test it out
-    * In Mattermost, run the slash command `/github connect`
+### Step 1: Register an OAuth application in GitHub
 
-### Installation Notes in HA
+1. Go to https://github.com/settings/applications/new to register an OAuth app.
+2. Set the following values:
+   - "Mattermost GitHub Plugin - <your company name>" as the **Application Name**.
+   - "https://github.com/mattermost/mattermost-plugin-github" as the **Homepage URL**.
+   - "https://your-mattermost-url.com/plugins/github/oauth/complete" as the **Authorization callback URL**, replacing `https://your-mattermost-url.com` with your Mattermost URL.
+3. Submit. Copy the **Client ID** and **Client Secret** in the resulting screen.
+4. Go to **System Console > Plugins > GitHub** and enter **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.
+   
+   **Note**: If you are running Mattermost v5.11 or earlier, you must first go to the [releases page of this GitHub repository](https://github.com/mattermost/mattermost-plugin-github/releases), download the latest release, and upload it to your Mattermost instance [following this documentation](https://docs.mattermost.com/administration/plugins.html#plugin-uploads).
+5. Hit **Save**.
 
-If you run your Mattermost server in [High Availability mode](https://docs.mattermost.com/deployment/cluster.html), please review the following:
+### Step 2: Create a webhook in GitHub
 
-1. To install the plugin in step 1 above, [use these documented steps](https://docs.mattermost.com/administration/plugins.html#plugin-uploads-in-high-availability-mode)
+1. In **System Console > Plugins > GitHub**, generate a new value for **Webhook Secret**. Copy it as you will use it in a later step.
+2. Hit **Save** to save the secret.
+3. Go to the **Settings** page of your GitHub organization you want to send notifications from, then select **Webhooks** in the sidebar.
+   
+   **Note**: You must create a webhook for each organization you want to receive notifications for or subscribe to.
+
+4. Click **Add webhook**
+5. Set the following values:
+   - "https://your-mattermost-url.com/plugins/github/webhook" as the **Payload URL**, replacing `https://your-mattermost-url.com` with your Mattermost URL
+   - "application/json" as the **Content Type**
+   - the webhook secret you copied previously as the **Secret**
+6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?", then select the following events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments, Pushes, Branch or Tag creation, Branch or Tag deletion
+7. Hit **Add Webhook** to save it.
+
+### Step 3: Configure plugin in Mattermost
+
+1. Create a new Mattermost user, through the regular UI or the CLI with the username `github`.
+2. Go to **System Console > Plugins > GitHub** and do the following values:
+  - Set "github` as the **User**.
+  - Generate a new value for **At Rest Encryption Key**.
+  - (Optional) Lock the plugin to a single GitHub organization by setting the **GitHub Organization** field to the name of your GitHub organization.
+  - (Optional) Allow the plugin to receive notifications from private repositories by setting **Enable Private Repositories** to true.
+   
+    When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.
+
+  - (Enterprise only) Set the **Enterprise Base URL** and **Enterprise Upload URL** to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same.
+3. Hit **Save*.
+4. Go to **System Console > Plugins > Management** and click **Enable** to enable the GitHub plugin.
+
+You're all set! To test it, run the `/github connect` slash command to connect your Mattermost account with GitHub.
+
+### Configuration Notes in HA
+
+If you are running Mattermost v5.11 or earlier in [High Availability mode](https://docs.mattermost.com/deployment/cluster.html), please review the following:
+
+1. To install the plugin, [use these documented steps](https://docs.mattermost.com/administration/plugins.html#plugin-uploads-in-high-availability-mode)
 2. Then, modify the config.json [using the standard doc steps](https://docs.mattermost.com/deployment/cluster.html#updating-configuration-changes-while-operating-continuously) to the following
 
 ```
@@ -94,7 +103,7 @@ If you run your Mattermost server in [High Availability mode](https://docs.matte
 },
 ```
 
-## Developing 
+## Development
 
 This plugin contains both a server and web app portion.
 
