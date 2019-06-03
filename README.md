@@ -125,6 +125,10 @@ Set up your GitHub webhook from the repository instead of the organization. Noti
 
 The reminder and `/github todo` will still search the whole organization, but only list items assigned to you.
 
-## Feedback and Feature Requests
+## How do I share feedback on this plugin?
 
 Feel free to create a GitHub issue or [join the GitHub Plugin channel on our community Mattermost instance](https://pre-release.mattermost.com/core/channels/github-plugin) to discuss.
+
+## How does the plugin save user data for each connected GitHub user?
+
+GitHub user tokens are AES encrypted with an At Rest Encryption Key configured in the plugin's settings page. Once encrypted, the tokens are saved in the `PluginKeyValueStore` table in your Mattermost database.
