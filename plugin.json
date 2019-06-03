@@ -68,7 +68,7 @@
                 "key": "EnablePrivateRepo",
                 "display_name": "Enable Private Repositories",
                 "type": "bool",
-                "help_text": "(Optional) Allow the plugin to work with private repositories. Enabling private repositories will require existing users to reconnect their accounts to gain access to private repositories. A message will be automatically be sent to affected users next time they load Mattermost alerting them of this."
+                "help_text": "(Optional) Allow the plugin to work with private repositories. When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
