@@ -3,6 +3,7 @@
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
     "version": "0.9.1",
+    "min_server_version": "5.12.0",
     "server": {
       "executables": {
           "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -33,12 +34,6 @@
                 "display_name": "Webhook Secret",
                 "type": "generated",
                 "help_text": "The webhook secret set in GitHub."
-            },
-            {
-                "key": "Username",
-                "display_name": "User",
-                "type": "username",
-                "help_text": "Select the username of the user that the plugin will post with. This can be any user, the name and icon will be overridden when posting."
             },
             {
                 "key": "EncryptionKey",
