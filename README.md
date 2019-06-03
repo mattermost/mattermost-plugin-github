@@ -60,7 +60,7 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
 
 1. Create a new Mattermost user, through the regular UI or the CLI with the username `github`.
 2. Go to **System Console > Plugins > GitHub** and do the following values:
-  - Set "github` as the **User**.
+  - Set "github" as the **User**.
   - Generate a new value for **At Rest Encryption Key**.
   - (Optional) Lock the plugin to a single GitHub organization by setting the **GitHub Organization** field to the name of your GitHub organization.
   - (Optional) Allow the plugin to receive notifications from private repositories by setting **Enable Private Repositories** to true.
@@ -68,7 +68,7 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
     When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.
 
   - (Enterprise only) Set the **Enterprise Base URL** and **Enterprise Upload URL** to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same.
-3. Hit **Save*.
+3. Hit **Save**.
 4. Go to **System Console > Plugins > Management** and click **Enable** to enable the GitHub plugin.
 
 You're all set! To test it, run the `/github connect` slash command to connect your Mattermost account with GitHub.
