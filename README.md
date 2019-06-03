@@ -18,7 +18,7 @@ A GitHub plugin for Mattermost. The plugin is currently in beta.
 
 ## Installation
 
-__Requires Mattermost 5.2 or higher. If you're running Mattermost 5.6+, it is strongly recommended to use plugin version 0.7.1+__
+__Requires Mattermost 5.12 or higher. If you're running an earlier version, use v0.9.1 as it supports 5.2+__
 
 __If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL__
 
@@ -44,10 +44,6 @@ __If you're using GitHub Enterprise, replace all GitHub links below with your Gi
         * Select the events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments, Pushes, Branch or Tag creation and Branch or Tag deletion
     3. Save the webhook
     4. __Note for each organization you want to receive notifications for or subscribe to, you must create a webhook__
-4. Configure a bot account
-    1. Create a new Mattermost user, through the regular UI or the CLI with the username "github"
-    2. Go to the System Console -> Plugins -> GitHub and select this user in the User setting
-    3. Save the settings
 4. Generate an at rest encryption key
     1. Go to the System Console -> Plugins -> GitHub and click "Regenerate" under "At Rest Encryption Key"
     2. Save the settings
@@ -80,7 +76,6 @@ If you run your Mattermost server in [High Availability mode](https://docs.matte
             "githuboauthclientid": "<your oauth client id, from step 2 above>",
             "githuboauthclientsecret": "<your oauth client secret, from step 2 above>",
             "githuborg": "<your github org>",
-            "username": "<your user account to attach the plugin to, from step 4 above>",
             "webhooksecret": "<your webhook secret, from step 3 above>"
         },
     ...

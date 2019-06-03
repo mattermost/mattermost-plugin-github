@@ -50,7 +50,7 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 		ChannelId: args.ChannelId,
 		Message:   text,
 	}
-	p.API.SendEphemeralPost(args.UserId, post)
+	_ = p.API.SendEphemeralPost(args.UserId, post)
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {

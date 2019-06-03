@@ -86,26 +86,30 @@ func (p *Plugin) OnActivate() error {
 	}
 	p.API.RegisterCommand(getCommand())
 
-	botId, ensureBotError := p.Helpers.EnsureBot(&model.Bot{
+	botId, appErr := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
 	})
-	if ensureBotError != nil {
-		return errors.Wrap(ensureBotError, "failed to ensure github bot")
+	if appErr != nil {
+		return errors.Wrap(appErr, "failed to ensure github bot")
 	}
 	p.BotUserID = botId
 
 	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
-		return &model.AppError{Message: err.Error()}
+		return errors.Wrap(err, "couldn't get bundle path")
 	}
 
 	profileImage, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "profile.png"))
 	if err != nil {
-		return &model.AppError{Message: err.Error()}
+		return errors.Wrap(err, "couldn't read profile image")
 	}
-	p.API.SetProfileImage(botId, profileImage)
+
+	appErr = p.API.SetProfileImage(botId, profileImage)
+	if appErr != nil {
+		return errors.Wrap(appErr, "couldn't set profile image")
+	}
 
 	return nil
 }
