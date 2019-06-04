@@ -86,13 +86,13 @@ func (p *Plugin) OnActivate() error {
 	}
 	p.API.RegisterCommand(getCommand())
 
-	botId, appErr := p.Helpers.EnsureBot(&model.Bot{
+	botId, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
 	})
-	if appErr != nil {
-		return errors.Wrap(appErr, "failed to ensure github bot")
+	if err != nil {
+		return errors.Wrap(err, "failed to ensure github bot")
 	}
 	p.BotUserID = botId
 
@@ -106,7 +106,7 @@ func (p *Plugin) OnActivate() error {
 		return errors.Wrap(err, "couldn't read profile image")
 	}
 
-	appErr = p.API.SetProfileImage(botId, profileImage)
+	appErr := p.API.SetProfileImage(botId, profileImage)
 	if appErr != nil {
 		return errors.Wrap(appErr, "couldn't set profile image")
 	}
