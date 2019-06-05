@@ -6,6 +6,10 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ## Features
 
+After your System Admin has [configured the GitHub plugin](#Configuration), run `/jira connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
+
+Once connected, you'll have access to the following features:
+
 * __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
 * __Notifications__ - get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
 * __Sidebar buttons__ - stay up-to-date with how many reviews, unread messages, assignments and open pull requests you have with buttons in the Mattermost sidebar
@@ -125,10 +129,10 @@ Set up your GitHub webhook from the repository instead of the organization. Noti
 
 The reminder and `/github todo` will still search the whole organization, but only list items assigned to you.
 
-## How do I share feedback on this plugin?
+### How do I share feedback on this plugin?
 
 Feel free to create a GitHub issue or [join the GitHub Plugin channel on our community Mattermost instance](https://pre-release.mattermost.com/core/channels/github-plugin) to discuss.
 
-## How does the plugin save user data for each connected GitHub user?
+### How does the plugin save user data for each connected GitHub user?
 
 GitHub user tokens are AES encrypted with an At Rest Encryption Key configured in the plugin's settings page. Once encrypted, the tokens are saved in the `PluginKeyValueStore` table in your Mattermost database.
