@@ -6,7 +6,7 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ## Features
 
-After your System Admin has [configured the GitHub plugin](#Configuration), run `/jira connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
+After your System Admin has [configured the GitHub plugin](#Configuration), run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
 
 Once connected, you'll have access to the following features:
 
@@ -24,8 +24,6 @@ Once connected, you'll have access to the following features:
     * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review
     * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders
     * __And more!__ - Run `/github help` to see what else the slash command can do
-
-To use any of the above features, first connect your Mattermost account to your GitHub account with `/github connect`.
 
 ## Configuration
 
