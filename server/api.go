@@ -92,6 +92,12 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request) {
+	authedUserID := r.Header.Get("Mattermost-User-ID")
+	if authedUserID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
 	config := p.getConfiguration()
 
 	ctx := context.Background()
@@ -117,6 +123,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	userID := strings.Split(state, "_")[1]
 
 	p.API.KVDelete(state)
+
+	if userID != authedUserID {
+		http.Error(w, "Not authorized, incorrect user", http.StatusUnauthorized)
+		return
+	}
 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
