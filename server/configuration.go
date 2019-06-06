@@ -21,7 +21,6 @@ import (
 // copy appropriate for your types.
 type configuration struct {
 	GitHubOrg               string
-	Username                string
 	GitHubOAuthClientID     string
 	GitHubOAuthClientSecret string
 	WebhookSecret           string
@@ -30,7 +29,6 @@ type configuration struct {
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
 	PluginsDirectory        string
-	ProfileImageURL         string
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -52,10 +50,6 @@ func (c *configuration) IsValid() error {
 
 	if c.EncryptionKey == "" {
 		return fmt.Errorf("Must have an encryption key")
-	}
-
-	if c.Username == "" {
-		return fmt.Errorf("Need a user to make posts as")
 	}
 
 	return nil
@@ -99,14 +93,9 @@ func (p *Plugin) setConfiguration(configuration *configuration, serverConfigurat
 		panic("setConfiguration called with the existing configuration")
 	}
 
-	// PluginDirectory & ProfileImageURL should be set based on server configuration and not the plugin configuration
+	// PluginDirectory should be set based on server configuration and not the plugin configuration
 	if serverConfiguration.PluginSettings.Directory != nil {
 		configuration.PluginsDirectory = *serverConfiguration.PluginSettings.Directory
-	}
-	if serverConfiguration.ServiceSettings.SiteURL != nil {
-		// Temporary patch until issue with image proxy is solved
-		configuration.ProfileImageURL = "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
-		//configuration.ProfileImageURL = path.Join(*serverConfiguration.ServiceSettings.SiteURL, "plugins", manifest.Id, "assets", "profile.png")
 	}
 
 	p.configuration = configuration
