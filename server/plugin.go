@@ -367,6 +367,43 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	return text, nil
 }
 
+func (p *Plugin) HasNews(info *GitHubUserInfo) bool {
+	username := info.GitHubUsername
+	ctx := context.Background()
+	githubClient := p.githubConnect(*info.Token)
+	config := p.getConfiguration()
+
+	issues, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+		return false
+	}
+
+	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+		return false
+	}
+
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+		return false
+	}
+
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+		return false
+	}
+
+	if issues.GetTotal() == 0 && len(notifications) == 0 && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
+		return false
+	}
+
+	return true
+}
+
 func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 

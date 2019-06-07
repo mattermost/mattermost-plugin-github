@@ -296,7 +296,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 		resp.GitHubClientID = config.GitHubOAuthClientID
 		resp.Settings = info.Settings
 
-		if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
+		if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" && p.HasNews(info) {
 			lastPostAt := info.LastToDoPostAt
 
 			var timezone *time.Location
