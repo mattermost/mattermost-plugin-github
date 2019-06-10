@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/go-hclog v0.9.2 // indirect
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/mattermost/go-i18n v1.10.0 // indirect
-	github.com/mattermost/mattermost-server v0.0.0-20190531122116-acf6437b8169
+	github.com/mattermost/mattermost-server v0.0.0-20190610144121-1a7a34b652f6
 	github.com/nicksnyder/go-i18n v1.10.0 // indirect
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/pkg/errors v0.8.1
@@ -16,13 +16,12 @@ require (
 	github.com/stretchr/testify v1.3.0
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
-	golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5 // indirect
-	golang.org/x/net v0.0.0-20190522155817-f3200d17e092 // indirect
-	golang.org/x/oauth2 v0.0.0-20190523182746-aaccbc9213b0
-	golang.org/x/sys v0.0.0-20190531175056-4c3a928424d2 // indirect
-	google.golang.org/appengine v1.6.0 // indirect
-	google.golang.org/genproto v0.0.0-20190530194941-fb225487d101 // indirect
-	google.golang.org/grpc v1.21.0 // indirect
+	golang.org/x/net v0.0.0-20190607181551-461777fb6f67 // indirect
+	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+	golang.org/x/sys v0.0.0-20190610081024-1e42afee0f76 // indirect
+	google.golang.org/appengine v1.6.1 // indirect
+	google.golang.org/genproto v0.0.0-20190605220351-eb0b1bdb6ae6 // indirect
+	google.golang.org/grpc v1.21.1 // indirect
 )
 
 // Workaround for https://github.com/golang/go/issues/30831 and fallout.
