@@ -60,8 +60,14 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
 
 ### Step 3: Configure plugin in Mattermost
 
-1. Make sure you do not have an existing user account with the name `github`. You probably do if you are upgrading from a previous version of the plugin. If you do, convert it to a bot account by using the Mattermost CLI command `mattermost user convert --bot github`. If you where using an account that was not named github for the github plugin, rename it go github then convert it to a bot account.
-2. Go to **System Console > Plugins > GitHub** and do the following values:
+1. If you have an existing user account with the name `github`, either:
+  - convert the `github` user to a bot account by running ``mattermost user convert github --bot`` in the CLI, or
+  - if the user is an existing user account you want to preserve, change its username and restart the Mattermost server, after which the plugin will create a bot account with the name ``github``.
+  
+  If you don't take either action, the plugin will post using the `github` account but without a `BOT` tag.
+  
+  **Note**: For versions 0.9 and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
+2. Go to **System Console > Plugins > GitHub** and do the following:
   - Generate a new value for **At Rest Encryption Key**.
   - (Optional) Lock the plugin to a single GitHub organization by setting the **GitHub Organization** field to the name of your GitHub organization.
   - (Optional) Allow the plugin to receive notifications from private repositories by setting **Enable Private Repositories** to true.
