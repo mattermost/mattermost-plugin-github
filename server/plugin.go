@@ -367,7 +367,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	return text, nil
 }
 
-func (p *Plugin) HasNews(info *GitHubUserInfo) bool {
+func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
 	githubClient := p.githubConnect(*info.Token)
