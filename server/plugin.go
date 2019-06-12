@@ -379,12 +379,6 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 		return false
 	}
 
-	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
-	if err != nil {
-		mlog.Error(err.Error())
-		return false
-	}
-
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
@@ -397,7 +391,32 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 		return false
 	}
 
-	if issues.GetTotal() == 0 && len(notifications) == 0 && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
+	relevantNotifications := false
+	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+		return false
+	}
+
+	for _, n := range notifications {
+		if n.GetReason() == "subscribed" {
+			continue
+		}
+
+		if n.GetRepository() == nil {
+			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			continue
+		}
+
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
+			continue
+		}
+
+		relevantNotifications = true
+		break
+	}
+
+	if issues.GetTotal() == 0 && relevantNotifications && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
 		return false
 	}
 
