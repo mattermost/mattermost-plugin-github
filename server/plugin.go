@@ -376,26 +376,22 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	issues, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
-		return false
 	}
 
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
-		return false
 	}
 
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
-		return false
 	}
 
 	relevantNotifications := false
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
-		return false
 	}
 
 	for _, n := range notifications {
@@ -416,7 +412,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 		break
 	}
 
-	if issues.GetTotal() == 0 && relevantNotifications && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
+	if issues.GetTotal() == 0 && !relevantNotifications && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
 		return false
 	}
 
