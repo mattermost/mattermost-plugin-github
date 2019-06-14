@@ -308,9 +308,11 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 			nt := time.Unix(now/1000, 0).In(timezone)
 			lt := time.Unix(lastPostAt/1000, 0).In(timezone)
 			if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
-				p.PostToDo(info)
-				info.LastToDoPostAt = now
-				p.storeGitHubUserInfo(info)
+				if p.HasUnreads(info) {
+					p.PostToDo(info)
+					info.LastToDoPostAt = now
+					p.storeGitHubUserInfo(info)
+				}
 			}
 		}
 

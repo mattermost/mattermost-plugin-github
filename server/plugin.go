@@ -367,6 +367,58 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	return text, nil
 }
 
+func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
+	username := info.GitHubUsername
+	ctx := context.Background()
+	githubClient := p.githubConnect(*info.Token)
+	config := p.getConfiguration()
+
+	issues, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	relevantNotifications := false
+	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	for _, n := range notifications {
+		if n.GetReason() == "subscribed" {
+			continue
+		}
+
+		if n.GetRepository() == nil {
+			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			continue
+		}
+
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
+			continue
+		}
+
+		relevantNotifications = true
+		break
+	}
+
+	if issues.GetTotal() == 0 && !relevantNotifications && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
+		return false
+	}
+
+	return true
+}
+
 func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
