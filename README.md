@@ -27,10 +27,11 @@ Once connected, you'll have access to the following features:
 
 ## Installation
 
-1. Go to https://github.com/mattermost/mattermost-plugin-github/releases to download the latest release file in zip or tar.gz format.
-2. Upload the file through System Console UI or manually uploading it to the server under plugin directory.
+In Mattermost 5.12 and later, the GitHub plugin is pre-packaged and no steps are required for installation. You can go directly to [Configuration](#configuration).
 
-See https://docs.mattermost.com/administration/plugins.html#set-up-guide for more details.
+In Mattermost 5.11 and earlier, follow these steps:
+1. Go to https://github.com/mattermost/mattermost-plugin-github/releases to download the latest release file in zip or tar.gz format.
+2. Upload the file through **System Console > Plugins > Management**, or manually upload it to the Mattermost server under plugin directory. See [documentation](https://docs.mattermost.com/administration/plugins.html#set-up-guide) for more details.
 
 ## Configuration
 
@@ -76,9 +77,9 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
   **Note**: For versions 0.9 and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
 2. Go to **System Console > Plugins > GitHub** and do the following:
   - Generate a new value for **At Rest Encryption Key**.
-  - (Optional) Lock the plugin to a single GitHub organization by setting the **GitHub Organization** field to the name of your GitHub organization.
-  - (Optional) Allow the plugin to receive notifications from private repositories by setting **Enable Private Repositories** to true.
-
+  - (Optional) **GitHub Organization**: Lock the plugin to a single GitHub organization by setting this field to the name of your GitHub organization. 
+  - (Optional) **Enable Private Repositories**: Allow the plugin to receive notifications from private repositories by setting this value to true.
+   
     When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.
 
   - (Enterprise only) Set the **Enterprise Base URL** and **Enterprise Upload URL** to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same.
