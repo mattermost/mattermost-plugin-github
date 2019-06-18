@@ -16,7 +16,7 @@ Once connected, you'll have access to the following features:
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
     * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation and more in a GitHub repository.
         - For instance, to post notifications for issues, issue comments and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use
-        
+
           ```
           /github subscribe mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
           ```
@@ -24,6 +24,13 @@ Once connected, you'll have access to the following features:
     * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review
     * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders
     * __And more!__ - Run `/github help` to see what else the slash command can do
+
+## Installation
+
+1. Go to https://github.com/mattermost/mattermost-plugin-github/releases to download the latest release file in zip or tar.gz format.
+2. Upload the file through System Console UI or manually uploading it to the server under plugin directory.
+
+See https://docs.mattermost.com/administration/plugins.html#set-up-guide for more details.
 
 ## Configuration
 
@@ -38,7 +45,7 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
    - "https://your-mattermost-url.com/plugins/github/oauth/complete" as the **Authorization callback URL**, replacing `https://your-mattermost-url.com` with your Mattermost URL.
 3. Submit. Copy the **Client ID** and **Client Secret** in the resulting screen.
 4. Go to **System Console > Plugins > GitHub** and enter **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.
-   
+
    **Note**: If you are running Mattermost v5.11 or earlier, you must first go to the [releases page of this GitHub repository](https://github.com/mattermost/mattermost-plugin-github/releases), download the latest release, and upload it to your Mattermost instance [following this documentation](https://docs.mattermost.com/administration/plugins.html#plugin-uploads).
 5. Hit **Save**.
 
@@ -47,7 +54,7 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
 1. In **System Console > Plugins > GitHub**, generate a new value for **Webhook Secret**. Copy it as you will use it in a later step.
 2. Hit **Save** to save the secret.
 3. Go to the **Settings** page of your GitHub organization you want to send notifications from, then select **Webhooks** in the sidebar.
-   
+
    **Note**: You must create a webhook for each organization you want to receive notifications for or subscribe to.
 
 4. Click **Add webhook**
@@ -63,15 +70,15 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
 1. If you have an existing user account with the name `github`, either:
   - convert the `github` user to a bot account by running ``mattermost user convert github --bot`` in the CLI, or
   - if the user is an existing user account you want to preserve, change its username and restart the Mattermost server, after which the plugin will create a bot account with the name ``github``.
-  
+
   If you don't take either action, the plugin will post using the `github` account but without a `BOT` tag.
-  
+
   **Note**: For versions 0.9 and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
 2. Go to **System Console > Plugins > GitHub** and do the following:
   - Generate a new value for **At Rest Encryption Key**.
   - (Optional) Lock the plugin to a single GitHub organization by setting the **GitHub Organization** field to the name of your GitHub organization.
   - (Optional) Allow the plugin to receive notifications from private repositories by setting **Enable Private Repositories** to true.
-   
+
     When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.
 
   - (Enterprise only) Set the **Enterprise Base URL** and **Enterprise Upload URL** to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same.
