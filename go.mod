@@ -3,9 +3,15 @@ module github.com/mattermost/mattermost-plugin-github
 go 1.12
 
 require (
+	github.com/Masterminds/goutils v1.1.0 // indirect
+	github.com/Masterminds/semver v1.4.2 // indirect
+	github.com/Masterminds/sprig v2.18.0+incompatible
 	github.com/go-ldap/ldap v3.0.3+incompatible // indirect
+	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-github/v25 v25.1.1
 	github.com/hashicorp/go-hclog v0.9.2 // indirect
+	github.com/huandu/xstrings v1.2.0 // indirect
+	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/lib/pq v1.1.1 // indirect
 	github.com/mattermost/go-i18n v1.10.0 // indirect
 	github.com/mattermost/mattermost-server v0.0.0-20190610144121-1a7a34b652f6
