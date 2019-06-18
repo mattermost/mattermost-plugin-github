@@ -41,9 +41,9 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
 
 1. Go to https://github.com/settings/applications/new to register an OAuth app.
 2. Set the following values:
-   - "Mattermost GitHub Plugin - <your company name>" as the **Application Name**.
-   - "https://github.com/mattermost/mattermost-plugin-github" as the **Homepage URL**.
-   - "https://your-mattermost-url.com/plugins/github/oauth/complete" as the **Authorization callback URL**, replacing `https://your-mattermost-url.com` with your Mattermost URL.
+   - **Application Name**: `Mattermost GitHub Plugin - <your company name>`
+   - **Homepage URL**: `https://github.com/mattermost/mattermost-plugin-github`
+   - **Authorization callback URL**: `https://your-mattermost-url.com/plugins/github/oauth/complete`, replacing `https://your-mattermost-url.com` with your Mattermost URL.
 3. Submit. Copy the **Client ID** and **Client Secret** in the resulting screen.
 4. Go to **System Console > Plugins > GitHub** and enter **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.
 
@@ -60,9 +60,9 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
 
 4. Click **Add webhook**
 5. Set the following values:
-   - "https://your-mattermost-url.com/plugins/github/webhook" as the **Payload URL**, replacing `https://your-mattermost-url.com` with your Mattermost URL
-   - "application/json" as the **Content Type**
-   - the webhook secret you copied previously as the **Secret**
+   - **Payload URL**: `https://your-mattermost-url.com/plugins/github/webhook`, replacing `https://your-mattermost-url.com` with your Mattermost URL
+   - **Content Type**: `application/json`
+   - **Secret**: the webhook secret you copied previously
 6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?", then select the following events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments, Pushes, Branch or Tag creation, Branch or Tag deletion
 7. Hit **Add Webhook** to save it.
 
@@ -77,12 +77,11 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
   **Note**: For versions 0.9 and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
 2. Go to **System Console > Plugins > GitHub** and do the following:
   - Generate a new value for **At Rest Encryption Key**.
-  - (Optional) **GitHub Organization**: Lock the plugin to a single GitHub organization by setting this field to the name of your GitHub organization. 
+  - (Optional) **GitHub Organization**: Lock the plugin to a single GitHub organization by setting this field to the name of your GitHub organization.
   - (Optional) **Enable Private Repositories**: Allow the plugin to receive notifications from private repositories by setting this value to true.
-   
     When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.
 
-  - (Enterprise only) Set the **Enterprise Base URL** and **Enterprise Upload URL** to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same.
+  - (Enterprise only) **Enterprise Base URL** and **Enterprise Upload URL**: Set these values to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same.
 3. Hit **Save**.
 4. Go to **System Console > Plugins > Management** and click **Enable** to enable the GitHub plugin.
 
