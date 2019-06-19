@@ -15,7 +15,7 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "To set up the GitHub plugin, you need to register a GitHub OAuth app here https://github.com/settings/applications/new.",
+        "header": "To set up the GitHub plugin, [register a GitHub OAuth app](https://github.com/settings/applications/new) with `https://your-mattermost-url.com/plugins/github/oauth/complete` as your Authorization callback URL.",
         "settings": [
             {
                 "key": "GitHubOAuthClientID",
