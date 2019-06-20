@@ -59,9 +59,6 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     render() {
-        console.log('your prs:');
-        console.log (this.props.yourPrs);
-
         const content = this.props.yourPrs.map((pr) => {
             const labels = pr.labels.map((label) => {
                 return (
