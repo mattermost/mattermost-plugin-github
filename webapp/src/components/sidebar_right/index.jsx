@@ -3,7 +3,7 @@ import {bindActionCreators} from 'redux';
 
 import {getReviews, getUnreads, getYourPrs, getYourAssignments} from '../../actions';
 
-import SidebarButtons from './sidebar_buttons.jsx';
+import SidebarRight from './sidebar_right.jsx';
 
 function mapStateToProps(state) {
     return {
@@ -16,7 +16,6 @@ function mapStateToProps(state) {
         unreads: state['plugins-github'].unreads,
         enterpriseURL: state['plugins-github'].enterpriseURL,
         org: state['plugins-github'].organization,
-        showRHSPlugin: state['plugins-github'].rhsPlugAction,
     };
 }
 
@@ -27,9 +26,8 @@ function mapDispatchToProps(dispatch) {
             getUnreads,
             getYourPrs,
             getYourAssignments,
-            dispatch: (action) => dispatch(action),
         }, dispatch),
     };
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(SidebarButtons);
+export default connect(mapStateToProps, mapDispatchToProps)(SidebarRight);

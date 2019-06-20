@@ -192,3 +192,14 @@ export function getGitHubUser(userID) {
         return {data};
     };
 }
+
+export function receivedRHSAction(rhsPlugAction) {
+    return (dispatch) => {
+        const action = {
+            type: ActionTypes.RECEIVED_RHS_ACTION,
+            rhsPlugAction,
+        };
+
+        dispatch(action);
+    };
+}

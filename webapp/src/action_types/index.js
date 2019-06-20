@@ -6,4 +6,5 @@ export default {
     RECEIVED_UNREADS: 'received_unreads',
     RECEIVED_CONNECTED: 'received_connected',
     RECEIVED_GITHUB_USER: 'received_github_user',
+    RECEIVED_RHS_ACTION: 'received_rhs_action',
 };

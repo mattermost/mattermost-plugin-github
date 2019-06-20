@@ -120,6 +120,15 @@ function githubUsers(state = {}, action) {
     }
 }
 
+function rhsPlugAction(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_RHS_ACTION:
+        return action.rhsPlugAction;
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
     connected,
     enterpriseURL,
@@ -133,4 +142,5 @@ export default combineReducers({
     mentions,
     unreads,
     githubUsers,
+    rhsPlugAction,
 });

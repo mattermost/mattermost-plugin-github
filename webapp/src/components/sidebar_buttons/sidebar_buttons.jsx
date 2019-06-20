@@ -16,11 +16,13 @@ export default class SidebarButtons extends React.PureComponent {
         yourPrs: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,
+        showRHSPlugin: PropTypes.object,
         actions: PropTypes.shape({
             getReviews: PropTypes.func.isRequired,
             getUnreads: PropTypes.func.isRequired,
             getYourPrs: PropTypes.func.isRequired,
             getYourAssignments: PropTypes.func.isRequired,
+            dispatch: PropTypes.func.isRequired,
         }).isRequired,
     };
 
@@ -66,6 +68,10 @@ export default class SidebarButtons extends React.PureComponent {
     openConnectWindow = (e) => {
         e.preventDefault();
         window.open('/plugins/github/oauth/connect', 'Connect Mattermost to GitHub', 'height=570,width=520');
+    }
+
+    openRHS = () => {
+        this.props.actions.dispatch(this.props.showRHSPlugin);
     }
 
     render() {
@@ -135,10 +141,10 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='yourPrsTooltip'>Your open pull requests</Tooltip>}
                 >
                     <a
-                        href={baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + this.props.username + '+archived%3Afalse' + orgQuery}
                         target='_blank'
                         rel='noopener noreferrer'
                         style={button}
+                        onClick={this.openRHS}
                     >
                         <i className='fa fa-compress'/>
                         {' ' + yourPrs.length}
