@@ -140,6 +140,14 @@ Set up your GitHub webhook from the repository instead of the organization. Noti
 
 The reminder and `/github todo` will still search the whole organization, but only list items assigned to you.
 
+### How do I send notifications when a certain label is applied?
+
+Suppose you want to send notifications to a Mattermost channel when `Severity/Critical` label is applied to any issue in the `mattermost/mattermost-plugin-github` repository. Then, use this command to subscribe to these notifications:
+
+```
+/github subscribe mattermost/mattermost-plugin-github issues,label:"Triage"
+```
+
 ### How do I share feedback on this plugin?
 
 Feel free to create a GitHub issue or [join the GitHub Plugin channel on our community Mattermost instance](https://pre-release.mattermost.com/core/channels/github-plugin) to discuss.
