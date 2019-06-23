@@ -15,7 +15,7 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost. \n \n To get started, you'll need to [register a GitHub OAuth app](https://github.com/settings/applications/new) with `https://your-mattermost-url.com/plugins/github/oauth/complete` as your Authorization callback URL. \n \n Continue to follow the [setup instructions here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
+        "header": "Subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common GitHub actions - directly from Mattermost with this GitHub plugin. \n \n [Register a GitHub OAuth app](https://github.com/settings/applications/new) with `https://your-mattermost-url.com/plugins/github/oauth/complete` as your Authorization callback URL, then follow [these instructions](https://www.mattermost.com/pl/default-github-plugin#configuration) to complete the setup.",
         "settings": [
             {
                 "key": "GitHubOAuthClientID",
