@@ -19,12 +19,29 @@ module.exports = {
                 use: {
                     loader: 'babel-loader',
                     options: {
-                        presets: [
-                            'react',
-                            ['es2015', {modules: false}],
-                            'stage-0',
+                        plugins: [
+                            '@babel/plugin-proposal-class-properties',
+                            '@babel/plugin-syntax-dynamic-import',
                         ],
-                        plugins: ['transform-runtime'],
+                        presets: [
+                            ['@babel/preset-env', {
+                                targets: {
+                                    chrome: 66,
+                                    firefox: 60,
+                                    edge: 42,
+                                    ie: 11,
+                                    safari: 12,
+                                },
+                                modules: false,
+                                corejs: 2,
+                                debug: false,
+                                useBuiltIns: 'usage',
+                                shippedProposals: true,
+                            }],
+                            ['@babel/preset-react', {
+                                useBuiltIns: true,
+                            }],
+                        ],
                     },
                 },
             },

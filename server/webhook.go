@@ -10,9 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
+
+	"github.com/google/go-github/v25/github"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
@@ -33,10 +34,6 @@ func signBody(secret, body []byte) []byte {
 	computed := hmac.New(sha1.New, secret)
 	computed.Write(body)
 	return []byte(computed.Sum(nil))
-}
-
-type GitHubEvent struct {
-	Repo *github.Repository `json:"repository,omitempty"`
 }
 
 // Hack to convert from github.PushEventRepository to github.Repository
@@ -166,7 +163,6 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -179,46 +175,28 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	pr := event.GetPullRequest()
-	prUser := pr.GetUser()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(pr.Labels))
 	for i, v := range pr.Labels {
 		labels[i] = v.GetName()
 	}
 
-	newPRMessage := fmt.Sprintf(`
-#### %s
-##### [%s#%v](%s)
-#new-pull-request by [%s](%s) on [%s](%s)
-
-%s
-`, pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), prUser.GetLogin(), prUser.GetHTMLURL(), pr.GetCreatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
-
-	fmtCloseMessage := ""
-	if pr.GetMerged() {
-		fmtCloseMessage = "[%s] Pull request [#%v %s](%s) was merged by [%s](%s)"
-	} else {
-		fmtCloseMessage = "[%s] Pull request [#%v %s](%s) was closed by [%s](%s)"
+	newPRMessage, err := renderTemplate("newPR", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
 	}
-	closedPRMessage := fmt.Sprintf(fmtCloseMessage, repo.GetFullName(), pr.GetNumber(), pr.GetTitle(), pr.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL())
+
+	closedPRMessage, err := renderTemplate("closedPR", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	post := &model.Post{
-		UserId: userID,
+		UserId: p.BotUserID,
 		Type:   "custom_git_pr",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	for _, sub := range subs {
@@ -241,7 +219,13 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		if action == "labeled" {
 			if label != "" && label == eventLabel {
-				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#pull-request-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", pr.GetTitle(), repo.GetFullName(), pr.GetNumber(), pr.GetHTMLURL(), eventLabel, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), pr.GetUpdatedAt().String(), pr.GetHTMLURL(), pr.GetBody())
+				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
+				if err != nil {
+					mlog.Error("failed to render template", mlog.Err(err))
+					return
+				}
+
+				post.Message = pullRequestLabelledMessage
 			} else {
 				continue
 			}
@@ -263,7 +247,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 }
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -276,41 +259,28 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	issue := event.GetIssue()
-	issueUser := issue.GetUser()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(issue.Labels))
 	for i, v := range issue.Labels {
 		labels[i] = v.GetName()
 	}
 
-	newIssueMessage := fmt.Sprintf(`
-#### %s
-##### [%s#%v](%s)
-#new-issue by [%s](%s) on [%s](%s)
+	newIssueMessage, err := renderTemplate("newIssue", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
-%s
-`, issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), issueUser.GetLogin(), issueUser.GetHTMLURL(), issue.GetCreatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
-
-	closedIssueMessage := fmt.Sprintf("\\[%s] Issue [%s](%s) closed by [%s](%s)",
-		repo.GetFullName(), issue.GetTitle(), issue.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL())
+	closedIssueMessage, err := renderTemplate("closedIssue", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	post := &model.Post{
-		UserId: userID,
+		UserId: p.BotUserID,
 		Type:   "custom_git_issue",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	for _, sub := range subs {
@@ -333,7 +303,13 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 		if action == "labeled" {
 			if label != "" && label == eventLabel {
-				post.Message = fmt.Sprintf("#### %s\n##### [%s#%v](%s)\n#issue-labeled `%s` by [%s](%s) on [%s](%s)\n\n%s", issue.GetTitle(), repo.GetFullName(), issue.GetNumber(), issue.GetHTMLURL(), eventLabel, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), issue.GetUpdatedAt().String(), issue.GetHTMLURL(), issue.GetBody())
+				issueLabelledMessage, err := renderTemplate("issueLabelled", event)
+				if err != nil {
+					mlog.Error("failed to render template", mlog.Err(err))
+					return
+				}
+
+				post.Message = issueLabelledMessage
 			} else {
 				continue
 			}
@@ -355,7 +331,6 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 }
 
 func (p *Plugin) postPushEvent(event *github.PushEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
@@ -364,45 +339,21 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
-	forced := event.GetForced()
-	branch := strings.Replace(event.GetRef(), "refs/heads/", "", 1)
 	commits := event.Commits
-	compare_url := event.GetCompare()
-	pusher := event.GetSender()
-
 	if len(commits) == 0 {
 		return
 	}
 
-	fmtMessage := ``
-	if forced {
-		fmtMessage = "[%s](%s) force-pushed [%d new commits](%s) to [\\[%s:%s\\]](%s/tree/%s):\n"
-	} else {
-		fmtMessage = "[%s](%s) pushed [%d new commits](%s) to [\\[%s:%s\\]](%s/tree/%s):\n"
-	}
-	newPushMessage := fmt.Sprintf(fmtMessage, pusher.GetLogin(), pusher.GetHTMLURL(), len(commits), compare_url, repo.GetName(), branch, repo.GetHTMLURL(), branch)
-	for _, commit := range commits {
-		newPushMessage += fmt.Sprintf("[`%s`](%s) %s - %s\n",
-			commit.GetID()[:6], commit.GetURL(), commit.GetMessage(), commit.GetCommitter().GetName())
+	pushedCommitsMessage, err := renderTemplate("pushedCommits", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
 	}
 
 	post := &model.Post{
-		UserId: userID,
-		Type:   "custom_git_push",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
-		Message: newPushMessage,
+		UserId:  p.BotUserID,
+		Type:    "custom_git_push",
+		Message: pushedCommitsMessage,
 	}
 
 	for _, sub := range subs {
@@ -418,7 +369,6 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 }
 
 func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -427,33 +377,21 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	typ := event.GetRefType()
-	sender := event.GetSender()
-	name := event.GetRef()
 
 	if typ != "tag" && typ != "branch" {
 		return
 	}
 
-	newCreateMessage := fmt.Sprintf("[%s](%s) just created %s [\\[%s:%s\\]](%s/tree/%s)",
-		sender.GetLogin(), sender.GetHTMLURL(), typ, repo.GetName(), name, repo.GetHTMLURL(), name)
+	newCreateMessage, err := renderTemplate("newCreateMessage", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	post := &model.Post{
-		UserId: userID,
-		Type:   "custom_git_create",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
+		UserId:  p.BotUserID,
+		Type:    "custom_git_create",
 		Message: newCreateMessage,
 	}
 
@@ -470,7 +408,6 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 }
 
 func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -479,33 +416,21 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	typ := event.GetRefType()
-	sender := event.GetSender()
-	name := event.GetRef()
 
 	if typ != "tag" && typ != "branch" {
 		return
 	}
 
-	newDeleteMessage := fmt.Sprintf("[%s](%s) just deleted %s \\[%s:%s]",
-		sender.GetLogin(), sender.GetHTMLURL(), typ, repo.GetName(), name)
+	newDeleteMessage, err := renderTemplate("newDeleteMessage", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	post := &model.Post{
-		UserId: userID,
-		Type:   "custom_git_delete",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
+		UserId:  p.BotUserID,
+		Type:    "custom_git_delete",
 		Message: newDeleteMessage,
 	}
 
@@ -522,7 +447,6 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 }
 
 func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -531,36 +455,19 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	if event.GetAction() != "created" {
 		return
 	}
 
-	body := event.GetComment().GetBody()
-
-	// Try to parse out email footer junk
-	if strings.Contains(body, "notifications@github.com") {
-		body = strings.Split(body, "\n\nOn")[0]
+	message, err := renderTemplate("issueComment", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
 	}
 
-	message := fmt.Sprintf("[\\[%s\\]](%s) New comment by [%s](%s) on [#%v %s]:\n\n%s",
-		repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetIssue().GetNumber(), event.GetIssue().GetTitle(), body)
-
 	post := &model.Post{
-		UserId: userID,
+		UserId: p.BotUserID,
 		Type:   "custom_git_comment",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	labels := make([]string, len(event.GetIssue().Labels))
@@ -598,7 +505,6 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 }
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -606,43 +512,30 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
-		return
-	} else {
-		userID = user.Id
-	}
-
 	action := event.GetAction()
 	if action != "submitted" {
 		return
 	}
 
-	state := event.GetReview().GetState()
-	fmtReviewMessage := ""
-	switch state {
+	switch event.GetReview().GetState() {
 	case "APPROVED":
-		fmtReviewMessage = "[\\[%s\\]](%s) [%s](%s) approved [#%v %s](%s):\n\n%s"
 	case "COMMENTED":
-		fmtReviewMessage = "[\\[%s\\]](%s) [%s](%s) commented on [#%v %s](%s):\n\n%s"
 	case "CHANGES_REQUESTED":
-		fmtReviewMessage = "[\\[%s\\]](%s) [%s](%s) requested changes on [#%v %s](%s):\n\n%s"
 	default:
+		mlog.Warn(fmt.Sprintf("unhandled review state %s", event.GetReview().GetState()))
 		return
 	}
 
-	newReviewMessage := fmt.Sprintf(fmtReviewMessage, repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetTitle(), event.GetPullRequest().GetHTMLURL(), event.GetReview().GetBody())
+	newReviewMessage, err := renderTemplate("pullRequestReviewEvent", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	post := &model.Post{
-		UserId:  userID,
+		UserId:  p.BotUserID,
 		Type:    "custom_git_pull_review",
 		Message: newReviewMessage,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
@@ -676,7 +569,6 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 }
 
 func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
-	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
@@ -684,26 +576,16 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		return
 	}
 
-	userID := ""
-	if user, err := p.API.GetUserByUsername(config.Username); err != nil {
-		mlog.Error(err.Error())
+	newReviewMessage, err := renderTemplate("newReviewComment", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
 		return
-	} else {
-		userID = user.Id
 	}
 
-	newReviewMessage := fmt.Sprintf("[\\[%s\\]](%s) New review comment by [%s](%s) on [#%v %s](%s):\n\n%s\n%s",
-		repo.GetFullName(), repo.GetHTMLURL(), event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetTitle(), event.GetPullRequest().GetHTMLURL(), event.GetComment().GetDiffHunk(), event.GetComment().GetBody())
-
 	post := &model.Post{
-		UserId:  userID,
+		UserId:  p.BotUserID,
 		Type:    "custom_git_pull_review_comment",
 		Message: newReviewMessage,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
@@ -743,7 +625,6 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 	}
 
 	body := event.GetComment().GetBody()
-	config := p.getConfiguration()
 
 	// Try to parse out email footer junk
 	if strings.Contains(body, "notifications@github.com") {
@@ -752,17 +633,16 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 
 	mentionedUsernames := parseGitHubUsernamesFromText(body)
 
-	message := fmt.Sprintf("[%s](%s) mentioned you on [%s#%v](%s):\n>%s", event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetComment().GetHTMLURL(), body)
+	message, err := renderTemplate("commentMentionNotification", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Message: message,
 		Type:    "custom_git_mention",
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	for _, username := range mentionedUsernames {
@@ -776,16 +656,16 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		userID := p.getGitHubToUserIDMapping(username)
-		if userID == "" {
+		userId := p.getGitHubToUserIDMapping(username)
+		if userId == "" {
 			continue
 		}
 
-		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userId, event.GetRepo().GetFullName()) {
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
+		channel, err := p.API.GetDirectChannel(userId, p.BotUserID)
 		if err != nil {
 			continue
 		}
@@ -796,7 +676,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			mlog.Error("Error creating mention post: " + err.Error())
 		}
 
-		p.sendRefreshEvent(userID)
+		p.sendRefreshEvent(p.BotUserID)
 	}
 }
 
@@ -825,15 +705,22 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 		return
 	}
 
-	message := ""
+	var templateName string
 	switch splitURL[len(splitURL)-2] {
 	case "pull":
-		message = "[%s](%s) commented on your pull request [%s#%v](%s)"
+		templateName = "commentAuthorPullRequestNotification"
 	case "issues":
-		message = "[%s](%s) commented on your issue [%s#%v](%s)"
+		templateName = "commentAuthorIssueNotification"
+	default:
+		mlog.Warn(fmt.Sprintf("unhandled issue type %s", splitURL[len(splitURL)-2]))
+		return
 	}
 
-	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
+	message, err := renderTemplate(templateName, event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_author")
 	p.sendRefreshEvent(authorUserID)
@@ -847,7 +734,6 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 
 	requestedReviewer := ""
 	requestedUserID := ""
-	message := ""
 	authorUserID := ""
 	assigneeUserID := ""
 
@@ -858,18 +744,12 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 			return
 		}
 		requestedUserID = p.getGitHubToUserIDMapping(requestedReviewer)
-		message = "[%s](%s) requested your review on [%s#%v](%s)"
 		if isPrivate && !p.permissionToRepo(requestedUserID, repoName) {
 			requestedUserID = ""
 		}
 	case "closed":
 		if author == sender {
 			return
-		}
-		if event.GetPullRequest().GetMerged() {
-			message = "[%s](%s) merged your pull request [%s#%v](%s)"
-		} else {
-			message = "[%s](%s) closed your pull request [%s#%v](%s)"
 		}
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
@@ -879,7 +759,6 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if author == sender {
 			return
 		}
-		message = "[%s](%s) reopened your pull request [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
@@ -889,15 +768,19 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if assignee == sender {
 			return
 		}
-		message = "[%s](%s) assigned you to pull request [%s#%v](%s)"
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
 		if isPrivate && !p.permissionToRepo(assigneeUserID, repoName) {
 			assigneeUserID = ""
 		}
+	default:
+		mlog.Warn(fmt.Sprintf("unhandled event action %s", event.GetAction()))
+		return
 	}
 
-	if len(message) > 0 {
-		message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), repoName, event.GetNumber(), event.GetPullRequest().GetHTMLURL())
+	message, err := renderTemplate("pullRequestNotification", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
 	}
 
 	if len(requestedUserID) > 0 {
@@ -923,13 +806,11 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 
 	switch event.GetAction() {
 	case "closed":
-		message = "[%s](%s) closed your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
 	case "reopened":
-		message = "[%s](%s) reopened your issue [%s#%v](%s)"
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
@@ -939,15 +820,19 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 		if assignee == sender {
 			return
 		}
-		message = "[%s](%s) assigned you to issue [%s#%v](%s)"
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
 		if isPrivate && !p.permissionToRepo(assigneeUserID, repoName) {
 			assigneeUserID = ""
 		}
+	default:
+		mlog.Warn(fmt.Sprintf("unhandled event action %s", event.GetAction()))
+		return
 	}
 
-	if len(message) > 0 {
-		message = fmt.Sprintf(message, sender, event.GetSender().GetHTMLURL(), repoName, event.GetIssue().GetNumber(), event.GetIssue().GetHTMLURL())
+	message, err := renderTemplate("issueNotification", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
 	}
 
 	p.postIssueNotification(message, authorUserID, assigneeUserID)
@@ -984,17 +869,11 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		return
 	}
 
-	message := ""
-	switch event.GetReview().GetState() {
-	case "approved":
-		message = "[%s](%s) approved your pull request [%s#%v](%s)"
-	case "changes_requested":
-		message = "[%s](%s) requested changes on your pull request [%s#%v](%s)"
-	case "commented":
-		message = "[%s](%s) commented on your pull request [%s#%v](%s)"
+	message, err := renderTemplate("pullRequestReviewNotification", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
 	}
-
-	message = fmt.Sprintf(message, event.GetSender().GetLogin(), event.GetSender().GetHTMLURL(), event.GetRepo().GetFullName(), event.GetPullRequest().GetNumber(), event.GetPullRequest().GetHTMLURL())
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)

@@ -5,5 +5,5 @@ var manifest = struct {
 	Version string
 }{
 	Id:      "github",
-	Version: "0.9.1",
+	Version: "0.10.2",
 }

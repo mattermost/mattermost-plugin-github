@@ -4,17 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
+	"github.com/pkg/errors"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
 
@@ -33,6 +36,7 @@ const (
 	SETTING_REMINDERS       = "reminders"
 	SETTING_ON              = "on"
 	SETTING_OFF             = "off"
+	BOT_USER_KEY            = "bot"
 )
 
 type Plugin struct {
@@ -81,13 +85,33 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 	p.API.RegisterCommand(getCommand())
-	user, err := p.API.GetUserByUsername(config.Username)
+
+	botId, err := p.Helpers.EnsureBot(&model.Bot{
+		Username:    "github",
+		DisplayName: "GitHub",
+		Description: "Created by the GitHub plugin.",
+	})
 	if err != nil {
-		mlog.Error(err.Error())
-		return fmt.Errorf("Unable to find user with configured username: %v", config.Username)
+		return errors.Wrap(err, "failed to ensure github bot")
+	}
+	p.BotUserID = botId
+
+	bundlePath, err := p.API.GetBundlePath()
+	if err != nil {
+		return errors.Wrap(err, "couldn't get bundle path")
 	}
 
-	p.BotUserID = user.Id
+	profileImage, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "profile.png"))
+	if err != nil {
+		return errors.Wrap(err, "couldn't read profile image")
+	}
+
+	appErr := p.API.SetProfileImage(botId, profileImage)
+	if appErr != nil {
+		return errors.Wrap(appErr, "couldn't set profile image")
+	}
+
+	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
 	return nil
 }
@@ -193,6 +217,16 @@ func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	return string(userID)
 }
 
+// getGitHubToUsernameMapping maps a GitHub username to the corresponding Mattermost username, if any.
+func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
+	user, _ := p.API.GetUser(p.getGitHubToUserIDMapping(githubUsername))
+	if user == nil {
+		return ""
+	}
+
+	return user.Username
+}
+
 func (p *Plugin) disconnectGitHubAccount(userID string) {
 	userInfo, _ := p.getGitHubUserInfo(userID)
 	if userInfo == nil {
@@ -221,18 +255,11 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 		return err
 	}
 
-	config := p.getConfiguration()
-
 	post := &model.Post{
 		UserId:    p.BotUserID,
 		ChannelId: channel.Id,
 		Message:   message,
 		Type:      postType,
-		Props: map[string]interface{}{
-			"from_webhook":      "true",
-			"override_username": GITHUB_USERNAME,
-			"override_icon_url": config.ProfileImageURL,
-		},
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
@@ -350,6 +377,58 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	}
 
 	return text, nil
+}
+
+func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
+	username := info.GitHubUsername
+	ctx := context.Background()
+	githubClient := p.githubConnect(*info.Token)
+	config := p.getConfiguration()
+
+	issues, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	relevantNotifications := false
+	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	for _, n := range notifications {
+		if n.GetReason() == "subscribed" {
+			continue
+		}
+
+		if n.GetRepository() == nil {
+			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			continue
+		}
+
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
+			continue
+		}
+
+		relevantNotifications = true
+		break
+	}
+
+	if issues.GetTotal() == 0 && !relevantNotifications && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
+		return false
+	}
+
+	return true
 }
 
 func (p *Plugin) checkOrg(org string) error {

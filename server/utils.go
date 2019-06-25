@@ -155,6 +155,7 @@ func fixGithubNotificationSubjectURL(url string) string {
 	url = strings.Replace(url, "api.", "", 1)
 	url = strings.Replace(url, "repos/", "", 1)
 	url = strings.Replace(url, "/pulls/", "/pull/", 1)
+	url = strings.Replace(url, "/commits/", "/commit/", 1)
 	url = strings.Replace(url, "/api/v3", "", 1)
 	return url
 }

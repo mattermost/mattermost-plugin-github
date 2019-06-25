@@ -4,25 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/go-github/github"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/model"
 	"github.com/mattermost/mattermost-server/plugin"
 
+	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
-	GITHUB_USERNAME            = "GitHub Plugin"
 )
 
 type APIErrorResponse struct {
@@ -50,8 +46,6 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	switch path := r.URL.Path; path {
 	case "/webhook":
 		p.handleWebhook(w, r)
-	case "/assets/profile.png":
-		p.handleProfileImage(w, r)
 	case "/oauth/connect":
 		p.connectUserToGitHub(w, r)
 	case "/oauth/complete":
@@ -98,6 +92,12 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request) {
+	authedUserID := r.Header.Get("Mattermost-User-ID")
+	if authedUserID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
 	config := p.getConfiguration()
 
 	ctx := context.Background()
@@ -123,6 +123,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	userID := strings.Split(state, "_")[1]
 
 	p.API.KVDelete(state)
+
+	if userID != authedUserID {
+		http.Error(w, "Not authorized, incorrect user", http.StatusUnauthorized)
+		return
+	}
 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
@@ -209,21 +214,6 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
-}
-
-func (p *Plugin) handleProfileImage(w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
-
-	img, err := os.Open(filepath.Join(config.PluginsDirectory, manifest.Id, "assets", "profile.png"))
-	if err != nil {
-		http.NotFound(w, r)
-		mlog.Error("Unable to read github profile image, err=" + err.Error())
-		return
-	}
-	defer img.Close()
-
-	w.Header().Set("Content-Type", "image/png")
-	io.Copy(w, img)
 }
 
 type ConnectedResponse struct {
@@ -318,9 +308,11 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 			nt := time.Unix(now/1000, 0).In(timezone)
 			lt := time.Unix(lastPostAt/1000, 0).In(timezone)
 			if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
-				p.PostToDo(info)
-				info.LastToDoPostAt = now
-				p.storeGitHubUserInfo(info)
+				if p.HasUnreads(info) {
+					p.PostToDo(info)
+					info.LastToDoPostAt = now
+					p.storeGitHubUserInfo(info)
+				}
 			}
 		}
 

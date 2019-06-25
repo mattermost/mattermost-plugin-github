@@ -2,7 +2,8 @@
     "id": "github",
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
-    "version": "0.9.1",
+    "version": "0.10.2",
+    "min_server_version": "5.12.0",
     "server": {
       "executables": {
           "linux-amd64": "server/dist/plugin-linux-amd64",
@@ -14,7 +15,7 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "To set up the GitHub plugin, you need to register a GitHub OAuth app here https://github.com/settings/applications/new.",
+        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost.  \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
         "settings": [
             {
                 "key": "GitHubOAuthClientID",
@@ -33,12 +34,6 @@
                 "display_name": "Webhook Secret",
                 "type": "generated",
                 "help_text": "The webhook secret set in GitHub."
-            },
-            {
-                "key": "Username",
-                "display_name": "User",
-                "type": "username",
-                "help_text": "Select the username of the user that the plugin will post with. This can be any user, the name and icon will be overridden when posting."
             },
             {
                 "key": "EncryptionKey",
@@ -68,7 +63,7 @@
                 "key": "EnablePrivateRepo",
                 "display_name": "Enable Private Repositories",
                 "type": "bool",
-                "help_text": "(Optional) Allow the plugin to work with private repositories. Enabling private repositories will require existing users to reconnect their accounts to gain access to private repositories. A message will be automatically be sent to affected users next time they load Mattermost alerting them of this."
+                "help_text": "(Optional) Allow the plugin to work with private repositories. When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
