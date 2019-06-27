@@ -16,6 +16,7 @@ function mapStateToProps(state) {
         unreads: state['plugins-github'].unreads,
         enterpriseURL: state['plugins-github'].enterpriseURL,
         org: state['plugins-github'].organization,
+        rhsState: state['plugins-github'].rhsState,
     };
 }
 

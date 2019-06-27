@@ -203,3 +203,14 @@ export function receivedRHSAction(rhsPlugAction) {
         dispatch(action);
     };
 }
+
+export function updateRhsState(rhsState) {
+    return (dispatch) => {
+        const action = {
+            type: ActionTypes.UPDATE_RHS_STATE,
+            state: rhsState,
+        };
+
+        dispatch(action);
+    };
+}
