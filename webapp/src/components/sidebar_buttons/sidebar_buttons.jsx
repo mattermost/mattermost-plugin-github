@@ -16,7 +16,7 @@ export default class SidebarButtons extends React.PureComponent {
         yourPrs: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,
-        showRHSPlugin: PropTypes.object,
+        showRHSPlugin: PropTypes.func.isRequired,
         actions: PropTypes.shape({
             getReviews: PropTypes.func.isRequired,
             getUnreads: PropTypes.func.isRequired,
@@ -73,7 +73,7 @@ export default class SidebarButtons extends React.PureComponent {
 
     openRHS = (rhsState) => {
         this.props.actions.updateRhsState(rhsState);
-        this.props.actions.dispatch(this.props.showRHSPlugin);
+        this.props.showRHSPlugin();
     }
 
     render() {

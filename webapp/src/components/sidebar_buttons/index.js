@@ -26,7 +26,6 @@ function mapDispatchToProps(dispatch) {
             getYourPrs,
             getYourAssignments,
             updateRhsState,
-            dispatch: (action) => dispatch(action),
         }, dispatch),
     };
 }

@@ -2,22 +2,38 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {Badge} from 'react-bootstrap';
+import {FormattedMessage} from 'react-intl';
 
 function GithubItems(props) {
     return props.items.length > 0 ? props.items.map((item) => {
-        const repoName = item.repository_url.replace(/.+\/repos\//, '');
+        const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
+
+        let userName = null;
+
+        if (item.user) {
+            userName = item.user.login;
+        } else if (item.owner) {
+            userName = item.owner.login;
+        }
+
+        let title = item.title ? item.title : item.subject.title;
+
+        if (item.html_url) {
+            title = (
+                <a
+                    href={item.html_url}
+                    target='_blank'
+                    rel='noopener noreferrer'
+                >
+                    {item.title ? item.title : item.subject.title}
+                </a>);
+        }
 
         return (
             <div key={item.id}>
                 <div>
                     <strong>
-                        <a
-                            href={item.html_url}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                        >
-                            {item.title ? item.title : item.subject.title}
-                        </a>
+                        {title}
                     </strong>
                     <GithubLabels labels={item.labels}/>
                 </div>
@@ -25,7 +41,16 @@ function GithubItems(props) {
                     className='mb-3 text-muted'
                     style={style.subtitle}
                 >
-                    {'Created by ' + item.user.login + ' at ' + repoName}
+                    {userName ? 'Created by ' + userName + ' ' : ''}
+                    {'at ' + repoName + '.'}
+                    {item.reason ?
+                        (<React.Fragment>
+                            <br/>
+                            <FormattedMessage
+                                id={item.reason}
+                                defaultMessage={item.reason}
+                            />
+                        </React.Fragment>) : null }
                 </div>
                 <hr style={style.hr}/>
             </div>

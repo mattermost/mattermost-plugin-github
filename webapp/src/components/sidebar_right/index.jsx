@@ -1,15 +1,10 @@
 import {connect} from 'react-redux';
-import {bindActionCreators} from 'redux';
-
-import {getReviews, getUnreads, getYourPrs, getYourAssignments} from '../../actions';
 
 import SidebarRight from './sidebar_right.jsx';
 
 function mapStateToProps(state) {
     return {
-        connected: state['plugins-github'].connected,
         username: state['plugins-github'].username,
-        clientId: state['plugins-github'].clientId,
         reviews: state['plugins-github'].reviews,
         yourPrs: state['plugins-github'].yourPrs,
         yourAssignments: state['plugins-github'].yourAssignments,
@@ -20,15 +15,4 @@ function mapStateToProps(state) {
     };
 }
 
-function mapDispatchToProps(dispatch) {
-    return {
-        actions: bindActionCreators({
-            getReviews,
-            getUnreads,
-            getYourPrs,
-            getYourAssignments,
-        }, dispatch),
-    };
-}
-
-export default connect(mapStateToProps, mapDispatchToProps)(SidebarRight);
+export default connect(mapStateToProps)(SidebarRight);

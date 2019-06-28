@@ -1,0 +1,13 @@
+{
+    "assign":	"You were assigned to the issue",
+    "author":	"You created the thread.",
+    "comment":	"You commented on the thread.",
+    "invitation":	"You accepted an invitation to contribute to the repository.",
+    "manual":	"You subscribed to the thread (via an issue or pull request).",
+    "mention":	"You were specifically @mentioned in the content.",
+    "review_requested":	"You were requested to review a pull request.",
+    "security_alert": "GitHub discovered a security vulnerability in your repository.",
+    "state_change": "You changed the thread state.",
+    "subscribed":	"You're watching the repository.",
+    "team_mention":	"You were on a team that was mentioned."
+}

@@ -24,7 +24,7 @@ class PluginClass {
         registry.registerPopoverUserAttributesComponent(UserAttribute);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'Github Plugin');
-        store.dispatch(receivedRHSAction(showRHSPlugin));
+        store.dispatch(receivedRHSAction(() => store.dispatch(showRHSPlugin)));
 
         registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
         registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));
