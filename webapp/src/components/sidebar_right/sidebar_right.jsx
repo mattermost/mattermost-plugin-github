@@ -40,6 +40,7 @@ export default class SidebarRight extends React.PureComponent {
         yourPrs: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         rhsState: PropTypes.string,
+        theme: PropTypes.object.isRequired,
     };
 
     render() {
@@ -104,10 +105,13 @@ export default class SidebarRight extends React.PureComponent {
                         </strong>
                     </div>
                     <div
-                        className='alert alert-transparent'
+                        className='alert alert-transparent alert-hr'
                         style={style.container}
                     >
-                        <GithubItems items={githubItems}/>
+                        <GithubItems
+                            items={githubItems}
+                            theme={this.props.theme}
+                        />
                     </div>
                 </Scrollbars>
             </React.Fragment>
@@ -120,6 +124,6 @@ const style = {
         padding: '10px',
     },
     container: {
-        margin: '10px',
+        margin: '0px 10px',
     },
 };
