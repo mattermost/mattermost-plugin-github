@@ -1,5 +1,7 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
+import en from '../i18n/en.json';
+import es from '../i18n/es.json';
 
 import SidebarHeader from './components/sidebar_header';
 import TeamSidebar from './components/team_sidebar';
@@ -12,6 +14,16 @@ import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from '.
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
 const activityTimeout = 60 * 60 * 1000; // 1 hour
+
+function getTranslations(locale) {
+    switch (locale) {
+    case 'en':
+        return en;
+    case 'es':
+        return es;
+    }
+    return {};
+}
 
 class PluginClass {
     async initialize(registry, store) {
@@ -40,6 +52,8 @@ class PluginClass {
         };
 
         document.addEventListener('click', activityFunc);
+
+        registry.registerTranslations(getTranslations);
     }
 
     deinitialize() {
