@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {Badge} from 'react-bootstrap';
-import {makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
+import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import en from 'i18n/en.json';
 

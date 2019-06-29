@@ -92,10 +92,7 @@ export default class SidebarRight extends React.PureComponent {
                     renderThumbVertical={renderThumbVertical}
                     renderView={renderView}
                 >
-                    <div
-                        className='text-center'
-                        style={style.divPadding}
-                    >
+                    <div style={style.sectionHeader}>
                         <strong>
                             <a
                                 href={listUrl}
@@ -104,10 +101,7 @@ export default class SidebarRight extends React.PureComponent {
                             >{title}</a>
                         </strong>
                     </div>
-                    <div
-                        className='alert alert-transparent alert-hr'
-                        style={style.container}
-                    >
+                    <div>
                         <GithubItems
                             items={githubItems}
                             theme={this.props.theme}
@@ -120,10 +114,7 @@ export default class SidebarRight extends React.PureComponent {
 }
 
 const style = {
-    divPadding: {
-        padding: '10px',
-    },
-    container: {
-        margin: '0px 10px',
+    sectionHeader: {
+        padding: '15px',
     },
 };
