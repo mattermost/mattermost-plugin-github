@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 
 import {Badge} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import {FormattedMessage} from 'react-intl';
 
 import en from 'i18n/en.json';
 
@@ -70,18 +69,14 @@ GithubItems.propTypes = {
 
 const getStyle = makeStyleFromTheme((theme) => {
     return {
+        container: {
+            padding: '15px',
+            borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
+        },
         itemTitle: {
             color: theme.centerChannelColor,
-            lineHeight: 1.7;
-            fontWeight: 'bold';
-        },
-        label: {
-            margin: '0 0 0 5px',
-            display: 'inline',
-            borderRadius: '3px';
-            padding: '2px 6px 3px';
-            top: '-1px';
-            position: 'relative';
+            lineHeight: 1.7,
+            fontWeight: 'bold',
         },
         subtitle: {
             margin: '5px 0 0 0',
@@ -106,13 +101,13 @@ GithubLabels.propTypes = {
 };
 
 const itemStyle = {
-    container: {
-        padding: '15px';
-        borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`;
-    },
     label: {
-        margin: '5px',
-        display: 'initial',
+        margin: '0 0 0 5px',
+        display: 'inline',
+        borderRadius: '3px',
+        padding: '2px 6px 3px',
+        top: '-1px',
+        position: 'relative',
     },
 };
 
