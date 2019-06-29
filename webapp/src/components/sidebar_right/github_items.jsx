@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 
 import {Badge} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {FormattedMessage} from 'react-intl';
 
 import en from 'i18n/en.json';
 
@@ -35,7 +36,10 @@ function GithubItems(props) {
         }
 
         return (
-            <div key={item.id}>
+            <div
+                key={item.id}
+                style={style.container}
+            >
                 <div>
                     <strong>
                         {title}
@@ -43,7 +47,7 @@ function GithubItems(props) {
                     <GithubLabels labels={item.labels}/>
                 </div>
                 <div
-                    className='mb-3 text-muted'
+                    className='light'
                     style={style.subtitle}
                 >
                     {userName ? 'Created by ' + userName + ' ' : ''}
@@ -54,7 +58,6 @@ function GithubItems(props) {
                             {en[item.reason]}
                         </React.Fragment>) : null }
                 </div>
-                <hr style={style.hr}/>
             </div>
         );
     }) : 'You have no active items';
@@ -69,20 +72,20 @@ const getStyle = makeStyleFromTheme((theme) => {
     return {
         itemTitle: {
             color: theme.centerChannelColor,
+            lineHeight: 1.7;
+            fontWeight: 'bold';
         },
         label: {
-            margin: '5px',
-            display: 'initial',
-        },
-        hr: {
-            borderStyle: 'solid',
-            borderWidth: '1px 0px',
-            borderBottom: '0',
-            margin: '.8em 0',
+            margin: '0 0 0 5px',
+            display: 'inline',
+            borderRadius: '3px';
+            padding: '2px 6px 3px';
+            top: '-1px';
+            position: 'relative';
         },
         subtitle: {
-            padding: '5px',
-            fontSize: '10pt',
+            margin: '5px 0 0 0',
+            fontSize: '13px',
         },
     };
 });
@@ -103,6 +106,10 @@ GithubLabels.propTypes = {
 };
 
 const itemStyle = {
+    container: {
+        padding: '15px';
+        borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`;
+    },
     label: {
         margin: '5px',
         display: 'initial',
