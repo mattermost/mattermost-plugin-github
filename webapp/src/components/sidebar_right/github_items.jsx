@@ -2,9 +2,9 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {Badge} from 'react-bootstrap';
-import {FormattedMessage} from 'react-intl';
-
 import {makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
+
+import en from 'i18n/en.json';
 
 function GithubItems(props) {
     return props.items.length > 0 ? props.items.map((item) => {
@@ -51,10 +51,7 @@ function GithubItems(props) {
                     {item.reason ?
                         (<React.Fragment>
                             <br/>
-                            <FormattedMessage
-                                id={item.reason}
-                                defaultMessage={item.reason}
-                            />
+                            {en[item.reason]}
                         </React.Fragment>) : null }
                 </div>
                 <hr style={style.hr}/>
