@@ -229,5 +229,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return &model.CommandResponse{}, nil
 	}
 
+	p.postCommandResponse(args, fmt.Sprintf("Unknown action %v", action))
+
 	return &model.CommandResponse{}, nil
 }
