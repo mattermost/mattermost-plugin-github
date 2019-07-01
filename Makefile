@@ -146,7 +146,7 @@ endif
 
 ## Creates a coverage report for the server code.
 .PHONY: coverage
-coverage: server/.depensure webapp/.npminstall
+coverage:
 ifneq ($(HAS_SERVER),)
 	$(GO) test -race -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -html=server/coverage.txt
