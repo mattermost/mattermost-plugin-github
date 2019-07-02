@@ -1,4 +1,7 @@
-# Mattermost GitHub Plugin ![CircleCI branch](https://img.shields.io/circleci/project/github/mattermost/mattermost-plugin-github/master.svg)
+# Mattermost GitHub Plugin
+
+[![Build Status](https://img.shields.io/circleci/project/github/mattermost/mattermost-plugin-github/master.svg)](https://circleci.com/gh/mattermost/mattermost-plugin-github)
+[![Code Coverage](https://img.shields.io/codecov/c/github/mattermost/mattermost-plugin-github/master.svg)](https://codecov.io/gh/mattermost/mattermost-plugin-github)
 
 A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 

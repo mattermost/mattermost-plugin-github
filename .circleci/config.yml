@@ -2,14 +2,16 @@ version: 2.1
 
 orbs:
   plugin-ci: mattermost/plugin-ci@volatile
+
 workflows:
-  ci-build:
+  version: 2
+  ci:
     jobs:
       - plugin-ci/lint:
           filters:
             tags:
               only: /^v.*/
-      - plugin-ci/test:
+      - plugin-ci/coverage:
           filters:
             tags:
               only: /^v.*/
@@ -24,7 +26,7 @@ workflows:
           context: plugin-ci
           requires:
             - plugin-ci/lint
-            - plugin-ci/test
+            - plugin-ci/coverage
             - plugin-ci/build
       - plugin-ci/deploy-release:
           filters:
@@ -35,7 +37,7 @@ workflows:
           context: plugin-ci
           requires:
             - plugin-ci/lint
-            - plugin-ci/test
+            - plugin-ci/coverage
             - plugin-ci/build
       - plugin-ci/deploy-release-github:
           filters:
@@ -46,5 +48,5 @@ workflows:
           context: matterbuild-github-token
           requires:
             - plugin-ci/lint
-            - plugin-ci/test
+            - plugin-ci/coverage
             - plugin-ci/build
