@@ -192,3 +192,21 @@ export function getGitHubUser(userID) {
         return {data};
     };
 }
+
+/**
+ * Stores`showRHSPlugin` action returned by
+ * registerRightHandSidebarComponent in plugin initialization.
+ */
+export function setShowRHSAction(showRHSPluginAction) {
+    return {
+        type: ActionTypes.RECEIVED_SHOW_RHS_ACTION,
+        showRHSPluginAction,
+    };
+}
+
+export function updateRhsState(rhsState) {
+    return {
+        type: ActionTypes.UPDATE_RHS_STATE,
+        state: rhsState,
+    };
+}
