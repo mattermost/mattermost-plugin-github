@@ -4,8 +4,6 @@ import PropTypes from 'prop-types';
 import {Badge} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-import en from 'i18n/en.json';
-
 function GithubItems(props) {
     return props.items.length > 0 ? props.items.map((item) => {
         const style = getStyle(props.theme);
@@ -54,7 +52,7 @@ function GithubItems(props) {
                     {item.reason ?
                         (<React.Fragment>
                             <br/>
-                            {en[item.reason]}
+                            {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
                 </div>
             </div>
@@ -109,6 +107,20 @@ const itemStyle = {
         top: '-1px',
         position: 'relative',
     },
+};
+
+const notificationReasons = {
+    assign:	'You were assigned to the issue',
+    author:	'You created the thread.',
+    comment:	'You commented on the thread.',
+    invitation:	'You accepted an invitation to contribute to the repository.',
+    manual:	'You subscribed to the thread (via an issue or pull request).',
+    mention:	'You were specifically @mentioned in the content.',
+    review_requested:	'You were requested to review a pull request.',
+    security_alert: 'GitHub discovered a security vulnerability in your repository.',
+    state_change: 'You changed the thread state.',
+    subscribed:	'You are watching the repository.',
+    team_mention:	'You were on a team that was mentioned.'
 };
 
 export default GithubItems;
