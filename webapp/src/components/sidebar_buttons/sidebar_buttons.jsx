@@ -23,7 +23,6 @@ export default class SidebarButtons extends React.PureComponent {
             getYourPrs: PropTypes.func.isRequired,
             getYourAssignments: PropTypes.func.isRequired,
             updateRhsState: PropTypes.func.isRequired,
-            dispatch: PropTypes.func.isRequired,
         }).isRequired,
     };
 

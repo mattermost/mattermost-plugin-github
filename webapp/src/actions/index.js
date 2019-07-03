@@ -193,24 +193,20 @@ export function getGitHubUser(userID) {
     };
 }
 
-export function receivedRHSAction(rhsPlugAction) {
-    return (dispatch) => {
-        const action = {
-            type: ActionTypes.RECEIVED_RHS_ACTION,
-            rhsPlugAction,
-        };
-
-        dispatch(action);
+/**
+ * Stores`showRHSPlugin` action returned by
+ * registerRightHandSidebarComponent in plugin initialization.
+ */
+export function receivedShowRHSAction(showRHSPluginAction) {
+    return {
+        type: ActionTypes.RECEIVED_SHOW_RHS_ACTION,
+        showRHSPluginAction,
     };
 }
 
 export function updateRhsState(rhsState) {
-    return (dispatch) => {
-        const action = {
-            type: ActionTypes.UPDATE_RHS_STATE,
-            state: rhsState,
-        };
-
-        dispatch(action);
+    return {
+        type: ActionTypes.UPDATE_RHS_STATE,
+        state: rhsState,
     };
 }

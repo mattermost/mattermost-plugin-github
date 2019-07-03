@@ -14,7 +14,7 @@ function mapStateToProps(state) {
         yourAssignments: state['plugins-github'].yourAssignments,
         unreads: state['plugins-github'].unreads,
         enterpriseURL: state['plugins-github'].enterpriseURL,
-        showRHSPlugin: state['plugins-github'].rhsPlugAction,
+        showRHSPlugin: state['plugins-github'].rhsPluginAction,
     };
 }
 

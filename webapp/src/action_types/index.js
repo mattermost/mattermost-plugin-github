@@ -8,6 +8,6 @@ export default {
     RECEIVED_UNREADS: pluginId + '_received_unreads',
     RECEIVED_CONNECTED: pluginId + '_received_connected',
     RECEIVED_GITHUB_USER: pluginId + '_received_github_user',
-    RECEIVED_RHS_ACTION: pluginId + '_received_rhs_action',
+    RECEIVED_SHOW_RHS_ACTION: pluginId + '_received_rhs_action',
     UPDATE_RHS_STATE: pluginId + '_update_rhs_state',
 };

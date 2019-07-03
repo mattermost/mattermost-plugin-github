@@ -5,7 +5,7 @@ import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import Reducer from './reducers';
-import {getConnected, receivedRHSAction} from './actions';
+import {getConnected, receivedShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
 
 let activityFunc;
@@ -23,7 +23,7 @@ class PluginClass {
         registry.registerPopoverUserAttributesComponent(UserAttribute);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'Github Plugin');
-        store.dispatch(receivedRHSAction(() => store.dispatch(showRHSPlugin)));
+        store.dispatch(receivedShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
         registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
         registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));

@@ -5,9 +5,9 @@ import {Badge} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 function GithubItems(props) {
-    return props.items.length > 0 ? props.items.map((item) => {
-        const style = getStyle(props.theme);
+    const style = getStyle(props.theme);
 
+    return props.items.length > 0 ? props.items.map((item) => {
         const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
 
         let userName = null;
@@ -57,7 +57,7 @@ function GithubItems(props) {
                 </div>
             </div>
         );
-    }) : 'You have no active items';
+    }) : <div style={style.container}>{'You have no active items'}</div>;
 }
 
 GithubItems.propTypes = {
@@ -88,7 +88,7 @@ function GithubLabels(props) {
         return (
             <Badge
                 key={label.id}
-                style={{...itemStyle.label, ...{backgroundColor: '#' + label.color}}}
+                style={{...itemStyle.label, ...{backgroundColor: `#${label.color}`}}}
             >{label.name}</Badge>
         );
     }) : null;
@@ -120,7 +120,7 @@ const notificationReasons = {
     security_alert: 'GitHub discovered a security vulnerability in your repository.',
     state_change: 'You changed the thread state.',
     subscribed:	'You are watching the repository.',
-    team_mention:	'You were on a team that was mentioned.'
+    team_mention:	'You were on a team that was mentioned.',
 };
 
 export default GithubItems;
