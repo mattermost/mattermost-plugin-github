@@ -197,7 +197,7 @@ export function getGitHubUser(userID) {
  * Stores`showRHSPlugin` action returned by
  * registerRightHandSidebarComponent in plugin initialization.
  */
-export function receivedShowRHSAction(showRHSPluginAction) {
+export function setShowRHSAction(showRHSPluginAction) {
     return {
         type: ActionTypes.RECEIVED_SHOW_RHS_ACTION,
         showRHSPluginAction,
