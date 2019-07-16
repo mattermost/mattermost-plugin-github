@@ -410,7 +410,7 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 
 		filteredNotifications = append(filteredNotifications, &filteredNotification{
 			Notification: *n,
-			HTMLUrl: fixGithubNotificationSubjectURL(n.GetSubject().GetURL()),
+			HTMLUrl:      fixGithubNotificationSubjectURL(n.GetSubject().GetURL()),
 		})
 	}
 
