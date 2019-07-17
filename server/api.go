@@ -392,7 +392,13 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 		mlog.Error(err.Error())
 	}
 
-	filteredNotifications := []*github.Notification{}
+	type filteredNotification struct {
+		github.Notification
+
+		HTMLUrl string `json:"html_url"`
+	}
+
+	filteredNotifications := []*filteredNotification{}
 	for _, n := range notifications {
 		if n.GetReason() == "subscribed" {
 			continue
@@ -402,7 +408,10 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		filteredNotifications = append(filteredNotifications, n)
+		filteredNotifications = append(filteredNotifications, &filteredNotification{
+			Notification: *n,
+			HTMLUrl:      fixGithubNotificationSubjectURL(n.GetSubject().GetURL()),
+		})
 	}
 
 	resp, _ := json.Marshal(filteredNotifications)
