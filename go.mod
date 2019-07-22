@@ -32,3 +32,6 @@ require (
 
 // Workaround for https://github.com/golang/go/issues/30831 and fallout.
 replace github.com/golang/lint => github.com/golang/lint v0.0.0-20190227174305-8f45f776aaf1
+
+// redirects mattermost-server to local repository
+replace github.com/mattermost/mattermost-server => ../mattermost-server

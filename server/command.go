@@ -53,22 +53,7 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 	_ = p.API.SendEphemeralPost(args.UserId, post)
 }
 
-func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	split := strings.Fields(args.Command)
-	command := split[0]
-	parameters := []string{}
-	action := ""
-	if len(split) > 1 {
-		action = split[1]
-	}
-	if len(split) > 2 {
-		parameters = split[2:]
-	}
-
-	if command != "/github" {
-		return &model.CommandResponse{}, nil
-	}
-
+func (p *Plugin) CommandCallback(action string, parameters []string, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	if action == "connect" {
 		config := p.API.GetConfig()
 		if config.ServiceSettings.SiteURL == nil {
@@ -231,5 +216,10 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	p.postCommandResponse(args, fmt.Sprintf("Unknown action %v", action))
 
+	return &model.CommandResponse{}, nil
+}
+
+func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+	p.Helpers.RegisterSlashCommand(args, "github", p.CommandCallback)
 	return &model.CommandResponse{}, nil
 }
