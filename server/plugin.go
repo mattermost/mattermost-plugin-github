@@ -348,7 +348,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+			text += fmt.Sprintf("* %v - %v\n", pr.GetHTMLURL(), pr.GetTitle())
 		}
 	}
 
@@ -360,7 +360,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
-			text += fmt.Sprintf("* %v\n", pr.GetHTMLURL())
+			text += fmt.Sprintf("* %v - %v\n", pr.GetHTMLURL(), pr.GetTitle())
 		}
 	}
 
@@ -372,7 +372,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
-			text += fmt.Sprintf("* %v\n", assign.GetHTMLURL())
+			text += fmt.Sprintf("* %v - %v\n", assign.GetHTMLURL(), assign.GetTitle())
 		}
 	}
 
