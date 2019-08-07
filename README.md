@@ -78,6 +78,7 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
   If you don't take either action, the plugin will post using the `github` account but without a `BOT` tag.
 
   **Note**: For versions 0.9 and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
+  
 2. Go to **System Console > Plugins > GitHub** and do the following:
   - Generate a new value for **At Rest Encryption Key**.
   - (Optional) **GitHub Organization**: Lock the plugin to a single GitHub organization by setting this field to the name of your GitHub organization.
