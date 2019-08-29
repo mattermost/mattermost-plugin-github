@@ -100,11 +100,10 @@ GithubLabels.propTypes = {
 
 const itemStyle = {
     label: {
-        margin: '0 0 0 5px',
-        display: 'inline',
+        margin: '3px 0 2px 5px',
+        display: 'inline-flex',
         borderRadius: '3px',
-        padding: '2px 6px 3px',
-        top: '-1px',
+        top: '-2px',
         position: 'relative',
     },
 };
