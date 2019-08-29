@@ -41,8 +41,8 @@ function GithubItems(props) {
                     <strong>
                         {title}
                     </strong>
-                    <GithubLabels labels={item.labels}/>
                 </div>
+                <GithubLabels labels={item.labels}/>
                 <div
                     className='light'
                     style={style.subtitle}
@@ -100,10 +100,10 @@ GithubLabels.propTypes = {
 
 const itemStyle = {
     label: {
-        margin: '3px 0 2px 5px',
+        margin: '4px 5px 0 0',
+        padding: '3px 8px',
         display: 'inline-flex',
         borderRadius: '3px',
-        top: '-2px',
         position: 'relative',
     },
 };
