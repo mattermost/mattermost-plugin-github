@@ -509,15 +509,7 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 	var githubClient *github.Client
 	username := ""
 
-	req := &SearchIssueRequest{}
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&req); err != nil {
-		if err != nil {
-			mlog.Error("Error decoding JSON body", mlog.Err(err))
-		}
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object with search_term key.", StatusCode: http.StatusBadRequest})
-		return
-	}
+	searchTerm := r.FormValue("term")
 
 	if info, err := p.getGitHubUserInfo(userID); err != nil {
 		writeAPIError(w, err)
@@ -527,7 +519,7 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, getIssuesSearchQuery(username, config.GitHubOrg, req.SearchTerm), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, getIssuesSearchQuery(username, config.GitHubOrg, searchTerm), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}

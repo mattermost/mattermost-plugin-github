@@ -11,8 +11,7 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
         isSystemMessage: PropTypes.bool.isRequired,
         open: PropTypes.func.isRequired,
         postId: PropTypes.string,
-        userConnected: PropTypes.bool.isRequired,
-        isInstanceInstalled: PropTypes.bool.isRequired,
+        connected: PropTypes.bool.isRequired,
     };
 
     static defaultTypes = {
@@ -30,7 +29,7 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
     };
 
     render() {
-        if (this.props.isSystemMessage || !this.props.isInstanceInstalled || !this.props.userConnected) {
+        if (this.props.isSystemMessage || !this.props.connected) {
             return null;
         }
 
@@ -40,8 +39,8 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
                 role='presentation'
                 onClick={this.handleClick}
             >
-                <i className='fa fa-github fa-lg'/>
-                {' Attach to Github Issue'}
+                <i className='fa fa-github fa-lg'/>&nbsp;
+                {'Attach to Github Issue'}
             </button>
         );
 

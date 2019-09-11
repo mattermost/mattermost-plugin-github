@@ -9,8 +9,6 @@ import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 
 import {openAttachCommentToIssueModal} from 'actions';
 
-import {isUserConnected, isInstanceInstalled} from 'selectors';
-
 import AttachCommentToIssuePostMenuAction from './attach_comment_to_issue';
 
 const mapStateToProps = (state, ownProps) => {
@@ -19,8 +17,7 @@ const mapStateToProps = (state, ownProps) => {
 
     return {
         isSystemMessage: systemMessage,
-        userConnected: isUserConnected(state),
-        isInstanceInstalled: isInstanceInstalled(state),
+        connected: state['plugins-github'].connected,
     };
 };
 

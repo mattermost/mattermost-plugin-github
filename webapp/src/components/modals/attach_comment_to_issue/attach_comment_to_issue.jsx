@@ -9,11 +9,10 @@ import FormButton from 'components/form_button';
 import Input from 'components/input';
 
 import GithubIssueSelector from 'components/github_issue_selector';
-import Validator from 'components/validator';
 
 const initialState = {
     submitting: false,
-    issueKey: null,
+    issueValue: {},
     textSearchTerms: '',
     error: null,
 };
@@ -30,8 +29,6 @@ export default class AttachIssueModal extends PureComponent {
     constructor(props) {
         super(props);
         this.state = initialState;
-
-        this.validator = new Validator();
     }
 
     handleCreate = (e) => {
@@ -39,21 +36,22 @@ export default class AttachIssueModal extends PureComponent {
             e.preventDefault();
         }
 
-        if (!this.validator.validate()) {
-            return;
-        }
+        const number = this.state.issueValue.number;
+        const repoUrl = this.state.issueValue.repository_url;
+        const repoUrlParts = repoUrl.split('/');
+        const repo = repoUrlParts.pop();
+        const owner = repoUrlParts.pop();
 
         const issue = {
-            owner: 'niklabh',
-            repo: 'linkmin',
-            number: this.state.issueKey,
-            comment: this.props.post,
+            owner,
+            repo,
+            number,
+            comment: this.props.post.message,
         };
 
         this.setState({submitting: true});
 
         this.props.create(issue).then((created) => {
-            console.log(created); //eslint-disable-line
             if (created.error) {
                 this.setState({error: created.error.message, submitting: false});
                 return;
@@ -70,9 +68,9 @@ export default class AttachIssueModal extends PureComponent {
         this.setState(initialState, close);
     };
 
-    handleIssueKeyChange = (newValue) => {
+    handleIssueValueChange = (newValue) => {
         this.setState({
-            issueKey: newValue,
+            issueValue: newValue,
         });
     };
 
@@ -89,13 +87,11 @@ export default class AttachIssueModal extends PureComponent {
             <div>
                 <GithubIssueSelector
                     id={'issue'}
-                    addValidate={this.validator.addComponent}
-                    removeValidate={this.validator.removeComponent}
-                    onChange={this.handleIssueKeyChange}
+                    onChange={this.handleIssueValueChange}
                     required={true}
                     theme={theme}
                     error={error}
-                    value={this.state.issueKey}
+                    value={this.state.issueValue}
                 />
                 <Input
                     label='Message Attached to Github Issue'

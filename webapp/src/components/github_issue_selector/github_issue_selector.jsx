@@ -12,34 +12,19 @@ import Client from 'client';
 
 const searchDebounceDelay = 400;
 
-export default class JiraIssueSelector extends Component {
+export default class GithubIssueSelector extends Component {
     static propTypes = {
-        id: PropTypes.string,
         required: PropTypes.bool,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         error: PropTypes.string,
         value: PropTypes.object,
-        addValidate: PropTypes.func.isRequired,
-        removeValidate: PropTypes.func.isRequired,
     };
 
     constructor(props) {
         super(props);
 
         this.state = {invalid: false};
-    }
-
-    componentDidMount() {
-        if (this.props.addValidate && this.props.id) {
-            this.props.addValidate(this.props.id, this.isValid);
-        }
-    }
-
-    componentWillUnmount() {
-        if (this.props.removeValidate && this.props.id) {
-            this.props.removeValidate(this.props.id);
-        }
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -56,8 +41,7 @@ export default class JiraIssueSelector extends Component {
         const textEncoded = encodeURIComponent(text.trim().replace(/"/g, '\\"'));
 
         return Client.searchIssues(textEncoded).then((data) => {
-            console.log(data); //eslint-disable-line
-            return data;
+            return Array.isArray(data) ? data.map((item) => ({value: item, label: item.title})) : [];
         }).catch((e) => {
             this.setState({error: e});
         });

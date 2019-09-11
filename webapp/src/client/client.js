@@ -34,7 +34,7 @@ export default class Client {
     }
 
     searchIssues = async (searchTerm) => {
-        return this.doPost(`${this.url}/searchissues`, {searchTerm});
+        return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
     }
 
     attachCommentToIssue = async (payload) => {
