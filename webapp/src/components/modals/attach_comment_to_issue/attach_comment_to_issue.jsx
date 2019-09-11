@@ -9,7 +9,7 @@ import GithubIssueSelector from 'components/github_issue_selector';
 
 const initialState = {
     submitting: false,
-    issueValue: {},
+    issueValue: null,
     textSearchTerms: '',
     error: null,
 };
@@ -31,6 +31,10 @@ export default class AttachIssueModal extends PureComponent {
     handleCreate = (e) => {
         if (e && e.preventDefault) {
             e.preventDefault();
+        }
+
+        if (!this.state.issueValue) {
+            return;
         }
 
         const number = this.state.issueValue.number;
