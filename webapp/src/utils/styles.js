@@ -1,6 +1,3 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
-// See LICENSE.txt for license information.
-
 import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 export const getStyleForReactSelect = (theme) => {

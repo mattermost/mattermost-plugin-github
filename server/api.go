@@ -236,10 +236,6 @@ type CreateIssueCommentRequest struct {
 	Comment string `json:"comment"`
 }
 
-type SearchIssueRequest struct {
-	SearchTerm string `json:"search_term"`
-}
-
 type GitHubUserRequest struct {
 	UserID string `json:"user_id"`
 }
