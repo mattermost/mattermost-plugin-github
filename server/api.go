@@ -494,6 +494,11 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
+	if r.Method != http.MethodGet {
+		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be GET", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -525,6 +530,11 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be POST", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
