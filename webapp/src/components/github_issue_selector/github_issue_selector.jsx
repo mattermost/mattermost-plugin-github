@@ -9,7 +9,7 @@ import Client from 'client';
 
 const searchDebounceDelay = 400;
 
-export default class GithubIssueSelector extends Component {
+export default class GithubIssueSelector extends PureComponent {
     static propTypes = {
         required: PropTypes.bool,
         theme: PropTypes.object.isRequired,
