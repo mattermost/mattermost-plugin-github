@@ -8,7 +8,7 @@ import debounce from 'debounce-promise';
 import AsyncSelect from 'react-select/async';
 
 import {getStyleForReactSelect} from 'utils/styles';
-import {searchIssues} from 'client';
+import Client from 'client';
 
 const searchDebounceDelay = 400;
 
@@ -55,7 +55,7 @@ export default class JiraIssueSelector extends Component {
     searchIssues = (text) => {
         const textEncoded = encodeURIComponent(text.trim().replace(/"/g, '\\"'));
 
-        return searchIssues(textEncoded).then((data) => {
+        return Client.searchIssues(textEncoded).then((data) => {
             console.log(data); //eslint-disable-line
             return data;
         }).catch((e) => {

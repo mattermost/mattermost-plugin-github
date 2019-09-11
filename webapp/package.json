@@ -14,6 +14,7 @@
     "prop-types": "15.7.2",
     "react": "16.8.6",
     "react-bootstrap": "0.32.4",
+    "react-dom": "16.8.6",
     "react-custom-scrollbars": "^4.2.1",
     "react-redux": "7.0.3",
     "react-select": "3.0.4",
