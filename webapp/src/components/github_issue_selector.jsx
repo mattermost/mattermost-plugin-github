@@ -1,4 +1,7 @@
-import React, {Component} from 'react';
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import debounce from 'debounce-promise';
@@ -61,7 +64,7 @@ export default class GithubIssueSelector extends PureComponent {
         return valid;
     };
 
-    render = () => {
+    render() {
         const {error} = this.props;
         const requiredStar = (
             <span
@@ -90,7 +93,7 @@ export default class GithubIssueSelector extends PureComponent {
                         className='fa fa-warning'
                         title='Warning Icon'
                     />
-                    <span> {serverError.toString()}</span>
+                    <span>{serverError.toString()}</span>
                 </p>
             );
         }
