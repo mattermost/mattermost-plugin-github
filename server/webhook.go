@@ -64,7 +64,8 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	event, err := github.ParseWebHook(github.WebHookType(r), body)
 	if err != nil {
-		mlog.Error(err.Error())
+		mlog.Error("GitHub webhook content type should be set to \"application/json\"", mlog.Err(err))
+		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
 
