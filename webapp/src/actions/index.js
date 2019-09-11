@@ -210,3 +210,41 @@ export function updateRhsState(rhsState) {
         state: rhsState,
     };
 }
+
+export function openAttachCommentToIssueModal(postId) {
+    return {
+        type: ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL,
+        data: {
+            postId,
+        },
+    };
+}
+
+export function closeAttachCommentToIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL,
+    };
+}
+
+export function attachCommentToIssue(payload) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.attachCommentToIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_ATTACH_COMMENT_RESULT,
+            data,
+        });
+
+        return {data};
+    };
+}

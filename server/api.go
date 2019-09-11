@@ -58,8 +58,12 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getReviews(w, r)
 	case "/api/v1/yourprs":
 		p.getYourPrs(w, r)
+	case "/api/v1/searchissues":
+		p.searchIssues(w, r)
 	case "/api/v1/yourassignments":
 		p.getYourAssignments(w, r)
+	case "/api/v1/createissuecomment":
+		p.createIssueComment(w, r)
 	case "/api/v1/mentions":
 		p.getMentions(w, r)
 	case "/api/v1/unreads":
@@ -223,6 +227,17 @@ type ConnectedResponse struct {
 	EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
 	Organization      string        `json:"organization"`
 	Settings          *UserSettings `json:"settings"`
+}
+
+type CreateIssueCommentRequest struct {
+	Owner   string `json:"owner"`
+	Repo    string `json:"repo"`
+	Number  int    `json:"number"`
+	Comment string `json:"comment"`
+}
+
+type SearchIssueRequest struct {
+	SearchTerm string `json:"search_term"`
 }
 
 type GitHubUserRequest struct {
@@ -477,6 +492,108 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, _ := json.Marshal(result.Issues)
+	w.Write(resp)
+}
+
+func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+	username := ""
+
+	req := &SearchIssueRequest{}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil {
+		if err != nil {
+			mlog.Error("Error decoding JSON body", mlog.Err(err))
+		}
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object with search_term key.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = p.githubConnect(*info.Token)
+		username = info.GitHubUsername
+	}
+
+	result, _, err := githubClient.Search.Issues(ctx, getIssuesSearchQuery(username, config.GitHubOrg, req.SearchTerm), &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result.Issues)
+	w.Write(resp)
+}
+
+func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	req := &CreateIssueCommentRequest{}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil {
+		if err != nil {
+			mlog.Error("Error decoding JSON body", mlog.Err(err))
+		}
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Owner == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Repo == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Number == 0 {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue number.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Comment == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid non empty comment.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = p.githubConnect(*info.Token)
+	}
+
+	comment := &github.IssueComment{
+		Body: &req.Comment,
+	}
+
+	result, _, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment)
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result)
 	w.Write(resp)
 }
 

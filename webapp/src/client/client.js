@@ -33,6 +33,14 @@ export default class Client {
         return this.doPost(`${this.url}/user`, {user_id: userID});
     }
 
+    searchIssues = async (searchTerm) => {
+        return this.doPost(`${this.url}/searchissues`, {searchTerm});
+    }
+
+    attachCommentToIssue = async (payload) => {
+        return this.doPost(`${this.url}/createissuecomment`, payload);
+    }
+
     doGet = async (url, body, headers = {}) => {
         headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
