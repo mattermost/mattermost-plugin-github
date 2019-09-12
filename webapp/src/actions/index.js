@@ -230,7 +230,7 @@ export function closeAttachCommentToIssueModal() {
 }
 
 export function attachCommentToIssue(payload) {
-    return async (dispatch, getState) => {
+    return async (dispatch) => {
         let data;
         try {
             data = await Client.attachCommentToIssue(payload);
@@ -238,7 +238,7 @@ export function attachCommentToIssue(payload) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await dispatch(checkAndHandleNotConnected(data));
         if (!connected) {
             return {error: data};
         }
