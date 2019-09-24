@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import request from 'superagent';
 
 export default class Client {
@@ -31,6 +34,14 @@ export default class Client {
 
     getGitHubUser = async (userID) => {
         return this.doPost(`${this.url}/user`, {user_id: userID});
+    }
+
+    searchIssues = async (searchTerm) => {
+        return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
+    }
+
+    attachCommentToIssue = async (payload) => {
+        return this.doPost(`${this.url}/createissuecomment`, payload);
     }
 
     doGet = async (url, body, headers = {}) => {

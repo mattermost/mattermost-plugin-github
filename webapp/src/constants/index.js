@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 export default {
     SETTING_BUTTONS_TEAM: 'team',
     SETTING_BUTTONS_CHANNEL: 'channel',

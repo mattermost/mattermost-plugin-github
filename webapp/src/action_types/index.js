@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {id as pluginId} from '../manifest';
 
 export default {
@@ -10,4 +13,7 @@ export default {
     RECEIVED_GITHUB_USER: pluginId + '_received_github_user',
     RECEIVED_SHOW_RHS_ACTION: pluginId + '_received_rhs_action',
     UPDATE_RHS_STATE: pluginId + '_update_rhs_state',
+    CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL: pluginId + '_close_attach_modal',
+    OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL: pluginId + '_open_attach_modal',
+    RECEIVED_ATTACH_COMMENT_RESULT: pluginId + '_received_attach_comment',
 };

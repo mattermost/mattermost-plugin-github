@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import Client from '../client';
 import ActionTypes from '../action_types';
 
@@ -208,5 +211,43 @@ export function updateRhsState(rhsState) {
     return {
         type: ActionTypes.UPDATE_RHS_STATE,
         state: rhsState,
+    };
+}
+
+export function openAttachCommentToIssueModal(postId) {
+    return {
+        type: ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL,
+        data: {
+            postId,
+        },
+    };
+}
+
+export function closeAttachCommentToIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL,
+    };
+}
+
+export function attachCommentToIssue(payload) {
+    return async (dispatch) => {
+        let data;
+        try {
+            data = await Client.attachCommentToIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await dispatch(checkAndHandleNotConnected(data));
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_ATTACH_COMMENT_RESULT,
+            data,
+        });
+
+        return {data};
     };
 }

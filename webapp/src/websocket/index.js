@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import ActionTypes from '../action_types';
 import Constants from '../constants';
 import {getConnected, getReviews, getUnreads, getYourPrs, getYourAssignments} from '../actions';
