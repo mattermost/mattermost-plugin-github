@@ -539,7 +539,8 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 
 func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+>@cpanato, anytime?
 `
 
 	actual, err := renderTemplate("commentAuthorPullRequestNotification", &github.IssueCommentEvent{
