@@ -153,16 +153,16 @@ func init() {
 `))
 
 	template.Must(masterTemplate.New("commentMentionNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.Issue.GetNumber}}]({{.GetComment.GetHTMLURL}}):
+{{template "user" .GetSender}} mentioned you on [#{{.Issue.GetNumber}} {{.Issue.GetTitle}}]({{.GetComment.GetHTMLURL}}):
 >{{.GetComment.GetBody | trimBody}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssue" .}}
+{{template "user" .GetSender}} commented on your pull request {{template "issue" .GetIssue}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your issue {{template "eventRepoIssue" .}}
+{{template "user" .GetSender}} commented on your issue {{template "issue" .GetIssue}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestNotification").Funcs(funcMap).Parse(`
@@ -174,7 +174,7 @@ func init() {
     {{- end }}
 {{- else if eq .GetAction "reopened" }} reopened your pull request
 {{- else if eq .GetAction "assigned" }} assigned you to pull request
-{{- end }} {{template "eventRepoPullRequest" .}}
+{{- end }} {{template "pullRequest" .GetPullRequest}}
 `))
 
 	template.Must(masterTemplate.New("issueNotification").Funcs(funcMap).Parse(`
@@ -182,7 +182,7 @@ func init() {
 {{- if eq .GetAction "closed" }} closed your issue
 {{- else if eq .GetAction "reopened" }} reopened your issue
 {{- else if eq .GetAction "assigned" }} assigned you to issue
-{{- end }} {{template "eventRepoIssue" .}}
+{{- end }} {{template "issue" .GetIssue}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestReviewNotification").Funcs(funcMap).Parse(`
@@ -190,7 +190,7 @@ func init() {
 {{- if eq .GetReview.GetState "approved" }} approved your pull request
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
-{{- end }} {{template "eventRepoPullRequest" .}}
+{{- end }} {{template "pullRequest" .GetPullRequest}}
 `))
 }
 
