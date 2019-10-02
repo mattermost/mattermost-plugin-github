@@ -158,7 +158,8 @@ func init() {
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssue" .}}
+{{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssue" .}}:
+>{{.GetComment.GetBody | trimBody}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
