@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -172,4 +174,107 @@ func fixGithubNotificationSubjectURL(url string) string {
 
 func fullNameFromOwnerAndRepo(owner, repo string) string {
 	return fmt.Sprintf("%s/%s", owner, repo)
+}
+
+// filter lines in a string from start to end
+func filterLines(s string, start, end int) string {
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	var buf strings.Builder
+	i := 1
+	for scanner.Scan() {
+		if i < start {
+			i++
+			continue
+		}
+		if i > end {
+			break
+		}
+		buf.Write(scanner.Bytes())
+		buf.WriteByte(byte('\n'))
+		i++
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println(err)
+	}
+
+	return buf.String()
+}
+
+// getLineNumbers return the start and end lines from an anchor tag
+// of a github permalink.
+func getLineNumbers(s string) (start, end int) {
+	// split till -
+	parts := strings.Split(s, "-")
+
+	if len(parts) > 2 {
+		return -1, -1
+	}
+
+	switch len(parts) {
+	case 1: // just a single line
+		l := getLine(parts[0])
+		if l == -1 {
+			return -1, -1
+		}
+		if l < 3 {
+			return 0, l + 3
+		}
+		return l - 3, l + 3
+	case 2: // a line rage
+		start := getLine(parts[0])
+		end := getLine(parts[1])
+		return start, end
+	}
+	return -1, -1
+}
+
+// getLine returns the line number in int from a string
+// of form L<num>.
+func getLine(s string) int {
+	// check starting L and minimum length
+	if !strings.HasPrefix(s, "L") || len(s) < 2 {
+		return -1
+	}
+
+	line, err := strconv.Atoi(s[1:])
+	if err != nil {
+		return -1
+	}
+	return line
+}
+
+// isInsideLink reports whether the given index in a string is preceeded
+// by zero or more space, then (, then ].
+//
+// It is a poor man's version of checking markdown hyperlinks without
+// using a full-blown markdown parser. The idea is to quickly confirm
+// whether a permalink is inside a markdown link or not. Something like
+// "text ]( permalink" is rare enough. Even then, it is okay if
+// there are false positives, but there cannot be any false negatives.
+//
+// Note: it is fine to go one byte at a time instead of one rune because
+// we are anyways looking for ASCII chars.
+func isInsideLink(msg string, index int) bool {
+	stage := 0 // 0 is looking for space or ( and 1 for ]
+
+	for i := index; i > 0; i-- {
+		char := msg[i-1]
+		switch stage {
+		case 0:
+			if char == ' ' {
+				continue
+			}
+			if char == '(' {
+				stage++
+				continue
+			}
+			return false
+		case 1:
+			if char == ']' {
+				return true
+			}
+			return false
+		}
+	}
+	return false
 }

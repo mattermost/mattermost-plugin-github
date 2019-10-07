@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -42,6 +43,8 @@ const (
 type Plugin struct {
 	plugin.MattermostPlugin
 	githubClient *github.Client
+	initOnce     sync.Once
+	githubRegex  *regexp.Regexp
 
 	BotUserID string
 
@@ -51,6 +54,13 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *configuration
+}
+
+// New returns an instance of a Plugin
+func New() *Plugin {
+	return &Plugin{
+		githubRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+	}
 }
 
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
@@ -114,6 +124,29 @@ func (p *Plugin) OnActivate() error {
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
 	return nil
+}
+
+func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
+	// If not enabled in config, ignore.
+	config := p.getConfiguration()
+	if !config.EnableCodePreview {
+		return nil, ""
+	}
+
+	msg := post.Message
+	info, err := p.getGitHubUserInfo(post.UserId)
+	if err != nil {
+		p.API.LogError("error in getting user info", "error", err)
+		return nil, ""
+	}
+	// TODO: apply the same optimization for /slash commands too.
+	p.initOnce.Do(func() {
+		p.githubClient = p.githubConnect(*info.Token)
+	})
+
+	replacements := p.getReplacements(msg)
+	post.Message = p.makeReplacements(msg, replacements)
+	return post, ""
 }
 
 func (p *Plugin) getOAuthConfig() *oauth2.Config {

@@ -29,6 +29,7 @@ type configuration struct {
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
 	PluginsDirectory        string
+	EnableCodePreview       bool
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
