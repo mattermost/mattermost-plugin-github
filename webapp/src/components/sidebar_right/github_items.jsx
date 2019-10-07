@@ -7,10 +7,32 @@ import PropTypes from 'prop-types';
 import {Badge} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
+//retain previous item to show deleted items between 2 refresh call
+let previousItems = [];
+let previousStateRhs;
+
 function GithubItems(props) {
     const style = getStyle(props.theme);
+    let oldElements = [];
+    let newElements = [];
 
-    return props.items.length > 0 ? props.items.map((item) => {
+    if (previousStateRhs === props.rhsState) {
+        oldElements = previousItems.map((item) => {
+            if (!props.items.find((i) => i.id === item.id)) {
+                return {...item, missing: true};
+            }
+            return item;
+        });
+        newElements = props.items.filter((item) => !previousItems.find((i) => i.id === item.id));
+    } else {
+        previousStateRhs = props.rhsState;
+        newElements = [...props.items];
+    }
+
+    const elements = [...oldElements, ...newElements];
+    previousItems = [...elements];
+
+    return elements.length > 0 ? elements.map((item) => {
         const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
 
         let userName = null;
@@ -38,7 +60,7 @@ function GithubItems(props) {
         return (
             <div
                 key={item.id}
-                style={style.container}
+                style={item.missing ? style.containerDimmed : style.container}
             >
                 <div>
                     <strong>
@@ -66,6 +88,7 @@ function GithubItems(props) {
 GithubItems.propTypes = {
     items: PropTypes.array.isRequired,
     theme: PropTypes.object.isRequired,
+    rhsState: PropTypes.string.isRequired,
 };
 
 const getStyle = makeStyleFromTheme((theme) => {
@@ -73,6 +96,11 @@ const getStyle = makeStyleFromTheme((theme) => {
         container: {
             padding: '15px',
             borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
+        },
+        containerDimmed: {
+            padding: '15px',
+            borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
+            opacity: 0.5,
         },
         itemTitle: {
             color: theme.centerChannelColor,
@@ -98,7 +126,7 @@ function GithubLabels(props) {
 }
 
 GithubLabels.propTypes = {
-    labels: PropTypes.array.isRequired,
+    labels: PropTypes.array,
 };
 
 const itemStyle = {

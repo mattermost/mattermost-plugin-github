@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import {Tooltip, OverlayTrigger} from 'react-bootstrap';
 import PropTypes from 'prop-types';
 import Scrollbars from 'react-custom-scrollbars';
 
@@ -44,11 +45,57 @@ export default class SidebarRight extends React.PureComponent {
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         rhsState: PropTypes.string,
         theme: PropTypes.object.isRequired,
+        actions: PropTypes.shape({
+            getReviews: PropTypes.func.isRequired,
+            getUnreads: PropTypes.func.isRequired,
+            getYourPrs: PropTypes.func.isRequired,
+            getYourAssignments: PropTypes.func.isRequired,
+        }).isRequired,
     };
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            refreshing: false,
+        };
+    }
+
+    refresh = async (e) => {
+        if (this.state.refreshing) {
+            return;
+        }
+
+        if (e) {
+            e.preventDefault();
+        }
+
+        this.setState({refreshing: true});
+        let refreshAction;
+        switch (this.props.rhsState) {
+        case RHSStates.PRS:
+            refreshAction = this.props.actions.getYourPrs;
+            break;
+        case RHSStates.REVIEWS:
+            refreshAction = this.props.actions.getReviews;
+            break;
+        case RHSStates.UNREADS:
+            refreshAction = this.props.actions.getUnreads;
+            break;
+        case RHSStates.ASSIGNMENTS:
+            refreshAction = this.props.actions.getYourAssignments;
+            break;
+        default:
+            return;
+        }
+        await refreshAction();
+        this.setState({refreshing: false});
+    }
 
     render() {
         const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
         const orgQuery = this.props.org ? '+org%3A' + this.props.org : '';
+        const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
         let title = '';
         let githubItems = [];
@@ -74,12 +121,14 @@ export default class SidebarRight extends React.PureComponent {
             githubItems = this.props.unreads;
             title = 'Unread Messages';
             listUrl = baseURL + '/notifications';
+
             break;
         case RHSStates.ASSIGNMENTS:
 
             githubItems = this.props.yourAssignments;
             title = 'Your Assignments';
             listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + this.props.username + orgQuery;
+
             break;
         default:
             break;
@@ -103,11 +152,24 @@ export default class SidebarRight extends React.PureComponent {
                                 rel='noopener noreferrer'
                             >{title}</a>
                         </strong>
+                        <OverlayTrigger
+                            key='githubRefreshButton'
+                            placement='bottom'
+                            overlay={<Tooltip id='refreshTooltip'>Refresh</Tooltip>}
+                        >
+                            <button
+                                style={style.refresh}
+                                onClick={this.refresh}
+                            >
+                                <i className={'fa fa-refresh' + refreshClass}/>
+                            </button>
+                        </OverlayTrigger>
                     </div>
                     <div>
                         <GithubItems
                             items={githubItems}
                             theme={this.props.theme}
+                            rhsState={this.props.rhsState}
                         />
                     </div>
                 </Scrollbars>
@@ -119,5 +181,10 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
+    },
+    refresh: {
+        float: 'right',
+        border: 'none',
+        background: 'none',
     },
 };

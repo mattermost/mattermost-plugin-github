@@ -2,6 +2,9 @@
 // See LICENSE.txt for license information.
 
 import {connect} from 'react-redux';
+import {bindActionCreators} from 'redux';
+
+import {getReviews, getUnreads, getYourPrs, getYourAssignments} from '../../actions';
 
 import SidebarRight from './sidebar_right.jsx';
 
@@ -18,4 +21,15 @@ function mapStateToProps(state) {
     };
 }
 
-export default connect(mapStateToProps)(SidebarRight);
+function mapDispatchToProps(dispatch) {
+    return {
+        actions: bindActionCreators({
+            getReviews,
+            getUnreads,
+            getYourPrs,
+            getYourAssignments,
+        }, dispatch),
+    };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(SidebarRight);
