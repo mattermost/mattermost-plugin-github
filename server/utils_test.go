@@ -93,6 +93,10 @@ func TestGetLineNumbers(t *testing.T) {
 			start: 19,
 			end:   23,
 		}, {
+			input: "L23-L19",
+			start: -1,
+			end:   -1,
+		}, {
 			input: "L",
 			start: -1,
 			end:   -1,
@@ -112,8 +116,8 @@ func TestGetLineNumbers(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		start, end := getLineNumbers(tc.input)
-		assert.Equalf(t, tc.start, start, "unexepected start index for getLineNumbers(%q)", tc.input)
-		assert.Equalf(t, tc.end, end, "unexepected end index for getLineNumbers(%q)", tc.input)
+		assert.Equalf(t, tc.start, start, "unexpected start index for getLineNumbers(%q)", tc.input)
+		assert.Equalf(t, tc.end, end, "unexpected end index for getLineNumbers(%q)", tc.input)
 	}
 }
 
@@ -155,6 +159,6 @@ func TestInsideLink(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		assert.Equalf(t, tc.expected, isInsideLink(tc.input, tc.index), "unexepected result for isInsideLink(%q, %d)", tc.input, tc.index)
+		assert.Equalf(t, tc.expected, isInsideLink(tc.input, tc.index), "unexpected result for isInsideLink(%q, %d)", tc.input, tc.index)
 	}
 }

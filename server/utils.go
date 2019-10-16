@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 	"unicode"
@@ -177,7 +178,7 @@ func fullNameFromOwnerAndRepo(owner, repo string) string {
 }
 
 // filter lines in a string from start to end
-func filterLines(s string, start, end int) string {
+func filterLines(s string, start, end int) (string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(s))
 	var buf strings.Builder
 	i := 1
@@ -193,11 +194,9 @@ func filterLines(s string, start, end int) string {
 		buf.WriteByte(byte('\n'))
 		i++
 	}
-	if err := scanner.Err(); err != nil {
-		fmt.Println(err)
-	}
+	err := scanner.Err()
 
-	return buf.String()
+	return buf.String(), err
 }
 
 // getLineNumbers return the start and end lines from an anchor tag
@@ -211,18 +210,23 @@ func getLineNumbers(s string) (start, end int) {
 	}
 
 	switch len(parts) {
-	case 1: // just a single line
+	case 1:
+		// just a single line
 		l := getLine(parts[0])
 		if l == -1 {
 			return -1, -1
 		}
-		if l < 3 {
-			return 0, l + 3
+		if l < permalinkLineContext {
+			return 0, l + permalinkLineContext
 		}
-		return l - 3, l + 3
-	case 2: // a line rage
+		return l - permalinkLineContext, l + permalinkLineContext
+	case 2:
+		// a line range
 		start := getLine(parts[0])
 		end := getLine(parts[1])
+		if start > end && (start != -1 && end != -1) {
+			return -1, -1
+		}
 		return start, end
 	}
 	return -1, -1
@@ -231,7 +235,7 @@ func getLineNumbers(s string) (start, end int) {
 // getLine returns the line number in int from a string
 // of form L<num>.
 func getLine(s string) int {
-	// check starting L and minimum length
+	// check starting L and minimum length.
 	if !strings.HasPrefix(s, "L") || len(s) < 2 {
 		return -1
 	}
@@ -277,4 +281,22 @@ func isInsideLink(msg string, index int) bool {
 		}
 	}
 	return false
+}
+
+// getCodeMarkdown returns the constructed markdown for a permalink.
+func getCodeMarkdown(captureMap map[string]string, word, lines string, isTruncated bool) string {
+	final := fmt.Sprintf("\n[%s/%s/%s](%s)\n",
+		captureMap["user"], captureMap["repo"], captureMap["path"], word)
+	ext := path.Ext(captureMap["path"])
+	// remove the preceding dot
+	if len(ext) > 1 {
+		ext = strings.TrimPrefix(ext, ".")
+	}
+	final += "```" + ext + "\n"
+	final += lines
+	if isTruncated { // add an ellipsis if lines were cut off
+		final += "...\n"
+	}
+	final += "```\n"
+	return final
 }

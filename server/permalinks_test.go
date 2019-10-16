@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetReplacements(t *testing.T) {
-	p := New()
+	p := NewPlugin()
 
 	tcs := []struct {
 		name            string
@@ -133,6 +133,24 @@ func TestGetReplacements(t *testing.T) {
 						"haswww": "",
 						"line":   "L15-L22",
 						"path":   "app/authentication.go",
+						"user":   "mattermost",
+						"repo":   "mattermost-server",
+					},
+				},
+			},
+		}, {
+			name:            "single line",
+			input:           "this is a one line permalink https://github.com/mattermost/mattermost-server/blob/4225977966cf0855c8a5e55f8a0fef702b19dc18/api4/bot.go#L16",
+			numReplacements: 1,
+			replacements: []replacement{
+				{
+					index: 29,
+					word:  "https://github.com/mattermost/mattermost-server/blob/4225977966cf0855c8a5e55f8a0fef702b19dc18/api4/bot.go#L16",
+					captureMap: map[string]string{
+						"commit": "4225977966cf0855c8a5e55f8a0fef702b19dc18",
+						"haswww": "",
+						"line":   "L16",
+						"path":   "api4/bot.go",
 						"user":   "mattermost",
 						"repo":   "mattermost-server",
 					},

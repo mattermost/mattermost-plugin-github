@@ -3,16 +3,25 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
-	"path"
 	"strings"
 	"time"
 
 	"github.com/google/go-github/v25/github"
 )
 
+// maxPermalinkReplacements sets the maximum limit to the no. of
+// permalink replacements that can be performed on a single message.
 const maxPermalinkReplacements = 10
-const permalinkReqTimeout = 2 * time.Second
+
+const permalinkReqTimeout = 5 * time.Second
+
+// maxPreviewLines sets the maximum no. of preview lines that will be shown
+// while replacing a permalink.
+const maxPreviewLines = 10
+
+// permalinkLineContext shows the number of lines before and after to show
+// if the link points to a single line.
+const permalinkLineContext = 3
 
 // replacement holds necessary info to replace github permalinks
 // in messages with a code preview block
@@ -26,9 +35,9 @@ type replacement struct {
 // on a message.
 func (p *Plugin) getReplacements(msg string) []replacement {
 	// find the permalinks from the msg using a regex
-	matches := p.githubRegex.FindAllStringSubmatch(msg, -1)
-	indices := p.githubRegex.FindAllStringIndex(msg, -1)
-	replacements := make([]replacement, 0, maxPermalinkReplacements)
+	matches := p.githubPermalinkRegex.FindAllStringSubmatch(msg, -1)
+	indices := p.githubPermalinkRegex.FindAllStringIndex(msg, -1)
+	var replacements []replacement
 	for i, m := range matches {
 		// have a limit on the no. of replacements to do
 		if i > maxPermalinkReplacements {
@@ -45,9 +54,9 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 			continue
 		}
 		// populate the captureMap with the extracted groups of the regex
-		for j, name := range p.githubRegex.SubexpNames() {
+		r.captureMap = make(map[string]string)
+		for j, name := range p.githubPermalinkRegex.SubexpNames() {
 			if j == 0 {
-				r.captureMap = make(map[string]string)
 				continue
 			}
 			r.captureMap[name] = m[j]
@@ -60,11 +69,12 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 // makeReplacements perform the given replacements on the msg and returns
 // the new msg.
 func (p *Plugin) makeReplacements(msg string, replacements []replacement) string {
-	for _, r := range replacements {
-		// quick bailout if the commit hash is not proper
-		_, err := hex.DecodeString(r.captureMap["commit"])
-		if err != nil {
-			p.API.LogError("bad git commit hash", "error", err.Error(), "hash", r.captureMap["commit"])
+	// iterating the slice in reverse to preserve the replacement indices.
+	for i := len(replacements) - 1; i >= 0; i-- {
+		r := replacements[i]
+		// quick bailout if the commit hash is not proper.
+		if _, err := hex.DecodeString(r.captureMap["commit"]); err != nil {
+			p.API.LogError("bad git commit hash in permalink", "error", err.Error(), "hash", r.captureMap["commit"])
 			continue
 		}
 
@@ -84,6 +94,7 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement) string
 		cancel()
 		// this is not a file, ignore.
 		if fileContent == nil {
+			p.API.LogWarn("permalink is not a file", "file", r.captureMap["path"])
 			continue
 		}
 		decoded, err := fileContent.GetContent()
@@ -92,27 +103,28 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement) string
 			continue
 		}
 
-		// get the required lines
+		// get the required lines.
 		start, end := getLineNumbers(r.captureMap["line"])
 		// bad anchor tag, ignore.
 		if start == -1 || end == -1 {
 			continue
 		}
-		lines := filterLines(decoded, start, end)
-
-		// construct the final string
-		final := fmt.Sprintf("\n[%s/%s/%s](%s)\n",
-			r.captureMap["user"], r.captureMap["repo"], r.captureMap["path"], r.word)
-		ext := path.Ext(r.captureMap["path"])
-		// remove the preceding dot
-		if len(ext) > 1 {
-			ext = ext[1:]
+		isTruncated := false
+		if end-start > maxPreviewLines {
+			end = start + maxPreviewLines
+			isTruncated = true
 		}
-		final += "```" + ext + "\n"
-		final += lines
-		final += "```\n"
+		lines, err := filterLines(decoded, start, end)
+		if err != nil {
+			p.API.LogError("error while filtering lines", "error", err.Error(), "path", r.captureMap["path"])
+		}
+		if lines == "" {
+			p.API.LogError("line numbers out of range. Skipping.", "file", r.captureMap["path"], "start", start, "end", end)
+			continue
+		}
+		final := getCodeMarkdown(r.captureMap, r.word, lines, isTruncated)
 
-		// replace word in msg starting from r.index only once
+		// replace word in msg starting from r.index only once.
 		msg = msg[:r.index] + strings.Replace(msg[r.index:], r.word, final, 1)
 	}
 	return msg

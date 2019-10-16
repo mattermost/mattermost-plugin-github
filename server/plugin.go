@@ -42,9 +42,8 @@ const (
 
 type Plugin struct {
 	plugin.MattermostPlugin
-	githubClient *github.Client
-	initOnce     sync.Once
-	githubRegex  *regexp.Regexp
+	githubClient         *github.Client
+	githubPermalinkRegex *regexp.Regexp
 
 	BotUserID string
 
@@ -56,10 +55,10 @@ type Plugin struct {
 	configuration *configuration
 }
 
-// New returns an instance of a Plugin
-func New() *Plugin {
+// NewPlugin returns an instance of a Plugin.
+func NewPlugin() *Plugin {
 	return &Plugin{
-		githubRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
 	}
 }
 
@@ -139,10 +138,8 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		p.API.LogError("error in getting user info", "error", err)
 		return nil, ""
 	}
-	// TODO: apply the same optimization for /slash commands too.
-	p.initOnce.Do(func() {
-		p.githubClient = p.githubConnect(*info.Token)
-	})
+	// TODO: store it during instance creation time and reuse it for all calls.
+	p.githubClient = p.githubConnect(*info.Token)
 
 	replacements := p.getReplacements(msg)
 	post.Message = p.makeReplacements(msg, replacements)
