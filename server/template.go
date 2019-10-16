@@ -59,6 +59,10 @@ func init() {
 		`[{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}})`,
 	))
 
+	template.Must(masterTemplate.New("eventRepoPullRequestWithTitle").Parse(
+		`{{template "eventRepoPullRequest" .}} - {{.GetPullRequest.GetTitle}}`,
+	))
+
 	// The pullRequest links to the corresponding pull request, skipping the repo title.
 	template.Must(masterTemplate.New("pullRequest").Parse(
 		`[#{{.GetNumber}} {{.GetTitle}}]({{.GetHTMLURL}})`,
@@ -73,6 +77,10 @@ func init() {
 	// issue *is* a pull request, and so we still use .GetIssue and this template accordingly.
 	template.Must(masterTemplate.New("eventRepoIssue").Parse(
 		`[{{.GetRepo.GetFullName}}#{{.GetIssue.GetNumber}}]({{.GetIssue.GetHTMLURL}})`,
+	))
+
+	template.Must(masterTemplate.New("eventRepoIssueWithTitle").Parse(
+		`{{template "eventRepoIssue" .}} - {{.GetIssue.GetTitle}}`,
 	))
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
@@ -153,17 +161,17 @@ func init() {
 `))
 
 	template.Must(masterTemplate.New("commentMentionNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} mentioned you on [#{{.Issue.GetNumber}} {{.Issue.GetTitle}}]({{.GetComment.GetHTMLURL}}):
+{{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.Issue.GetNumber}}]({{.GetComment.GetHTMLURL}}) - {{.Issue.GetTitle}}:
 >{{.GetComment.GetBody | trimBody}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your pull request {{template "issue" .GetIssue}}
+{{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssueWithTitle" .}}:
 >{{.GetComment.GetBody | trimBody}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your issue {{template "issue" .GetIssue}}
+{{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueWithTitle" .}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestNotification").Funcs(funcMap).Parse(`
@@ -175,7 +183,7 @@ func init() {
     {{- end }}
 {{- else if eq .GetAction "reopened" }} reopened your pull request
 {{- else if eq .GetAction "assigned" }} assigned you to pull request
-{{- end }} {{template "pullRequest" .GetPullRequest}}
+{{- end }} {{template "eventRepoPullRequestWithTitle" .}}
 `))
 
 	template.Must(masterTemplate.New("issueNotification").Funcs(funcMap).Parse(`
@@ -183,7 +191,7 @@ func init() {
 {{- if eq .GetAction "closed" }} closed your issue
 {{- else if eq .GetAction "reopened" }} reopened your issue
 {{- else if eq .GetAction "assigned" }} assigned you to issue
-{{- end }} {{template "issue" .GetIssue}}
+{{- end }} {{template "eventRepoIssueWithTitle" .}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestReviewNotification").Funcs(funcMap).Parse(`
@@ -191,7 +199,7 @@ func init() {
 {{- if eq .GetReview.GetState "approved" }} approved your pull request
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
-{{- end }} {{template "pullRequest" .GetPullRequest}}
+{{- end }} {{template "eventRepoPullRequestWithTitle" .}}
 `))
 }
 
