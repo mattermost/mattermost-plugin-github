@@ -61,16 +61,11 @@ export default class SidebarRight extends React.PureComponent {
         };
     }
 
-    refresh = async (e) => {
+    refresh = async () => {
         if (this.state.refreshing) {
             return;
         }
 
-        if (e) {
-            e.preventDefault();
-        }
-
-        this.setState({refreshing: true});
         let refreshAction;
         switch (this.props.rhsState) {
         case RHSStates.PRS:
@@ -88,8 +83,13 @@ export default class SidebarRight extends React.PureComponent {
         default:
             return;
         }
-        await refreshAction();
-        this.setState({refreshing: false});
+
+        this.setState({refreshing: true});
+        try {
+            await refreshAction();
+        } finally {
+            this.setState({refreshing: false});
+        }
     }
 
     render() {

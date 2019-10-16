@@ -1,38 +1,35 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React from 'react';
+import React, {useRef, useEffect} from 'react';
 import PropTypes from 'prop-types';
 
 import {Badge} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
-//retain previous item to show deleted items between 2 refresh call
-let previousItems = [];
-let previousStateRhs;
+function GithubItems({items, theme, rhsState}) {
+    const previous = usePrevious({rhsState, items}, {items: [], rhsState: ''});
+    const style = getStyle(theme);
 
-function GithubItems(props) {
-    const style = getStyle(props.theme);
-    let oldElements = [];
-    let newElements = [];
+    let elements = items;
 
-    if (previousStateRhs === props.rhsState) {
-        oldElements = previousItems.map((item) => {
-            if (!props.items.find((i) => i.id === item.id)) {
-                return {...item, missing: true};
+    if (previous.rhsState === rhsState) {
+        const oldElements = previous.items.map((item) => {
+            const newItem = items.find((i) => i.id === item.id);
+            if (newItem) {
+                return newItem;
             }
-            return item;
+            return {...item, missing: true};
         });
-        newElements = props.items.filter((item) => !previousItems.find((i) => i.id === item.id));
-    } else {
-        previousStateRhs = props.rhsState;
-        newElements = [...props.items];
+        const newElements = items.filter((item) => !previous.items.find((i) => i.id === item.id));
+        elements = [...oldElements, ...newElements];
     }
 
-    const elements = [...oldElements, ...newElements];
-    previousItems = [...elements];
+    if (elements.length === 0) {
+        return (<div style={style.container}>{'You have no active items'}</div>);
+    }
 
-    return elements.length > 0 ? elements.map((item) => {
+    return (elements.map((item) => {
         const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
 
         let userName = null;
@@ -82,7 +79,7 @@ function GithubItems(props) {
                 </div>
             </div>
         );
-    }) : <div style={style.container}>{'You have no active items'}</div>;
+    }));
 }
 
 GithubItems.propTypes = {
@@ -125,6 +122,14 @@ function GithubLabels(props) {
     }) : null;
 }
 
+function usePrevious(value, init) {
+    const ref = useRef(init);
+    useEffect(() => {
+        ref.current = value;
+    });
+    return ref.current;
+}
+
 GithubLabels.propTypes = {
     labels: PropTypes.array,
 };
@@ -153,4 +158,4 @@ const notificationReasons = {
     team_mention:	'You were on a team that was mentioned.',
 };
 
-export default GithubItems;
+export default React.memo(GithubItems);
