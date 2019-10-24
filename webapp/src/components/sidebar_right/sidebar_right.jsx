@@ -10,6 +10,8 @@ import {RHSStates} from '../../constants';
 
 import GithubItems from './github_items';
 
+import './sidebar_right.css';
+
 export function renderView(props) {
     return (
         <div
@@ -158,8 +160,8 @@ export default class SidebarRight extends React.PureComponent {
                             overlay={<Tooltip id='refreshTooltip'>Refresh</Tooltip>}
                         >
                             <button
-                                style={style.refresh}
                                 onClick={this.refresh}
+                                className='GithubPlugin__SidebarRight__refresh-button'
                             >
                                 <i className={'fa fa-refresh' + refreshClass}/>
                             </button>
@@ -181,10 +183,5 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
-    },
-    refresh: {
-        float: 'right',
-        border: 'none',
-        background: 'none',
-    },
+    }
 };

@@ -1,0 +1,11 @@
+.GithubPlugin__SidebarRight__refresh-button {
+    float: right;
+    border: none;
+    background: none;
+    color: var(--center-channel-color);
+    opacity: 0.6;
+}
+
+.GithubPlugin__SidebarRight__refresh-button:hover {
+    opacity: 0.8;
+}
