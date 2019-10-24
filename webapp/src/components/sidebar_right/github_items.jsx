@@ -158,4 +158,10 @@ const notificationReasons = {
     team_mention:	'You were on a team that was mentioned.',
 };
 
-export default React.memo(GithubItems);
+function areEquals(prevProps, nextProps) {
+    return prevProps.theme === nextProps.theme && 
+        prevProps.rhsState === nextProps.rhsState && 
+        prevProps.items.reduce((acc, i) => `${acc}-${i.id}`, '') === nextProps.items.reduce((acc, i) => `${acc}-${i.id}`, '');
+}
+
+export default React.memo(GithubItems, areEquals);

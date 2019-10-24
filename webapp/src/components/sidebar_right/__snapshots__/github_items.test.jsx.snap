@@ -1,0 +1,350 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`GithubItems should match snapshot 1`] = `
+<GithubItems
+  items={Array []}
+  rhsState="pullRequests"
+  theme={
+    Object {
+      "centerChannelColor": "#fff",
+    }
+  }
+>
+  <div
+    style={
+      Object {
+        "borderTop": "1px solid rgba(255,255,255,0.2)",
+        "padding": "15px",
+      }
+    }
+  >
+    You have no active items
+  </div>
+</GithubItems>
+`;
+
+exports[`GithubItems should match snapshot with items 1`] = `
+<GithubItems
+  items={
+    Array [
+      Object {
+        "html_url": "http://mattermost.com",
+        "id": 1,
+        "labels": Array [],
+        "reason": "mention",
+        "repository": Object {
+          "full_name": "test",
+        },
+        "title": "make it work",
+        "user": Object {
+          "login": "manland",
+        },
+      },
+    ]
+  }
+  rhsState="pullRequests"
+  theme={
+    Object {
+      "centerChannelColor": "#fff",
+    }
+  }
+>
+  <div
+    key="1"
+    style={
+      Object {
+        "borderTop": "1px solid rgba(255,255,255,0.2)",
+        "padding": "15px",
+      }
+    }
+  >
+    <div>
+      <strong>
+        <a
+          href="http://mattermost.com"
+          rel="noopener noreferrer"
+          style={
+            Object {
+              "color": "#fff",
+              "fontWeight": "bold",
+              "lineHeight": 1.7,
+            }
+          }
+          target="_blank"
+        >
+          make it work
+        </a>
+      </strong>
+    </div>
+    <GithubLabels
+      labels={Array []}
+    />
+    <div
+      className="light"
+      style={
+        Object {
+          "fontSize": "13px",
+          "margin": "5px 0 0 0",
+        }
+      }
+    >
+      Created by manland 
+      at test.
+      <br />
+      You were specifically @mentioned in the content.
+    </div>
+  </div>
+</GithubItems>
+`;
+
+exports[`GithubItems should match snapshot with items deleted 1`] = `
+<GithubItems
+  items={
+    Array [
+      Object {
+        "html_url": "http://mattermost.com",
+        "id": 1,
+        "labels": Array [],
+        "reason": "mention",
+        "repository": Object {
+          "full_name": "test",
+        },
+        "title": "make it work",
+        "user": Object {
+          "login": "manland",
+        },
+      },
+      Object {
+        "html_url": "http://mattermost.com",
+        "id": 2,
+        "labels": Array [],
+        "reason": "mention",
+        "repository": Object {
+          "full_name": "test",
+        },
+        "title": "make it work",
+        "user": Object {
+          "login": "manland",
+        },
+      },
+    ]
+  }
+  rhsState="pullRequests"
+  theme={
+    Object {
+      "centerChannelColor": "#fff",
+    }
+  }
+>
+  <div
+    key="1"
+    style={
+      Object {
+        "borderTop": "1px solid rgba(255,255,255,0.2)",
+        "padding": "15px",
+      }
+    }
+  >
+    <div>
+      <strong>
+        <a
+          href="http://mattermost.com"
+          rel="noopener noreferrer"
+          style={
+            Object {
+              "color": "#fff",
+              "fontWeight": "bold",
+              "lineHeight": 1.7,
+            }
+          }
+          target="_blank"
+        >
+          make it work
+        </a>
+      </strong>
+    </div>
+    <GithubLabels
+      labels={Array []}
+    />
+    <div
+      className="light"
+      style={
+        Object {
+          "fontSize": "13px",
+          "margin": "5px 0 0 0",
+        }
+      }
+    >
+      Created by manland 
+      at test.
+      <br />
+      You were specifically @mentioned in the content.
+    </div>
+  </div>
+  <div
+    key="2"
+    style={
+      Object {
+        "borderTop": "1px solid rgba(255,255,255,0.2)",
+        "padding": "15px",
+      }
+    }
+  >
+    <div>
+      <strong>
+        <a
+          href="http://mattermost.com"
+          rel="noopener noreferrer"
+          style={
+            Object {
+              "color": "#fff",
+              "fontWeight": "bold",
+              "lineHeight": 1.7,
+            }
+          }
+          target="_blank"
+        >
+          make it work
+        </a>
+      </strong>
+    </div>
+    <GithubLabels
+      labels={Array []}
+    />
+    <div
+      className="light"
+      style={
+        Object {
+          "fontSize": "13px",
+          "margin": "5px 0 0 0",
+        }
+      }
+    >
+      Created by manland 
+      at test.
+      <br />
+      You were specifically @mentioned in the content.
+    </div>
+  </div>
+</GithubItems>
+`;
+
+exports[`GithubItems should match snapshot with items deleted 2`] = `
+<GithubItems
+  items={
+    Array [
+      Object {
+        "html_url": "http://mattermost.com",
+        "id": 2,
+        "labels": Array [],
+        "reason": "mention",
+        "repository": Object {
+          "full_name": "test",
+        },
+        "title": "make it work",
+        "user": Object {
+          "login": "manland",
+        },
+      },
+    ]
+  }
+  rhsState="pullRequests"
+  theme={
+    Object {
+      "centerChannelColor": "#fff",
+    }
+  }
+>
+  <div
+    key="1"
+    style={
+      Object {
+        "borderTop": "1px solid rgba(255,255,255,0.2)",
+        "opacity": 0.5,
+        "padding": "15px",
+      }
+    }
+  >
+    <div>
+      <strong>
+        <a
+          href="http://mattermost.com"
+          rel="noopener noreferrer"
+          style={
+            Object {
+              "color": "#fff",
+              "fontWeight": "bold",
+              "lineHeight": 1.7,
+            }
+          }
+          target="_blank"
+        >
+          make it work
+        </a>
+      </strong>
+    </div>
+    <GithubLabels
+      labels={Array []}
+    />
+    <div
+      className="light"
+      style={
+        Object {
+          "fontSize": "13px",
+          "margin": "5px 0 0 0",
+        }
+      }
+    >
+      Created by manland 
+      at test.
+      <br />
+      You were specifically @mentioned in the content.
+    </div>
+  </div>
+  <div
+    key="2"
+    style={
+      Object {
+        "borderTop": "1px solid rgba(255,255,255,0.2)",
+        "padding": "15px",
+      }
+    }
+  >
+    <div>
+      <strong>
+        <a
+          href="http://mattermost.com"
+          rel="noopener noreferrer"
+          style={
+            Object {
+              "color": "#fff",
+              "fontWeight": "bold",
+              "lineHeight": 1.7,
+            }
+          }
+          target="_blank"
+        >
+          make it work
+        </a>
+      </strong>
+    </div>
+    <GithubLabels
+      labels={Array []}
+    />
+    <div
+      className="light"
+      style={
+        Object {
+          "fontSize": "13px",
+          "margin": "5px 0 0 0",
+        }
+      }
+    >
+      Created by manland 
+      at test.
+      <br />
+      You were specifically @mentioned in the content.
+    </div>
+  </div>
+</GithubItems>
+`;

@@ -6,7 +6,9 @@
   "scripts": {
     "build": "webpack --mode=production --display-error-details --progress",
     "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx . --quiet",
-    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx . --quiet --fix"
+    "fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js --ext .jsx . --quiet --fix",
+    "test": "jest --forceExit --detectOpenHandles",
+    "test-ci": "jest --forceExit --detectOpenHandles --maxWorkers=2"
   },
   "dependencies": {
     "debounce-promise": "3.1.2",
@@ -15,6 +17,7 @@
     "react": "16.8.6",
     "react-bootstrap": "0.32.4",
     "react-custom-scrollbars": "^4.2.1",
+    "react-dom": "16.8.6",
     "react-redux": "7.0.3",
     "react-select": "3.0.4",
     "redux": "4.0.1",
@@ -30,14 +33,35 @@
     "@babel/preset-react": "7.0.0",
     "@babel/runtime": "7.4.5",
     "babel-eslint": "10.0.1",
+    "babel-jest": "24.8.0",
     "babel-loader": "8.0.6",
     "css-loader": "2.1.1",
+    "enzyme": "3.10.0",
+    "enzyme-adapter-react-16": "1.14.0",
+    "enzyme-to-json": "3.3.5",
     "eslint": "5.16.0",
     "eslint-import-resolver-webpack": "0.11.1",
     "eslint-plugin-import": "2.17.3",
     "eslint-plugin-react": "7.13.0",
+    "jest": "24.8.0",
     "style-loader": "0.23.1",
     "webpack": "4.32.2",
     "webpack-cli": "3.3.2"
+  },
+  "jest": {
+    "snapshotSerializers": [
+      "<rootDir>/node_modules/enzyme-to-json/serializer"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "clearMocks": true,
+    "moduleDirectories": [
+      "",
+      "node_modules"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ]
   }
 }

@@ -141,7 +141,7 @@ ifneq ($(HAS_SERVER),)
 	$(GO) test -race -v ./server/...
 endif
 ifneq ($(HAS_WEBAPP),)
-	cd webapp && $(NPM) run fix;
+	cd webapp && $(NPM) run fix && $(NPM) test;
 endif
 
 ## Creates a coverage report for the server code.
