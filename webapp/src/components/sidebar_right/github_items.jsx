@@ -159,8 +159,8 @@ const notificationReasons = {
 };
 
 function areEquals(prevProps, nextProps) {
-    return prevProps.theme === nextProps.theme && 
-        prevProps.rhsState === nextProps.rhsState && 
+    return prevProps.theme === nextProps.theme &&
+        prevProps.rhsState === nextProps.rhsState &&
         prevProps.items.reduce((acc, i) => `${acc}-${i.id}`, '') === nextProps.items.reduce((acc, i) => `${acc}-${i.id}`, '');
 }
 

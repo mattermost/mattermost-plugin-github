@@ -183,5 +183,5 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
-    }
+    },
 };
