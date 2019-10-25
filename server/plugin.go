@@ -138,11 +138,11 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		p.API.LogError("error in getting user info", "error", err)
 		return nil, ""
 	}
-	// TODO: store it during instance creation time and reuse it for all calls.
-	p.githubClient = p.githubConnect(*info.Token)
+	// TODO: make this part of the Plugin struct and reuse it.
+	ghClient := p.githubConnect(*info.Token)
 
 	replacements := p.getReplacements(msg)
-	post.Message = p.makeReplacements(msg, replacements)
+	post.Message = p.makeReplacements(msg, replacements, ghClient)
 	return post, ""
 }
 

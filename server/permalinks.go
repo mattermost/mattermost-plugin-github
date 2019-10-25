@@ -68,7 +68,7 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 
 // makeReplacements perform the given replacements on the msg and returns
 // the new msg.
-func (p *Plugin) makeReplacements(msg string, replacements []replacement) string {
+func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClient *github.Client) string {
 	// iterating the slice in reverse to preserve the replacement indices.
 	for i := len(replacements) - 1; i >= 0; i-- {
 		r := replacements[i]
@@ -84,7 +84,7 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement) string
 		}
 		// TODO: make all of these requests concurrently.
 		reqctx, cancel := context.WithTimeout(context.Background(), permalinkReqTimeout)
-		fileContent, _, _, err := p.githubClient.Repositories.GetContents(reqctx,
+		fileContent, _, _, err := ghClient.Repositories.GetContents(reqctx,
 			r.captureMap["user"], r.captureMap["repo"], r.captureMap["path"], &opts)
 		if err != nil {
 			p.API.LogError("error while fetching file contents", "error", err.Error(), "path", r.captureMap["path"])
