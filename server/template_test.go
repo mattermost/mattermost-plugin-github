@@ -501,7 +501,7 @@ Should this be here?
 func TestCommentMentionNotificationTemplate(t *testing.T) {
 	t.Run("non-email body", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3):
+[panda](https://github.com/panda) mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
 `
 
@@ -519,7 +519,7 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 	})
 	t.Run("email body", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3):
+[panda](https://github.com/panda) mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
 `
 
@@ -539,7 +539,7 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 
 func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1) - Implement git-get-head:
 >@cpanato, anytime?
 `
 
@@ -558,7 +558,7 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 
 func TestCommentAuthorIssueNotificationTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) commented on your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+[panda](https://github.com/panda) commented on your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1) - Implement git-get-head
 `
 
 	actual, err := renderTemplate("commentAuthorIssueNotification", &github.IssueCommentEvent{
@@ -577,7 +577,7 @@ func TestCommentAuthorIssueNotificationTemplate(t *testing.T) {
 func TestPullRequestNotification(t *testing.T) {
 	t.Run("review requested", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) requested your review on [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) requested your review on [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestNotification", &github.PullRequestEvent{
@@ -593,7 +593,7 @@ func TestPullRequestNotification(t *testing.T) {
 
 	t.Run("merged", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) merged your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) merged your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestNotification", &github.PullRequestEvent{
@@ -609,7 +609,7 @@ func TestPullRequestNotification(t *testing.T) {
 
 	t.Run("closed", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) closed your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) closed your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestNotification", &github.PullRequestEvent{
@@ -625,7 +625,7 @@ func TestPullRequestNotification(t *testing.T) {
 
 	t.Run("reopened", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) reopened your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) reopened your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestNotification", &github.PullRequestEvent{
@@ -641,7 +641,7 @@ func TestPullRequestNotification(t *testing.T) {
 
 	t.Run("assigned", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) assigned you to pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) assigned you to pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestNotification", &github.PullRequestEvent{
@@ -659,7 +659,7 @@ func TestPullRequestNotification(t *testing.T) {
 func TestIssueNotification(t *testing.T) {
 	t.Run("closed", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) closed your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+[panda](https://github.com/panda) closed your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1) - Implement git-get-head
 `
 
 		actual, err := renderTemplate("issueNotification", &github.IssuesEvent{
@@ -674,7 +674,7 @@ func TestIssueNotification(t *testing.T) {
 
 	t.Run("reopened", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) reopened your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+[panda](https://github.com/panda) reopened your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1) - Implement git-get-head
 `
 
 		actual, err := renderTemplate("issueNotification", &github.IssuesEvent{
@@ -689,7 +689,7 @@ func TestIssueNotification(t *testing.T) {
 
 	t.Run("assigned you", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) assigned you to issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+[panda](https://github.com/panda) assigned you to issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1) - Implement git-get-head
 `
 
 		actual, err := renderTemplate("issueNotification", &github.IssuesEvent{
@@ -706,7 +706,7 @@ func TestIssueNotification(t *testing.T) {
 func TestPullRequestReviewNotification(t *testing.T) {
 	t.Run("approved", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
@@ -724,7 +724,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 
 	t.Run("changes_requested", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) requested changes on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) requested changes on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
@@ -742,7 +742,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 
 	t.Run("commented", func(t *testing.T) {
 		expected := `
-[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{

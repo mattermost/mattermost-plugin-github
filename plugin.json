@@ -2,7 +2,10 @@
     "id": "github",
     "name": "GitHub",
     "description": "GitHub plugin for Mattermost.",
-    "version": "0.11.0",
+    "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
+    "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
+    "icon_path": "assets/icon.svg",
+    "version": "0.12.0",
     "min_server_version": "5.12.0",
     "server": {
       "executables": {
