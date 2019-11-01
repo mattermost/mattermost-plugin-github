@@ -199,7 +199,8 @@ func init() {
 {{- if eq .GetReview.GetState "approved" }} approved your pull request
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
-{{- end }} {{template "eventRepoPullRequestWithTitle" .}}
+{{- end }} {{template "eventRepoPullRequestWithTitle" .}}:
+>{{.Review.GetBody}}
 `))
 }
 
