@@ -177,26 +177,19 @@ func fullNameFromOwnerAndRepo(owner, repo string) string {
 	return fmt.Sprintf("%s/%s", owner, repo)
 }
 
-// filter lines in a string from start to end
+// filterLines filter lines in a string from start to end.
 func filterLines(s string, start, end int) (string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(s))
 	var buf strings.Builder
-	i := 1
-	for scanner.Scan() {
+	for i := 1; scanner.Scan() && i <= end; i++ {
 		if i < start {
-			i++
 			continue
-		}
-		if i > end {
-			break
 		}
 		buf.Write(scanner.Bytes())
 		buf.WriteByte(byte('\n'))
-		i++
 	}
-	err := scanner.Err()
 
-	return buf.String(), err
+	return buf.String(), scanner.Err()
 }
 
 // getLineNumbers return the start and end lines from an anchor tag
@@ -284,10 +277,9 @@ func isInsideLink(msg string, index int) bool {
 }
 
 // getCodeMarkdown returns the constructed markdown for a permalink.
-func getCodeMarkdown(captureMap map[string]string, word, lines string, isTruncated bool) string {
-	final := fmt.Sprintf("\n[%s/%s/%s](%s)\n",
-		captureMap["user"], captureMap["repo"], captureMap["path"], word)
-	ext := path.Ext(captureMap["path"])
+func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool) string {
+	final := fmt.Sprintf("\n[%s/%s/%s](%s)\n", user, repo, repoPath, word)
+	ext := path.Ext(repoPath)
 	// remove the preceding dot
 	if len(ext) > 1 {
 		ext = strings.TrimPrefix(ext, ".")

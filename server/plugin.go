@@ -42,7 +42,7 @@ const (
 
 type Plugin struct {
 	plugin.MattermostPlugin
-	githubClient         *github.Client
+	// githubPermalinkRegex is used to parse github permalinks in post messages.
 	githubPermalinkRegex *regexp.Regexp
 
 	BotUserID string

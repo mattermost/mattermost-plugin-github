@@ -9,13 +9,13 @@ import (
 	"github.com/google/go-github/v25/github"
 )
 
-// maxPermalinkReplacements sets the maximum limit to the no. of
+// maxPermalinkReplacements sets the maximum limit to the number of
 // permalink replacements that can be performed on a single message.
 const maxPermalinkReplacements = 10
 
 const permalinkReqTimeout = 5 * time.Second
 
-// maxPreviewLines sets the maximum no. of preview lines that will be shown
+// maxPreviewLines sets the maximum number of preview lines that will be shown
 // while replacing a permalink.
 const maxPreviewLines = 10
 
@@ -24,22 +24,29 @@ const maxPreviewLines = 10
 const permalinkLineContext = 3
 
 // replacement holds necessary info to replace github permalinks
-// in messages with a code preview block
+// in messages with a code preview block.
 type replacement struct {
-	index      int               // index of the permalink in the string
-	word       string            // the permalink
-	captureMap map[string]string // named regex capture group of the link
+	index         int      // index of the permalink in the string
+	word          string   // the permalink
+	permalinkInfo struct { // holds the necessary metadata of a permalink
+		haswww string
+		commit string
+		user   string
+		repo   string
+		path   string
+		line   string
+	}
 }
 
 // getReplacements returns the permalink replacements that needs to be performed
-// on a message.
+// on a message. The returned slice is sorted by the index in ascending order.
 func (p *Plugin) getReplacements(msg string) []replacement {
 	// find the permalinks from the msg using a regex
 	matches := p.githubPermalinkRegex.FindAllStringSubmatch(msg, -1)
 	indices := p.githubPermalinkRegex.FindAllStringIndex(msg, -1)
 	var replacements []replacement
 	for i, m := range matches {
-		// have a limit on the no. of replacements to do
+		// have a limit on the number of replacements to do
 		if i > maxPermalinkReplacements {
 			break
 		}
@@ -53,13 +60,25 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 		if isInsideLink(msg, index) {
 			continue
 		}
-		// populate the captureMap with the extracted groups of the regex
-		r.captureMap = make(map[string]string)
+		// populate the permalinkInfo with the extracted groups of the regex
 		for j, name := range p.githubPermalinkRegex.SubexpNames() {
 			if j == 0 {
 				continue
 			}
-			r.captureMap[name] = m[j]
+			switch name {
+			case "haswww":
+				r.permalinkInfo.haswww = m[j]
+			case "user":
+				r.permalinkInfo.user = m[j]
+			case "repo":
+				r.permalinkInfo.repo = m[j]
+			case "commit":
+				r.permalinkInfo.commit = m[j]
+			case "path":
+				r.permalinkInfo.path = m[j]
+			case "line":
+				r.permalinkInfo.line = m[j]
+			}
 		}
 		replacements = append(replacements, r)
 	}
@@ -67,44 +86,44 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 }
 
 // makeReplacements perform the given replacements on the msg and returns
-// the new msg.
+// the new msg. The replacements slice needs to be sorted by the index in ascending order.
 func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClient *github.Client) string {
 	// iterating the slice in reverse to preserve the replacement indices.
 	for i := len(replacements) - 1; i >= 0; i-- {
 		r := replacements[i]
 		// quick bailout if the commit hash is not proper.
-		if _, err := hex.DecodeString(r.captureMap["commit"]); err != nil {
-			p.API.LogError("bad git commit hash in permalink", "error", err.Error(), "hash", r.captureMap["commit"])
+		if _, err := hex.DecodeString(r.permalinkInfo.commit); err != nil {
+			p.API.LogError("bad git commit hash in permalink", "error", err.Error(), "hash", r.permalinkInfo.commit)
 			continue
 		}
 
 		// get the file contents
 		opts := github.RepositoryContentGetOptions{
-			Ref: r.captureMap["commit"],
+			Ref: r.permalinkInfo.commit,
 		}
 		// TODO: make all of these requests concurrently.
 		reqctx, cancel := context.WithTimeout(context.Background(), permalinkReqTimeout)
 		fileContent, _, _, err := ghClient.Repositories.GetContents(reqctx,
-			r.captureMap["user"], r.captureMap["repo"], r.captureMap["path"], &opts)
+			r.permalinkInfo.user, r.permalinkInfo.repo, r.permalinkInfo.path, &opts)
 		if err != nil {
-			p.API.LogError("error while fetching file contents", "error", err.Error(), "path", r.captureMap["path"])
+			p.API.LogError("error while fetching file contents", "error", err.Error(), "path", r.permalinkInfo.path)
 			cancel()
 			continue
 		}
 		cancel()
 		// this is not a file, ignore.
 		if fileContent == nil {
-			p.API.LogWarn("permalink is not a file", "file", r.captureMap["path"])
+			p.API.LogWarn("permalink is not a file", "file", r.permalinkInfo.path)
 			continue
 		}
 		decoded, err := fileContent.GetContent()
 		if err != nil {
-			p.API.LogError("error while decoding file contents", "error", err.Error(), "path", r.captureMap["path"])
+			p.API.LogError("error while decoding file contents", "error", err.Error(), "path", r.permalinkInfo.path)
 			continue
 		}
 
 		// get the required lines.
-		start, end := getLineNumbers(r.captureMap["line"])
+		start, end := getLineNumbers(r.permalinkInfo.line)
 		// bad anchor tag, ignore.
 		if start == -1 || end == -1 {
 			continue
@@ -116,13 +135,13 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 		}
 		lines, err := filterLines(decoded, start, end)
 		if err != nil {
-			p.API.LogError("error while filtering lines", "error", err.Error(), "path", r.captureMap["path"])
+			p.API.LogError("error while filtering lines", "error", err.Error(), "path", r.permalinkInfo.path)
 		}
 		if lines == "" {
-			p.API.LogError("line numbers out of range. Skipping.", "file", r.captureMap["path"], "start", start, "end", end)
+			p.API.LogError("line numbers out of range. Skipping.", "file", r.permalinkInfo.path, "start", start, "end", end)
 			continue
 		}
-		final := getCodeMarkdown(r.captureMap, r.word, lines, isTruncated)
+		final := getCodeMarkdown(r.permalinkInfo.user, r.permalinkInfo.repo, r.permalinkInfo.path, r.word, lines, isTruncated)
 
 		// replace word in msg starting from r.index only once.
 		msg = msg[:r.index] + strings.Replace(msg[r.index:], r.word, final, 1)
