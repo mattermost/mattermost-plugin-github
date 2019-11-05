@@ -177,7 +177,7 @@ func fullNameFromOwnerAndRepo(owner, repo string) string {
 	return fmt.Sprintf("%s/%s", owner, repo)
 }
 
-// filterLines filter lines in a string from start to end.
+// filterLines filters lines in a string from start to end.
 func filterLines(s string, start, end int) (string, error) {
 	scanner := bufio.NewScanner(strings.NewReader(s))
 	var buf strings.Builder
