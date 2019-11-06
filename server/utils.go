@@ -173,3 +173,21 @@ func fixGithubNotificationSubjectURL(url string) string {
 func fullNameFromOwnerAndRepo(owner, repo string) string {
 	return fmt.Sprintf("%s/%s", owner, repo)
 }
+
+func isFlag(text string) bool {
+	return strings.HasPrefix(text, "--")
+}
+
+func parseFlag(flag string) string {
+	return strings.TrimPrefix(flag, "--")
+}
+
+func containsValue(arr []string, value string) bool {
+	for _, element := range arr {
+		if element == value {
+			return true
+		}
+	}
+
+	return false
+}

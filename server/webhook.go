@@ -163,6 +163,23 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	return true
 }
 
+func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscription) bool {
+	if !subscription.ExcludeOrgMembers() {
+		return false
+	}
+
+	info, err := p.getGitHubUserInfo(subscription.CreatorID)
+
+	if err != nil {
+		return false
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	organization := p.getConfiguration().GitHubOrg
+
+	return p.isUserOrganizationMember(githubClient, user, organization)
+}
+
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
 
@@ -202,6 +219,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	for _, sub := range subs {
 		if !sub.Pulls() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -286,6 +307,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	for _, sub := range subs {
 		if !sub.Issues() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -481,6 +506,10 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -549,6 +578,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -596,6 +629,10 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 	for _, sub := range subs {
 		if !sub.PullReviews() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 

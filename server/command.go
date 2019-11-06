@@ -99,6 +99,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	case "subscribe":
 		config := p.getConfiguration()
 		features := "pulls,issues,creates,deletes"
+		flags := []string{}
 
 		txt := ""
 		if len(parameters) == 0 {
@@ -122,12 +123,27 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			p.postCommandResponse(args, txt)
 			return &model.CommandResponse{}, nil
 		} else if len(parameters) > 1 {
-			features = strings.Join(parameters[1:], " ")
+			featureList := []string{}
+
+			for _, element := range parameters[1:] {
+				if isFlag(element) {
+					flags = append(flags, parseFlag(element))
+				} else {
+					featureList = append(featureList, element)
+				}
+			}
+
+			if len(featureList) > 1 {
+				p.postCommandResponse(args, "Just one {features} parameter is allowed")
+				return &model.CommandResponse{}, nil
+			} else if len(featureList) == 1 {
+				features = featureList[0]
+			}
 		}
 
 		_, owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
 		if repo == "" {
-			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, owner, args.ChannelId, features); err != nil {
+			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 				p.postCommandResponse(args, err.Error())
 				return &model.CommandResponse{}, nil
 			}
@@ -136,7 +152,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			return &model.CommandResponse{}, nil
 		}
 
-		if err := p.Subscribe(context.Background(), githubClient, args.UserId, owner, repo, args.ChannelId, features); err != nil {
+		if err := p.Subscribe(context.Background(), githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 			p.postCommandResponse(args, err.Error())
 			return &model.CommandResponse{}, nil
 		}

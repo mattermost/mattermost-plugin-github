@@ -442,6 +442,20 @@ func (p *Plugin) checkOrg(org string) error {
 	return nil
 }
 
+func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
+	if organization == "" {
+		return false
+	}
+
+	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
+
+	if err != nil {
+		return false
+	}
+
+	return isMember
+}
+
 func (p *Plugin) sendRefreshEvent(userID string) {
 	p.API.PublishWebSocketEvent(
 		WS_EVENT_REFRESH,
