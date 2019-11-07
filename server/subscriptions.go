@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattermost/mattermost-server/einterfaces"
 	"github.com/mattermost/mattermost-server/mlog"
 	"github.com/mattermost/mattermost-server/utils"
 
@@ -16,7 +17,14 @@ import (
 )
 
 const (
-	SUBSCRIPTIONS_KEY = "subscriptions"
+	// SubscriptionKey is a unique storage key used for subscriptions.
+	SubscriptionKey = "subscriptions"
+	// BucketRefillRate used for setting the delay time of retries.
+	BucketRefillRate = 250 * time.Millisecond
+	// BucketBurstCapacity is the how many tokens the bucket can carry. It's used for
+	// for setting the the max burst, meaning the number of retries that are not delayed
+	// by the bucket's blocking operation.
+	BucketBurstCapacity = 3
 )
 
 type Subscription struct {
@@ -106,14 +114,17 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		return fmt.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
-	sub := &Subscription{
+	name := fullNameFromOwnerAndRepo(owner, repo)
+	subscription := &Subscription{
 		ChannelID:  channelID,
 		CreatorID:  userId,
 		Features:   features,
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 	}
+	bucket, done := utils.NewTokenBucket(BucketRefillRate, BucketBurstCapacity)
+	defer done()
 
-	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
+	if err := p.AddSubscription(name, subscription, bucket); err != nil {
 		return err
 	}
 
@@ -150,40 +161,10 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 	return filteredSubs, nil
 }
 
-// AddSubscription ...
-func (p *Plugin) AddSubscription(repository string, subscription *Subscription) error {
-	return p.Helpers.KVAtomicModify(context.Background(), SUBSCRIPTIONS_KEY, utils.NewTokenBucket(20*time.Millisecond, 3), func(initial []byte) ([]byte, error) {
-		var subs *Subscriptions
-		if initial == nil {
-			subs = &Subscriptions{Repositories: map[string][]*Subscription{}}
-		} else {
-			json.NewDecoder(bytes.NewReader(initial)).Decode(&subs)
-		}
-		repoSubs := subs.Repositories[repository]
-		if repoSubs == nil {
-			repoSubs = []*Subscription{subscription}
-		} else {
-			exists := false
-			for index, s := range repoSubs {
-				if s.ChannelID == subscription.ChannelID {
-					repoSubs[index] = subscription
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				repoSubs = append(repoSubs, subscription)
-			}
-		}
-		subs.Repositories[repository] = repoSubs
-		return json.Marshal(repoSubs)
-	})
-}
-
 func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
-	value, err := p.API.KVGet(SUBSCRIPTIONS_KEY)
+	value, err := p.API.KVGet(SubscriptionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -233,16 +214,61 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	return subsToReturn
 }
 
-// Unsubscribe ...
 func (p *Plugin) Unsubscribe(channelID string, repository string) error {
 	config := p.getConfiguration()
 	repository, _, _ = parseOwnerAndRepo(repository, config.EnterpriseBaseURL)
 	if repository == "" {
 		return errors.New("invalid repository")
 	}
-	bucket := utils.NewTokenBucket(20*time.Millisecond, 3)
+	bucket, done := utils.NewTokenBucket(BucketRefillRate, BucketBurstCapacity)
+	defer done()
+
+	return p.RemoveSubscription(channelID, repository, bucket)
+}
+
+// AddSubscription takes a repository string, a subscription object and a bucket that is used for delaying retries.
+// It returns an error when subscription could not be added.
+func (p *Plugin) AddSubscription(repository string, subscription *Subscription, bucket einterfaces.TokenBucket) error {
+	// TODO(gsagula): we should take the request context an propagate it to any upstream calls such as KV storage
+	// or other services.
 	ctx := context.Background()
-	err := p.Helpers.KVAtomicModify(ctx, SUBSCRIPTIONS_KEY, bucket, func(initial []byte) ([]byte, error) {
+	modifyFN := func(initial []byte) ([]byte, error) {
+		var subs *Subscriptions
+		if initial == nil {
+			subs = &Subscriptions{Repositories: map[string][]*Subscription{}}
+		} else {
+			json.NewDecoder(bytes.NewReader(initial)).Decode(&subs)
+		}
+		repoSubs := subs.Repositories[repository]
+		if repoSubs == nil {
+			repoSubs = []*Subscription{subscription}
+		} else {
+			exists := false
+			for index, s := range repoSubs {
+				if s.ChannelID == subscription.ChannelID {
+					repoSubs[index] = subscription
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				repoSubs = append(repoSubs, subscription)
+			}
+		}
+		subs.Repositories[repository] = repoSubs
+		return json.Marshal(repoSubs)
+	}
+
+	return p.Helpers.KVAtomicModify(ctx, SubscriptionKey, bucket, modifyFN)
+}
+
+// RemoveSubscription takes channel id string, a repository string and a bucket that is used for delaying retries.
+// It returns an error when subscription could not be removed.
+func (p *Plugin) RemoveSubscription(channelID string, repository string, bucket einterfaces.TokenBucket) error {
+	// TODO(gsagula): we should take the request context an propagate it to any upstream calls such as KV storage
+	// or other services.
+	ctx := context.Background()
+	modifyFN := func(initial []byte) ([]byte, error) {
 		if initial == nil {
 			return nil, errors.New("gh.plugin.err: nothing to be done")
 		}
@@ -260,11 +286,11 @@ func (p *Plugin) Unsubscribe(channelID string, repository string) error {
 			}
 		}
 		return nil, errors.New("gh.plugin.err: nothing to be done")
-	})
+	}
 
+	err := p.Helpers.KVAtomicModify(ctx, SubscriptionKey, bucket, modifyFN)
 	if err.Error() != "gh.plugin.err: nothing to be done" {
 		return err
 	}
-
 	return nil
 }
