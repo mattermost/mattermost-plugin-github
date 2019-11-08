@@ -63,6 +63,16 @@ func init() {
 		`{{template "eventRepoPullRequest" .}} - {{.GetPullRequest.GetTitle}}`,
 	))
 
+	// The reviewRepoPullRequest links to the corresponding pull request, anchored at the repo.
+	template.Must(masterTemplate.New("reviewRepoPullRequest").Parse(
+		`[{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetReview.GetHTMLURL}})`,
+	))
+
+	// this reviewRepoPullRequestWithTitle just adds title
+	template.Must(masterTemplate.New("reviewRepoPullRequestWithTitle").Parse(
+		`{{template "reviewRepoPullRequest" .}} - {{.GetPullRequest.GetTitle}}`,
+	))
+
 	// The pullRequest links to the corresponding pull request, skipping the repo title.
 	template.Must(masterTemplate.New("pullRequest").Parse(
 		`[#{{.GetNumber}} {{.GetTitle}}]({{.GetHTMLURL}})`,
@@ -81,6 +91,19 @@ func init() {
 
 	template.Must(masterTemplate.New("eventRepoIssueWithTitle").Parse(
 		`{{template "eventRepoIssue" .}} - {{.GetIssue.GetTitle}}`,
+	))
+
+	// The eventRepoIssueFullLink links to the corresponding comment in the issue. Note that, for some events, the
+	// issue *is* a pull request, and so we still use .GetIssue and this template accordingly.
+	// and .GetComment return full link to the comment as long as comment object is present in the payload
+	template.Must(masterTemplate.New("eventRepoIssueFullLink").Parse(
+		`[{{.GetRepo.GetFullName}}#{{.GetIssue.GetNumber}}]({{.GetComment.GetHTMLURL}})`,
+	))
+
+	// eventRepoIssueFullLinkWithTitle template is sibling of eventRepoIssueWithTitle
+	// this one refers to the comment instead of the issue itself
+	template.Must(masterTemplate.New("eventRepoIssueFullLinkWithTitle").Parse(
+		`{{template "eventRepoIssueFullLink" .}} - {{.GetIssue.GetTitle}}`,
 	))
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
@@ -166,12 +189,12 @@ func init() {
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssueWithTitle" .}}:
+{{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssueFullLinkWithTitle" .}}:
 >{{.GetComment.GetBody | trimBody}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueWithTitle" .}}
+{{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueFullLinkWithTitle" .}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestNotification").Funcs(funcMap).Parse(`
@@ -199,7 +222,7 @@ func init() {
 {{- if eq .GetReview.GetState "approved" }} approved your pull request
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
-{{- end }} {{template "eventRepoPullRequestWithTitle" .}}:
+{{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
 >{{.Review.GetBody}}
 `))
 }
