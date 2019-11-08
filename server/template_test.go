@@ -707,6 +707,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 	t.Run("approved", func(t *testing.T) {
 		expected := `
 [panda](https://github.com/panda) approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
+>Excited to see git-get-head land!
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
@@ -726,6 +727,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 	t.Run("changes_requested", func(t *testing.T) {
 		expected := `
 [panda](https://github.com/panda) requested changes on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
+>Excited to see git-get-head land!
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
@@ -745,6 +747,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 	t.Run("commented", func(t *testing.T) {
 		expected := `
 [panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
+>Excited to see git-get-head land!
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
