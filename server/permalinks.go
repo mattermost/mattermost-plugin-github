@@ -105,12 +105,11 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 		reqctx, cancel := context.WithTimeout(context.Background(), permalinkReqTimeout)
 		fileContent, _, _, err := ghClient.Repositories.GetContents(reqctx,
 			r.permalinkInfo.user, r.permalinkInfo.repo, r.permalinkInfo.path, &opts)
+		defer cancel()
 		if err != nil {
 			p.API.LogError("error while fetching file contents", "error", err.Error(), "path", r.permalinkInfo.path)
-			cancel()
 			continue
 		}
-		cancel()
 		// this is not a file, ignore.
 		if fileContent == nil {
 			p.API.LogWarn("permalink is not a file", "file", r.permalinkInfo.path)
