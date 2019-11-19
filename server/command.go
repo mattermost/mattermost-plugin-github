@@ -123,21 +123,21 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			p.postCommandResponse(args, txt)
 			return &model.CommandResponse{}, nil
 		} else if len(parameters) > 1 {
-			featureList := []string{}
+			optionList := []string{}
 
 			for _, element := range parameters[1:] {
 				if isFlag(element) {
 					flags = append(flags, parseFlag(element))
 				} else {
-					featureList = append(featureList, element)
+					optionList = append(optionList, element)
 				}
 			}
 
-			if len(featureList) > 1 {
-				p.postCommandResponse(args, "Just one {features} parameter is allowed")
+			if len(optionList) > 1 {
+				p.postCommandResponse(args, "Just one option is allowed")
 				return &model.CommandResponse{}, nil
-			} else if len(featureList) == 1 {
-				features = featureList[0]
+			} else if len(optionList) == 1 {
+				features = optionList[0]
 			}
 		}
 

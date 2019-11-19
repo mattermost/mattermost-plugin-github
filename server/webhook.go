@@ -171,6 +171,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	info, err := p.getGitHubUserInfo(subscription.CreatorID)
 
 	if err != nil {
+		mlog.Warn(err.Message)
 		return false
 	}
 
