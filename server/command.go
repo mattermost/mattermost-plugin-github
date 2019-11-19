@@ -134,7 +134,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			}
 
 			if len(optionList) > 1 {
-				p.postCommandResponse(args, "Just one option is allowed")
+				p.postCommandResponse(args, "Just one list of features is allowed")
 				return &model.CommandResponse{}, nil
 			} else if len(optionList) == 1 {
 				features = optionList[0]
