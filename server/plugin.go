@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -41,7 +42,8 @@ const (
 
 type Plugin struct {
 	plugin.MattermostPlugin
-	githubClient *github.Client
+	// githubPermalinkRegex is used to parse github permalinks in post messages.
+	githubPermalinkRegex *regexp.Regexp
 
 	BotUserID string
 
@@ -51,6 +53,13 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *configuration
+}
+
+// NewPlugin returns an instance of a Plugin.
+func NewPlugin() *Plugin {
+	return &Plugin{
+		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+	}
 }
 
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
@@ -114,6 +123,31 @@ func (p *Plugin) OnActivate() error {
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
 	return nil
+}
+
+func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
+	// If not enabled in config, ignore.
+	config := p.getConfiguration()
+	if !config.EnableCodePreview {
+		return nil, ""
+	}
+
+	if post.UserId == "" {
+		return nil, ""
+	}
+
+	msg := post.Message
+	info, err := p.getGitHubUserInfo(post.UserId)
+	if err != nil {
+		p.API.LogError("error in getting user info", "error", err.Message)
+		return nil, ""
+	}
+	// TODO: make this part of the Plugin struct and reuse it.
+	ghClient := p.githubConnect(*info.Token)
+
+	replacements := p.getReplacements(msg)
+	post.Message = p.makeReplacements(msg, replacements, ghClient)
+	return post, ""
 }
 
 func (p *Plugin) getOAuthConfig() *oauth2.Config {
