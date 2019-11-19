@@ -132,10 +132,14 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
+	if post.UserId == "" {
+		return nil, ""
+	}
+
 	msg := post.Message
 	info, err := p.getGitHubUserInfo(post.UserId)
 	if err != nil {
-		p.API.LogError("error in getting user info", "error", err)
+		p.API.LogError("error in getting user info", "error", err.Message)
 		return nil, ""
 	}
 	// TODO: make this part of the Plugin struct and reuse it.
