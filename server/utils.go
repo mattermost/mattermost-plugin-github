@@ -29,14 +29,14 @@ func getYourAssigneeSearchQuery(username, org string) string {
 	return buildSearchQuery("is:open assignee:%v archived:false %v", username, org)
 }
 
-func getIssuesSearchQuery(username, org, searchTerm string) string {
-	query := "is:open is:issue assignee:%v archived:false %v %v"
+func getIssuesSearchQuery(org, searchTerm string) string {
+	query := "is:open is:issue archived:false %v %v"
 	orgField := ""
 	if len(org) != 0 {
 		orgField = fmt.Sprintf("org:%v", org)
 	}
 
-	return fmt.Sprintf(query, username, orgField, searchTerm)
+	return fmt.Sprintf(query, orgField, searchTerm)
 }
 
 func buildSearchQuery(query, username, org string) string {

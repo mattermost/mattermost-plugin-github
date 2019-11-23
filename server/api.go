@@ -230,10 +230,12 @@ type ConnectedResponse struct {
 }
 
 type CreateIssueCommentRequest struct {
-	Owner   string `json:"owner"`
-	Repo    string `json:"repo"`
-	Number  int    `json:"number"`
-	Comment string `json:"comment"`
+	PostId      string `json:"post_id"`
+	Owner       string `json:"owner"`
+	Repo        string `json:"repo"`
+	Number      int    `json:"number"`
+	Comment     string `json:"comment"`
+	CurrentTeam string `json:"current_team"`
 }
 
 type GitHubUserRequest struct {
@@ -508,7 +510,6 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
 	var githubClient *github.Client
-	username := ""
 
 	searchTerm := r.FormValue("term")
 
@@ -517,16 +518,19 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		githubClient = p.githubConnect(*info.Token)
-		username = info.GitHubUsername
 	}
 
-	result, _, err := githubClient.Search.Issues(ctx, getIssuesSearchQuery(username, config.GitHubOrg, searchTerm), &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(ctx, getIssuesSearchQuery(config.GitHubOrg, searchTerm), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 	}
 
 	resp, _ := json.Marshal(result.Issues)
 	w.Write(resp)
+}
+
+func getPermaLink(siteUrl string, postId string, currentTeam string) string {
+	return fmt.Sprintf("%v/%v/pl/%v", siteUrl, currentTeam, postId)
 }
 
 func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
@@ -551,6 +555,11 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.PostId == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid post id", StatusCode: http.StatusBadRequest})
+		return
+	}
+
 	if req.Owner == "" {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
 		return
@@ -571,6 +580,11 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.CurrentTeam == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
+		return
+	}
+
 	ctx := context.Background()
 
 	var githubClient *github.Client
@@ -582,17 +596,71 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 		githubClient = p.githubConnect(*info.Token)
 	}
 
+	api := p.API
+	post, appErr := api.GetPost(req.PostId)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostId, StatusCode: http.StatusInternalServerError})
+		return
+	}
+	if post == nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostId + ": not found", StatusCode: http.StatusNotFound})
+		return
+	}
+
+	commentUser, appErr := api.GetUser(post.UserId)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	currentUser, appErr := api.GetUser(userID)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	siteUrl := api.GetConfig().ServiceSettings.SiteURL
+
+	permalink := getPermaLink(*siteUrl, req.PostId, req.CurrentTeam)
+
+	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUser.Username, permalink, commentUser.Username)
+
+	req.Comment = permalinkMessage + req.Comment
 	comment := &github.IssueComment{
 		Body: &req.Comment,
 	}
 
 	result, _, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment)
+
 	if err != nil {
 		mlog.Error(err.Error())
+	} else {
+
+		rootId := req.PostId
+		if post.RootId != "" {
+			// the original post was a reply
+			rootId = post.RootId
+		}
+
+		reply := &model.Post{
+			Message:   fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number),
+			ChannelId: post.ChannelId,
+			RootId:    rootId,
+			ParentId:  rootId,
+			UserId:    userID,
+		}
+
+		_, appErr = api.CreatePost(reply)
+		if appErr != nil {
+			writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostId, StatusCode: http.StatusInternalServerError})
+			return
+		}
+
 	}
 
 	resp, _ := json.Marshal(result)
 	w.Write(resp)
+
 }
 
 func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {

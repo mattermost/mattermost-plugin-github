@@ -41,7 +41,7 @@ export default class GithubIssueSelector extends PureComponent {
         const textEncoded = encodeURIComponent(text.trim().replace(/"/g, '\\"'));
 
         return Client.searchIssues(textEncoded).then((data) => {
-            return Array.isArray(data) ? data.map((item) => ({value: item, label: item.title})) : [];
+            return Array.isArray(data) ? data.map((item) => ({value: item, label: '#' + item.number + ': ' + item.title})) : [];
         }).catch((e) => {
             this.setState({error: e});
         });
