@@ -52,6 +52,10 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.completeConnectUserToGitHub(w, r)
 	case "/api/v1/connected":
 		p.getConnected(w, r)
+	case "/api/v1/createissue":
+		p.createIssue(w, r)
+	case "/api/v1/repositories":
+		p.getRepositories(w, r)
 	case "/api/v1/todo":
 		p.postToDo(w, r)
 	case "/api/v1/reviews":
@@ -242,6 +246,12 @@ type GitHubUserRequest struct {
 
 type GitHubUserResponse struct {
 	Username string `json:"username"`
+}
+
+type IssueRequest struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+	Repo  string `json:"repo"`
 }
 
 func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request) {
@@ -687,4 +697,102 @@ func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request) {
 
 	resp, _ := json.Marshal(info.Settings)
 	w.Write(resp)
+}
+
+func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = p.githubConnect(*info.Token)
+	}
+
+	repositories, _, err := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(repositories)
+	w.Write(resp)
+}
+
+func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be POST", r.Method), http.StatusMethodNotAllowed)
+		return
+	}
+
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Make sure user have a connected github account
+	var githubClient *github.Client
+	info, err := p.getGitHubUserInfo(userID)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+
+	githubClient = p.githubConnect(*info.Token)
+
+	// get data for the issue from the request body and fill IssueRequest object
+	issue := &IssueRequest{}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&issue); err != nil {
+		mlog.Error("Error decoding JSON body", mlog.Err(err))
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if issue.Title == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue title.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if issue.Body == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue description.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	// if issue.Owner == "" {
+	// 	writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
+	// 	return
+	// }
+
+	if issue.Repo == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo name.", StatusCode: http.StatusBadRequest})
+		return
+	}
+	ctx := context.Background()
+	gh_issue := &github.IssueRequest{
+		Title: &issue.Title,
+		Body:  &issue.Body,
+	}
+
+	// call Create(ctx context.Context, owner string, repo string, issue *IssueRequest)
+	result, resp, api_err := githubClient.Issues.Create(ctx, info.GitHubUsername, issue.Repo, gh_issue)
+	if api_err != nil {
+		mlog.Error(api_err.Error())
+	}
+
+	if resp.Response.StatusCode == 410 {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+		return
+	}
+
+	json_r, _ := json.Marshal(result)
+	w.Write(json_r)
 }

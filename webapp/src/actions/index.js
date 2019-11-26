@@ -214,6 +214,39 @@ export function updateRhsState(rhsState) {
     };
 }
 
+export function openCreateIssueModal(postId) {
+    return {
+        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL,
+        data: {
+            postId,
+        },
+    };
+}
+
+export function closeCreateIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_CREATE_ISSUE_MODAL,
+    };
+}
+
+export function createIssue(payload) {
+    return async (dispatch) => {
+        let data;
+        try {
+            data = await Client.createIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await dispatch(checkAndHandleNotConnected(data));
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
 export function openAttachCommentToIssueModal(postId) {
     return {
         type: ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL,
@@ -247,7 +280,6 @@ export function attachCommentToIssue(payload) {
             type: ActionTypes.RECEIVED_ATTACH_COMMENT_RESULT,
             data,
         });
-
         return {data};
     };
 }
