@@ -60,10 +60,16 @@ export default class AttachIssueModal extends PureComponent {
 
         this.props.create(issue).then((created) => {
             if (created.error) {
-                this.setState({error: created.error.message, submitting: false});
+                let errMessage = created.error.message;
+                if (created.error.response &&
+                    created.error.response.body &&
+                    created.error.response.body.message) {
+                    errMessage = created.error.response.body.message;
+                }
+                this.setState({error: errMessage, submitting: false});
                 return;
             }
-            
+
             this.handleClose(e);
         });
     };

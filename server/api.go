@@ -630,12 +630,9 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 		Body: &req.Comment,
 	}
 
-	result, _, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment)
-
-	if err != nil {
-		mlog.Error(err.Error())
+	if result, rawResponse, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment); err != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create comment", StatusCode: rawResponse.StatusCode})
 	} else {
-
 		rootId := req.PostId
 		if post.RootId != "" {
 			// the original post was a reply
@@ -655,12 +652,9 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 			writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostId, StatusCode: http.StatusInternalServerError})
 			return
 		}
-
+		resp, _ := json.Marshal(result)
+		w.Write(resp)
 	}
-
-	resp, _ := json.Marshal(result)
-	w.Write(resp)
-
 }
 
 func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {
