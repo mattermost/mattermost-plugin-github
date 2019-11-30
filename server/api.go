@@ -533,6 +533,30 @@ func getPermaLink(siteUrl string, postId string, currentTeam string) string {
 	return fmt.Sprintf("%v/%v/pl/%v", siteUrl, currentTeam, postId)
 }
 
+func getFailReason(code int, repo string, username string) string {
+	cause := ""
+	switch code {
+	case http.StatusInternalServerError:
+		cause = "Internal server error"
+		break
+	case http.StatusBadRequest:
+		cause = "Bad request"
+		break
+	case http.StatusNotFound:
+		cause = fmt.Sprintf("Sorry, either you don't have access to the repo %s with the user %s or it is no longer available", repo, username)
+		break
+	case http.StatusUnauthorized:
+		cause = fmt.Sprintf("Sorry, your user %s is unauthorized to do this action", username)
+		break
+	case http.StatusForbidden:
+		cause = fmt.Sprintf("Sorry, you don't have enough permissions to comment in the repo %s with the user %s", repo, username)
+		break
+	default:
+		cause = fmt.Sprintf("Unknown status code %d", code)
+	}
+	return cause
+}
+
 func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be POST", r.Method), http.StatusMethodNotAllowed)
@@ -631,7 +655,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if result, rawResponse, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment); err != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create comment", StatusCode: rawResponse.StatusCode})
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUser.Username), StatusCode: rawResponse.StatusCode})
 	} else {
 		rootId := req.PostId
 		if post.RootId != "" {
