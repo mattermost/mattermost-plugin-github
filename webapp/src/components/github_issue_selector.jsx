@@ -41,7 +41,15 @@ export default class GithubIssueSelector extends PureComponent {
         const textEncoded = encodeURIComponent(text.trim().replace(/"/g, '\\"'));
 
         return Client.searchIssues(textEncoded).then((data) => {
-            return Array.isArray(data) ? data.map((item) => ({value: item, label: '#' + item.number + ': ' + item.title, isDisabled: item.locked})) : [];
+            return Array.isArray(data) ?
+                data.map((item) => {
+                    const repoParts = item.repository_url.split('/');
+                    let prefix = '';
+                    if (repoParts.length >= 2) {
+                        prefix = repoParts[repoParts.length - 2] + '/' + repoParts[repoParts.length - 1] + ', ';
+                    }
+                    return ({value: item, label: prefix + '#' + item.number + ': ' + item.title, isDisabled: item.locked});
+                }) : [];
         }).catch((e) => {
             this.setState({error: e});
         });
