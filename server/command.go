@@ -16,7 +16,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe list| - Will list the current channel subscriptions
-* |/github subscribe owner[/repo] [features]| - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository
+* |/github subscribe owner[/repo] [features] [flags]| - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository
   * |features| is a comma-delimited list of one or more the following:
     * issues - includes new and closed issues
 	* pulls - includes new and closed pull requests
@@ -26,7 +26,10 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
     * issue_comments - includes new issue comments
     * pull_reviews - includes pull request reviews
 	* label:"<labelname>" - must include "pulls" or "issues" in feature list when using a label
-  * Defaults to "pulls,issues,creates,deletes"
+	Defaults to "pulls,issues,creates,deletes"
+  * |flags| currently supported:
+    * --exclude-org-member - events triggered by organization members will not be delivered (the Github organization config
+		should be set, otherwise this flag has not effect)
 * |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
 * |/github me| - Display the connected GitHub account
 * |/github settings [setting] [value]| - Update your user settings

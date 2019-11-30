@@ -448,7 +448,6 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 	}
 
 	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
-
 	if err != nil {
 		mlog.Warn(err.Error())
 		return false

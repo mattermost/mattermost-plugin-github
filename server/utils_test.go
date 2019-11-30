@@ -119,7 +119,7 @@ func TestContainsValue(t *testing.T) {
 	}{
 		{List: []string{"value1", "value2"}, Value: "value1", Expected: true},
 		{List: []string{}, Value: "value1", Expected: false},
-		{List: []string{"value1", "value2"}, Value: "value1", Expected: true},
+		{List: []string{"value1", "value2"}, Value: "value2", Expected: true},
 	}
 
 	for _, tc := range tcs {
