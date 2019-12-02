@@ -387,6 +387,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
@@ -426,6 +430,10 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
@@ -462,6 +470,10 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 
 	for _, sub := range subs {
 		if !sub.Deletes() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
