@@ -24,20 +24,16 @@ import (
 
 const (
 	GITHUB_TOKEN_KEY        = "_githubtoken"
-	GITHUB_STATE_KEY        = "_githubstate"
 	GITHUB_USERNAME_KEY     = "_githubusername"
 	GITHUB_PRIVATE_REPO_KEY = "_githubprivate"
 	WS_EVENT_CONNECT        = "connect"
 	WS_EVENT_DISCONNECT     = "disconnect"
 	WS_EVENT_REFRESH        = "refresh"
 	SETTING_BUTTONS_TEAM    = "team"
-	SETTING_BUTTONS_CHANNEL = "channel"
-	SETTING_BUTTONS_OFF     = "off"
 	SETTING_NOTIFICATIONS   = "notifications"
 	SETTING_REMINDERS       = "reminders"
 	SETTING_ON              = "on"
 	SETTING_OFF             = "off"
-	BOT_USER_KEY            = "bot"
 )
 
 type Plugin struct {
