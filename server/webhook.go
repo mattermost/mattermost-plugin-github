@@ -151,8 +151,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	if apiErr != nil {
 		return false
 	}
-	var githubClient *github.Client
-	githubClient = p.githubConnect(*info.Token)
+	githubClient := p.githubConnect(*info.Token)
 
 	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
 		if err != nil {
@@ -184,7 +183,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
@@ -272,7 +271,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
@@ -361,7 +360,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 
 	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
 
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
