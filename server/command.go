@@ -102,7 +102,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	case "subscribe":
 		config := p.getConfiguration()
 		features := "pulls,issues,creates,deletes"
-		flags := []string{}
+		flags := SubscriptionFlags{}
 
 		txt := ""
 		if len(parameters) == 0 {
@@ -130,7 +130,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 			for _, element := range parameters[1:] {
 				if isFlag(element) {
-					flags = append(flags, parseFlag(element))
+					flags.AddFlag(parseFlag(element))
 				} else {
 					optionList = append(optionList, element)
 				}

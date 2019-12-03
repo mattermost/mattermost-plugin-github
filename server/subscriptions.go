@@ -13,11 +13,19 @@ import (
 )
 
 const (
-	SUBSCRIPTIONS_KEY = "subscriptions"
+	SUBSCRIPTIONS_KEY       = "subscriptions"
+	EXCLUDE_ORG_MEMBER_FLAG = "exclude-org-member"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
+}
+
+func (s *SubscriptionFlags) AddFlag(flag string) {
+	switch flag {
+	case EXCLUDE_ORG_MEMBER_FLAG:
+		s.ExcludeOrgMembers = true
+	}
 }
 
 type Subscription struct {
@@ -77,7 +85,7 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
 }
 
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, owner, repo, channelID, features string, flags []string) error {
+func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
 		return fmt.Errorf("Invalid repository")
 	}
@@ -117,9 +125,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		CreatorID:  userId,
 		Features:   features,
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
-		Flags: SubscriptionFlags{
-			ExcludeOrgMembers: containsValue(flags, "exclude-org-member"),
-		},
+		Flags:      flags,
 	}
 
 	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
@@ -129,7 +135,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string, flags []string) error {
+func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string, flags SubscriptionFlags) error {
 	if org == "" {
 		return fmt.Errorf("Invalid organization")
 	}
