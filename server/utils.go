@@ -82,7 +82,7 @@ func encrypt(key []byte, text string) (string, error) {
 	}
 
 	cfb := cipher.NewCFBEncrypter(block, iv)
-	cfb.XORKeyStream(ciphertext[aes.BlockSize:], []byte(msg))
+	cfb.XORKeyStream(ciphertext[aes.BlockSize:], msg)
 	finalMsg := base64.URLEncoding.EncodeToString(ciphertext)
 	return finalMsg, nil
 }

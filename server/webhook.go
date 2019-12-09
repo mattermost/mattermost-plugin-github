@@ -33,7 +33,7 @@ func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
 func signBody(secret, body []byte) []byte {
 	computed := hmac.New(sha1.New, secret)
 	computed.Write(body)
-	return []byte(computed.Sum(nil))
+	return computed.Sum(nil)
 }
 
 // Hack to convert from github.PushEventRepository to github.Repository
