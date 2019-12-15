@@ -546,9 +546,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 	req := &CreateIssueCommentRequest{}
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
-		if err != nil {
-			mlog.Error("Error decoding JSON body", mlog.Err(err))
-		}
+		mlog.Error("Error decoding JSON body", mlog.Err(err))
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}

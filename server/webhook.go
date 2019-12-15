@@ -373,7 +373,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
@@ -412,7 +412,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
@@ -451,7 +451,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
@@ -508,7 +508,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
@@ -572,7 +572,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
-	if subs == nil || len(subs) == 0 {
+	if len(subs) == 0 {
 		return
 	}
 
