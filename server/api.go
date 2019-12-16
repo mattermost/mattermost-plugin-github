@@ -195,9 +195,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	p.API.PublishWebSocketEvent(
 		WS_EVENT_CONNECT,
 		map[string]interface{}{
-			"connected":        true,
-			"github_username":  userInfo.GitHubUsername,
-			"github_client_id": config.GitHubOAuthClientID,
+			"connected":           true,
+			"github_username":     userInfo.GitHubUsername,
+			"github_client_id":    config.GitHubOAuthClientID,
+			"enterprise_base_url": config.EnterpriseBaseURL,
+			"organization":        config.GitHubOrg,
 		},
 		&model.WebsocketBroadcast{UserId: userID},
 	)
