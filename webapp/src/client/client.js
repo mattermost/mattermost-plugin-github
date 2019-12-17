@@ -1,7 +1,8 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import request from 'superagent';
+import {Client4} from 'mattermost-redux/client';
+import {ClientError} from 'mattermost-redux/client/client4';
 
 export default class Client {
     constructor() {
@@ -45,72 +46,96 @@ export default class Client {
     }
 
     doGet = async (url, body, headers = {}) => {
-        headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
-        try {
-            const response = await request.
-                get(url).
-                set(headers).
-                accept('application/json');
+        const options = {
+            method: 'get',
+            headers,
+        };
 
-            return response.body;
-        } catch (err) {
-            throw err;
+        const response = await fetch(url, Client4.getOptions(options));
+
+        if (response.ok) {
+            return response.json();
         }
+
+        const text = await response.text();
+
+        throw new ClientError(Client4.url, {
+            message: text || '',
+            status_code: response.status,
+            url,
+        });
     }
 
     doPost = async (url, body, headers = {}) => {
-        headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
-        try {
-            const response = await request.
-                post(url).
-                send(body).
-                set(headers).
-                type('application/json').
-                accept('application/json');
+        const options = {
+            method: 'post',
+            body: JSON.stringify(body),
+            headers,
+        };
 
-            return response.body;
-        } catch (err) {
-            throw err;
+        const response = await fetch(url, Client4.getOptions(options));
+
+        if (response.ok) {
+            return response.json();
         }
+
+        const text = await response.text();
+
+        throw new ClientError(Client4.url, {
+            message: text || '',
+            status_code: response.status,
+            url,
+        });
     }
 
     doDelete = async (url, body, headers = {}) => {
-        headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
-        try {
-            const response = await request.
-                delete(url).
-                send(body).
-                set(headers).
-                type('application/json').
-                accept('application/json');
+        const options = {
+            method: 'delete',
+            headers,
+        };
 
-            return response.body;
-        } catch (err) {
-            throw err;
+        const response = await fetch(url, Client4.getOptions(options));
+
+        if (response.ok) {
+            return response.json();
         }
+
+        const text = await response.text();
+
+        throw new ClientError(Client4.url, {
+            message: text || '',
+            status_code: response.status,
+            url,
+        });
     }
 
     doPut = async (url, body, headers = {}) => {
-        headers['X-Requested-With'] = 'XMLHttpRequest';
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 
-        try {
-            const response = await request.
-                put(url).
-                send(body).
-                set(headers).
-                type('application/json').
-                accept('application/json');
+        const options = {
+            method: 'put',
+            body: JSON.stringify(body),
+            headers,
+        };
 
-            return response.body;
-        } catch (err) {
-            throw err;
+        const response = await fetch(url, Client4.getOptions(options));
+
+        if (response.ok) {
+            return response.json();
         }
+
+        const text = await response.text();
+
+        throw new ClientError(Client4.url, {
+            message: text || '',
+            status_code: response.status,
+            url,
+        });
     }
 }
