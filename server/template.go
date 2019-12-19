@@ -109,7 +109,7 @@ func init() {
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
-#new-pull-request by {{template "user" .GetSender}} on [{{.GetPullRequest.GetCreatedAt.String}}]({{.GetPullRequest.GetHTMLURL}})
+#new-pull-request by {{template "user" .GetSender}}
 
 {{.GetPullRequest.GetBody}}
 `))
@@ -124,13 +124,13 @@ func init() {
 	template.Must(masterTemplate.New("pullRequestLabelled").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
-#pull-request-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}} on [{{.GetPullRequest.GetUpdatedAt.String}}]({{.GetPullRequest.GetHTMLURL}})
+#pull-request-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}
 `))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
-#new-issue by {{template "user" .GetSender}} on [{{.GetIssue.GetCreatedAt.String}}]({{.GetIssue.GetHTMLURL}})
+#new-issue by {{template "user" .GetSender}}
 
 {{.GetIssue.GetBody}}
 `))
@@ -142,7 +142,7 @@ func init() {
 	template.Must(masterTemplate.New("issueLabelled").Funcs(funcMap).Parse(`
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
-#issue-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}} on [{{.GetIssue.GetUpdatedAt.String}}]({{.GetIssue.GetHTMLURL}}).
+#issue-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
