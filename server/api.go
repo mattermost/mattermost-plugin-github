@@ -499,36 +499,36 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 	var prList []*PRExtended
 
 	ch := make(chan *PRExtended)
-	for _, v := range result.Issues {
-		go fetchExtraPRInfo(ctx, githubClient, v, ch)
+	for _, pr := range result.Issues {
+		go fetchExtraPRInfo(ctx, githubClient, pr, ch)
 	}
 
 	for range result.Issues {
-		v := <-ch
-		prList = append(prList, v)
+		pr := <-ch
+		prList = append(prList, pr)
 	}
 
 	resp, _ := json.Marshal(prList)
 	w.Write(resp)
 }
 
-func fetchExtraPRInfo(ctx context.Context, client *github.Client, v github.Issue, ch chan *PRExtended) {
+func fetchExtraPRInfo(ctx context.Context, client *github.Client, pr github.Issue, ch chan *PRExtended) {
 	status := ""
 	requestedReviewers := 0
 	var reviewsList []*github.PullRequestReview = nil
 
-	repoOwner, repoName := getRepoOwnerAndNameFromURL(v.GetRepositoryURL())
+	repoOwner, repoName := getRepoOwnerAndNameFromURL(pr.GetRepositoryURL())
 
 	chReviews := make(chan []*github.PullRequestReview)
 
-	go fetchReviews(ctx, client, repoOwner, repoName, v.GetNumber(), chReviews)
+	go fetchReviews(ctx, client, repoOwner, repoName, pr.GetNumber(), chReviews)
 
-	pr, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, v.GetNumber())
+	prInfo, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, pr.GetNumber())
 
 	if err != nil {
 		mlog.Error(err.Error())
 		ch <- &PRExtended{
-			Issue:     v,
+			Issue:     pr,
 			Status:    status,
 			Reviewers: requestedReviewers,
 			Reviews:   reviewsList,
@@ -536,14 +536,14 @@ func fetchExtraPRInfo(ctx context.Context, client *github.Client, v github.Issue
 		return
 	}
 
-	requestedReviewers = len(pr.RequestedReviewers)
+	requestedReviewers = len(prInfo.RequestedReviewers)
 
-	statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, pr.GetHead().GetSHA(), nil)
+	statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
 
 	if err != nil {
 		mlog.Error(err.Error())
 		ch <- &PRExtended{
-			Issue:     v,
+			Issue:     pr,
 			Status:    status,
 			Reviewers: requestedReviewers,
 			Reviews:   reviewsList,
@@ -556,7 +556,7 @@ func fetchExtraPRInfo(ctx context.Context, client *github.Client, v github.Issue
 	reviewsList = <-chReviews
 
 	ch <- &PRExtended{
-		Issue:     v,
+		Issue:     pr,
 		Status:    status,
 		Reviewers: requestedReviewers,
 		Reviews:   reviewsList,

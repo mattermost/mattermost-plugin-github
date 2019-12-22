@@ -70,6 +70,7 @@ function GithubItems(props) {
                 }
                 return accum;
             }, 0);
+            
             if (changesRequested > 0) {
                 reviews = (<span>Changes requested.</span>);
             } else if (approved > 0) {
