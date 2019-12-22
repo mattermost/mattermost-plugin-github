@@ -33,3 +33,20 @@ export function formatDate(date, useMilitaryTime = false) {
 
     return monthNames[monthIndex] + ' ' + day + ' at ' + hours + ':' + minutes + ampm;
 }
+
+export function formatTimeSince(date) {
+    const secondsSince = Math.trunc((Date.now() - (new Date(date)).getTime())/1000);
+    if (secondsSince < 60) {
+        return secondsSince + 's';
+    }
+    const minutesSince = Math.trunc(secondsSince/60);
+    if (minutesSince < 60) {
+        return minutesSince + 'm';
+    }
+    const hoursSince = Math.trunc(minutesSince/60);
+    if (hoursSince < 24) {
+        return hoursSince + 'h';
+    }
+    const daysSince = Math.trunc(hoursSince/24);
+    return daysSince + 'd';
+}

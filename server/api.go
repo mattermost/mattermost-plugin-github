@@ -27,6 +27,13 @@ type APIErrorResponse struct {
 	StatusCode int    `json:"status_code"`
 }
 
+type PRExtended struct {
+	github.Issue
+	Status    string                      `json:"status"`
+	Reviewers int                         `json:"reviewers"`
+	Reviews   []*github.PullRequestReview `json:"reviews"`
+}
+
 func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 	b, _ := json.Marshal(err)
 	w.WriteHeader(err.StatusCode)
@@ -489,8 +496,88 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 		mlog.Error(err.Error())
 	}
 
-	resp, _ := json.Marshal(result.Issues)
+	var prList []*PRExtended
+
+	ch := make(chan *PRExtended)
+	for _, v := range result.Issues {
+		go fetchExtraPRInfo(ctx, githubClient, v, ch)
+	}
+
+	for range result.Issues {
+		v := <-ch
+		prList = append(prList, v)
+	}
+
+	resp, _ := json.Marshal(prList)
 	w.Write(resp)
+}
+
+func fetchExtraPRInfo(ctx context.Context, client *github.Client, v github.Issue, ch chan *PRExtended) {
+	status := ""
+	requestedReviewers := 0
+	var reviewsList []*github.PullRequestReview = nil
+
+	repoOwner, repoName := getRepoOwnerAndNameFromURL(v.GetRepositoryURL())
+
+	chReviews := make(chan []*github.PullRequestReview)
+
+	go fetchReviews(ctx, client, repoOwner, repoName, v.GetNumber(), chReviews)
+
+	pr, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, v.GetNumber())
+
+	if err != nil {
+		mlog.Error(err.Error())
+		ch <- &PRExtended{
+			Issue:     v,
+			Status:    status,
+			Reviewers: requestedReviewers,
+			Reviews:   reviewsList,
+		}
+		return
+	}
+
+	requestedReviewers = len(pr.RequestedReviewers)
+
+	statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, pr.GetHead().GetSHA(), nil)
+
+	if err != nil {
+		mlog.Error(err.Error())
+		ch <- &PRExtended{
+			Issue:     v,
+			Status:    status,
+			Reviewers: requestedReviewers,
+			Reviews:   reviewsList,
+		}
+		return
+	}
+
+	status = *statuses.State
+
+	reviewsList = <-chReviews
+
+	ch <- &PRExtended{
+		Issue:     v,
+		Status:    status,
+		Reviewers: requestedReviewers,
+		Reviews:   reviewsList,
+	}
+}
+
+func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, repoName string, number int, ch chan []*github.PullRequestReview) {
+	reviewsList, _, err := client.PullRequests.ListReviews(ctx, repoOwner, repoName, number, nil)
+
+	if err != nil {
+		mlog.Error(err.Error())
+		ch <- []*github.PullRequestReview{}
+		return
+	}
+
+	ch <- reviewsList
+}
+
+func getRepoOwnerAndNameFromURL(url string) (string, string) {
+	splitted := strings.Split(url, "/")
+	return splitted[len(splitted)-2], splitted[len(splitted)-1]
 }
 
 func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
