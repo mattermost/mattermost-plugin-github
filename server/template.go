@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -36,6 +37,17 @@ func init() {
 		}
 
 		return gitHubToUsernameMappingCallback(githubUsername)
+	}
+
+	funcMap["removeComments"] = func(body string) string {
+		if len(strings.TrimSpace(body)) == 0 {
+			return ""
+		}
+
+		const RegexForCommentMatch string = `(<!--.*?-->)|(<!--[\S\s]+?-->)`
+		reCommentExpression := regexp.MustCompile(RegexForCommentMatch)
+
+		return reCommentExpression.ReplaceAllString(body, "")
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
@@ -111,7 +123,7 @@ func init() {
 ##### {{template "eventRepoPullRequest" .}}
 #new-pull-request by {{template "user" .GetSender}}
 
-{{.GetPullRequest.GetBody}}
+{{.GetPullRequest.GetBody | removeComments}}
 `))
 
 	template.Must(masterTemplate.New("closedPR").Funcs(funcMap).Parse(`
@@ -132,7 +144,7 @@ func init() {
 ##### {{template "eventRepoIssue" .}}
 #new-issue by {{template "user" .GetSender}}
 
-{{.GetIssue.GetBody}}
+{{.GetIssue.GetBody | removeComments}}
 `))
 
 	template.Must(masterTemplate.New("closedIssue").Funcs(funcMap).Parse(`
