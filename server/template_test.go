@@ -24,7 +24,7 @@ var pullRequest = github.PullRequest{
 	Title:     sToP("Leverage git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
+	Body:      sToP("<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
 }
 
 var mergedPullRequest = github.PullRequest{
@@ -33,7 +33,7 @@ var mergedPullRequest = github.PullRequest{
 	Title:     sToP("Leverage git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
+	Body:      sToP("<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
 	Merged:    bToP(true),
 }
 
@@ -43,7 +43,7 @@ var issue = github.Issue{
 	Title:     sToP("Implement git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("git-get-head sounds like a great feature we should support"),
+	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
 }
 
 var user = github.User{
