@@ -78,3 +78,87 @@ func TestParseOwnerAndRepo(t *testing.T) {
 		assert.Equal(t, repo, tc.ExpectedRepo)
 	}
 }
+
+func TestGetLineNumbers(t *testing.T) {
+	tcs := []struct {
+		input      string
+		start, end int
+	}{
+		{
+			input: "L19",
+			start: 16,
+			end:   22,
+		}, {
+			input: "L19-L23",
+			start: 19,
+			end:   23,
+		}, {
+			input: "L23-L19",
+			start: -1,
+			end:   -1,
+		}, {
+			input: "L",
+			start: -1,
+			end:   -1,
+		}, {
+			input: "bad",
+			start: -1,
+			end:   -1,
+		}, {
+			input: "L99-",
+			start: 99,
+			end:   -1,
+		}, {
+			input: "L2",
+			start: 0,
+			end:   5,
+		},
+	}
+	for _, tc := range tcs {
+		start, end := getLineNumbers(tc.input)
+		assert.Equalf(t, tc.start, start, "unexpected start index for getLineNumbers(%q)", tc.input)
+		assert.Equalf(t, tc.end, end, "unexpected end index for getLineNumbers(%q)", tc.input)
+	}
+}
+
+func TestInsideLink(t *testing.T) {
+	tcs := []struct {
+		input    string
+		index    int
+		expected bool
+	}{
+		{
+			input:    "[text](link)",
+			index:    7,
+			expected: true,
+		}, {
+			input:    "[text]( link space)",
+			index:    8,
+			expected: true,
+		}, {
+			input:    "text](link",
+			index:    6,
+			expected: true,
+		}, {
+			input:    "text] (link)",
+			index:    7,
+			expected: false,
+		}, {
+			input:    "text](link)",
+			index:    6,
+			expected: true,
+		}, {
+			input:    "link",
+			index:    0,
+			expected: false,
+		}, {
+			input:    " (link)",
+			index:    2,
+			expected: false,
+		},
+	}
+
+	for _, tc := range tcs {
+		assert.Equalf(t, tc.expected, isInsideLink(tc.input, tc.index), "unexpected result for isInsideLink(%q, %d)", tc.input, tc.index)
+	}
+}

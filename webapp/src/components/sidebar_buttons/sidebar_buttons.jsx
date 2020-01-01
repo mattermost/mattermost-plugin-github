@@ -214,7 +214,6 @@ const getStyle = makeStyleFromTheme((theme) => {
         },
         buttonHeader: {
             color: changeOpacity(theme.sidebarText, 0.6),
-            flex: 1,
             textAlign: 'center',
             cursor: 'pointer',
         },
@@ -223,6 +222,8 @@ const getStyle = makeStyleFromTheme((theme) => {
             marginBottom: '5px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-around',
+            padding: '0 10px',
         },
         containerTeam: {
         },
