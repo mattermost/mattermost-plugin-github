@@ -654,31 +654,32 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 		Body: &req.Comment,
 	}
 
-	if result, rawResponse, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment); err != nil {
+	result, rawResponse, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment)
+	if err != nil {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUser.Username), StatusCode: rawResponse.StatusCode})
-	} else {
-		rootId := req.PostId
-		if post.RootId != "" {
-			// the original post was a reply
-			rootId = post.RootId
-		}
-
-		reply := &model.Post{
-			Message:   fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number),
-			ChannelId: post.ChannelId,
-			RootId:    rootId,
-			ParentId:  rootId,
-			UserId:    userID,
-		}
-
-		_, appErr = api.CreatePost(reply)
-		if appErr != nil {
-			writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostId, StatusCode: http.StatusInternalServerError})
-			return
-		}
-		resp, _ := json.Marshal(result)
-		w.Write(resp)
+		return
 	}
+	rootId := req.PostId
+	if post.RootId != "" {
+		// the original post was a reply
+		rootId = post.RootId
+	}
+
+	reply := &model.Post{
+		Message:   fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number),
+		ChannelId: post.ChannelId,
+		RootId:    rootId,
+		ParentId:  rootId,
+		UserId:    userID,
+	}
+
+	_, appErr = api.CreatePost(reply)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostId, StatusCode: http.StatusInternalServerError})
+		return
+	}
+	resp, _ := json.Marshal(result)
+	w.Write(resp)
 }
 
 func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {
