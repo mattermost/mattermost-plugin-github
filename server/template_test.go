@@ -94,7 +94,7 @@ func TestNewPRMessageTemplate(t *testing.T) {
 	expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
-#new-pull-request by [panda](https://github.com/panda) on [2019-04-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by [panda](https://github.com/panda)
 
 git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
 `
@@ -142,7 +142,7 @@ func TestPullRequestLabelledTemplate(t *testing.T) {
 	expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
-#pull-request-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda) on [2019-05-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#pull-request-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("pullRequestLabelled", &github.PullRequestEvent{
@@ -161,7 +161,7 @@ func TestNewIssueTemplate(t *testing.T) {
 	expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by [panda](https://github.com/panda) on [2019-04-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by [panda](https://github.com/panda)
 
 git-get-head sounds like a great feature we should support
 `
@@ -193,7 +193,7 @@ func TestIssueLabelledTemplate(t *testing.T) {
 	expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda) on [2019-05-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/issues/1).
+#issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
 `
 
 	actual, err := renderTemplate("issueLabelled", &github.IssuesEvent{
@@ -716,8 +716,8 @@ func TestPullRequestReviewNotification(t *testing.T) {
 			Sender:      &user,
 			Review: &github.PullRequestReview{
 				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456"),
-				State: sToP("approved"),
-				Body:  sToP("Excited to see git-get-head land!"),
+				State:   sToP("approved"),
+				Body:    sToP("Excited to see git-get-head land!"),
 			},
 		})
 		require.NoError(t, err)
@@ -736,8 +736,8 @@ func TestPullRequestReviewNotification(t *testing.T) {
 			Sender:      &user,
 			Review: &github.PullRequestReview{
 				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456"),
-				State: sToP("changes_requested"),
-				Body:  sToP("Excited to see git-get-head land!"),
+				State:   sToP("changes_requested"),
+				Body:    sToP("Excited to see git-get-head land!"),
 			},
 		})
 		require.NoError(t, err)
@@ -756,8 +756,8 @@ func TestPullRequestReviewNotification(t *testing.T) {
 			Sender:      &user,
 			Review: &github.PullRequestReview{
 				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456"),
-				State: sToP("commented"),
-				Body:  sToP("Excited to see git-get-head land!"),
+				State:   sToP("commented"),
+				Body:    sToP("Excited to see git-get-head land!"),
 			},
 		})
 		require.NoError(t, err)

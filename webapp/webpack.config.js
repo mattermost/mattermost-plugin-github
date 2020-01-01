@@ -34,7 +34,7 @@ module.exports = {
                                     safari: 12,
                                 },
                                 modules: false,
-                                corejs: 2,
+                                corejs: 3,
                                 debug: false,
                                 useBuiltIns: 'usage',
                                 shippedProposals: true,
