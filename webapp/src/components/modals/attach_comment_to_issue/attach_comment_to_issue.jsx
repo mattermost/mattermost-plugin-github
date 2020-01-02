@@ -108,7 +108,7 @@ export default class AttachIssueModal extends PureComponent {
                     value={this.state.issueValue}
                 />
                 <Input
-                    label='Message Attached to Github Issue'
+                    label='Message Attached to GitHub Issue'
                     type='textarea'
                     isDisabled={true}
                     value={this.props.post.message}
@@ -129,7 +129,7 @@ export default class AttachIssueModal extends PureComponent {
             >
                 <Modal.Header closeButton={true}>
                     <Modal.Title>
-                        {'Attach Message to Github Issue'}
+                        {'Attach Message to GitHub Issue'}
                     </Modal.Title>
                 </Modal.Header>
                 <form

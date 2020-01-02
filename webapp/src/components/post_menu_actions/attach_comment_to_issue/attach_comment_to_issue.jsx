@@ -40,7 +40,7 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
                 onClick={this.handleClick}
             >
                 <span className='MenuItem__icon'><i className='fa fa-github fa-lg'/></span>
-                {'Attach to Github Issue'}
+                {'Attach to GitHub Issue'}
             </button>
         );
 
