@@ -5,6 +5,7 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import {id as pluginId} from '../../../manifest';
+import GitHubIcon from '../../icon';
 
 export default class AttachCommentToIssuePostMenuAction extends PureComponent {
     static propTypes = {
@@ -39,7 +40,7 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
                 role='presentation'
                 onClick={this.handleClick}
             >
-                <span className='MenuItem__icon'><i className='fa fa-github fa-lg'/></span>
+                <GitHubIcon type='menu'/>
                 {'Attach to GitHub Issue'}
             </button>
         );
