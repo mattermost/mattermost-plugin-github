@@ -39,15 +39,15 @@ func init() {
 		return gitHubToUsernameMappingCallback(githubUsername)
 	}
 
+	const mdCommentRegexPattern string = `(<!--.*?-->)|(<!--[\S\s]+?-->)`
+	mdCommentRegex := regexp.MustCompile(mdCommentRegexPattern)
+
+	// Trim away markdown comments in the text
 	funcMap["removeComments"] = func(body string) string {
 		if len(strings.TrimSpace(body)) == 0 {
 			return ""
 		}
-
-		const RegexForCommentMatch string = `(<!--.*?-->)|(<!--[\S\s]+?-->)`
-		reCommentExpression := regexp.MustCompile(RegexForCommentMatch)
-
-		return reCommentExpression.ReplaceAllString(body, "")
+		return mdCommentRegex.ReplaceAllString(body, "")
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
