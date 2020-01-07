@@ -10,6 +10,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+const mdCommentRegexPattern string = `(<!--.*?-->)|(<!--[\S\s]+?-->)`
+
+var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
 
@@ -38,9 +41,6 @@ func init() {
 
 		return gitHubToUsernameMappingCallback(githubUsername)
 	}
-
-	const mdCommentRegexPattern string = `(<!--.*?-->)|(<!--[\S\s]+?-->)`
-	mdCommentRegex := regexp.MustCompile(mdCommentRegexPattern)
 
 	// Trim away markdown comments in the text
 	funcMap["removeComments"] = func(body string) string {
