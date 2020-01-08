@@ -39,7 +39,12 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
                 role='presentation'
                 onClick={this.handleClick}
             >
-                <span className='MenuItem__icon'><i className='fa fa-github fa-lg'/></span>
+                <span className='MenuItem__icon'>
+                    <i
+                        style={style.icon}
+                        className='fa fa-github fa-lg'
+                    />
+                </span>
                 {'Attach to Github Issue'}
             </button>
         );
@@ -54,3 +59,10 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
         );
     }
 }
+
+const style = {
+    icon: {
+        top: '-2px',
+        position: 'relative',
+    },
+};
