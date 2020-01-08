@@ -79,6 +79,54 @@ func TestParseOwnerAndRepo(t *testing.T) {
 	}
 }
 
+func TestIsFlag(t *testing.T) {
+	tcs := []struct {
+		Text     string
+		Expected bool
+	}{
+		{Text: "--test-flag", Expected: true},
+		{Text: "--testFlag", Expected: true},
+		{Text: "test-no-flag", Expected: false},
+		{Text: "testNoFlag", Expected: false},
+		{Text: "test no flag", Expected: false},
+	}
+
+	for _, tc := range tcs {
+		assert.Equal(t, tc.Expected, isFlag(tc.Text))
+	}
+}
+
+func TestParseFlag(t *testing.T) {
+	tcs := []struct {
+		Text     string
+		Expected string
+	}{
+		{Text: "--test-flag", Expected: "test-flag"},
+		{Text: "--testFlag", Expected: "testFlag"},
+		{Text: "testNoFlag", Expected: "testNoFlag"},
+	}
+
+	for _, tc := range tcs {
+		assert.Equal(t, tc.Expected, parseFlag(tc.Text))
+	}
+}
+
+func TestContainsValue(t *testing.T) {
+	tcs := []struct {
+		List     []string
+		Value    string
+		Expected bool
+	}{
+		{List: []string{"value1", "value2"}, Value: "value1", Expected: true},
+		{List: []string{}, Value: "value1", Expected: false},
+		{List: []string{"value1", "value2"}, Value: "value2", Expected: true},
+	}
+
+	for _, tc := range tcs {
+		assert.Equal(t, tc.Expected, containsValue(tc.List, tc.Value))
+	}
+}
+
 func TestGetLineNumbers(t *testing.T) {
 	tcs := []struct {
 		input      string
