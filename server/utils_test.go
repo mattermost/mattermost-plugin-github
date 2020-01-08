@@ -210,3 +210,37 @@ func TestInsideLink(t *testing.T) {
 		assert.Equalf(t, tc.expected, isInsideLink(tc.input, tc.index), "unexpected result for isInsideLink(%q, %d)", tc.input, tc.index)
 	}
 }
+
+func TestStringValue(t *testing.T) {
+	assert.Equalf(t, "", stringValue(nil), "unexpected result for stringValue")
+	value := "foo"
+	assert.Equalf(t, "foo", stringValue(&value), "unexpected result for stringValue")
+}
+
+func TestContains(t *testing.T) {
+	tcs := []struct {
+		values   []string
+		value    string
+		expected bool
+	}{
+		{
+			values:   []string{"foo","bar"},
+			value:    "bar",
+			expected: true,
+		},
+		{
+			values:   []string{"foo","bar"},
+			value:    "foo",
+			expected: true,
+		},
+		{
+			values:   []string{"foo","bar"},
+			value:    "notfound",
+			expected: false,
+		},
+	}
+
+	for _, tc := range tcs {
+		assert.Equalf(t, tc.expected, contains(tc.values, tc.value), "unexpected result for contains")
+	}
+}

@@ -21,6 +21,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
     * issues - includes new and closed issues
 	* pulls - includes new and closed pull requests
     * pushes - includes pushes
+    * master_pushes - warns about master pushes that is not coming from whitelisted users
     * creates - includes branch and tag creations
     * deletes - includes branch and tag deletions
     * issue_comments - includes new issue comments

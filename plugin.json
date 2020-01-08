@@ -73,6 +73,12 @@
                 "display_name": "Enable Code Previews",
                 "type": "bool",
                 "help_text": "(Optional) Allow the plugin to expand permalinks to github files with an actual preview of the linked file."
+            },
+            {
+                "key": "MasterWhitelist",
+                "display_name": "Email whitelist",
+                "type": "text",
+                "help_text": "(Optional) Email whitelist of users who are allowed to push to master, instead of using normal pull request process."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

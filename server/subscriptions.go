@@ -49,7 +49,11 @@ func (s *Subscription) Issues() bool {
 }
 
 func (s *Subscription) Pushes() bool {
-	return strings.Contains(s.Features, "pushes")
+	return contains(strings.Split(s.Features, ","), "pushes")
+}
+
+func (s *Subscription) MasterPushes() bool {
+	return contains(strings.Split(s.Features, ","), "master_pushes")
 }
 
 func (s *Subscription) Creates() bool {

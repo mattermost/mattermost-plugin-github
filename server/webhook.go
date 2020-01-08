@@ -356,6 +356,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 }
 
 func (p *Plugin) postPushEvent(event *github.PushEvent) {
+	config := p.getConfiguration()
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
@@ -375,6 +376,15 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		return
 	}
 
+	masterPost := &model.Post{
+		UserId: p.BotUserID,
+		Type:   "custom_git_push",
+	}
+	// if push was done to master and it was not allowed by whitelist user
+	if stringValue(event.Ref) == "refs/heads/master" && !contains(strings.Split(config.MasterWhitelist, ","), stringValue(event.HeadCommit.Committer.Email)) {
+		masterPost.Message = fmt.Sprintf("WARNING! unauthorized master push %s", pushedCommitsMessage)
+	}
+
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Type:    "custom_git_push",
@@ -382,17 +392,22 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	}
 
 	for _, sub := range subs {
-		if !sub.Pushes() {
-			continue
-		}
-
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
-		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			mlog.Error(err.Error())
+		if sub.Pushes() {
+			post.ChannelId = sub.ChannelID
+			if _, err := p.API.CreatePost(post); err != nil {
+				mlog.Error(err.Error())
+			}
+		}
+
+		if sub.MasterPushes() && masterPost.Message != "" {
+			masterPost.ChannelId = sub.ChannelID
+			if _, err := p.API.CreatePost(masterPost); err != nil {
+				mlog.Error(err.Error())
+			}
 		}
 	}
 }

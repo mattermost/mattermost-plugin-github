@@ -310,3 +310,21 @@ func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool)
 	final += "```\n"
 	return final
 }
+
+// stringValue returns string value from pointervalue
+func stringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// contains is checking does array contain single word
+func contains(array []string, word string) bool {
+	for _, item := range array {
+		if item == word {
+			return true
+		}
+	}
+	return false
+}
