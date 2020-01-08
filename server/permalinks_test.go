@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/mattermost/mattermost-server/plugin/plugintest"
+	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
 )
 
 func TestGetReplacements(t *testing.T) {
