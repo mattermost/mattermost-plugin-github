@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const mdCommentRegexPattern string = `(<!--.*?-->)|(<!--[\S\s]+?-->)`
+const mdCommentRegexPattern string = `(<!--[\S\s]+?-->)`
 
 var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
 var masterTemplate *template.Template

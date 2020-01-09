@@ -24,7 +24,11 @@ var pullRequest = github.PullRequest{
 	Title:     sToP("Leverage git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
 }
 
 var mergedPullRequest = github.PullRequest{
@@ -33,8 +37,12 @@ var mergedPullRequest = github.PullRequest{
 	Title:     sToP("Leverage git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
-	Merged:    bToP(true),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
+	Merged: bToP(true),
 }
 
 var issue = github.Issue{
@@ -97,6 +105,7 @@ func TestNewPRMessageTemplate(t *testing.T) {
 #new-pull-request by [panda](https://github.com/panda)
 
 git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+
 `
 
 	actual, err := renderTemplate("newPR", &github.PullRequestEvent{
