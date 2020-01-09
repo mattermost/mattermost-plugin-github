@@ -2,6 +2,9 @@
 // See LICENSE.txt for license information.
 
 import {connect} from 'react-redux';
+import {bindActionCreators} from 'redux';
+
+import {getYourPrsExtraInfo} from '../../actions';
 
 import SidebarRight from './sidebar_right.jsx';
 
@@ -10,6 +13,7 @@ function mapStateToProps(state) {
         username: state['plugins-github'].username,
         reviews: state['plugins-github'].reviews,
         yourPrs: state['plugins-github'].yourPrs,
+        yourPrsExtraInfo: state['plugins-github'].yourPrsExtraInfo,
         yourAssignments: state['plugins-github'].yourAssignments,
         unreads: state['plugins-github'].unreads,
         enterpriseURL: state['plugins-github'].enterpriseURL,
@@ -18,4 +22,12 @@ function mapStateToProps(state) {
     };
 }
 
-export default connect(mapStateToProps)(SidebarRight);
+function mapDispatchToProps(dispatch) {
+    return {
+        actions: bindActionCreators({
+            getYourPrsExtraInfo,
+        }, dispatch),
+    };
+}
+
+export default connect(mapStateToProps, mapDispatchToProps)(SidebarRight);

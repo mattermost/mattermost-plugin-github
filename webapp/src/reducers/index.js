@@ -84,6 +84,15 @@ function yourPrs(state = [], action) {
     }
 }
 
+function yourPrsExtraInfo(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_YOUR_PRS_EXTRA_INFO:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function yourAssignments(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_ASSIGNMENTS:
@@ -172,6 +181,7 @@ export default combineReducers({
     clientId,
     reviews,
     yourPrs,
+    yourPrsExtraInfo,
     yourAssignments,
     mentions,
     unreads,

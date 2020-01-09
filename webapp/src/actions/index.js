@@ -86,6 +86,29 @@ export function getYourPrs() {
     };
 }
 
+export function getYourPrsExtraInfo(prList) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getYourPrsExtraInfo(prList);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_YOUR_PRS_EXTRA_INFO,
+            data,
+        });
+
+        return {data};
+    };
+}
+
 export function getYourAssignments() {
     return async (dispatch, getState) => {
         let data;

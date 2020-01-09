@@ -39,7 +39,7 @@ function GithubItems(props) {
 
         let milestone = '';
         if (item.milestone) {
-            milestone = (<span><i className='fas fa-bullseye'/>{item.milestone.number}</span>);
+            milestone = (<span><i className='fas fa-bullseye'/>{item.milestone.title}</span>);
         }
 
         let reviewers = '';
