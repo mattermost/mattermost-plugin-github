@@ -32,8 +32,9 @@ export const getStyleForReactSelect = (theme) => {
         option: (provided, state) => ({
             ...provided,
             background: state.isFocused ? changeOpacity(theme.centerChannelColor, 0.12) : theme.centerChannelBg,
+            cursor: state.isDisabled ? 'not-allowed' : 'pointer',
             color: theme.centerChannelColor,
-            '&:hover': {
+            '&:hover': state.isDisabled ? {} : {
                 background: changeOpacity(theme.centerChannelColor, 0.12),
             },
         }),
