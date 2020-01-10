@@ -9,6 +9,10 @@ import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_ut
 
 import {formatTimeSince} from 'utils/date_utils';
 
+import CrossIcon from 'images/icons/cross.jsx';
+import DotIcon from 'images/icons/dot.jsx';
+import TickIcon from 'images/icons/tick.jsx';
+
 function GithubItems(props) {
     const style = getStyle(props.theme);
 
@@ -88,58 +92,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (
-                    <svg
-                        aria-label='5 / 5 checks OK'
-                        className='octicon octicon-check'
-                        viewBox='0 0 12 16'
-                        version='1.1'
-                        width='12'
-                        height='16'
-                        role='img'
-                    >
-                        <path
-                            fillRule='evenodd'
-                            d='M12 5l-8 8-4-4 1.5-1.5L4 10l6.5-6.5L12 5z'
-                        />
-                    </svg>
-                );
+                status = (<TickIcon />);
                 break;
             case 'pending':
-                status = (
-                    <svg
-                        aria-label='14 / 15 checks OK'
-                        className='octicon octicon-primitive-dot'
-                        viewBox='0 0 8 16'
-                        version='1.1'
-                        width='8'
-                        height='16'
-                        role='img'
-                    >
-                        <path
-                            fillRule='evenodd'
-                            d='M0 8c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4-4-1.8-4-4z'
-                        />
-                    </svg>
-                );
+                status = (<DotIcon />);
                 break;
             default:
-                status = (
-                    <svg
-                        aria-label='12 / 15 checks OK'
-                        className='octicon octicon-x'
-                        viewBox='0 0 12 16'
-                        version='1.1'
-                        width='12'
-                        height='16'
-                        role='img'
-                    >
-                        <path
-                            fillRule='evenodd'
-                            d='M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z'
-                        />
-                    </svg>
-                );
+                status = (<CrossIcon />);
             }
         }
 
