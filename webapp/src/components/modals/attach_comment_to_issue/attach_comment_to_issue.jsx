@@ -22,6 +22,7 @@ export default class AttachIssueModal extends PureComponent {
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
         post: PropTypes.object,
+        currentTeam: PropTypes.object.isRequired,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
     };
@@ -51,15 +52,24 @@ export default class AttachIssueModal extends PureComponent {
             repo,
             number,
             comment: this.props.post.message,
+            post_id: this.props.post.id,
+            current_team: this.props.currentTeam.name,
         };
 
         this.setState({submitting: true});
 
         this.props.create(issue).then((created) => {
             if (created.error) {
-                this.setState({error: created.error.message, submitting: false});
+                let errMessage = created.error.message;
+                if (created.error.response &&
+                    created.error.response.body &&
+                    created.error.response.body.message) {
+                    errMessage = created.error.response.body.message;
+                }
+                this.setState({error: errMessage, submitting: false});
                 return;
             }
+
             this.handleClose(e);
         });
     };
@@ -98,7 +108,7 @@ export default class AttachIssueModal extends PureComponent {
                     value={this.state.issueValue}
                 />
                 <Input
-                    label='Message Attached to Github Issue'
+                    label='Message Attached to GitHub Issue'
                     type='textarea'
                     isDisabled={true}
                     value={this.props.post.message}
@@ -119,7 +129,7 @@ export default class AttachIssueModal extends PureComponent {
             >
                 <Modal.Header closeButton={true}>
                     <Modal.Title>
-                        {'Attach Message to Github Issue'}
+                        {'Attach Message to GitHub Issue'}
                     </Modal.Title>
                 </Modal.Header>
                 <form
