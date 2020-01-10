@@ -15,6 +15,14 @@ import TickIcon from 'images/icons/tick.jsx';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
+    const iconStyle = {
+        top: 3,
+        position: 'relative',
+        left: 6,
+        height: 18,
+        display: 'inline-flex',
+        alignItems: 'center',
+    };
 
     return props.items.length > 0 ? props.items.map((item) => {
         const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
@@ -84,7 +92,7 @@ function GithubItems(props) {
             }
 
             if (changesRequested > 0) {
-                changes = (<DotIcon/>);
+                changes = (<div style={{...iconStyle, fill: '#c11b28'}}><DotIcon/></div>);
             }
         }
 
@@ -94,13 +102,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<TickIcon/>);
+                status = (<div style={{...iconStyle, fill: '#2b9643'}}><TickIcon/></div>);
                 break;
             case 'pending':
-                status = (<DotIcon/>);
+                status = (<div style={{...iconStyle, fill: '#c59e17'}}><DotIcon/></div>);
                 break;
             default:
-                status = (<CrossIcon/>);
+                status = (<div style={{...iconStyle, fill: '#c11b28'}}><CrossIcon/></div>);
             }
         }
 
