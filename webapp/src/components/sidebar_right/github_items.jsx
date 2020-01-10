@@ -46,12 +46,9 @@ function GithubItems(props) {
             milestone = (<span><i className='fas fa-bullseye'/>{item.milestone.title}</span>);
         }
 
-        let reviewers = '';
-        if (item.reviewers && item.reviewers > 0) {
-            reviewers = (<span>{item.reviewers} pending reviews.</span>);
-        }
-
         let reviews = '';
+        let changes = '';
+
         if (item.reviews) {
             const reviewerUsers = [];
             const filteredReviews = item.reviews.filter((v) => {
@@ -75,14 +72,19 @@ function GithubItems(props) {
                 return accum;
             }, 0);
 
-            if (changesRequested > 0) {
-                reviews = (<span>Changes requested.</span>);
-            } else if (approved > 0) {
-                if (approved === 1) {
-                    reviews = (<span>{approved} approved review.</span>);
+            const totalReviewers = item.reviewers + item.reviews.length;
+            if (totalReviewers > 0) {
+                let reviewName;
+                if (totalReviewers === 1) {
+                    reviewName = 'review';
                 } else {
-                    reviews = (<span>{approved} approved reviews.</span>);
+                    reviewName = 'reviews';
                 }
+                reviews = (<span>{approved} out of {totalReviewers} {reviewName} complete.</span>);
+            }
+
+            if (changesRequested > 0) {
+                changes = (<span>Changes requested.</span>);
             }
         }
 
@@ -92,13 +94,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<TickIcon />);
+                status = (<TickIcon/>);
                 break;
             case 'pending':
-                status = (<DotIcon />);
+                status = (<DotIcon/>);
                 break;
             default:
-                status = (<CrossIcon />);
+                status = (<CrossIcon/>);
             }
         }
 
@@ -129,7 +131,7 @@ function GithubItems(props) {
                         </React.Fragment>) : null }
                     {milestone}
                 </div>
-                <div>{reviews} {reviewers}</div>
+                <div>{reviews} {changes}</div>
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;
