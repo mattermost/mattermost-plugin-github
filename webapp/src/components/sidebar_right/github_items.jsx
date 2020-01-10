@@ -84,7 +84,7 @@ function GithubItems(props) {
             }
 
             if (changesRequested > 0) {
-                changes = (<span>Changes requested.</span>);
+                changes = (<DotIcon/>);
             }
         }
 
