@@ -32,14 +32,14 @@ func getYourAssigneeSearchQuery(username, org string) string {
 	return buildSearchQuery("is:open assignee:%v archived:false %v", username, org)
 }
 
-func getIssuesSearchQuery(username, org, searchTerm string) string {
-	query := "is:open is:issue assignee:%v archived:false %v %v"
+func getIssuesSearchQuery(org, searchTerm string) string {
+	query := "is:open is:issue archived:false %v %v"
 	orgField := ""
 	if len(org) != 0 {
 		orgField = fmt.Sprintf("org:%v", org)
 	}
 
-	return fmt.Sprintf(query, username, orgField, searchTerm)
+	return fmt.Sprintf(query, orgField, searchTerm)
 }
 
 func buildSearchQuery(query, username, org string) string {
@@ -175,6 +175,24 @@ func fixGithubNotificationSubjectURL(url string) string {
 
 func fullNameFromOwnerAndRepo(owner, repo string) string {
 	return fmt.Sprintf("%s/%s", owner, repo)
+}
+
+func isFlag(text string) bool {
+	return strings.HasPrefix(text, "--")
+}
+
+func parseFlag(flag string) string {
+	return strings.TrimPrefix(flag, "--")
+}
+
+func containsValue(arr []string, value string) bool {
+	for _, element := range arr {
+		if element == value {
+			return true
+		}
+	}
+
+	return false
 }
 
 // filterLines filters lines in a string from start to end.
