@@ -37,16 +37,28 @@ export function formatDate(date, useMilitaryTime = false) {
 export function formatTimeSince(date) {
     const secondsSince = Math.trunc((Date.now() - (new Date(date)).getTime()) / 1000);
     if (secondsSince < 60) {
-        return secondsSince + 's';
+        if (secondsSince === 1) {
+            return secondsSince + ' second';
+        }
+        return secondsSince + ' seconds';
     }
     const minutesSince = Math.trunc(secondsSince / 60);
     if (minutesSince < 60) {
-        return minutesSince + 'm';
+        if (minutesSince === 1) {
+            return minutesSince + ' minute';
+        }
+        return minutesSince + ' minutes';
     }
     const hoursSince = Math.trunc(minutesSince / 60);
     if (hoursSince < 24) {
-        return hoursSince + 'h';
+        if (hoursSince === 1) {
+            return hoursSince + ' hour';
+        }
+        return hoursSince + ' hours';
     }
     const daysSince = Math.trunc(hoursSince / 24);
-    return daysSince + 'd';
+    if (daysSince === 1) {
+        return daysSince + ' day';
+    }
+    return daysSince + ' days';
 }
