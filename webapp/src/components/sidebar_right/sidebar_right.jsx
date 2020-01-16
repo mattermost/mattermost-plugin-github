@@ -33,6 +33,16 @@ export function renderThumbVertical(props) {
         />);
 }
 
+function mapGithubItemListToPrList(gilist) {
+    if (!gilist) {
+        return [];
+    }
+
+    return gilist.map((pr) => {
+        return {url: pr.repository_url, number: pr.number};
+    });
+}
+
 export default class SidebarRight extends React.PureComponent {
     static propTypes = {
         username: PropTypes.string,
@@ -41,20 +51,22 @@ export default class SidebarRight extends React.PureComponent {
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
-        yourPrsExtraInfo: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         rhsState: PropTypes.string,
         theme: PropTypes.object.isRequired,
         actions: PropTypes.shape({
-            getYourPrsExtraInfo: PropTypes.func.isRequired,
+            getYourPrsDetails: PropTypes.func.isRequired,
+            getReviewsDetails: PropTypes.func.isRequired,
         }).isRequired,
     };
 
     componentDidMount() {
         if (this.props.yourPrs) {
-            this.props.actions.getYourPrsExtraInfo(this.props.yourPrs.map((pr) => {
-                return {url: pr.repository_url, number: pr.number};
-            }));
+            this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
+        }
+
+        if (this.props.reviews) {
+            this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
         }
     }
 
@@ -69,25 +81,7 @@ export default class SidebarRight extends React.PureComponent {
         switch (this.props.rhsState) {
         case RHSStates.PRS:
 
-            githubItems = this.props.yourPrs.map((pr) => {
-                let extra;
-                if (this.props.yourPrsExtraInfo) {
-                    extra = this.props.yourPrsExtraInfo.find((extraInfo) => {
-                        return (pr.repository_url === extraInfo.url) && (pr.number === extraInfo.number);
-                    });
-                }
-                if (!extra) {
-                    return pr;
-                }
-
-                return {
-                    ...pr,
-                    status: extra.status,
-                    reviewers: extra.reviewers,
-                    reviews: extra.reviews,
-                };
-            });
-
+            githubItems = this.props.yourPrs;
             title = 'Your Open Pull Requests';
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + this.props.username + '+archived%3Afalse' + orgQuery;
 

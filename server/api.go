@@ -27,7 +27,7 @@ type APIErrorResponse struct {
 	StatusCode int    `json:"status_code"`
 }
 
-type PRExtraInfo struct {
+type PRDetails struct {
 	URL       string                      `json:"url"`
 	Number    int                         `json:"number"`
 	Status    string                      `json:"status"`
@@ -66,8 +66,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getReviews(w, r)
 	case "/api/v1/yourprs":
 		p.getYourPrs(w, r)
-	case "/api/v1/yourprsextrainfo":
-		p.getYourPrsExtraInfo(w, r)
+	case "/api/v1/prsdetails":
+		p.getPrsDetails(w, r)
 	case "/api/v1/searchissues":
 		p.searchIssues(w, r)
 	case "/api/v1/yourassignments":
@@ -503,7 +503,7 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) getYourPrsExtraInfo(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
 	userID := r.Header.Get("Mattermost-User-ID")
 	if userID == "" {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -521,26 +521,26 @@ func (p *Plugin) getYourPrsExtraInfo(w http.ResponseWriter, r *http.Request) {
 		githubClient = p.githubConnect(*info.Token)
 	}
 
-	var prInfo []*PRExtraInfo
-	json.NewDecoder(r.Body).Decode(&prInfo)
+	var prList []*PRDetails
+	json.NewDecoder(r.Body).Decode(&prList)
 
-	var prList []*PRExtraInfo
+	var prDetails []*PRDetails
 
-	ch := make(chan *PRExtraInfo)
-	for _, pr := range prInfo {
-		go fetchExtraPRInfo(ctx, githubClient, pr.URL, pr.Number, ch)
+	ch := make(chan *PRDetails)
+	for _, pr := range prList {
+		go fetchPRDetails(ctx, githubClient, pr.URL, pr.Number, ch)
 	}
 
-	for range prInfo {
+	for range prList {
 		pr := <-ch
-		prList = append(prList, pr)
+		prDetails = append(prDetails, pr)
 	}
 
-	resp, _ := json.Marshal(prList)
+	resp, _ := json.Marshal(prDetails)
 	w.Write(resp)
 }
 
-func fetchExtraPRInfo(ctx context.Context, client *github.Client, prURL string, prNumber int, ch chan *PRExtraInfo) {
+func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int, ch chan *PRDetails) {
 	status := ""
 	requestedReviewers := 0
 	var reviewsList []*github.PullRequestReview = nil
@@ -555,7 +555,7 @@ func fetchExtraPRInfo(ctx context.Context, client *github.Client, prURL string, 
 
 	if err != nil {
 		mlog.Error(err.Error())
-		ch <- &PRExtraInfo{
+		ch <- &PRDetails{
 			URL:       prURL,
 			Number:    prNumber,
 			Status:    status,
@@ -571,7 +571,7 @@ func fetchExtraPRInfo(ctx context.Context, client *github.Client, prURL string, 
 
 	if err != nil {
 		mlog.Error(err.Error())
-		ch <- &PRExtraInfo{
+		ch <- &PRDetails{
 			URL:       prURL,
 			Number:    prNumber,
 			Status:    status,
@@ -585,7 +585,7 @@ func fetchExtraPRInfo(ctx context.Context, client *github.Client, prURL string, 
 
 	reviewsList = <-chReviews
 
-	ch <- &PRExtraInfo{
+	ch <- &PRDetails{
 		URL:       prURL,
 		Number:    prNumber,
 		Status:    status,

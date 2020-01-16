@@ -4,16 +4,39 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getYourPrsExtraInfo} from '../../actions';
+import {getYourPrsDetails, getReviewsDetails} from '../../actions';
 
 import SidebarRight from './sidebar_right.jsx';
 
+function mapPrsToDetails(prs, details) {
+    if (prs) {
+        return prs.map((pr) => {
+            let foundDetails;
+            if (details) {
+                foundDetails = details.find((prDetails) => {
+                    return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
+                });
+            }
+            if (!foundDetails) {
+                return pr;
+            }
+
+            return {
+                ...pr,
+                status: foundDetails.status,
+                reviewers: foundDetails.reviewers,
+                reviews: foundDetails.reviews,
+            };
+        });
+    }
+}
+
 function mapStateToProps(state) {
+
     return {
         username: state['plugins-github'].username,
-        reviews: state['plugins-github'].reviews,
-        yourPrs: state['plugins-github'].yourPrs,
-        yourPrsExtraInfo: state['plugins-github'].yourPrsExtraInfo,
+        reviews: mapPrsToDetails(state['plugins-github'].reviews, state['plugins-github'].reviewsDetails),
+        yourPrs: mapPrsToDetails(state['plugins-github'].yourPrs, state['plugins-github'].yourPrsDetails),
         yourAssignments: state['plugins-github'].yourAssignments,
         unreads: state['plugins-github'].unreads,
         enterpriseURL: state['plugins-github'].enterpriseURL,
@@ -25,7 +48,8 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators({
-            getYourPrsExtraInfo,
+            getYourPrsDetails,
+            getReviewsDetails,
         }, dispatch),
     };
 }
