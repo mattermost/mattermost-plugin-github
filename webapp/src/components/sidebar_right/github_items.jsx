@@ -36,6 +36,10 @@ function GithubItems(props) {
         }
 
         let title = item.title ? item.title : item.subject.title;
+        let number = (
+            <strong>
+                    <i className='fa fa-code-fork'/> #{item.number}
+            </strong>);
 
         if (item.html_url) {
             title = (
@@ -47,11 +51,21 @@ function GithubItems(props) {
                 >
                     {item.title ? item.title : item.subject.title}
                 </a>);
+            number = (
+                <strong>
+                    <a
+                        href={item.html_url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                    >
+                        <i className='fa fa-code-fork'/> #{item.number}
+                    </a>
+                </strong>);
         }
 
         let milestone = '';
         if (item.milestone) {
-            milestone = (<span><i className='fas fa-bullseye'/>{item.milestone.title}</span>);
+            milestone = (<span>{' '}<i className='fa fa-bullseye'/>{' '}{item.milestone.title}</span>);
         }
 
         let reviews = '';
@@ -123,7 +137,7 @@ function GithubItems(props) {
                     </strong>
                 </div>
                 <div>
-                    <strong><i className='fa fa-code-fork'/> #{item.number}</strong> <span className='light'>{repoName}</span>
+                    {number} <span className='light'>{repoName}</span>
                 </div>
                 <GithubLabels labels={item.labels}/>
                 <div
@@ -131,15 +145,14 @@ function GithubItems(props) {
                     style={style.subtitle}
                 >
                     {'Opened ' + formatTimeSince(item.created_at) + ' ago'}
-                    {userName ? ' by ' + userName : '.'}
+                    {userName && ' by ' + userName}{'.'}{milestone}
                     {item.reason ?
                         (<React.Fragment>
                             <br/>
                             {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
-                    {milestone}
                 </div>
-                <div>{reviews} {changes}</div>
+                <div className='light' style={style.subtitle}>{reviews} {changes}</div>
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;
