@@ -38,7 +38,7 @@ function GithubItems(props) {
         let title = item.title ? item.title : item.subject.title;
         let number = (
             <strong>
-                    <i className='fa fa-code-fork'/> #{item.number}
+                <i className='fa fa-code-fork'/> #{item.number}
             </strong>);
 
         if (item.html_url) {
@@ -152,7 +152,12 @@ function GithubItems(props) {
                             {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
                 </div>
-                <div className='light' style={style.subtitle}>{reviews} {changes}</div>
+                <div
+                    className='light'
+                    style={style.subtitle}
+                >
+                    {reviews} {changes}
+                </div>
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;

@@ -9,30 +9,31 @@ import {getYourPrsDetails, getReviewsDetails} from '../../actions';
 import SidebarRight from './sidebar_right.jsx';
 
 function mapPrsToDetails(prs, details) {
-    if (prs) {
-        return prs.map((pr) => {
-            let foundDetails;
-            if (details) {
-                foundDetails = details.find((prDetails) => {
-                    return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
-                });
-            }
-            if (!foundDetails) {
-                return pr;
-            }
-
-            return {
-                ...pr,
-                status: foundDetails.status,
-                reviewers: foundDetails.reviewers,
-                reviews: foundDetails.reviews,
-            };
-        });
+    if (!prs) {
+        return [];
     }
+
+    return prs.map((pr) => {
+        let foundDetails;
+        if (details) {
+            foundDetails = details.find((prDetails) => {
+                return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
+            });
+        }
+        if (!foundDetails) {
+            return pr;
+        }
+
+        return {
+            ...pr,
+            status: foundDetails.status,
+            reviewers: foundDetails.reviewers,
+            reviews: foundDetails.reviews,
+        };
+    });
 }
 
 function mapStateToProps(state) {
-
     return {
         username: state['plugins-github'].username,
         reviews: mapPrsToDetails(state['plugins-github'].reviews, state['plugins-github'].reviewsDetails),
