@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -9,6 +10,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+const mdCommentRegexPattern string = `(<!--[\S\s]+?-->)`
+
+var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
 
@@ -36,6 +40,14 @@ func init() {
 		}
 
 		return gitHubToUsernameMappingCallback(githubUsername)
+	}
+
+	// Trim away markdown comments in the text
+	funcMap["removeComments"] = func(body string) string {
+		if len(strings.TrimSpace(body)) == 0 {
+			return ""
+		}
+		return mdCommentRegex.ReplaceAllString(body, "")
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
@@ -111,7 +123,7 @@ func init() {
 ##### {{template "eventRepoPullRequest" .}}
 #new-pull-request by {{template "user" .GetSender}}
 
-{{.GetPullRequest.GetBody}}
+{{.GetPullRequest.GetBody | removeComments}}
 `))
 
 	template.Must(masterTemplate.New("closedPR").Funcs(funcMap).Parse(`
@@ -132,7 +144,7 @@ func init() {
 ##### {{template "eventRepoIssue" .}}
 #new-issue by {{template "user" .GetSender}}
 
-{{.GetIssue.GetBody}}
+{{.GetIssue.GetBody | removeComments}}
 `))
 
 	template.Must(masterTemplate.New("closedIssue").Funcs(funcMap).Parse(`
