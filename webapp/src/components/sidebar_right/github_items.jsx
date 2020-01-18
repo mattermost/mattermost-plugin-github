@@ -15,14 +15,6 @@ import TickIcon from 'images/icons/tick.jsx';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
-    const iconStyle = {
-        top: 3,
-        position: 'relative',
-        left: 6,
-        height: 18,
-        display: 'inline-flex',
-        alignItems: 'center',
-    };
 
     return props.items.length > 0 ? props.items.map((item) => {
         const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
@@ -69,45 +61,9 @@ function GithubItems(props) {
         }
 
         let reviews = '';
-        let changes = '';
 
         if (item.reviews) {
-            const reviewerUsers = [];
-            const filteredReviews = item.reviews.filter((v) => {
-                if (!reviewerUsers.includes(v.user.login)) {
-                    reviewerUsers.push(v.user.login);
-                    return true;
-                }
-                return false;
-            });
-
-            const approved = filteredReviews.reduce((accum, cur) => {
-                if (cur.state === 'APPROVED') {
-                    return accum + 1;
-                }
-                return accum;
-            }, 0);
-            const changesRequested = filteredReviews.reduce((accum, cur) => {
-                if (cur.state === 'CHANGES_REQUESTED') {
-                    return accum + 1;
-                }
-                return accum;
-            }, 0);
-
-            const totalReviewers = item.reviewers + item.reviews.length;
-            if (totalReviewers > 0) {
-                let reviewName;
-                if (totalReviewers === 1) {
-                    reviewName = 'review';
-                } else {
-                    reviewName = 'reviews';
-                }
-                reviews = (<span>{approved} out of {totalReviewers} {reviewName} complete.</span>);
-            }
-
-            if (changesRequested > 0) {
-                changes = (<div style={{...iconStyle, fill: '#c11b28'}}><DotIcon/></div>);
-            }
+            reviews = GetReviewText(item, style);
         }
 
         let status = '';
@@ -116,13 +72,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<div style={{...iconStyle, fill: '#2b9643'}}><TickIcon/></div>);
+                status = (<div style={{...style.icon, fill: '#2b9643'}}><TickIcon/></div>);
                 break;
             case 'pending':
-                status = (<div style={{...iconStyle, fill: '#c59e17'}}><DotIcon/></div>);
+                status = (<div style={{...style.icon, fill: '#c59e17'}}><DotIcon/></div>);
                 break;
             default:
-                status = (<div style={{...iconStyle, fill: '#c11b28'}}><CrossIcon/></div>);
+                status = (<div style={{...style.icon, fill: '#c11b28'}}><CrossIcon/></div>);
             }
         }
 
@@ -152,12 +108,7 @@ function GithubItems(props) {
                             {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
                 </div>
-                <div
-                    className='light'
-                    style={style.subtitle}
-                >
-                    {reviews} {changes}
-                </div>
+                {reviews}
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;
@@ -183,6 +134,14 @@ const getStyle = makeStyleFromTheme((theme) => {
             margin: '5px 0 0 0',
             fontSize: '13px',
         },
+        icon: {
+            top: 3,
+            position: 'relative',
+            left: 6,
+            height: 18,
+            display: 'inline-flex',
+            alignItems: 'center',
+        },
     };
 });
 
@@ -195,6 +154,56 @@ function GithubLabels(props) {
             >{label.name}</Badge>
         );
     }) : null;
+}
+
+function GetReviewText(item, style) {
+    let reviews = '';
+    let changes = '';
+
+    const reviewerUsers = [];
+    const filteredReviews = item.reviews.filter((v) => {
+        if (!reviewerUsers.includes(v.user.login)) {
+            reviewerUsers.push(v.user.login);
+            return true;
+        }
+        return false;
+    });
+
+    const approved = filteredReviews.reduce((accum, cur) => {
+        if (cur.state === 'APPROVED') {
+            return accum + 1;
+        }
+        return accum;
+    }, 0);
+    const changesRequested = filteredReviews.reduce((accum, cur) => {
+        if (cur.state === 'CHANGES_REQUESTED') {
+            return accum + 1;
+        }
+        return accum;
+    }, 0);
+
+    const totalReviewers = item.reviewers + item.reviews.length;
+    if (totalReviewers > 0) {
+        let reviewName;
+        if (totalReviewers === 1) {
+            reviewName = 'review';
+        } else {
+            reviewName = 'reviews';
+        }
+        reviews = (<span>{approved} out of {totalReviewers} {reviewName} complete.</span>);
+    }
+
+    if (changesRequested > 0) {
+        changes = (<div style={{...style.icon, fill: '#c11b28'}}><DotIcon/></div>);
+    }
+
+    return (
+        <div
+            className='light'
+            style={style.subtitle}
+        >
+            {reviews} {changes}
+        </div>);
 }
 
 GithubLabels.propTypes = {
