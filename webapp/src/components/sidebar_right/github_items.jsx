@@ -63,7 +63,15 @@ function GithubItems(props) {
 
         let milestone = '';
         if (item.milestone) {
-            milestone = (<span><i className='fa fa-bullseye' style={(item.created_at || userName) && {paddingLeft: 10}}/>{' '}{item.milestone.title}</span>);
+            milestone = (
+                <span>
+                    <i
+                        className='fa fa-bullseye'
+                        style={(item.created_at || userName) && {paddingLeft: 10}}
+                    />
+                    {' '}
+                    {item.milestone.title}
+                </span>);
         }
 
         let reviews = '';
@@ -108,7 +116,8 @@ function GithubItems(props) {
                 >
                     {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
                     {userName && ' by ' + userName}
-                    {(item.created_at || userName) && '.'}{milestone}
+                    {(item.created_at || userName) && '.'}
+                    {milestone}
                     {item.reason ?
                         (<React.Fragment>
                             {(item.created_at || userName || milestone) && (<br/>)}
