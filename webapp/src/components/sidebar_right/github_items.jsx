@@ -63,7 +63,7 @@ function GithubItems(props) {
 
         let milestone = '';
         if (item.milestone) {
-            milestone = (<span>{' '}<i className='fa fa-bullseye'/>{' '}{item.milestone.title}</span>);
+            milestone = (<span><i className='fa fa-bullseye' style={(item.created_at || userName) && {paddingLeft: 10}}/>{' '}{item.milestone.title}</span>);
         }
 
         let reviews = '';
@@ -111,7 +111,7 @@ function GithubItems(props) {
                     {(item.created_at || userName) && '.'}{milestone}
                     {item.reason ?
                         (<React.Fragment>
-                            {(item.created_at || userName) && (<br/>)}
+                            {(item.created_at || userName || milestone) && (<br/>)}
                             {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
                 </div>
