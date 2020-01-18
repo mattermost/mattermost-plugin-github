@@ -28,11 +28,11 @@ type APIErrorResponse struct {
 }
 
 type PRDetails struct {
-	URL       string                      `json:"url"`
-	Number    int                         `json:"number"`
-	Status    string                      `json:"status"`
-	Reviewers int                         `json:"reviewers"`
-	Reviews   []*github.PullRequestReview `json:"reviews"`
+	URL                string                      `json:"url"`
+	Number             int                         `json:"number"`
+	Status             string                      `json:"status"`
+	RequestedReviewers []*string                   `json:"requestedReviewers"`
+	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
 func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
@@ -544,7 +544,7 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
 
 func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int, ch chan *PRDetails) {
 	status := ""
-	requestedReviewers := 0
+	requestedReviewers := []*string{}
 	var reviewsList []*github.PullRequestReview = nil
 
 	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
@@ -558,27 +558,29 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 	if err != nil {
 		mlog.Error(err.Error())
 		ch <- &PRDetails{
-			URL:       prURL,
-			Number:    prNumber,
-			Status:    status,
-			Reviewers: requestedReviewers,
-			Reviews:   reviewsList,
+			URL:                prURL,
+			Number:             prNumber,
+			Status:             status,
+			RequestedReviewers: requestedReviewers,
+			Reviews:            reviewsList,
 		}
 		return
 	}
 
-	requestedReviewers = len(prInfo.RequestedReviewers)
+	for _, v := range prInfo.RequestedReviewers {
+		requestedReviewers = append(requestedReviewers, v.Login)
+	}
 
 	statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
 
 	if err != nil {
 		mlog.Error(err.Error())
 		ch <- &PRDetails{
-			URL:       prURL,
-			Number:    prNumber,
-			Status:    status,
-			Reviewers: requestedReviewers,
-			Reviews:   reviewsList,
+			URL:                prURL,
+			Number:             prNumber,
+			Status:             status,
+			RequestedReviewers: requestedReviewers,
+			Reviews:            reviewsList,
 		}
 		return
 	}
@@ -588,11 +590,11 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 	reviewsList = <-chReviews
 
 	ch <- &PRDetails{
-		URL:       prURL,
-		Number:    prNumber,
-		Status:    status,
-		Reviewers: requestedReviewers,
-		Reviews:   reviewsList,
+		URL:                prURL,
+		Number:             prNumber,
+		Status:             status,
+		RequestedReviewers: requestedReviewers,
+		Reviews:            reviewsList,
 	}
 }
 

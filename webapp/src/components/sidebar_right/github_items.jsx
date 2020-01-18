@@ -28,10 +28,14 @@ function GithubItems(props) {
         }
 
         let title = item.title ? item.title : item.subject.title;
-        let number = (
-            <strong>
-                <i className='fa fa-code-fork'/> #{item.number}
-            </strong>);
+        let number = null;
+
+        if (item.number) {
+            number = (
+                <strong>
+                    <i className='fa fa-code-fork'/> #{item.number}
+                </strong>);
+        }
 
         if (item.html_url) {
             title = (
@@ -43,16 +47,18 @@ function GithubItems(props) {
                 >
                     {item.title ? item.title : item.subject.title}
                 </a>);
-            number = (
-                <strong>
-                    <a
-                        href={item.html_url}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                    >
-                        <i className='fa fa-code-fork'/> #{item.number}
-                    </a>
-                </strong>);
+            if (item.number) {
+                number = (
+                    <strong>
+                        <a
+                            href={item.html_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                        >
+                            <i className='fa fa-code-fork'/> #{item.number}
+                        </a>
+                    </strong>);
+            }
         }
 
         let milestone = '';
@@ -63,7 +69,7 @@ function GithubItems(props) {
         let reviews = '';
 
         if (item.reviews) {
-            reviews = GetReviewText(item, style);
+            reviews = getReviewText(item, style);
         }
 
         let status = '';
@@ -100,11 +106,12 @@ function GithubItems(props) {
                     className='light'
                     style={style.subtitle}
                 >
-                    {'Opened ' + formatTimeSince(item.created_at) + ' ago'}
-                    {userName && ' by ' + userName}{'.'}{milestone}
+                    {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
+                    {userName && ' by ' + userName}
+                    {(item.created_at || userName) && '.'}{milestone}
                     {item.reason ?
                         (<React.Fragment>
-                            <br/>
+                            {(item.created_at || userName) && (<br/>)}
                             {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
                 </div>
@@ -156,33 +163,53 @@ function GithubLabels(props) {
     }) : null;
 }
 
-function GetReviewText(item, style) {
+function getReviewText(item, style) {
     let reviews = '';
     let changes = '';
 
-    const reviewerUsers = [];
-    const filteredReviews = item.reviews.filter((v) => {
-        if (!reviewerUsers.includes(v.user.login)) {
-            reviewerUsers.push(v.user.login);
-            return true;
+    const finishedReviewers = [];
+
+    const reverse = (accum, cur) => {
+        accum.unshift(cur);
+        return accum;
+    };
+
+    const lastReviews = item.reviews.reduce(reverse, []).filter((v) => {
+        if (v.user.login === item.user.login) {
+            return false;
         }
-        return false;
+
+        if (item.requestedReviewers.includes(v.user.login)) {
+            return false;
+        }
+
+        if (v.state === 'COMMENTED' || v.state === 'DISMISSED') {
+            return false;
+        }
+
+        if (finishedReviewers.includes(v.user.login)) {
+            return false;
+        }
+
+        finishedReviewers.push(v.user.login);
+        return true;
     });
 
-    const approved = filteredReviews.reduce((accum, cur) => {
+    const approved = lastReviews.reduce((accum, cur) => {
         if (cur.state === 'APPROVED') {
             return accum + 1;
         }
         return accum;
     }, 0);
-    const changesRequested = filteredReviews.reduce((accum, cur) => {
+
+    const changesRequested = lastReviews.reduce((accum, cur) => {
         if (cur.state === 'CHANGES_REQUESTED') {
             return accum + 1;
         }
         return accum;
     }, 0);
 
-    const totalReviewers = item.reviewers + item.reviews.length;
+    const totalReviewers = finishedReviewers.length + item.requestedReviewers.length;
     if (totalReviewers > 0) {
         let reviewName;
         if (totalReviewers === 1) {
@@ -207,7 +234,7 @@ function GetReviewText(item, style) {
 }
 
 GithubLabels.propTypes = {
-    labels: PropTypes.array.isRequired,
+    labels: PropTypes.array,
 };
 
 const itemStyle = {

@@ -27,7 +27,7 @@ function mapPrsToDetails(prs, details) {
         return {
             ...pr,
             status: foundDetails.status,
-            reviewers: foundDetails.reviewers,
+            requestedReviewers: foundDetails.requestedReviewers,
             reviews: foundDetails.reviews,
         };
     });
