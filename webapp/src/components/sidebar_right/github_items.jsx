@@ -137,7 +137,7 @@ function GithubItems(props) {
                     </strong>
                 </div>
                 <div>
-                    {number} <span className='light'>{repoName}</span>
+                    {number} <span className='light'>({repoName})</span>
                 </div>
                 <GithubLabels labels={item.labels}/>
                 <div
