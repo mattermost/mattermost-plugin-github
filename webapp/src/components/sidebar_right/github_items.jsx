@@ -77,7 +77,7 @@ function GithubItems(props) {
         let reviews = '';
 
         if (item.reviews) {
-            reviews = getReviewText(item, style);
+            reviews = getReviewText(item, style, (item.created_at || userName || milestone));
         }
 
         let status = '';
@@ -150,6 +150,9 @@ const getStyle = makeStyleFromTheme((theme) => {
             margin: '5px 0 0 0',
             fontSize: '13px',
         },
+        subtitleSecondLine: {
+            fontSize: '13px',
+        },
         icon: {
             top: 3,
             position: 'relative',
@@ -172,7 +175,7 @@ function GithubLabels(props) {
     }) : null;
 }
 
-function getReviewText(item, style) {
+function getReviewText(item, style, secondLine) {
     let reviews = '';
     let changes = '';
 
@@ -236,7 +239,7 @@ function getReviewText(item, style) {
     return (
         <div
             className='light'
-            style={style.subtitle}
+            style={secondLine ? style.subtitleSecondLine : style.subtitle}
         >
             {reviews} {changes}
         </div>);
