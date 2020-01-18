@@ -43,6 +43,26 @@ function mapGithubItemListToPrList(gilist) {
     });
 }
 
+function shouldUpdateDetails(prs, prevPrs, targetState, currentState, prevState) {
+    if (currentState === targetState) {
+        if (currentState !== prevState) {
+            return true;
+        }
+
+        if (prs.length !== prevPrs.length) {
+            return true;
+        }
+
+        for (let i = 0; i < prs.length; i++) {
+            if (prs[i].id !== prevPrs[i].id) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 export default class SidebarRight extends React.PureComponent {
     static propTypes = {
         username: PropTypes.string,
@@ -61,11 +81,21 @@ export default class SidebarRight extends React.PureComponent {
     };
 
     componentDidMount() {
-        if (this.props.yourPrs) {
+        if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
         }
 
-        if (this.props.reviews) {
+        if (this.props.reviews && this.props.rhsState === RHSStates.REVIEWS) {
+            this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        if (shouldUpdateDetails(this.props.yourPrs, prevProps.yourPrs, RHSStates.PRS, this.props.rhsState, prevProps.rhsState)) {
+            this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
+        }
+
+        if (shouldUpdateDetails(this.props.reviews, prevProps.reviews, RHSStates.REVIEWS, this.props.rhsState, prevProps.rhsState)) {
             this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
         }
     }
