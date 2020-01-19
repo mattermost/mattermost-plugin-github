@@ -34,13 +34,7 @@ func init() {
 	}
 
 	// Resolve a GitHub username to the corresponding Mattermost username, if linked.
-	funcMap["lookupMattermostUsername"] = func(githubUsername string) string {
-		if gitHubToUsernameMappingCallback == nil {
-			return ""
-		}
-
-		return gitHubToUsernameMappingCallback(githubUsername)
-	}
+	funcMap["lookupMattermostUsername"] = lookupMattermostUsername
 
 	// Trim away markdown comments in the text
 	funcMap["removeComments"] = func(body string) string {
@@ -241,6 +235,14 @@ func init() {
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
 	gitHubToUsernameMappingCallback = callback
+}
+
+func lookupMattermostUsername(githubUsername string) string {
+	if gitHubToUsernameMappingCallback == nil {
+		return ""
+	}
+
+	return gitHubToUsernameMappingCallback(githubUsername)
 }
 
 func renderTemplate(name string, data interface{}) (string, error) {
