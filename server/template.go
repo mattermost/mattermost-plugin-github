@@ -11,8 +11,10 @@ import (
 )
 
 const mdCommentRegexPattern string = `(<!--[\S\s]+?-->)`
+const gitHubRegexPattern string = `(^|[^_\x60[:alnum:]])(@[[:alnum:]](-?[[:alnum:]]+)*)`
 
 var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
+var gitHubRegex = regexp.MustCompile(gitHubRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
 
@@ -42,6 +44,24 @@ func init() {
 			return ""
 		}
 		return mdCommentRegex.ReplaceAllString(body, "")
+	}
+
+	// Replace any GitHub username with its corresponding Mattermost username, if any
+	funcMap["replaceAllGitHubUsernames"] = func(body string) string {
+		return gitHubRegex.ReplaceAllStringFunc(body, func(matched string) string {
+			// The matched string contains the @ sign, and may contain a single
+			// character prepending the whole thing.
+			gitHubUsernameFirstCharIndex := strings.LastIndex(matched, "@") + 1
+			prefix := matched[:gitHubUsernameFirstCharIndex]
+			gitHubUsername := matched[gitHubUsernameFirstCharIndex:]
+
+			username := lookupMattermostUsername(gitHubUsername)
+			if username == "" {
+				return matched
+			}
+
+			return prefix + username
+		})
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
@@ -117,7 +137,7 @@ func init() {
 ##### {{template "eventRepoPullRequest" .}}
 #new-pull-request by {{template "user" .GetSender}}
 
-{{.GetPullRequest.GetBody | removeComments}}
+{{.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("closedPR").Funcs(funcMap).Parse(`
@@ -138,7 +158,7 @@ func init() {
 ##### {{template "eventRepoIssue" .}}
 #new-issue by {{template "user" .GetSender}}
 
-{{.GetIssue.GetBody | removeComments}}
+{{.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("closedIssue").Funcs(funcMap).Parse(`
@@ -169,7 +189,7 @@ func init() {
 	template.Must(masterTemplate.New("issueComment").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on {{template "issue" .Issue}}:
 
-{{.GetComment.GetBody | trimBody}}
+{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestReviewEvent").Funcs(funcMap).Parse(`
@@ -179,24 +199,24 @@ func init() {
 {{- else if eq .GetReview.GetState "CHANGES_REQUESTED"}} requested changes on
 {{- end }} {{template "pullRequest" .GetPullRequest}}:
 
-{{.Review.GetBody}}
+{{.Review.GetBody | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("newReviewComment").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} New review comment by {{template "user" .GetSender}} on {{template "pullRequest" .GetPullRequest}}:
 
 {{.GetComment.GetDiffHunk}}
-{{.GetComment.GetBody | trimBody}}
+{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentMentionNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.Issue.GetNumber}}]({{.GetComment.GetHTMLURL}}) - {{.Issue.GetTitle}}:
->{{.GetComment.GetBody | trimBody}}
+>{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssueFullLinkWithTitle" .}}:
->{{.GetComment.GetBody | trimBody}}
+>{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
@@ -229,7 +249,7 @@ func init() {
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
 {{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
->{{.Review.GetBody}}
+>{{.Review.GetBody | replaceAllGitHubUsernames}}
 `))
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,20 @@ var pullRequest = github.PullRequest{
 -->`),
 }
 
+var pullRequestWithMentions = github.PullRequest{
+	Number:    iToP(42),
+	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42"),
+	Title:     sToP("Leverage git-get-head"),
+	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
+	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+` + usernameMentions + `
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
+}
+
 var mergedPullRequest = github.PullRequest{
 	Number:    iToP(42),
 	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42"),
@@ -54,9 +69,62 @@ var issue = github.Issue{
 	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
 }
 
+var issueWithMentions = github.Issue{
+	Number:    iToP(1),
+	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1"),
+	Title:     sToP("Implement git-get-head"),
+	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
+	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
+	Body: sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support
+` + gitHubMentions),
+}
+
 var user = github.User{
 	Login:   sToP("panda"),
 	HTMLURL: sToP("https://github.com/panda"),
+}
+
+// A map of known associations between Github users and Mattermost users
+var usernameMap = map[string]string{
+	"panda":          "pandabot",
+	"asaadmahmood":   "asaad.mahmood",
+	"marianunez":     "maria.nunez",
+	"lieut-data":     "jesse.hallam",
+	"sameusername":   "sameusername",
+	"dashes-to-dots": "dashes.to.dots",
+}
+
+// gitHubMentions and usernameMentions are two strings that contain mentions to
+// the users stored in usernameMap, the first using their GitHub usernames and
+// the second using their Mattermost usernames.
+// There is also an unknown user appended at the end of both strings that
+// should remain unchanged when resolving the usernames.
+var gitHubMentions, usernameMentions = func() (string, string) {
+	keys := make([]string, 0, len(usernameMap))
+	values := make([]string, 0, len(usernameMap))
+	for k, v := range usernameMap {
+		keys = append(keys, "@"+k)
+		values = append(values, "@"+v)
+	}
+
+	keys = append(keys, "@unknown-user")
+	values = append(values, "@unknown-user")
+
+	return strings.Join(keys, ", "), strings.Join(values, ", ")
+}()
+
+func withGitHubUserNameMapping(test func(*testing.T)) func(*testing.T) {
+	return func(t *testing.T) {
+		gitHubToUsernameMappingCallback = func(gitHubUsername string) string {
+			return usernameMap[gitHubUsername]
+		}
+
+		defer func() {
+			gitHubToUsernameMappingCallback = nil
+		}()
+
+		test(t)
+	}
 }
 
 func TestUserTemplate(t *testing.T) {
@@ -83,23 +151,17 @@ func TestUserTemplate(t *testing.T) {
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("Mattermost username", func(t *testing.T) {
-		gitHubToUsernameMappingCallback = func(githubUsername string) string {
-			return "pandabot"
-		}
-		defer func() {
-			gitHubToUsernameMappingCallback = nil
-		}()
-
+	t.Run("Mattermost username", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := "@pandabot"
 		actual, err := renderTemplate("user", &user)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
-	})
+	}))
 }
 
 func TestNewPRMessageTemplate(t *testing.T) {
-	expected := `
+	t.Run("without mentions", func(t *testing.T) {
+		expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
 #new-pull-request by [panda](https://github.com/panda)
@@ -108,13 +170,35 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-	actual, err := renderTemplate("newPR", &github.PullRequestEvent{
-		Repo:        &repo,
-		PullRequest: &pullRequest,
-		Sender:      &user,
+		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Sender:      &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
 	})
-	require.NoError(t, err)
-	require.Equal(t, expected, actual)
+
+	t.Run("with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+
+		expected := `
+#### Leverage git-get-head
+##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by @pandabot
+
+git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+` + usernameMentions + `
+
+`
+
+		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequestWithMentions,
+			Sender:      &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestClosedPRMessageTemplate(t *testing.T) {
@@ -167,7 +251,8 @@ func TestPullRequestLabelledTemplate(t *testing.T) {
 }
 
 func TestNewIssueTemplate(t *testing.T) {
-	expected := `
+	t.Run("without mentions", func(t *testing.T) {
+		expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
 #new-issue by [panda](https://github.com/panda)
@@ -175,13 +260,33 @@ func TestNewIssueTemplate(t *testing.T) {
 git-get-head sounds like a great feature we should support
 `
 
-	actual, err := renderTemplate("newIssue", &github.IssuesEvent{
-		Repo:   &repo,
-		Issue:  &issue,
-		Sender: &user,
+		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
 	})
-	require.NoError(t, err)
-	require.Equal(t, expected, actual)
+
+	t.Run("with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+#### Implement git-get-head
+##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by @pandabot
+
+git-get-head sounds like a great feature we should support
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
+			Repo:   &repo,
+			Issue:  &issueWithMentions,
+			Sender: &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestClosedIssueTemplate(t *testing.T) {
@@ -385,7 +490,7 @@ func TestDeletedMessageTemplate(t *testing.T) {
 }
 
 func TestIssueCommentTemplate(t *testing.T) {
-	t.Run("non-email body", func(t *testing.T) {
+	t.Run("non-email body without mentions", func(t *testing.T) {
 		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
@@ -404,7 +509,7 @@ git-get-head sounds like a great feature we should support
 		require.Equal(t, expected, actual)
 	})
 
-	t.Run("email body", func(t *testing.T) {
+	t.Run("email body without mentions", func(t *testing.T) {
 		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
@@ -422,6 +527,46 @@ git-get-head sounds like a great feature we should support
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+
+	t.Run("non-email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+
+git-get-head sounds like a great feature we should support
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("issueComment", &github.IssueCommentEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+			Comment: &github.IssueComment{
+				Body: sToP("git-get-head sounds like a great feature we should support\n" + gitHubMentions),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
+
+	t.Run("email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+
+git-get-head sounds like a great feature we should support
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("issueComment", &github.IssueCommentEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+			Comment: &github.IssueComment{
+				Body: sToP("git-get-head sounds like a great feature we should support\n" + gitHubMentions + "\n\nOn January 1, 2020, panda wrote ... notifications@github.com"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestPullRequestReviewEventTemplate(t *testing.T) {
@@ -484,31 +629,76 @@ Excited to see git-get-head land!
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+
+	t.Run("approved with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) @pandabot approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+
+Excited to see git-get-head land!
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("pullRequestReviewEvent", &github.PullRequestReviewEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Sender:      &user,
+			Review: &github.PullRequestReview{
+				State: sToP("APPROVED"),
+				Body:  sToP("Excited to see git-get-head land!\n" + gitHubMentions),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestPullRequestReviewCommentEventTemplate(t *testing.T) {
-	expected := `
+	t.Run("without mentions", func(*testing.T) {
+		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 HUNK
 Should this be here?
 `
 
-	actual, err := renderTemplate("newReviewComment", &github.PullRequestReviewCommentEvent{
-		Repo:        &repo,
-		PullRequest: &pullRequest,
-		Comment: &github.PullRequestComment{
-			Body:     sToP("Should this be here?"),
-			DiffHunk: sToP("HUNK"),
-		},
-		Sender: &user,
+		actual, err := renderTemplate("newReviewComment", &github.PullRequestReviewCommentEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Comment: &github.PullRequestComment{
+				Body:     sToP("Should this be here?"),
+				DiffHunk: sToP("HUNK"),
+			},
+			Sender: &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
 	})
-	require.NoError(t, err)
-	require.Equal(t, expected, actual)
+
+	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by @pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+
+HUNK
+Should this be here?
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("newReviewComment", &github.PullRequestReviewCommentEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Comment: &github.PullRequestComment{
+				Body:     sToP("Should this be here?\n" + gitHubMentions),
+				DiffHunk: sToP("HUNK"),
+			},
+			Sender: &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestCommentMentionNotificationTemplate(t *testing.T) {
-	t.Run("non-email body", func(t *testing.T) {
+	t.Run("non-email body without mentions", func(t *testing.T) {
 		expected := `
 [panda](https://github.com/panda) mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
@@ -526,7 +716,8 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
-	t.Run("email body", func(t *testing.T) {
+
+	t.Run("email body without mentions", func(t *testing.T) {
 		expected := `
 [panda](https://github.com/panda) mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
@@ -544,25 +735,89 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+
+	t.Run("non-email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+@pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+>@cpanato, anytime?
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("commentMentionNotification", &github.IssueCommentEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+			Comment: &github.IssueComment{
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3"),
+				Body:    sToP("@cpanato, anytime?\n" + gitHubMentions),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
+
+	t.Run("email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+@pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+>@cpanato, anytime?
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("commentMentionNotification", &github.IssueCommentEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+			Comment: &github.IssueComment{
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3"),
+				Body:    sToP("@cpanato, anytime?\n" + gitHubMentions + "\n\nOn January 1, 2020, panda wrote ... notifications@github.com"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
-	expected := `
+	t.Run("without mentions", func(*testing.T) {
+		expected := `
 [panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
 `
 
-	actual, err := renderTemplate("commentAuthorPullRequestNotification", &github.IssueCommentEvent{
-		Repo:   &repo,
-		Issue:  &issue,
-		Sender: &user,
-		Comment: &github.IssueComment{
-			HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3"),
-			Body:    sToP("@cpanato, anytime?"),
-		},
+		actual, err := renderTemplate("commentAuthorPullRequestNotification", &github.IssueCommentEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+			Comment: &github.IssueComment{
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3"),
+				Body:    sToP("@cpanato, anytime?"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+
 	})
-	require.NoError(t, err)
-	require.Equal(t, expected, actual)
+
+	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
+		expected := `
+@pandabot commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+>@cpanato, anytime?
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("commentAuthorPullRequestNotification", &github.IssueCommentEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+			Comment: &github.IssueComment{
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3"),
+				Body:    sToP("@cpanato, anytime?\n" + gitHubMentions),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+
+	}))
 }
 
 func TestCommentAuthorIssueNotificationTemplate(t *testing.T) {
@@ -772,6 +1027,64 @@ func TestPullRequestReviewNotification(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+	t.Run("approved with mentions", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+@pandabot approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
+>Excited to see git-get-head land!
+` + usernameMentions + `
+`
+
+		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Sender:      &user,
+			Review: &github.PullRequestReview{
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456"),
+				State:   sToP("approved"),
+				Body:    sToP("Excited to see git-get-head land!\n" + gitHubMentions),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
+}
+
+func TestGitHubUsernameRegex(t *testing.T) {
+	stringAndMatchMap := map[string]string{
+		// Contain valid usernames
+		"@u":          "@u",
+		"@username":   "@username",
+		"@user-name":  "@user-name",
+		"@1":          "@1",
+		"@1-a":        "@1-a",
+		"ñ@username":  "@username",
+		" @username":  "@username",
+		"@username ":  "@username",
+		" @username ": "@username",
+		"!@username":  "@username",
+		"-@username":  "@username",
+
+		// Contain partially valid usernames
+		"@user--name": "@user",
+		"@username-":  "@username",
+		"@user_name":  "@user",
+		"@user.name":  "@user",
+	}
+
+	invalidUsernames := []string{
+		"email@provider.com",
+		"@-username",
+		"`@user_name",
+		"_@username",
+	}
+
+	for string, match := range stringAndMatchMap {
+		require.Equal(t, match, gitHubRegex.FindStringSubmatch(string)[2])
+	}
+
+	for _, string := range invalidUsernames {
+		require.False(t, gitHubRegex.MatchString(string))
+	}
 }
 
 func sToP(s string) *string {
