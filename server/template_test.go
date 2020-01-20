@@ -1079,11 +1079,11 @@ func TestGitHubUsernameRegex(t *testing.T) {
 	}
 
 	for string, match := range stringAndMatchMap {
-		require.Equal(t, match, gitHubRegex.FindStringSubmatch(string)[2])
+		require.Equal(t, match, gitHubUsernameRegex.FindStringSubmatch(string)[2])
 	}
 
 	for _, string := range invalidUsernames {
-		require.False(t, gitHubRegex.MatchString(string))
+		require.False(t, gitHubUsernameRegex.MatchString(string))
 	}
 }
 

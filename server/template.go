@@ -11,10 +11,10 @@ import (
 )
 
 const mdCommentRegexPattern string = `(<!--[\S\s]+?-->)`
-const gitHubRegexPattern string = `(^|[^_\x60[:alnum:]])(@[[:alnum:]](-?[[:alnum:]]+)*)`
+const gitHubUsernameRegexPattern string = `(^|[^_\x60[:alnum:]])(@[[:alnum:]](-?[[:alnum:]]+)*)`
 
 var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
-var gitHubRegex = regexp.MustCompile(gitHubRegexPattern)
+var gitHubUsernameRegex = regexp.MustCompile(gitHubUsernameRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
 
@@ -48,7 +48,7 @@ func init() {
 
 	// Replace any GitHub username with its corresponding Mattermost username, if any
 	funcMap["replaceAllGitHubUsernames"] = func(body string) string {
-		return gitHubRegex.ReplaceAllStringFunc(body, func(matched string) string {
+		return gitHubUsernameRegex.ReplaceAllStringFunc(body, func(matched string) string {
 			// The matched string contains the @ sign, and may contain a single
 			// character prepending the whole thing.
 			gitHubUsernameFirstCharIndex := strings.LastIndex(matched, "@") + 1
