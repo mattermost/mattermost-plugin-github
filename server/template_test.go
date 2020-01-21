@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v25/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,7 +24,11 @@ var pullRequest = github.PullRequest{
 	Title:     sToP("Leverage git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
 }
 
 var mergedPullRequest = github.PullRequest{
@@ -33,8 +37,12 @@ var mergedPullRequest = github.PullRequest{
 	Title:     sToP("Leverage git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases."),
-	Merged:    bToP(true),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
+	Merged: bToP(true),
 }
 
 var issue = github.Issue{
@@ -43,7 +51,7 @@ var issue = github.Issue{
 	Title:     sToP("Implement git-get-head"),
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP("git-get-head sounds like a great feature we should support"),
+	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
 }
 
 var user = github.User{
@@ -94,9 +102,10 @@ func TestNewPRMessageTemplate(t *testing.T) {
 	expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
-#new-pull-request by [panda](https://github.com/panda) on [2019-04-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by [panda](https://github.com/panda)
 
 git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+
 `
 
 	actual, err := renderTemplate("newPR", &github.PullRequestEvent{
@@ -142,7 +151,7 @@ func TestPullRequestLabelledTemplate(t *testing.T) {
 	expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
-#pull-request-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda) on [2019-05-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#pull-request-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("pullRequestLabelled", &github.PullRequestEvent{
@@ -161,7 +170,7 @@ func TestNewIssueTemplate(t *testing.T) {
 	expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by [panda](https://github.com/panda) on [2019-04-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by [panda](https://github.com/panda)
 
 git-get-head sounds like a great feature we should support
 `
@@ -193,7 +202,7 @@ func TestIssueLabelledTemplate(t *testing.T) {
 	expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda) on [2019-05-01 02:03:04 +0000 UTC](https://github.com/mattermost/mattermost-plugin-github/issues/1).
+#issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
 `
 
 	actual, err := renderTemplate("issueLabelled", &github.IssuesEvent{

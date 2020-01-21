@@ -13,9 +13,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/mattermost/mattermost-server/mlog"
-	"github.com/mattermost/mattermost-server/model"
-	"github.com/mattermost/mattermost-server/plugin"
+	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
 
 	"github.com/google/go-github/v25/github"
@@ -470,6 +470,20 @@ func (p *Plugin) checkOrg(org string) error {
 	}
 
 	return nil
+}
+
+func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
+	if organization == "" {
+		return false
+	}
+
+	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
+	if err != nil {
+		mlog.Warn(err.Error())
+		return false
+	}
+
+	return isMember
 }
 
 func (p *Plugin) sendRefreshEvent(userID string) {

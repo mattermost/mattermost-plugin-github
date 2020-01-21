@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/mlog"
-	"github.com/mattermost/mattermost-server/model"
+	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/mattermost/mattermost-server/v5/model"
 
 	"github.com/google/go-github/v25/github"
 )
@@ -162,6 +162,23 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	return true
 }
 
+func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscription) bool {
+	if !subscription.ExcludeOrgMembers() {
+		return false
+	}
+
+	info, err := p.getGitHubUserInfo(subscription.CreatorID)
+	if err != nil {
+		mlog.Warn(err.Message)
+		return false
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	organization := p.getConfiguration().GitHubOrg
+
+	return p.isUserOrganizationMember(githubClient, user, organization)
+}
+
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
 
@@ -201,6 +218,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	for _, sub := range subs {
 		if !sub.Pulls() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -288,6 +309,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -361,6 +386,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
@@ -397,6 +426,10 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 	for _, sub := range subs {
 		if !sub.Creates() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -439,6 +472,10 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
@@ -477,6 +514,10 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 	for _, sub := range subs {
 		if !sub.IssueComments() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -548,6 +589,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -595,6 +640,10 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 	for _, sub := range subs {
 		if !sub.PullReviews() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
