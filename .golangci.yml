@@ -1,5 +1,5 @@
 service:
-  golangci-lint-version: 1.21.0
+  golangci-lint-version: 1.23.0
 
 run:
   timeout: 5m
