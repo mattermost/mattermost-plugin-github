@@ -41,38 +41,6 @@ golangci-lint: ## Run golangci-lint on codebase
 	@echo Running golangci-lint
 	golangci-lint run ./...
 
-## Runs gofmt against all packages.
-.PHONY: gofmt
-gofmt:
-ifneq ($(HAS_SERVER),)
-	@echo Running gofmt. (This is deprecated. Use make golangci-lint)
-	@for package in $$(go list ./server/...); do \
-		echo "Checking "$$package; \
-		files=$$(go list -f '{{range .GoFiles}}{{$$.Dir}}/{{.}} {{end}}' $$package); \
-		if [ "$$files" ]; then \
-			gofmt_output=$$(gofmt -d -s $$files 2>&1); \
-			if [ "$$gofmt_output" ]; then \
-				echo "$$gofmt_output"; \
-				echo "Gofmt failure"; \
-				exit 1; \
-			fi; \
-		fi; \
-	done
-	@echo Gofmt success
-endif
-
-## Runs govet against all packages.
-.PHONY: govet
-govet:
-ifneq ($(HAS_SERVER),)
-	@echo Running govet. (This is deprecated. Use make golangci-lint)
-	@# Workaround because you can't install binaries without adding them to go.mod
-	env GO111MODULE=off $(GO) get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	$(GO) vet ./server/...
-	$(GO) vet -vettool=$(GOPATH)/bin/shadow ./server/...
-	@echo Govet success
-endif
-
 ## Builds the server, if it exists, including support for multiple architectures.
 .PHONY: server
 server:
