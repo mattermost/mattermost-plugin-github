@@ -39,7 +39,7 @@ var pullRequestWithMentions = github.PullRequest{
 	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
 	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
-` + usernameMentions + `
+` + gitHubMentions + `
 <!-- Please make sure you have done the following :
 - Added tests
 - Removed console logs
