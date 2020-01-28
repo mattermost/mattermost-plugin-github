@@ -4,7 +4,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import {Badge} from 'react-bootstrap';
+import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {formatTimeSince} from 'utils/date_utils';
@@ -245,7 +245,15 @@ function getReviewText(item, style, secondLine) {
     }
 
     if (changesRequested > 0) {
-        changes = (<div style={{...style.icon, fill: '#c11b28'}}><DotIcon/></div>);
+        changes = (
+            <OverlayTrigger
+                key='changesRequestedDot'
+                placement='bottom'
+                overlay={<Tooltip id='changesRequestedTooltip'>Changes Requested</Tooltip>}
+            >
+                <div style={{...style.icon, fill: '#c11b28'}}><DotIcon/></div>
+            </OverlayTrigger>
+        );
     }
 
     return (
