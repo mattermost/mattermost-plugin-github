@@ -66,10 +66,14 @@ function GithubItems(props) {
         if (item.milestone) {
             milestone = (
                 <span>
-                    <div style={{
-                        ...style.milestoneIcon,
-                        ...((item.created_at || userName) && {paddingLeft: 10}),
-                    }}><SignIcon/></div>
+                    <div
+                        style={
+                            {
+                                ...style.milestoneIcon,
+                                ...((item.created_at || userName) && {paddingLeft: 10}),
+                            }
+                        }
+                    ><SignIcon/></div>
                     {' '}
                     {item.milestone.title}
                 </span>);
@@ -168,7 +172,7 @@ const getStyle = makeStyleFromTheme((theme) => {
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
-        }
+        },
     };
 });
 
