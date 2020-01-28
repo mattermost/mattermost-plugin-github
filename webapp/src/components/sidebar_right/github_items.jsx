@@ -12,6 +12,7 @@ import {formatTimeSince} from 'utils/date_utils';
 import CrossIcon from 'images/icons/cross.jsx';
 import DotIcon from 'images/icons/dot.jsx';
 import TickIcon from 'images/icons/tick.jsx';
+import SignIcon from 'images/icons/sign.jsx';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
@@ -65,10 +66,10 @@ function GithubItems(props) {
         if (item.milestone) {
             milestone = (
                 <span>
-                    <i
-                        className='fa fa-bullseye'
-                        style={(item.created_at || userName) && {paddingLeft: 10}}
-                    />
+                    <div style={{
+                        ...style.milestoneIcon,
+                        ...((item.created_at || userName) && {paddingLeft: 10}),
+                    }}><SignIcon/></div>
                     {' '}
                     {item.milestone.title}
                 </span>);
@@ -161,6 +162,13 @@ const getStyle = makeStyleFromTheme((theme) => {
             display: 'inline-flex',
             alignItems: 'center',
         },
+        milestoneIcon: {
+            top: 3,
+            position: 'relative',
+            height: 18,
+            display: 'inline-flex',
+            alignItems: 'center',
+        }
     };
 });
 
