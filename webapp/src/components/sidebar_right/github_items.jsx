@@ -13,6 +13,7 @@ import CrossIcon from 'images/icons/cross.jsx';
 import DotIcon from 'images/icons/dot.jsx';
 import TickIcon from 'images/icons/tick.jsx';
 import SignIcon from 'images/icons/sign.jsx';
+import ChangesRequestedIcon from 'images/icons/changes_requested.jsx';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
@@ -251,7 +252,7 @@ function getReviewText(item, style, secondLine) {
                 placement='bottom'
                 overlay={<Tooltip id='changesRequestedTooltip'>Changes Requested</Tooltip>}
             >
-                <div style={{...style.icon, fill: '#c11b28'}}><DotIcon/></div>
+                <div style={{...style.icon, fill: '#c11b28'}}><ChangesRequestedIcon/></div>
             </OverlayTrigger>
         );
     }
