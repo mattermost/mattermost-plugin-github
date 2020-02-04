@@ -373,7 +373,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	text += "##### Review Requests\n"
 
 	if issueResults.GetTotal() == 0 {
-		text += "You have don't have any pull requests awaiting your review.\n"
+		text += "You don't have any pull requests awaiting your review.\n"
 	} else {
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
@@ -385,7 +385,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	text += "##### Your Open Pull Requests\n"
 
 	if yourPrs.GetTotal() == 0 {
-		text += "You have don't have any open pull requests.\n"
+		text += "You don't have any open pull requests.\n"
 	} else {
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
@@ -397,7 +397,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	text += "##### Your Assignments\n"
 
 	if yourAssignments.GetTotal() == 0 {
-		text += "You have don't have any assignments.\n"
+		text += "You don't have any assignments.\n"
 	} else {
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
