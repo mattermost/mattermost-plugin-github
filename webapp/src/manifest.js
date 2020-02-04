@@ -1,2 +1,2 @@
 export const id = 'github';
-export const version = '0.12.0';
+export const version = '0.13.0';
