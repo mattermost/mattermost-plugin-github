@@ -36,6 +36,45 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
   * |setting| can be "notifications" or "reminders"
   * |value| can be "on" or "off"`
 
+var validFeatures = map[string]bool{
+	"issues":         true,
+	"pulls":          true,
+	"pushes":         true,
+	"creates":        true,
+	"deletes":        true,
+	"issue_comments": true,
+	"pull_reviews":   true,
+}
+
+// validateFeatures returns false when 1 or more given features
+// are invalid along with a list of the invalid features.
+func validateFeatures(features []string) (bool, []string) {
+	valid := true
+	invalidFeatures := []string{}
+	hasLabel := false
+	for _, f := range features {
+		if _, ok := validFeatures[f]; ok {
+			continue
+		}
+		if strings.HasPrefix(f, "label") {
+			hasLabel = true
+			continue
+		}
+		invalidFeatures = append(invalidFeatures, f)
+		valid = false
+	}
+	if valid && hasLabel {
+		// must have "pulls" or "issues" in features when using a label
+		for _, f := range features {
+			if f == "pulls" || f == "issues" {
+				return valid, invalidFeatures
+			}
+		}
+		valid = false
+	}
+	return valid, invalidFeatures
+}
+
 func getCommand() *model.Command {
 	return &model.Command{
 		Trigger:          "github",
@@ -141,6 +180,16 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				return &model.CommandResponse{}, nil
 			} else if len(optionList) == 1 {
 				features = optionList[0]
+				fs := strings.Split(features, ",")
+				ok, ifs := validateFeatures(fs)
+				if !ok {
+					msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
+					if len(ifs) == 0 {
+						msg = fmt.Sprintf("Feature list must have \"pulls\" or \"issues\" when using a label.")
+					}
+					p.postCommandResponse(args, msg)
+					return &model.CommandResponse{}, nil
+				}
 			}
 		}
 
