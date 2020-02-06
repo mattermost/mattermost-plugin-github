@@ -1047,6 +1047,23 @@ func TestPullRequestReviewNotification(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	}))
+	t.Run("review with no body", withGitHubUserNameMapping(func(t *testing.T) {
+		expected := `
+@pandabot approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
+`
+
+		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Sender:      &user,
+			Review: &github.PullRequestReview{
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456"),
+				State:   sToP("approved"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	}))
 }
 
 func TestGitHubUsernameRegex(t *testing.T) {
