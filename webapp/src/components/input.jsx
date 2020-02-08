@@ -63,7 +63,7 @@ export default class Input extends PureComponent {
 
     handleChange = (e) => {
         if (this.props.type === 'number') {
-            this.props.onChange(this.props.id, parseInt(e.target.value, 10));
+            this.props.onChange(parseInt(e.target.value, 10));
         } else {
             this.props.onChange(e.target.value);
         }

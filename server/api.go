@@ -796,19 +796,16 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-
 	var githubClient *github.Client
-
 	if info, err := p.getGitHubUserInfo(userID); err != nil {
 		writeAPIError(w, err)
 		return
-	} else {
-		githubClient = p.githubConnect(*info.Token)
-	}
 
+	githubClient = p.githubConnect(*info.Token)
 	repositories, _, err := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
+		return
 	}
 
 	resp, _ := json.Marshal(repositories)
@@ -826,16 +823,6 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
-
-	// Make sure user have a connected github account
-	var githubClient *github.Client
-	info, err := p.getGitHubUserInfo(userID)
-	if err != nil {
-		writeAPIError(w, err)
-		return
-	}
-
-	githubClient = p.githubConnect(*info.Token)
 
 	// get data for the issue from the request body and fill IssueRequest object
 	issue := &IssueRequest{}
@@ -856,11 +843,6 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if issue.Owner == "" {
-	// 	writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
-	// 	return
-	// }
-
 	if issue.Repo == "" {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo name.", StatusCode: http.StatusBadRequest})
 		return
@@ -870,6 +852,15 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		Title: &issue.Title,
 		Body:  &issue.Body,
 	}
+
+	// Make sure user have a connected github account
+	info, err := p.getGitHubUserInfo(userID)
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
 
 	// call Create(ctx context.Context, owner string, repo string, issue *IssueRequest)
 	result, resp, api_err := githubClient.Issues.Create(ctx, info.GitHubUsername, issue.Repo, gh_issue)

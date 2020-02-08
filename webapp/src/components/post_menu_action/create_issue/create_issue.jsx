@@ -24,10 +24,6 @@ export default class CreateIssuePostMenuAction extends PureComponent {
         open(postId);
     };
 
-    connectClick = () => {
-        window.open('/plugins/' + pluginId + '/user/connect', '_blank');
-    };
-
     render() {
         if (this.props.isSystemMessage || !this.props.connected) {
             return null;

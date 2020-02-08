@@ -40,12 +40,6 @@ export default class CreateIssueModal extends PureComponent {
             return;
         }
 
-        // const title = this.state.issueTitle;
-        // const description = this.props.post.message;
-        // const repo = this.state.repoValue;
-        // const repoUrlParts = this.state.repoValue.split('/');
-        // const repo = repoUrlParts.pop();
-
         const issue = {
             title: this.state.issueTitle,
             body: this.props.post.message,
@@ -68,7 +62,7 @@ export default class CreateIssueModal extends PureComponent {
             e.preventDefault();
         }
         const {close} = this.props;
-        this.setState(initialState, close);
+        this.setState(initialState, this.props.close);
     };
 
     handleRepoValueChange = (newValue) => {
@@ -108,7 +102,6 @@ export default class CreateIssueModal extends PureComponent {
                     type='input'
                     required={true}
                     disabled={false}
-                    readOnly={false}
                     maxLength={65}
                     value={this.state.issueTitle}
                     onChange={this.handleIssueTitleChange}
