@@ -632,7 +632,7 @@ Excited to see git-get-head land!
 
 	t.Run("approved with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) @pandabot approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) pandabot approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 ` + usernameMentions + `
@@ -676,7 +676,7 @@ Should this be here?
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by @pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 HUNK
 Should this be here?
@@ -738,7 +738,7 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 
 	t.Run("non-email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-@pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
 ` + usernameMentions + `
 `
@@ -758,7 +758,7 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 
 	t.Run("email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-@pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
 ` + usernameMentions + `
 `
@@ -800,7 +800,7 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
 		expected := `
-@pandabot commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+pandabot commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
 ` + usernameMentions + `
 `
@@ -1029,7 +1029,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 	})
 	t.Run("approved with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-@pandabot approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
+pandabot approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
 >Excited to see git-get-head land!
 ` + usernameMentions + `
 `
