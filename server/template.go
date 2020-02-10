@@ -82,7 +82,7 @@ func init() {
 	// Mattermost user, their Mattermost handle is referenced as an at-mention instead.
 	template.Must(masterTemplate.New("user").Parse(`
 {{- $mattermostUsername := .GetLogin | lookupMattermostUsername}}
-{{- if $mattermostUsername }}@{{$mattermostUsername}}
+{{- if $mattermostUsername }}{{$mattermostUsername}}
 {{- else}}[{{.GetLogin}}]({{.GetHTMLURL}})
 {{- end -}}
 	`))
