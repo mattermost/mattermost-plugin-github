@@ -152,7 +152,7 @@ func TestUserTemplate(t *testing.T) {
 	})
 
 	t.Run("Mattermost username", withGitHubUserNameMapping(func(t *testing.T) {
-		expected := "@pandabot"
+		expected := "pandabot"
 		actual, err := renderTemplate("user", &user)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
@@ -184,7 +184,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 		expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
-#new-pull-request by @pandabot
+#new-pull-request by pandabot
 
 git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
 ` + usernameMentions + `
@@ -273,7 +273,7 @@ git-get-head sounds like a great feature we should support
 		expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by @pandabot
+#new-issue by pandabot
 
 git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
@@ -530,7 +530,7 @@ git-get-head sounds like a great feature we should support
 
 	t.Run("non-email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
@@ -550,7 +550,7 @@ git-get-head sounds like a great feature we should support
 
 	t.Run("email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
