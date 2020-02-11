@@ -128,12 +128,18 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
-	if post.UserId == "" {
+	userId := post.UserId
+	// Nil-map behaves like an empty map
+	if value, ok := post.Props["UserID"]; ok {
+		userId = value.(string)
+	}
+
+	if userId == "" {
 		return nil, ""
 	}
 
 	msg := post.Message
-	info, err := p.getGitHubUserInfo(post.UserId)
+	info, err := p.getGitHubUserInfo(userId)
 	if err != nil {
 		p.API.LogError("error in getting user info", "error", err.Message)
 		return nil, ""
@@ -290,6 +296,10 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 		ChannelId: channel.Id,
 		Message:   message,
 		Type:      postType,
+
+		Props: model.StringInterface{
+			"UserID": userID,
+		},
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
