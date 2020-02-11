@@ -556,11 +556,13 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
 func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) (*PRDetails, error) {
 	status := ""
 	requestedReviewers := []*string{}
-	var reviewsList []*github.PullRequestReview = nil
+	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
 
 	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
 
 	var wg sync.WaitGroup
+
+	// Fetch reviews
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -571,38 +573,27 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 		}
 	}()
 
-	prInfo, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, prNumber)
+	// Fetch reviewers and status
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		prInfo, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, prNumber)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		for _, v := range prInfo.RequestedReviewers {
+			requestedReviewers = append(requestedReviewers, v.Login)
+		}
+		statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		status = *statuses.State
+	}()
 
-	if err != nil {
-		wg.Wait()
-		return &PRDetails{
-			URL:                prURL,
-			Number:             prNumber,
-			Status:             status,
-			RequestedReviewers: requestedReviewers,
-			Reviews:            reviewsList,
-		}, err
-	}
-
-	for _, v := range prInfo.RequestedReviewers {
-		requestedReviewers = append(requestedReviewers, v.Login)
-	}
-
-	statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
 	wg.Wait()
-
-	if err != nil {
-		return &PRDetails{
-			URL:                prURL,
-			Number:             prNumber,
-			Status:             status,
-			RequestedReviewers: requestedReviewers,
-			Reviews:            reviewsList,
-		}, err
-	}
-
-	status = *statuses.State
-
 	return &PRDetails{
 		URL:                prURL,
 		Number:             prNumber,
