@@ -538,11 +538,7 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			prDetail, err := fetchPRDetails(ctx, githubClient, pr.URL, pr.Number)
-			if err != nil {
-				mlog.Error(err.Error())
-			}
-
+			prDetail := fetchPRDetails(ctx, githubClient, pr.URL, pr.Number)
 			prDetails[i] = prDetail
 		}()
 	}
@@ -553,8 +549,9 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) (*PRDetails, error) {
+func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
 	status := ""
+	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
 	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
 
@@ -566,11 +563,12 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var err error
-		reviewsList, err = fetchReviews(ctx, client, repoOwner, repoName, prNumber)
+		fetchedReviews, err := fetchReviews(ctx, client, repoOwner, repoName, prNumber)
 		if err != nil {
 			mlog.Error(err.Error())
+			return
 		}
+		reviewsList = fetchedReviews
 	}()
 
 	// Fetch reviewers and status
@@ -600,7 +598,7 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 		Status:             status,
 		RequestedReviewers: requestedReviewers,
 		Reviews:            reviewsList,
-	}, nil
+	}
 }
 
 func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, repoName string, number int) ([]*github.PullRequestReview, error) {
