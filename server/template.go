@@ -261,8 +261,8 @@ func init() {
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
 {{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
->{{.Review.GetBody | replaceAllGitHubUsernames}}
-`))
+{{if .GetReview.GetBody}}>{{.Review.GetBody | replaceAllGitHubUsernames}}
+{{else}}{{end}}`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
