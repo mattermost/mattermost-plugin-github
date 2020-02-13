@@ -61,7 +61,6 @@ export default class CreateIssueModal extends PureComponent {
         if (e && e.preventDefault) {
             e.preventDefault();
         }
-        const {close} = this.props;
         this.setState(initialState, this.props.close);
     };
 
