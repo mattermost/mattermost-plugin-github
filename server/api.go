@@ -795,15 +795,15 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx := context.Background()
-	var githubClient *github.Client
 	info, err := p.getGitHubUserInfo(userID)
 	if err != nil {
 		writeAPIError(w, err)
 		return
 	}
 
-	githubClient = p.githubConnect(*info.Token)
+	ctx := context.Background()
+	githubClient := p.githubConnect(*info.Token)
+
 	repositories, _, apiErr := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
 	if apiErr != nil {
 		mlog.Error(apiErr.Error())
