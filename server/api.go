@@ -797,14 +797,16 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 	var githubClient *github.Client
-	if info, err := p.getGitHubUserInfo(userID); err != nil {
+	info, err := p.getGitHubUserInfo(userID)
+	if err != nil {
 		writeAPIError(w, err)
 		return
+	}
 
 	githubClient = p.githubConnect(*info.Token)
-	repositories, _, err := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
-	if err != nil {
-		mlog.Error(err.Error())
+	repositories, _, apiErr := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
+	if apiErr != nil {
+		mlog.Error(apiErr.Error())
 		return
 	}
 
@@ -868,7 +870,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		mlog.Error(api_err.Error())
 	}
 
-	if resp.Response.StatusCode == 410 {
+	if resp.Response.StatusCode == http.StatusGone {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
 		return
 	}

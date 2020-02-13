@@ -53,16 +53,6 @@ export default class GithubRepoSelector extends PureComponent {
         this.props.onChange(value);
     }
 
-    isValid = () => {
-        if (!this.props.required) {
-            return true;
-        }
-
-        const valid = this.props.value && this.props.value.toString().length !== 0;
-        this.setState({invalid: !valid});
-        return valid;
-    };
-
     render() {
         const {error} = this.props;
         const requiredStar = (
