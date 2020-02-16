@@ -264,18 +264,18 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	config := p.getConfiguration()
 
-	repo, _, _ = parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
-
-	if repo == "" {
+	owner, repo := parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
+	if owner == "" && repo == "" {
 		return fmt.Errorf("Invalid repository")
 	}
+	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()
 	if err != nil {
 		return err
 	}
 
-	repoSubs := subs.Repositories[repo]
+	repoSubs := subs.Repositories[repoWithOwner]
 	if repoSubs == nil {
 		return nil
 	}
@@ -290,7 +290,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	}
 
 	if removed {
-		subs.Repositories[repo] = repoSubs
+		subs.Repositories[repoWithOwner] = repoSubs
 		if err := p.StoreSubscriptions(subs); err != nil {
 			return err
 		}
