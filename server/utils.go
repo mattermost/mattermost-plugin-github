@@ -116,7 +116,7 @@ func decrypt(key []byte, text string) (string, error) {
 	return string(unpadMsg), nil
 }
 
-func parseOwnerAndRepo(full, baseURL string) (string, string, string) {
+func parseOwnerAndRepo(full, baseURL string) (string, string) {
 	if baseURL == "" {
 		baseURL = "https://github.com/"
 	}
@@ -125,14 +125,12 @@ func parseOwnerAndRepo(full, baseURL string) (string, string, string) {
 
 	if len(splitStr) == 1 {
 		owner := splitStr[0]
-		return fmt.Sprintf("%s/", owner), owner, ""
-	} else if len(splitStr) != 2 {
-		return "", "", ""
+		return owner, ""
 	}
+
 	owner := splitStr[0]
 	repo := splitStr[1]
-
-	return fmt.Sprintf("%s/%s", owner, repo), owner, repo
+	return owner, repo
 }
 
 func parseGitHubUsernamesFromText(text string) []string {
@@ -309,4 +307,28 @@ func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool)
 	}
 	final += "```\n"
 	return final
+}
+
+// getToDoDisplayText returns the text to be displayed in todo listings.
+func getToDoDisplayText(title, url, notifType string) string {
+	baseURL := "https://github.com/"
+
+	owner, repo := parseOwnerAndRepo(url, baseURL)
+	repoURL := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
+	repoWords := strings.Split(repo, "-")
+	if len(repoWords) != 1 {
+		repo = "..." + repoWords[len(repoWords)-1]
+	}
+	repoPart := fmt.Sprintf("[%s/%s](%s)", owner, repo, repoURL)
+
+	if len(title) > 80 {
+		title = strings.TrimSpace(title[:80]) + "..."
+	}
+	titlePart := fmt.Sprintf("[%s](%s)", title, url)
+
+	if notifType == "" {
+		return fmt.Sprintf("* %s %s", repoPart, titlePart)
+	}
+
+	return fmt.Sprintf("* %s %s %s", repoPart, notifType, titlePart)
 }

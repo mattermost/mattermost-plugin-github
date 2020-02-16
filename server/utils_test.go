@@ -67,12 +67,12 @@ func TestParseOwnerAndRepo(t *testing.T) {
 		{Full: "https://github.com/mattermost/mattermost-server", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
 		{Full: "https://github.com/mattermost/mattermost-server", BaseURL: "https://github.com/", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
 		{Full: "", BaseURL: "", ExpectedOwner: "", ExpectedRepo: ""},
-		{Full: "mattermost/mattermost/invalid_repo_url", BaseURL: "", ExpectedOwner: "", ExpectedRepo: ""},
-		{Full: "https://github.com/mattermost/mattermost/invalid_repo_url", BaseURL: "", ExpectedOwner: "", ExpectedRepo: ""},
+		{Full: "mattermost/mattermost/invalid_repo_url", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost"},
+		{Full: "https://github.com/mattermost/mattermost/invalid_repo_url", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost"},
 	}
 
 	for _, tc := range tcs {
-		_, owner, repo := parseOwnerAndRepo(tc.Full, tc.BaseURL)
+		owner, repo := parseOwnerAndRepo(tc.Full, tc.BaseURL)
 
 		assert.Equal(t, owner, tc.ExpectedOwner)
 		assert.Equal(t, repo, tc.ExpectedRepo)
@@ -208,5 +208,44 @@ func TestInsideLink(t *testing.T) {
 
 	for _, tc := range tcs {
 		assert.Equalf(t, tc.expected, isInsideLink(tc.input, tc.index), "unexpected result for isInsideLink(%q, %d)", tc.input, tc.index)
+	}
+}
+
+func TestGetToDoDisplayText(t *testing.T) {
+	type input struct {
+		title     string
+		url       string
+		notifType string
+	}
+	tcs := []struct {
+		name string
+		in   input
+		want string
+	}{
+		{
+			name: "title shorter than threshold, single-word repo name & empty notification type",
+			in: input{
+				"Issue title with less than 80 characters",
+				"https://github.com/mattermost/repo/issues/42",
+				"",
+			},
+			want: "* [mattermost/repo](https://github.com/mattermost/repo) [Issue title with less than 80 characters](https://github.com/mattermost/repo/issues/42)",
+		},
+		{
+			name: "title longer than threshold, multi-word repo name & Issue notification type",
+			in: input{
+				"This is an issue title which has with more than 80 characters and is completely random",
+				"https://github.com/mattermost/mattermost-plugin-github/issues/42",
+				"Issue",
+			},
+			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Issue [This is an issue title which has with more than 80 characters and is completely...](https://github.com/mattermost/mattermost-plugin-github/issues/42)",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := getToDoDisplayText(tc.in.title, tc.in.url, tc.in.notifType)
+			assert.Equal(t, tc.want, got)
+		})
 	}
 }

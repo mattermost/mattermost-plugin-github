@@ -193,7 +193,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			}
 		}
 
-		_, owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
+		owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
 		if repo == "" {
 			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 				p.postCommandResponse(args, err.Error())
