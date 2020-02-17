@@ -316,7 +316,7 @@ func getToDoDisplayText(title, url, notifType string) string {
 	owner, repo := parseOwnerAndRepo(url, baseURL)
 	repoURL := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
 	repoWords := strings.Split(repo, "-")
-	if len(repoWords) != 1 {
+	if len(repo) > 20 && len(repoWords) > 1 {
 		repo = "..." + repoWords[len(repoWords)-1]
 	}
 	repoPart := fmt.Sprintf("[%s/%s](%s)", owner, repo, repoURL)
