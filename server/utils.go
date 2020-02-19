@@ -327,8 +327,8 @@ func getToDoDisplayText(title, url, notifType string) string {
 	titlePart := fmt.Sprintf("[%s](%s)", title, url)
 
 	if notifType == "" {
-		return fmt.Sprintf("* %s %s", repoPart, titlePart)
+		return fmt.Sprintf("* %s %s\n", repoPart, titlePart)
 	}
 
-	return fmt.Sprintf("* %s %s %s", repoPart, notifType, titlePart)
+	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
 }
