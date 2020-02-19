@@ -359,7 +359,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			notificationContent += fmt.Sprintf("* %v\n", message)
 		default:
 			notificationTitle := notificationSubject.GetTitle()
-			notificationURL := notificationSubject.GetURL()
+			notificationURL := fixGithubNotificationSubjectURL(notificationSubject.GetURL())
 			notificationContent += getToDoDisplayText(notificationTitle, notificationURL, notificationType)
 		}
 

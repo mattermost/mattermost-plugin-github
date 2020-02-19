@@ -229,7 +229,7 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"https://github.com/mattermost/repo/issues/42",
 				"",
 			},
-			want: "* [mattermost/repo](https://github.com/mattermost/repo) [Issue title with less than 80 characters](https://github.com/mattermost/repo/issues/42)",
+			want: "* [mattermost/repo](https://github.com/mattermost/repo) [Issue title with less than 80 characters](https://github.com/mattermost/repo/issues/42)\n",
 		},
 		{
 			name: "title longer than threshold, multi-word repo name & Issue notification type",
@@ -238,7 +238,7 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"https://github.com/mattermost/mattermost-plugin-github/issues/42",
 				"Issue",
 			},
-			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Issue [This is an issue title which has with more than 80 characters and is completely...](https://github.com/mattermost/mattermost-plugin-github/issues/42)",
+			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Issue [This is an issue title which has with more than 80 characters and is completely...](https://github.com/mattermost/mattermost-plugin-github/issues/42)\n",
 		},
 	}
 
