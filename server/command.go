@@ -160,7 +160,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				txt = "### Subscriptions in this channel\n"
 			}
 			for _, sub := range subs {
-				txt += fmt.Sprintf("* `%s` - %s\n", strings.Trim(sub.Repository, "/"), sub.Features)
+				subFlags := fmt.Sprintf("%s", sub.Flags)
+				if subFlags == "" {
+					txt += fmt.Sprintf("* `%s` - %s\n", strings.Trim(sub.Repository, "/"), sub.Features)
+				} else {
+					txt += fmt.Sprintf("* `%s` - %s - %s\n", strings.Trim(sub.Repository, "/"), sub.Features, subFlags)
+				}
 			}
 			p.postCommandResponse(args, txt)
 			return &model.CommandResponse{}, nil
