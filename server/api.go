@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -25,6 +26,14 @@ type APIErrorResponse struct {
 	ID         string `json:"id"`
 	Message    string `json:"message"`
 	StatusCode int    `json:"status_code"`
+}
+
+type PRDetails struct {
+	URL                string                      `json:"url"`
+	Number             int                         `json:"number"`
+	Status             string                      `json:"status"`
+	RequestedReviewers []*string                   `json:"requestedReviewers"`
+	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
 func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
@@ -58,6 +67,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getReviews(w, r)
 	case "/api/v1/yourprs":
 		p.getYourPrs(w, r)
+	case "/api/v1/prsdetails":
+		p.getPrsDetails(w, r)
 	case "/api/v1/searchissues":
 		p.searchIssues(w, r)
 	case "/api/v1/yourassignments":
@@ -493,6 +504,116 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 
 	resp, _ := json.Marshal(result.Issues)
 	w.Write(resp)
+}
+
+func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+
+	info, err := p.getGitHubUserInfo(userID)
+
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+
+	githubClient = p.githubConnect(*info.Token)
+
+	var prList []*PRDetails
+	json.NewDecoder(r.Body).Decode(&prList)
+
+	prDetails := make([]*PRDetails, len(prList))
+	var wg sync.WaitGroup
+
+	for i, pr := range prList {
+		i := i
+		pr := pr
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			prDetail := fetchPRDetails(ctx, githubClient, pr.URL, pr.Number)
+			prDetails[i] = prDetail
+		}()
+	}
+
+	wg.Wait()
+
+	resp, _ := json.Marshal(prDetails)
+	w.Write(resp)
+}
+
+func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
+	status := ""
+	// Initialize to a non-nil slice to simplify JSON handling semantics
+	requestedReviewers := []*string{}
+	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
+
+	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
+
+	var wg sync.WaitGroup
+
+	// Fetch reviews
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fetchedReviews, err := fetchReviews(ctx, client, repoOwner, repoName, prNumber)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		reviewsList = fetchedReviews
+	}()
+
+	// Fetch reviewers and status
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		prInfo, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, prNumber)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		for _, v := range prInfo.RequestedReviewers {
+			requestedReviewers = append(requestedReviewers, v.Login)
+		}
+		statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		status = *statuses.State
+	}()
+
+	wg.Wait()
+	return &PRDetails{
+		URL:                prURL,
+		Number:             prNumber,
+		Status:             status,
+		RequestedReviewers: requestedReviewers,
+		Reviews:            reviewsList,
+	}
+}
+
+func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, repoName string, number int) ([]*github.PullRequestReview, error) {
+	reviewsList, _, err := client.PullRequests.ListReviews(ctx, repoOwner, repoName, number, nil)
+
+	if err != nil {
+		return []*github.PullRequestReview{}, err
+	}
+
+	return reviewsList, nil
+}
+
+func getRepoOwnerAndNameFromURL(url string) (string, string) {
+	splitted := strings.Split(url, "/")
+	return splitted[len(splitted)-2], splitted[len(splitted)-1]
 }
 
 func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
