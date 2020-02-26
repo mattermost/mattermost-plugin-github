@@ -84,7 +84,7 @@ var user = github.User{
 	HTMLURL: sToP("https://github.com/panda"),
 }
 
-// A map of known associations between Github users and Mattermost users
+// A map of known associations between GitHub users and Mattermost users
 var usernameMap = map[string]string{
 	"panda":          "pandabot",
 	"asaadmahmood":   "asaad.mahmood",
