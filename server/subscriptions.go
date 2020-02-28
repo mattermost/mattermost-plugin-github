@@ -43,7 +43,7 @@ func (s SubscriptionFlags) String() string {
 		fName := typeOfS.Field(i).Name
 		switch fName {
 		case "ExcludeOrgMembers":
-			flags = append(flags, "--exclude-org-member")
+			flags = append(flags, EXCLUDE_ORG_MEMBER_FLAG)
 		}
 	}
 
