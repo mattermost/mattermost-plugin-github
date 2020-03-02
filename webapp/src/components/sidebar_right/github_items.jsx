@@ -4,8 +4,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import {Badge} from 'react-bootstrap';
+import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+
+import {formatTimeSince} from 'utils/date_utils';
+
+import CrossIcon from 'images/icons/cross.jsx';
+import DotIcon from 'images/icons/dot.jsx';
+import TickIcon from 'images/icons/tick.jsx';
+import SignIcon from 'images/icons/sign.jsx';
+import ChangesRequestedIcon from 'images/icons/changes_requested.jsx';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
@@ -22,6 +30,14 @@ function GithubItems(props) {
         }
 
         let title = item.title ? item.title : item.subject.title;
+        let number = null;
+
+        if (item.number) {
+            number = (
+                <strong>
+                    <i className='fa fa-code-fork'/> #{item.number}
+                </strong>);
+        }
 
         if (item.html_url) {
             title = (
@@ -33,6 +49,57 @@ function GithubItems(props) {
                 >
                     {item.title ? item.title : item.subject.title}
                 </a>);
+            if (item.number) {
+                number = (
+                    <strong>
+                        <a
+                            href={item.html_url}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                        >
+                            <i className='fa fa-code-fork'/> #{item.number}
+                        </a>
+                    </strong>);
+            }
+        }
+
+        let milestone = '';
+        if (item.milestone) {
+            milestone = (
+                <span>
+                    <div
+                        style={
+                            {
+                                ...style.milestoneIcon,
+                                ...((item.created_at || userName) && {paddingLeft: 10}),
+                            }
+                        }
+                    ><SignIcon/></div>
+                    {' '}
+                    {item.milestone.title}
+                </span>);
+        }
+
+        let reviews = '';
+
+        if (item.reviews) {
+            reviews = getReviewText(item, style, (item.created_at || userName || milestone));
+        }
+
+        let status = '';
+
+        // Status images pasted directly from GitHub. Change to our own version when styles are decided.
+        if (item.status) {
+            switch (item.status) {
+            case 'success':
+                status = (<div style={{...style.icon, fill: '#2b9643'}}><TickIcon/></div>);
+                break;
+            case 'pending':
+                status = (<div style={{...style.icon, fill: '#c59e17'}}><DotIcon/></div>);
+                break;
+            default:
+                status = (<div style={{...style.icon, fill: '#c11b28'}}><CrossIcon/></div>);
+            }
         }
 
         return (
@@ -42,22 +109,28 @@ function GithubItems(props) {
             >
                 <div>
                     <strong>
-                        {title}
+                        {title}{status}
                     </strong>
+                </div>
+                <div>
+                    {number} <span className='light'>({repoName})</span>
                 </div>
                 <GithubLabels labels={item.labels}/>
                 <div
                     className='light'
                     style={style.subtitle}
                 >
-                    {userName ? 'Created by ' + userName + ' ' : ''}
-                    {'at ' + repoName + '.'}
+                    {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
+                    {userName && ' by ' + userName}
+                    {(item.created_at || userName) && '.'}
+                    {milestone}
                     {item.reason ?
                         (<React.Fragment>
-                            <br/>
+                            {(item.created_at || userName || milestone) && (<br/>)}
                             {notificationReasons[item.reason]}
                         </React.Fragment>) : null }
                 </div>
+                {reviews}
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;
@@ -83,6 +156,24 @@ const getStyle = makeStyleFromTheme((theme) => {
             margin: '5px 0 0 0',
             fontSize: '13px',
         },
+        subtitleSecondLine: {
+            fontSize: '13px',
+        },
+        icon: {
+            top: 3,
+            position: 'relative',
+            left: 6,
+            height: 18,
+            display: 'inline-flex',
+            alignItems: 'center',
+        },
+        milestoneIcon: {
+            top: 3,
+            position: 'relative',
+            height: 18,
+            display: 'inline-flex',
+            alignItems: 'center',
+        },
     };
 });
 
@@ -97,8 +188,86 @@ function GithubLabels(props) {
     }) : null;
 }
 
+function getReviewText(item, style, secondLine) {
+    let reviews = '';
+    let changes = '';
+
+    const finishedReviewers = [];
+
+    const reverse = (accum, cur) => {
+        accum.unshift(cur);
+        return accum;
+    };
+
+    const lastReviews = item.reviews.reduce(reverse, []).filter((v) => {
+        if (v.user.login === item.user.login) {
+            return false;
+        }
+
+        if (item.requestedReviewers.includes(v.user.login)) {
+            return false;
+        }
+
+        if (v.state === 'COMMENTED' || v.state === 'DISMISSED') {
+            return false;
+        }
+
+        if (finishedReviewers.includes(v.user.login)) {
+            return false;
+        }
+
+        finishedReviewers.push(v.user.login);
+        return true;
+    });
+
+    const approved = lastReviews.reduce((accum, cur) => {
+        if (cur.state === 'APPROVED') {
+            return accum + 1;
+        }
+        return accum;
+    }, 0);
+
+    const changesRequested = lastReviews.reduce((accum, cur) => {
+        if (cur.state === 'CHANGES_REQUESTED') {
+            return accum + 1;
+        }
+        return accum;
+    }, 0);
+
+    const totalReviewers = finishedReviewers.length + item.requestedReviewers.length;
+    if (totalReviewers > 0) {
+        let reviewName;
+        if (totalReviewers === 1) {
+            reviewName = 'review';
+        } else {
+            reviewName = 'reviews';
+        }
+        reviews = (<span>{approved} out of {totalReviewers} {reviewName} complete.</span>);
+    }
+
+    if (changesRequested > 0) {
+        changes = (
+            <OverlayTrigger
+                key='changesRequestedDot'
+                placement='bottom'
+                overlay={<Tooltip id='changesRequestedTooltip'>Changes Requested</Tooltip>}
+            >
+                <div style={{...style.icon, fill: '#c11b28'}}><ChangesRequestedIcon/></div>
+            </OverlayTrigger>
+        );
+    }
+
+    return (
+        <div
+            className='light'
+            style={secondLine ? style.subtitleSecondLine : style.subtitle}
+        >
+            {reviews} {changes}
+        </div>);
+}
+
 GithubLabels.propTypes = {
-    labels: PropTypes.array.isRequired,
+    labels: PropTypes.array,
 };
 
 const itemStyle = {
