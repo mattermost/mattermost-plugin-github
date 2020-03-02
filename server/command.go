@@ -163,7 +163,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				subFlags := fmt.Sprintf("%s", sub.Flags.String())
 				txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
 				if subFlags != "" {
-					txt += fmt.Sprintf(" - %s", subFlags)
+					txt += fmt.Sprintf(" %s", subFlags)
 				}
 				txt += "\n"
 			}
