@@ -125,7 +125,7 @@ export default class GithubIssueSelector extends PureComponent {
                     className={'control-label'}
                     htmlFor={'issue'}
                 >
-                    {'Github Issue'}
+                    {'GitHub Issue'}
                 </label>
                 {this.props.required && requiredStar}
                 <AsyncSelect
