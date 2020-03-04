@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -31,21 +30,10 @@ func (s *SubscriptionFlags) AddFlag(flag string) {
 
 func (s SubscriptionFlags) String() string {
 	flags := []string{}
-	v := reflect.ValueOf(s)
-	typeOfS := reflect.TypeOf(s)
 
-	for i := 0; i < v.NumField(); i++ {
-		if !v.Field(i).Bool() {
-			// Flag is unset
-			continue
-		}
-
-		fName := typeOfS.Field(i).Name
-		switch fName {
-		case "ExcludeOrgMembers":
-			flag := fmt.Sprintf("--%s", EXCLUDE_ORG_MEMBER_FLAG)
-			flags = append(flags, flag)
-		}
+	if s.ExcludeOrgMembers {
+		flag := "--" + EXCLUDE_ORG_MEMBER_FLAG
+		flags = append(flags, flag)
 	}
 
 	return strings.Join(flags, ",")

@@ -160,7 +160,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				txt = "### Subscriptions in this channel\n"
 			}
 			for _, sub := range subs {
-				subFlags := fmt.Sprintf("%s", sub.Flags.String())
+				subFlags := sub.Flags.String()
 				txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
 				if subFlags != "" {
 					txt += fmt.Sprintf(" %s", subFlags)
