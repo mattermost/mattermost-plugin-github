@@ -168,7 +168,7 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       []string{repo, "notifications"},
+		Scopes:       []string{repo, string(github.ScopeNotifications), string(github.ScopeReadOrg)},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authURL.String(),
 			TokenURL: tokenURL.String(),
