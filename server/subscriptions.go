@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -161,6 +162,10 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 			}
 		}
 	}
+
+	sort.Slice(filteredSubs, func(i, j int) bool {
+		return filteredSubs[i].Repository < filteredSubs[j].Repository
+	})
 
 	return filteredSubs, nil
 }
