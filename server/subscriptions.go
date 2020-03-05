@@ -238,13 +238,13 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 		return nil
 	}
 
-	// Add subcriptions for the specific repo
+	// Add subscriptions for the specific repo
 	subsForRepo := []*Subscription{}
 	if subs.Repositories[name] != nil {
 		subsForRepo = append(subsForRepo, subs.Repositories[name]...)
 	}
 
-	// Add subcriptions for the organization
+	// Add subscriptions for the organization
 	orgKey := fullNameFromOwnerAndRepo(org, "")
 	if subs.Repositories[orgKey] != nil {
 		subsForRepo = append(subsForRepo, subs.Repositories[orgKey]...)
