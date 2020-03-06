@@ -8,20 +8,13 @@ import (
 )
 
 // pluginFromRepoNames returns mocked plugin for given repository names
-func pluginFromRepoNames(repoNames []string, chanelID string) *Plugin {
+func pluginFromRepoNames(subscriptions []*Subscription) *Plugin {
 	p := NewPlugin()
 	mockPluginAPI := &plugintest.API{}
 
-	a := Subscriptions{Repositories: map[string][]*Subscription{}}
-
-	a.Repositories[""] = []*Subscription{}
-	for _, st := range repoNames {
-		a.Repositories[""] = append(a.Repositories[""], &Subscription{
-			Repository: st,
-			ChannelID:  chanelID,
-		})
-	}
-	jsn, _ := json.Marshal(a)
+	subs := Subscriptions{Repositories: map[string][]*Subscription{}}
+	subs.Repositories[""] = subscriptions
+	jsn, _ := json.Marshal(subs)
 	mockPluginAPI.On("KVGet", SUBSCRIPTIONS_KEY).Return(jsn, nil)
 	p.SetAPI(mockPluginAPI)
 	return p
@@ -66,16 +59,29 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "basic test",
-			args:    args{channelID: "1"},
-			plugin:  pluginFromRepoNames([]string{"asd", "123", ""}, "1"),
+			name: "basic test",
+			args: args{channelID: "1"},
+			plugin: pluginFromRepoNames([]*Subscription{
+				{
+					ChannelID:  "1",
+					Repository: "asd",
+				},
+				{
+					ChannelID:  "1",
+					Repository: "123",
+				},
+				{
+					ChannelID:  "1",
+					Repository: "",
+				},
+			}),
 			want:    wantedSubscriptions([]string{"asd", "123", ""}, "1"),
 			wantErr: false,
 		},
 		{
 			name:    "test empty",
 			args:    args{channelID: "1"},
-			plugin:  pluginFromRepoNames([]string{}, "1"),
+			plugin:  pluginFromRepoNames([]*Subscription{}),
 			want:    wantedSubscriptions([]string{}, "1"),
 			wantErr: false,
 		},
