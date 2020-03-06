@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
-	"sort"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-// pluginFromRepoNames returns mocked plugin for given repository names
-func pluginFromRepoNames(subscriptions []*Subscription) *Plugin {
+// pluginWithMockedSubs returns mocked plugin for given subscriptions
+func pluginWithMockedSubs(subscriptions []*Subscription) *Plugin {
 	p := NewPlugin()
 	mockPluginAPI := &plugintest.API{}
 
@@ -22,7 +22,6 @@ func pluginFromRepoNames(subscriptions []*Subscription) *Plugin {
 
 // wantedSubscriptions returns what should be returned after sorting by repo names
 func wantedSubscriptions(repoNames []string, chanelID string) []*Subscription {
-	sort.Strings(repoNames)
 	var subs []*Subscription
 	for _, st := range repoNames {
 		subs = append(subs, &Subscription{
@@ -31,19 +30,6 @@ func wantedSubscriptions(repoNames []string, chanelID string) []*Subscription {
 		})
 	}
 	return subs
-}
-
-// compareSubsByRepoName checks if two subscription list is identical by repository names
-func compareSubsByRepoName(sub1, sub2 []*Subscription) bool {
-	if len(sub1) != len(sub2) {
-		return false
-	}
-	for i := 0; i < len(sub1); i++ {
-		if sub1[i].Repository != sub2[i].Repository {
-			return false
-		}
-	}
-	return true
 }
 
 func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
@@ -61,7 +47,7 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 		{
 			name: "basic test",
 			args: args{channelID: "1"},
-			plugin: pluginFromRepoNames([]*Subscription{
+			plugin: pluginWithMockedSubs([]*Subscription{
 				{
 					ChannelID:  "1",
 					Repository: "asd",
@@ -75,27 +61,48 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 					Repository: "",
 				},
 			}),
-			want:    wantedSubscriptions([]string{"asd", "123", ""}, "1"),
+			want:    wantedSubscriptions([]string{"", "123", "asd"}, "1"),
 			wantErr: false,
 		},
 		{
 			name:    "test empty",
 			args:    args{channelID: "1"},
-			plugin:  pluginFromRepoNames([]*Subscription{}),
+			plugin:  pluginWithMockedSubs([]*Subscription{}),
 			want:    wantedSubscriptions([]string{}, "1"),
+			wantErr: false,
+		},
+		{
+			name: "test shuffled",
+			args: args{channelID: "1"},
+			plugin: pluginWithMockedSubs([]*Subscription{
+				{
+					ChannelID:  "1",
+					Repository: "c",
+				},
+				{
+					ChannelID:  "1",
+					Repository: "b",
+				},
+				{
+					ChannelID:  "1",
+					Repository: "ab",
+				},
+				{
+					ChannelID:  "1",
+					Repository: "a",
+				},
+			}),
+			want:    wantedSubscriptions([]string{"a", "ab", "b", "c"}, "1"),
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.plugin.GetSubscriptionsByChannel(tt.args.channelID)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetSubscriptionsByChannel() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !compareSubsByRepoName(got, tt.want) {
-				t.Errorf("GetSubscriptionsByChannel() got = %v, want %v", got, tt.want)
-			}
+
+			assert.Equal(t, tt.wantErr, err != nil, "they should be same")
+
+			assert.Equal(t, tt.want, got, "they should be same")
 		})
 	}
 }
