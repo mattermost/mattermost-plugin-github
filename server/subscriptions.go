@@ -28,6 +28,17 @@ func (s *SubscriptionFlags) AddFlag(flag string) {
 	}
 }
 
+func (s SubscriptionFlags) String() string {
+	flags := []string{}
+
+	if s.ExcludeOrgMembers {
+		flag := "--" + EXCLUDE_ORG_MEMBER_FLAG
+		flags = append(flags, flag)
+	}
+
+	return strings.Join(flags, ",")
+}
+
 type Subscription struct {
 	ChannelID  string
 	CreatorID  string
