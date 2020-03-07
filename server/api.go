@@ -424,6 +424,9 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 		HTMLUrl string `json:"html_url"`
 	}
 
+	x := 12310
+	_ = x
+
 	filteredNotifications := []*filteredNotification{}
 	for _, n := range notifications {
 		if n.GetReason() == "subscribed" {
