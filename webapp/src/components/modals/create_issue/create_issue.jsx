@@ -85,6 +85,15 @@ export default class CreateIssueModal extends PureComponent {
             return null;
         }
 
+        let submitError = null;
+        if (error) {
+            submitError = (
+                <p className='help-text error-text'>
+                    <span>{error}</span>
+                </p>
+            );
+        }
+
         const component = (
             <div>
                 <GithubRepoSelector
@@ -92,7 +101,6 @@ export default class CreateIssueModal extends PureComponent {
                     onChange={this.handleRepoValueChange}
                     required={true}
                     theme={theme}
-                    error={error}
                     value={this.state.repoValue}
                 />
                 <Input
@@ -139,6 +147,7 @@ export default class CreateIssueModal extends PureComponent {
                         {component}
                     </Modal.Body>
                     <Modal.Footer>
+                        {submitError}
                         <FormButton
                             type='button'
                             btnClass='btn-link'
