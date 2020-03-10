@@ -31,7 +31,7 @@ class PluginClass {
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
 
-        const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'Github Plugin');
+        const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
         registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));

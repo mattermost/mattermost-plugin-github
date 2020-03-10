@@ -28,7 +28,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 	* label:"<labelname>" - must include "pulls" or "issues" in feature list when using a label
 	Defaults to "pulls,issues,creates,deletes"
   * |flags| currently supported:
-    * --exclude-org-member - events triggered by organization members will not be delivered (the Github organization config
+    * --exclude-org-member - events triggered by organization members will not be delivered (the GitHub organization config
 		should be set, otherwise this flag has not effect)
 * |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
 * |/github me| - Display the connected GitHub account
@@ -78,8 +78,8 @@ func validateFeatures(features []string) (bool, []string) {
 func getCommand() *model.Command {
 	return &model.Command{
 		Trigger:          "github",
-		DisplayName:      "Github",
-		Description:      "Integration with Github.",
+		DisplayName:      "GitHub",
+		Description:      "Integration with GitHub.",
 		AutoComplete:     true,
 		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
 		AutoCompleteHint: "[command]",
@@ -160,7 +160,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				txt = "### Subscriptions in this channel\n"
 			}
 			for _, sub := range subs {
-				txt += fmt.Sprintf("* `%s` - %s\n", strings.Trim(sub.Repository, "/"), sub.Features)
+				subFlags := sub.Flags.String()
+				txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
+				if subFlags != "" {
+					txt += fmt.Sprintf(" %s", subFlags)
+				}
+				txt += "\n"
 			}
 			p.postCommandResponse(args, txt)
 			return &model.CommandResponse{}, nil

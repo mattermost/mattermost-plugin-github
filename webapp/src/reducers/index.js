@@ -75,9 +75,27 @@ function reviews(state = [], action) {
     }
 }
 
+function reviewsDetails(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_REVIEWS_DETAILS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function yourPrs(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
+function yourPrsDetails(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
         return action.data;
     default:
         return state;
@@ -193,7 +211,9 @@ export default combineReducers({
     settings,
     clientId,
     reviews,
+    reviewsDetails,
     yourPrs,
+    yourPrsDetails,
     yourAssignments,
     mentions,
     unreads,

@@ -21,6 +21,10 @@ export default class Client {
         return this.doGet(`${this.url}/yourprs`);
     }
 
+    getPrsDetails = async (prList) => {
+        return this.doPost(`${this.url}/prsdetails`, prList);
+    }
+
     getYourAssignments = async () => {
         return this.doGet(`${this.url}/yourassignments`);
     }
