@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+func CheckError(t *testing.T, wantErr bool, err error) {
+	message := "should return no error"
+	if wantErr {
+		message = "should return error"
+	}
+	assert.Equal(t, wantErr, err != nil, message)
+}
+
 // pluginWithMockedSubs returns mocked plugin for given subscriptions
 func pluginWithMockedSubs(subscriptions []*Subscription) *Plugin {
 	p := NewPlugin()
@@ -100,7 +108,7 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := tt.plugin.GetSubscriptionsByChannel(tt.args.channelID)
 
-			assert.Equal(t, tt.wantErr, err != nil, "they should be same")
+			CheckError(t, tt.wantErr, err)
 
 			assert.Equal(t, tt.want, got, "they should be same")
 		})
