@@ -18,14 +18,16 @@ export default class GithubRepoSelector extends PureComponent {
         required: PropTypes.bool,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
-        error: PropTypes.string,
         value: PropTypes.object,
     };
 
     constructor(props) {
         super(props);
 
-        this.state = {invalid: false};
+        this.state = {
+            invalid: false,
+            error: null,
+        };
     }
 
     componentDidUpdate(prevProps, prevState) {
@@ -54,7 +56,7 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     render() {
-        const {error} = this.props;
+        const {error} = this.state;
         const requiredStar = (
             <span
                 className={'error-text'}
