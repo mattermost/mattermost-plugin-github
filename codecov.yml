@@ -5,4 +5,4 @@ coverage:
                 informational: true
         patch:
             default:
-                target: 0
+                informational: true
