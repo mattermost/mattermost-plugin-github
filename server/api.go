@@ -426,6 +426,7 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 
 	x := 12310
 	_ = x
+	_ = x
 
 	filteredNotifications := []*filteredNotification{}
 	for _, n := range notifications {
