@@ -250,9 +250,15 @@ func handleSettings(p *Plugin, _ *plugin.Context, args *model.CommandArgs, param
 
 	if setting == SETTING_NOTIFICATIONS {
 		if value {
-			p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
+			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
+			if err != nil {
+				mlog.Error(err.Error())
+			}
 		} else {
-			p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY)
+			err := p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY)
+			if err != nil {
+				mlog.Error(err.Error())
+			}
 		}
 
 		userInfo.Settings.Notifications = value
@@ -260,7 +266,10 @@ func handleSettings(p *Plugin, _ *plugin.Context, args *model.CommandArgs, param
 		userInfo.Settings.DailyReminder = value
 	}
 
-	p.storeGitHubUserInfo(userInfo)
+	err := p.storeGitHubUserInfo(userInfo)
+	if err != nil {
+		mlog.Error(err.Error())
+	}
 
 	p.postCommandResponse(args, "Settings updated.")
 	return &model.CommandResponse{}, nil
