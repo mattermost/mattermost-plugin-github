@@ -20,6 +20,9 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
+
+	// the OAuth token expiry in seconds
+	TokenTTL = 10 * 60
 )
 
 type OAuthState struct {
@@ -102,8 +105,8 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	privateAllowed := false
-	pVal := r.URL.Query().Get("private")
-	if pVal == "ok" {
+	pValBool, err := strconv.ParseBool(r.URL.Query().Get("private"))
+	if err == nil && pValBool {
 		privateAllowed = true
 	}
 
@@ -121,9 +124,8 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appErr := p.API.KVSet(state.Token, stateBytes)
+	appErr := p.API.KVSetWithExpiry(state.Token, stateBytes, TokenTTL)
 	if appErr != nil {
-		fmt.Println(appErr.Error())
 		http.Error(w, "error setting stored state", http.StatusBadRequest)
 		return
 	}
@@ -163,7 +165,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 
 	var state OAuthState
 	if err := json.Unmarshal(storedState, &state); err != nil {
-		http.Error(w, "json unmarshal failed", http.StatusInternalServerError)
+		http.Error(w, "json unmarshal failed", http.StatusBadRequest)
 		return
 	}
 

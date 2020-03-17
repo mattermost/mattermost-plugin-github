@@ -121,7 +121,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 		qparams := ""
 		if len(parameters) == 1 && parameters[0] == "private" {
-			qparams = "?private=ok"
+			qparams = "?private=true"
 		}
 
 		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *config.ServiceSettings.SiteURL, qparams))
