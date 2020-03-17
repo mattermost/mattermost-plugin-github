@@ -22,7 +22,7 @@ const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
 )
 
-type OauthState struct {
+type OAuthState struct {
 	UserID         string `json:"user_id"`
 	Token          string `json:"token"`
 	PrivateAllowed bool   `json:"private_allowed"`
@@ -109,7 +109,7 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 
 	conf := p.getOAuthConfig(privateAllowed)
 
-	state := OauthState{
+	state := OAuthState{
 		UserID:         userID,
 		Token:          model.NewId()[:15],
 		PrivateAllowed: privateAllowed,
@@ -161,7 +161,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	var state OauthState
+	var state OAuthState
 	if err := json.Unmarshal(storedState, &state); err != nil {
 		http.Error(w, "json unmarshal failed", http.StatusInternalServerError)
 		return
