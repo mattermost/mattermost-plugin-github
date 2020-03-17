@@ -146,7 +146,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	return post, ""
 }
 
-func (p *Plugin) getOAuthConfig() *oauth2.Config {
+func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	config := p.getConfiguration()
 
 	authURL, _ := url.Parse("https://github.com/")
@@ -160,8 +160,8 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
 	repo := "public_repo"
-	if config.EnablePrivateRepo {
-		// means that asks scope for privaterepositories
+	if config.EnablePrivateRepo && privateAllowed {
+		// The github bot will ask for permissions to read private repositories
 		repo = "repo"
 	}
 

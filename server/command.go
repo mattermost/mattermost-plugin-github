@@ -12,7 +12,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
-const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to your GitHub account
+const COMMAND_HELP = `* |/github connect [private]| - Connect your Mattermost account to your GitHub account. 
+  * |private| is optional. If used, the github bot will ask for read access to your private repositories. If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe list| - Will list the current channel subscriptions
@@ -118,7 +119,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			return &model.CommandResponse{}, nil
 		}
 
-		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect)", *config.ServiceSettings.SiteURL))
+		qparams := ""
+		if len(parameters) == 1 && parameters[0] == "private" {
+			qparams = "?private=ok"
+		}
+
+		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *config.ServiceSettings.SiteURL, qparams))
 		return &model.CommandResponse{}, nil
 	}
 
