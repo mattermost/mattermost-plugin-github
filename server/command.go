@@ -50,7 +50,7 @@ var validFeatures = map[string]bool{
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
 	valid := true
-	var invalidFeatures []string
+	invalidFeatures := []string{}
 	hasLabel := false
 	for _, f := range features {
 		if _, ok := validFeatures[f]; ok {
@@ -159,7 +159,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
 
-	_, owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
+	owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error(), nil
