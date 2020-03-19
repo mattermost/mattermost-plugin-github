@@ -43,6 +43,8 @@ type Plugin struct {
 
 	BotUserID string
 
+	CommandHandlers map[string]CommandHandleFunc
+
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
 
@@ -53,9 +55,22 @@ type Plugin struct {
 
 // NewPlugin returns an instance of a Plugin.
 func NewPlugin() *Plugin {
-	return &Plugin{
+	p := &Plugin{
 		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
 	}
+
+	p.CommandHandlers = map[string]CommandHandleFunc{
+		"subscribe":   p.handleSubscribe,
+		"unsubscribe": p.handleUnSubscribe,
+		"disconnect":  p.handleDisconnect,
+		"todo":        p.handleTodo,
+		"me":          p.handleMe,
+		"help":        p.handleHelp,
+		"":            p.handleEmpty,
+		"settings":    p.handleSettings,
+	}
+
+	return p
 }
 
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
