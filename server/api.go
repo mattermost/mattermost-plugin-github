@@ -105,8 +105,8 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	privateAllowed := false
-	pValBool, err := strconv.ParseBool(r.URL.Query().Get("private"))
-	if err == nil && pValBool {
+	pValBool, _ := strconv.ParseBool(r.URL.Query().Get("private"))
+	if pValBool {
 		privateAllowed = true
 	}
 
