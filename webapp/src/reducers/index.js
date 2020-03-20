@@ -159,12 +159,34 @@ function rhsState(state = null, action) {
     }
 }
 
+const createIssueModalVisible = (state = false, action) => {
+    switch (action.type) {
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
+        return true;
+    case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
+        return false;
+    default:
+        return state;
+    }
+};
+
 const attachCommentToIssueModalVisible = (state = false, action) => {
     switch (action.type) {
     case ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL:
         return true;
     case ActionTypes.CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL:
         return false;
+    default:
+        return state;
+    }
+};
+
+const createIssueModalForPostId = (state = '', action) => {
+    switch (action.type) {
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
+        return action.data.postId;
+    case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
+        return '';
     default:
         return state;
     }
@@ -198,6 +220,8 @@ export default combineReducers({
     githubUsers,
     rhsPluginAction,
     rhsState,
+    createIssueModalVisible,
+    createIssueModalForPostId,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
 });
