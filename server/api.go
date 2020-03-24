@@ -264,9 +264,10 @@ type GitHubUserResponse struct {
 }
 
 type IssueRequest struct {
-	Title string `json:"title"`
-	Body  string `json:"body"`
-	Repo  string `json:"repo"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	Repo   string `json:"repo"`
+	PostId string `json:"post_id"`
 }
 
 func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request) {
@@ -993,6 +994,36 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 
 	if resp.Response.StatusCode == http.StatusGone {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+		return
+	}
+
+	api := p.API
+	post, appErr := api.GetPost(issue.PostId)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId, StatusCode: http.StatusInternalServerError})
+		return
+	}
+	if post == nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId + ": not found", StatusCode: http.StatusNotFound})
+		return
+	}
+
+	rootId := issue.PostId
+	if post.RootId != "" {
+		rootId = post.RootId
+	}
+
+	reply := &model.Post{
+		Message:   fmt.Sprintf("Created GitHub issue [#%v](%v)", *result.Number, *result.HTMLURL),
+		ChannelId: post.ChannelId,
+		RootId:    rootId,
+		ParentId:  rootId,
+		UserId:    userID,
+	}
+
+	_, appErr = api.CreatePost(reply)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + issue.PostId, StatusCode: http.StatusInternalServerError})
 		return
 	}
 

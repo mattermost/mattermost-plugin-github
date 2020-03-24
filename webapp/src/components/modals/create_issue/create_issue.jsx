@@ -44,6 +44,7 @@ export default class CreateIssueModal extends PureComponent {
             title: this.state.issueTitle,
             body: this.props.post.message,
             repo: this.state.repoValue.name,
+            post_id: this.props.post.id,
         };
 
         this.setState({submitting: true});
