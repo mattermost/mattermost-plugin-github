@@ -4,7 +4,6 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import {id as pluginId} from '../../../manifest';
 import GitHubIcon from '../../icon';
 
 export default class CreateIssuePostMenuAction extends PureComponent {
