@@ -14,6 +14,8 @@ const initialState = {
     error: null,
     repoValue: '',
     issueTitle: '',
+    showErrors: false,
+    issueTitleValid: true,
 };
 
 export default class CreateIssueModal extends PureComponent {
@@ -36,7 +38,10 @@ export default class CreateIssueModal extends PureComponent {
             e.preventDefault();
         }
 
-        if (!this.state.issueTitle) {
+        if (!this.state.issueTitle || !this.state.repoValue) {
+            const isValid = Boolean(this.state.issueTitle);
+            this.setState({issueTitleValid: isValid});
+            this.setState({showErrors: true});
             return;
         }
 
@@ -82,6 +87,16 @@ export default class CreateIssueModal extends PureComponent {
         const {error, submitting} = this.state;
         const style = getStyle(theme);
 
+        const requiredMsg = 'This field is required.';
+        let issueTitleValidationError = null;
+        if (this.state.showErrors && !this.state.issueTitleValid) {
+            issueTitleValidationError = (
+                <p className='help-text error-text'>
+                    <span>{requiredMsg}</span>
+                </p>
+            );
+        }
+
         if (!visible) {
             return null;
         }
@@ -103,6 +118,7 @@ export default class CreateIssueModal extends PureComponent {
                     required={true}
                     theme={theme}
                     value={this.state.repoValue}
+                    showErrors={this.state.showErrors}
                 />
                 <Input
                     id={'title'}
@@ -114,6 +130,7 @@ export default class CreateIssueModal extends PureComponent {
                     value={this.state.issueTitle}
                     onChange={this.handleIssueTitleChange}
                 />
+                {issueTitleValidationError}
                 <Input
                     label='Description for the GitHub Issue'
                     type='textarea'

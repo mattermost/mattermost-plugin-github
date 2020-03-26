@@ -19,19 +19,22 @@ export default class GithubRepoSelector extends PureComponent {
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         value: PropTypes.object,
+        showErrors: PropTypes.bool,
     };
 
     constructor(props) {
         super(props);
 
         this.state = {
-            invalid: false,
+            invalid: true,
             error: null,
         };
     }
 
     componentDidUpdate(prevProps, prevState) {
-        if (prevState.invalid && this.props.value !== prevProps.value) {
+        // check prevProps against current props value to ensure validationError
+        // doesn't show on initial component rendering
+        if (prevState.invalid && this.props.value && (this.props.value.full_name !== prevProps.value.full_name)) {
             this.setState({invalid: false}); //eslint-disable-line react/no-did-update-set-state
         }
     }
@@ -91,7 +94,7 @@ export default class GithubRepoSelector extends PureComponent {
 
         const requiredMsg = 'This field is required.';
         let validationError = null;
-        if (this.props.required && this.state.invalid) {
+        if (this.props.showErrors && this.props.required && this.state.invalid) {
             validationError = (
                 <p className='help-text error-text'>
                     <span>{requiredMsg}</span>
