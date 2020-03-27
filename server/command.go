@@ -196,7 +196,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				if !ok {
 					msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
 					if len(ifs) == 0 {
-						msg = fmt.Sprintf("Feature list must have \"pulls\" or \"issues\" when using a label.")
+						msg = "Feature list must have \"pulls\" or \"issues\" when using a label."
 					}
 					p.postCommandResponse(args, msg)
 					return &model.CommandResponse{}, nil
