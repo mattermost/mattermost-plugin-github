@@ -15,6 +15,8 @@ Once connected, you'll have access to the following features:
 
 * __Daily reminders__ - the first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention
 * __Notifications__ - get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub
+* __Post actions__ - create a GitHub issue from a post or attach a post message to an issue
+    * hover over a post to reveal the post actions menu and click the __More Actions (...)__ option
 * __Sidebar buttons__ - stay up-to-date with how many reviews, unread messages, assignments and open pull requests you have with buttons in the Mattermost sidebar
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
     * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation and more in a GitHub repository.
