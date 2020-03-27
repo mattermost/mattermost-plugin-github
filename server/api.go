@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -19,12 +20,29 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
+
+	// the OAuth token expiry in seconds
+	TokenTTL = 10 * 60
 )
+
+type OAuthState struct {
+	UserID         string `json:"user_id"`
+	Token          string `json:"token"`
+	PrivateAllowed bool   `json:"private_allowed"`
+}
 
 type APIErrorResponse struct {
 	ID         string `json:"id"`
 	Message    string `json:"message"`
 	StatusCode int    `json:"status_code"`
+}
+
+type PRDetails struct {
+	URL                string                      `json:"url"`
+	Number             int                         `json:"number"`
+	Status             string                      `json:"status"`
+	RequestedReviewers []*string                   `json:"requestedReviewers"`
+	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
 func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
@@ -58,6 +76,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		p.getReviews(w, r)
 	case "/api/v1/yourprs":
 		p.getYourPrs(w, r)
+	case "/api/v1/prsdetails":
+		p.getPrsDetails(w, r)
 	case "/api/v1/searchissues":
 		p.searchIssues(w, r)
 	case "/api/v1/yourassignments":
@@ -84,13 +104,33 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conf := p.getOAuthConfig()
+	privateAllowed := false
+	pValBool, _ := strconv.ParseBool(r.URL.Query().Get("private"))
+	if pValBool {
+		privateAllowed = true
+	}
 
-	state := fmt.Sprintf("%v_%v", model.NewId()[0:15], userID)
+	conf := p.getOAuthConfig(privateAllowed)
 
-	p.API.KVSet(state, []byte(state))
+	state := OAuthState{
+		UserID:         userID,
+		Token:          model.NewId()[:15],
+		PrivateAllowed: privateAllowed,
+	}
 
-	url := conf.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	stateBytes, err := json.Marshal(state)
+	if err != nil {
+		http.Error(w, "json marshal failed", http.StatusInternalServerError)
+		return
+	}
+
+	appErr := p.API.KVSetWithExpiry(state.Token, stateBytes, TokenTTL)
+	if appErr != nil {
+		http.Error(w, "error setting stored state", http.StatusBadRequest)
+		return
+	}
+
+	url := conf.AuthCodeURL(state.Token, oauth2.AccessTypeOffline)
 
 	http.Redirect(w, r, url, http.StatusFound)
 }
@@ -102,36 +142,45 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	config := p.getConfiguration()
-
-	ctx := context.Background()
-	conf := p.getOAuthConfig()
-
 	code := r.URL.Query().Get("code")
 	if len(code) == 0 {
 		http.Error(w, "missing authorization code", http.StatusBadRequest)
 		return
 	}
 
-	state := r.URL.Query().Get("state")
+	stateToken := r.URL.Query().Get("state")
 
-	if storedState, err := p.API.KVGet(state); err != nil {
-		fmt.Println(err.Error())
+	storedState, appErr := p.API.KVGet(stateToken)
+	if appErr != nil {
+		fmt.Println(appErr.Error())
 		http.Error(w, "missing stored state", http.StatusBadRequest)
 		return
-	} else if string(storedState) != state {
-		http.Error(w, "invalid state", http.StatusBadRequest)
+	}
+	appErr = p.API.KVDelete(stateToken)
+	if appErr != nil {
+		fmt.Println(appErr.Error())
+		http.Error(w, "error deleting stored state", http.StatusBadRequest)
 		return
 	}
 
-	userID := strings.Split(state, "_")[1]
+	var state OAuthState
+	if err := json.Unmarshal(storedState, &state); err != nil {
+		http.Error(w, "json unmarshal failed", http.StatusBadRequest)
+		return
+	}
 
-	p.API.KVDelete(state)
+	if state.Token != stateToken {
+		http.Error(w, "invalid state token", http.StatusBadRequest)
+		return
+	}
 
-	if userID != authedUserID {
+	if state.UserID != authedUserID {
 		http.Error(w, "Not authorized, incorrect user", http.StatusUnauthorized)
 		return
 	}
+
+	ctx := context.Background()
+	conf := p.getOAuthConfig(state.PrivateAllowed)
 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
@@ -149,7 +198,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	}
 
 	userInfo := &GitHubUserInfo{
-		UserID:         userID,
+		UserID:         state.UserID,
 		Token:          tok,
 		GitHubUsername: gitUser.GetLogin(),
 		LastToDoPostAt: model.GetMillis(),
@@ -158,7 +207,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 			DailyReminder:  true,
 			Notifications:  true,
 		},
-		AllowedPrivateRepos: config.EnablePrivateRepo,
+		AllowedPrivateRepos: state.PrivateAllowed,
 	}
 
 	if err := p.storeGitHubUserInfo(userInfo); err != nil {
@@ -167,7 +216,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), userID); err != nil {
+	if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), state.UserID); err != nil {
 		fmt.Println(err.Error())
 	}
 
@@ -190,7 +239,9 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		"Click on them!\n\n"+
 		"##### Slash Commands\n"+
 		strings.Replace(COMMAND_HELP, "|", "`", -1), gitUser.GetLogin(), gitUser.GetHTMLURL())
-	p.CreateBotDMPost(userID, message, "custom_git_welcome")
+	p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
+
+	config := p.getConfiguration()
 
 	p.API.PublishWebSocketEvent(
 		WS_EVENT_CONNECT,
@@ -201,7 +252,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 			"enterprise_base_url": config.EnterpriseBaseURL,
 			"organization":        config.GitHubOrg,
 		},
-		&model.WebsocketBroadcast{UserId: userID},
+		&model.WebsocketBroadcast{UserId: state.UserID},
 	)
 
 	html := `
@@ -341,7 +392,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if !hasBeenNotified {
-				p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect`.", "")
+				p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect private`.", "")
 				if err := p.API.KVSet(privateRepoStoreKey, []byte("1")); err != nil {
 					mlog.Error("Unable to set private repo key value, err=" + err.Error())
 				}
@@ -493,6 +544,116 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 
 	resp, _ := json.Marshal(result.Issues)
 	w.Write(resp)
+}
+
+func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
+		return
+	}
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+
+	info, err := p.getGitHubUserInfo(userID)
+
+	if err != nil {
+		writeAPIError(w, err)
+		return
+	}
+
+	githubClient = p.githubConnect(*info.Token)
+
+	var prList []*PRDetails
+	json.NewDecoder(r.Body).Decode(&prList)
+
+	prDetails := make([]*PRDetails, len(prList))
+	var wg sync.WaitGroup
+
+	for i, pr := range prList {
+		i := i
+		pr := pr
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			prDetail := fetchPRDetails(ctx, githubClient, pr.URL, pr.Number)
+			prDetails[i] = prDetail
+		}()
+	}
+
+	wg.Wait()
+
+	resp, _ := json.Marshal(prDetails)
+	w.Write(resp)
+}
+
+func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
+	status := ""
+	// Initialize to a non-nil slice to simplify JSON handling semantics
+	requestedReviewers := []*string{}
+	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
+
+	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
+
+	var wg sync.WaitGroup
+
+	// Fetch reviews
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fetchedReviews, err := fetchReviews(ctx, client, repoOwner, repoName, prNumber)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		reviewsList = fetchedReviews
+	}()
+
+	// Fetch reviewers and status
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		prInfo, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, prNumber)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		for _, v := range prInfo.RequestedReviewers {
+			requestedReviewers = append(requestedReviewers, v.Login)
+		}
+		statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
+		if err != nil {
+			mlog.Error(err.Error())
+			return
+		}
+		status = *statuses.State
+	}()
+
+	wg.Wait()
+	return &PRDetails{
+		URL:                prURL,
+		Number:             prNumber,
+		Status:             status,
+		RequestedReviewers: requestedReviewers,
+		Reviews:            reviewsList,
+	}
+}
+
+func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, repoName string, number int) ([]*github.PullRequestReview, error) {
+	reviewsList, _, err := client.PullRequests.ListReviews(ctx, repoOwner, repoName, number, nil)
+
+	if err != nil {
+		return []*github.PullRequestReview{}, err
+	}
+
+	return reviewsList, nil
+}
+
+func getRepoOwnerAndNameFromURL(url string) (string, string) {
+	splitted := strings.Split(url, "/")
+	return splitted[len(splitted)-2], splitted[len(splitted)-1]
 }
 
 func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {

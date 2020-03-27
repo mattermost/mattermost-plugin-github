@@ -138,7 +138,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 
 	config := p.getConfiguration()
 	ctx := context.Background()
-	_, owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
 
 	if owner == "" {
 		return false

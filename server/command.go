@@ -12,7 +12,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
-const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to your GitHub account
+const COMMAND_HELP = `* |/github connect [private]| - Connect your Mattermost account to your GitHub account. 
+  * |private| is optional. If used, the github bot will ask for read access to your private repositories. If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
 * |/github subscribe list| - Will list the current channel subscriptions
@@ -28,7 +29,7 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
 	* label:"<labelname>" - must include "pulls" or "issues" in feature list when using a label
 	Defaults to "pulls,issues,creates,deletes"
   * |flags| currently supported:
-    * --exclude-org-member - events triggered by organization members will not be delivered (the Github organization config
+    * --exclude-org-member - events triggered by organization members will not be delivered (the GitHub organization config
 		should be set, otherwise this flag has not effect)
 * |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
 * |/github me| - Display the connected GitHub account
@@ -36,11 +37,50 @@ const COMMAND_HELP = `* |/github connect| - Connect your Mattermost account to y
   * |setting| can be "notifications" or "reminders"
   * |value| can be "on" or "off"`
 
+var validFeatures = map[string]bool{
+	"issues":         true,
+	"pulls":          true,
+	"pushes":         true,
+	"creates":        true,
+	"deletes":        true,
+	"issue_comments": true,
+	"pull_reviews":   true,
+}
+
+// validateFeatures returns false when 1 or more given features
+// are invalid along with a list of the invalid features.
+func validateFeatures(features []string) (bool, []string) {
+	valid := true
+	invalidFeatures := []string{}
+	hasLabel := false
+	for _, f := range features {
+		if _, ok := validFeatures[f]; ok {
+			continue
+		}
+		if strings.HasPrefix(f, "label") {
+			hasLabel = true
+			continue
+		}
+		invalidFeatures = append(invalidFeatures, f)
+		valid = false
+	}
+	if valid && hasLabel {
+		// must have "pulls" or "issues" in features when using a label
+		for _, f := range features {
+			if f == "pulls" || f == "issues" {
+				return valid, invalidFeatures
+			}
+		}
+		valid = false
+	}
+	return valid, invalidFeatures
+}
+
 func getCommand() *model.Command {
 	return &model.Command{
 		Trigger:          "github",
-		DisplayName:      "Github",
-		Description:      "Integration with Github.",
+		DisplayName:      "GitHub",
+		Description:      "Integration with GitHub.",
 		AutoComplete:     true,
 		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
 		AutoCompleteHint: "[command]",
@@ -79,7 +119,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			return &model.CommandResponse{}, nil
 		}
 
-		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect)", *config.ServiceSettings.SiteURL))
+		qparams := ""
+		if len(parameters) == 1 && parameters[0] == "private" {
+			qparams = "?private=true"
+		}
+
+		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *config.ServiceSettings.SiteURL, qparams))
 		return &model.CommandResponse{}, nil
 	}
 
@@ -121,7 +166,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				txt = "### Subscriptions in this channel\n"
 			}
 			for _, sub := range subs {
-				txt += fmt.Sprintf("* `%s` - %s\n", strings.Trim(sub.Repository, "/"), sub.Features)
+				subFlags := sub.Flags.String()
+				txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
+				if subFlags != "" {
+					txt += fmt.Sprintf(" %s", subFlags)
+				}
+				txt += "\n"
 			}
 			p.postCommandResponse(args, txt)
 			return &model.CommandResponse{}, nil
@@ -141,10 +191,20 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 				return &model.CommandResponse{}, nil
 			} else if len(optionList) == 1 {
 				features = optionList[0]
+				fs := strings.Split(features, ",")
+				ok, ifs := validateFeatures(fs)
+				if !ok {
+					msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
+					if len(ifs) == 0 {
+						msg = fmt.Sprintf("Feature list must have \"pulls\" or \"issues\" when using a label.")
+					}
+					p.postCommandResponse(args, msg)
+					return &model.CommandResponse{}, nil
+				}
 			}
 		}
 
-		_, owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
+		owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
 		if repo == "" {
 			if err := p.SubscribeOrg(context.Background(), githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 				p.postCommandResponse(args, err.Error())

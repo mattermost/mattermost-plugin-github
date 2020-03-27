@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -26,6 +27,17 @@ func (s *SubscriptionFlags) AddFlag(flag string) {
 	case EXCLUDE_ORG_MEMBER_FLAG:
 		s.ExcludeOrgMembers = true
 	}
+}
+
+func (s SubscriptionFlags) String() string {
+	flags := []string{}
+
+	if s.ExcludeOrgMembers {
+		flag := "--" + EXCLUDE_ORG_MEMBER_FLAG
+		flags = append(flags, flag)
+	}
+
+	return strings.Join(flags, ",")
 }
 
 type Subscription struct {
@@ -162,6 +174,10 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 		}
 	}
 
+	sort.Slice(filteredSubs, func(i, j int) bool {
+		return filteredSubs[i].Repository < filteredSubs[j].Repository
+	})
+
 	return filteredSubs, nil
 }
 
@@ -233,13 +249,13 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 		return nil
 	}
 
-	// Add subcriptions for the specific repo
+	// Add subscriptions for the specific repo
 	subsForRepo := []*Subscription{}
 	if subs.Repositories[name] != nil {
 		subsForRepo = append(subsForRepo, subs.Repositories[name]...)
 	}
 
-	// Add subcriptions for the organization
+	// Add subscriptions for the organization
 	orgKey := fullNameFromOwnerAndRepo(org, "")
 	if subs.Repositories[orgKey] != nil {
 		subsForRepo = append(subsForRepo, subs.Repositories[orgKey]...)
@@ -264,18 +280,18 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	config := p.getConfiguration()
 
-	repo, _, _ = parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
-
-	if repo == "" {
+	owner, repo := parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
+	if owner == "" && repo == "" {
 		return fmt.Errorf("Invalid repository")
 	}
+	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()
 	if err != nil {
 		return err
 	}
 
-	repoSubs := subs.Repositories[repo]
+	repoSubs := subs.Repositories[repoWithOwner]
 	if repoSubs == nil {
 		return nil
 	}
@@ -290,7 +306,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	}
 
 	if removed {
-		subs.Repositories[repo] = repoSubs
+		subs.Repositories[repoWithOwner] = repoSubs
 		if err := p.StoreSubscriptions(subs); err != nil {
 			return err
 		}

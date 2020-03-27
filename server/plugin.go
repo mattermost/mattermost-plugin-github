@@ -146,7 +146,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	return post, ""
 }
 
-func (p *Plugin) getOAuthConfig() *oauth2.Config {
+func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	config := p.getConfiguration()
 
 	authURL, _ := url.Parse("https://github.com/")
@@ -159,16 +159,16 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
-	repo := "public_repo"
-	if config.EnablePrivateRepo {
-		// means that asks scope for privaterepositories
-		repo = "repo"
+	repo := github.ScopePublicRepo
+	if config.EnablePrivateRepo && privateAllowed {
+		// means that asks scope for private repositories
+		repo = github.ScopeRepo
 	}
 
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       []string{repo, "notifications"},
+		Scopes:       []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authURL.String(),
 			TokenURL: tokenURL.String(),
@@ -351,13 +351,16 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
-		switch n.GetSubject().GetType() {
+		notificationSubject := n.GetSubject()
+		notificationType := notificationSubject.GetType()
+		switch notificationType {
 		case "RepositoryVulnerabilityAlert":
 			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL()))
 			notificationContent += fmt.Sprintf("* %v\n", message)
 		default:
-			url := fixGithubNotificationSubjectURL(n.GetSubject().GetURL())
-			notificationContent += fmt.Sprintf("* %v\n", url)
+			notificationTitle := notificationSubject.GetTitle()
+			notificationURL := fixGithubNotificationSubjectURL(notificationSubject.GetURL())
+			notificationContent += getToDoDisplayText(notificationTitle, notificationURL, notificationType)
 		}
 
 		notificationCount++
@@ -373,36 +376,36 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	text += "##### Review Requests\n"
 
 	if issueResults.GetTotal() == 0 {
-		text += "You have don't have any pull requests awaiting your review.\n"
+		text += "You don't have any pull requests awaiting your review.\n"
 	} else {
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += fmt.Sprintf("* [%v](%v)\n", pr.GetTitle(), pr.GetHTMLURL())
+			text += getToDoDisplayText(pr.GetTitle(), pr.GetHTMLURL(), "")
 		}
 	}
 
 	text += "##### Your Open Pull Requests\n"
 
 	if yourPrs.GetTotal() == 0 {
-		text += "You have don't have any open pull requests.\n"
+		text += "You don't have any open pull requests.\n"
 	} else {
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
-			text += fmt.Sprintf("* [%v](%v)\n", pr.GetTitle(), pr.GetHTMLURL())
+			text += getToDoDisplayText(pr.GetTitle(), pr.GetHTMLURL(), "")
 		}
 	}
 
 	text += "##### Your Assignments\n"
 
 	if yourAssignments.GetTotal() == 0 {
-		text += "You have don't have any assignments.\n"
+		text += "You don't have any assignments.\n"
 	} else {
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
-			text += fmt.Sprintf("* [%v](%v)\n", assign.GetTitle(), assign.GetHTMLURL())
+			text += getToDoDisplayText(assign.GetTitle(), assign.GetHTMLURL(), "")
 		}
 	}
 
