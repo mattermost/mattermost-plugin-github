@@ -7,6 +7,7 @@ import {Modal} from 'react-bootstrap';
 
 import FormButton from 'components/form_button';
 import GithubRepoSelector from 'components/github_repo_selector';
+import Validator from 'components/validator';
 import Input from 'components/input';
 
 const initialState = {
@@ -30,6 +31,7 @@ export default class CreateIssueModal extends PureComponent {
     constructor(props) {
         super(props);
         this.state = initialState;
+        this.validator = new Validator();
     }
 
     // handle issue creation after form is populated
@@ -37,6 +39,8 @@ export default class CreateIssueModal extends PureComponent {
         if (e && e.preventDefault) {
             e.preventDefault();
         }
+
+        this.validator.validate();
 
         if (!this.state.issueTitle || !this.state.repoValue) {
             const isValid = Boolean(this.state.issueTitle);
@@ -48,7 +52,7 @@ export default class CreateIssueModal extends PureComponent {
         const issue = {
             title: this.state.issueTitle,
             body: this.props.post.message,
-            repo: this.state.repoValue.name,
+            repo: this.state.repoValue,
             post_id: this.props.post.id,
         };
 
@@ -70,9 +74,9 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoValueChange = (newValue) => {
+    handleRepoValueChange = (name) => {
         this.setState({
-            repoValue: newValue,
+            repoValue: name,
         });
     };
 
@@ -113,12 +117,12 @@ export default class CreateIssueModal extends PureComponent {
         const component = (
             <div>
                 <GithubRepoSelector
-                    id={'repo'}
                     onChange={this.handleRepoValueChange}
+                    value={this.state.repoValue}
                     required={true}
                     theme={theme}
-                    value={this.state.repoValue}
-                    showErrors={this.state.showErrors}
+                    addValidate={this.validator.addComponent}
+                    removeValidate={this.validator.removeComponent}
                 />
                 <Input
                     id={'title'}
