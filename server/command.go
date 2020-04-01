@@ -97,9 +97,7 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 }
 
 func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
-	var githubClient *github.Client
-	githubClient = p.githubConnect(*userInfo.Token)
-	return githubClient
+	return p.githubConnect(*userInfo.Token)
 }
 
 func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
@@ -150,7 +148,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 			if !ok {
 				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
 				if len(ifs) == 0 {
-					msg = fmt.Sprintf("Feature list must have \"pulls\" or \"issues\" when using a label.")
+					msg = "Feature list must have \"pulls\" or \"issues\" when using a label."
 				}
 				return msg
 			}
