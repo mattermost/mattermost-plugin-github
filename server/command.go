@@ -102,18 +102,18 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 	return githubClient
 }
 
-func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	config := p.getConfiguration()
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
 	txt := ""
 	if len(parameters) == 0 {
-		return "Please specify a repository or 'list' command.", nil
+		return "Please specify a repository or 'list' command."
 	} else if len(parameters) == 1 && parameters[0] == "list" {
 		subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 		if err != nil {
-			return err.Error(), nil
+			return err.Error()
 		}
 
 		if len(subs) == 0 {
@@ -129,7 +129,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 			}
 			txt += "\n"
 		}
-		return txt, nil
+		return txt
 	} else if len(parameters) > 1 {
 		var optionList []string
 
@@ -142,7 +142,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 		}
 
 		if len(optionList) > 1 {
-			return "Just one list of features is allowed", nil
+			return "Just one list of features is allowed"
 		} else if len(optionList) == 1 {
 			features = optionList[0]
 			fs := strings.Split(features, ",")
@@ -152,7 +152,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 				if len(ifs) == 0 {
 					msg = fmt.Sprintf("Feature list must have \"pulls\" or \"issues\" when using a label.")
 				}
-				return msg, nil
+				return msg
 			}
 		}
 	}
@@ -163,74 +163,74 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 	owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
-			return err.Error(), nil
+			return err.Error()
 		}
 
-		return fmt.Sprintf("Successfully subscribed to organization %s.", owner), nil
+		return fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 	}
 
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
-		return err.Error(), nil
+		return err.Error()
 	}
 
-	return fmt.Sprintf("Successfully subscribed to %s.", repo), nil
+	return fmt.Sprintf("Successfully subscribed to %s.", repo)
 }
-func (p *Plugin) handleUnSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleUnSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
-		return "Please specify a repository.", nil
+		return "Please specify a repository."
 	}
 
 	repo := parameters[0]
 
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
 		mlog.Error(err.Error())
-		return "Encountered an error trying to unsubscribe. Please try again.", nil
+		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
-	return fmt.Sprintf("Succesfully unsubscribed from %s.", repo), nil
+	return fmt.Sprintf("Succesfully unsubscribed from %s.", repo)
 }
-func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	p.disconnectGitHubAccount(args.UserId)
-	return "Disconnected your GitHub account.", nil
+	return "Disconnected your GitHub account."
 }
-func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
 
 	text, err := p.GetToDo(ctx, userInfo.GitHubUsername, githubClient)
 	if err != nil {
 		mlog.Error(err.Error())
-		return "Encountered an error getting your to do items.", nil
+		return "Encountered an error getting your to do items."
 	}
-	return text, nil
+	return text
 }
-func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
-		return "Encountered an error getting your GitHub profile.", nil
+		return "Encountered an error getting your GitHub profile."
 	}
 
 	text := fmt.Sprintf("You are connected to GitHub as:\n# [![image](%s =40x40)](%s) [%s](%s)", gitUser.GetAvatarURL(), gitUser.GetHTMLURL(), gitUser.GetLogin(), gitUser.GetHTMLURL())
-	return text, nil
+	return text
 }
-func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
-	return text, nil
+	return text
 }
-func (p *Plugin) handleEmpty(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleEmpty(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
-	return text, nil
+	return text
 }
-func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) (string, *model.AppError) {
+func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) < 2 {
-		return "Please specify both a setting and value. Use `/github help` for more usage information.", nil
+		return "Please specify both a setting and value. Use `/github help` for more usage information."
 	}
 
 	setting := parameters[0]
 	if setting != SETTING_NOTIFICATIONS && setting != SETTING_REMINDERS {
-		return "Unknown setting.", nil
+		return "Unknown setting."
 	}
 
 	strValue := parameters[1]
@@ -238,7 +238,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	if strValue == SETTING_ON {
 		value = true
 	} else if strValue != SETTING_OFF {
-		return "Invalid value. Accepted values are: \"on\" or \"off\".", nil
+		return "Invalid value. Accepted values are: \"on\" or \"off\"."
 	}
 
 	if setting == SETTING_NOTIFICATIONS {
@@ -264,10 +264,10 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		mlog.Error(err.Error())
 	}
 
-	return "Settings updated.", nil
+	return "Settings updated."
 }
 
-type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) (string, *model.AppError)
+type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	split := strings.Fields(args.Command)
@@ -312,9 +312,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if f, ok := p.CommandHandlers[command]; ok {
-		message, err := f(c, args, parameters, info)
+		message := f(c, args, parameters, info)
 		p.postCommandResponse(args, message)
-		return &model.CommandResponse{}, err
+		return &model.CommandResponse{}, nil
 	}
 
 	p.postCommandResponse(args, fmt.Sprintf("Unknown action %v", action))
