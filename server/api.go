@@ -701,19 +701,14 @@ func getFailReason(code int, repo string, username string) string {
 	switch code {
 	case http.StatusInternalServerError:
 		cause = "Internal server error"
-		break
 	case http.StatusBadRequest:
 		cause = "Bad request"
-		break
 	case http.StatusNotFound:
 		cause = fmt.Sprintf("Sorry, either you don't have access to the repo %s with the user %s or it is no longer available", repo, username)
-		break
 	case http.StatusUnauthorized:
 		cause = fmt.Sprintf("Sorry, your user %s is unauthorized to do this action", username)
-		break
 	case http.StatusForbidden:
 		cause = fmt.Sprintf("Sorry, you don't have enough permissions to comment in the repo %s with the user %s", repo, username)
-		break
 	default:
 		cause = fmt.Sprintf("Unknown status code %d", code)
 	}
@@ -735,9 +730,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 	req := &CreateIssueCommentRequest{}
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
-		if err != nil {
-			mlog.Error("Error decoding JSON body", mlog.Err(err))
-		}
+		mlog.Error("Error decoding JSON body", mlog.Err(err))
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
