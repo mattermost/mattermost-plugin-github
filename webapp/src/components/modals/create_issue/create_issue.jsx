@@ -40,12 +40,11 @@ export default class CreateIssueModal extends PureComponent {
             e.preventDefault();
         }
 
-        this.validator.validate();
-
-        if (!this.state.issueTitle || !this.state.repoValue) {
-            const isValid = Boolean(this.state.issueTitle);
-            this.setState({issueTitleValid: isValid});
-            this.setState({showErrors: true});
+        if (!this.validator.validate() || !this.state.issueTitle) {
+            this.setState({
+                issueTitleValid: Boolean(this.state.issueTitle),
+                showErrors: true,
+            });
             return;
         }
 

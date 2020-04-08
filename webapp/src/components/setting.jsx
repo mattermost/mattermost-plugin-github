@@ -26,21 +26,22 @@ export default class Setting extends React.PureComponent {
 
         return (
             <div className='form-group less'>
-                {label &&
-                <label
-                    className='control-label margin-bottom x2'
-                    htmlFor={inputId}
-                >
-                    {label}
-                </label>
+                {label && (
+                    <label
+                        className='control-label margin-bottom x2'
+                        htmlFor={inputId}
+                    >
+                        {label}
+                    </label>)
                 }
-                {required && !hideRequiredStar &&
-                <span
-                    className='error-text'
-                    style={{marginLeft: '3px'}}
-                >
-                    {'*'}
-                </span>
+                {required && !hideRequiredStar && (
+                    <span
+                        className='error-text'
+                        style={{marginLeft: '3px'}}
+                    >
+                        {'*'}
+                    </span>
+                )
                 }
                 <div>
                     {children}
