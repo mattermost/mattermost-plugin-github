@@ -93,6 +93,15 @@ function yourPrs(state = [], action) {
     }
 }
 
+function yourRepos(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_REPOSITORIES:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function yourPrsDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
@@ -213,6 +222,7 @@ export default combineReducers({
     reviews,
     reviewsDetails,
     yourPrs,
+    yourRepos,
     yourPrsDetails,
     yourAssignments,
     mentions,
