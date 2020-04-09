@@ -41,6 +41,21 @@ type replacement struct {
 // getReplacements returns the permalink replacements that needs to be performed
 // on a message. The returned slice is sorted by the index in ascending order.
 func (p *Plugin) getReplacements(msg string) []replacement {
+	var x int
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+	_ = x
+
 	// find the permalinks from the msg using a regex
 	matches := p.githubPermalinkRegex.FindAllStringSubmatch(msg, -1)
 	indices := p.githubPermalinkRegex.FindAllStringIndex(msg, -1)
