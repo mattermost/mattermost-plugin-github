@@ -155,6 +155,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	_ = x
 	_ = x
 	_ = x
+	_ = x
 
 	code := r.URL.Query().Get("code")
 	if len(code) == 0 {
