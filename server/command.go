@@ -309,7 +309,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return &model.CommandResponse{}, nil
 	}
 
-	if f, ok := p.CommandHandlers[command]; ok {
+	if f, ok := p.CommandHandlers[action]; ok {
 		message := f(c, args, parameters, info)
 		p.postCommandResponse(args, message)
 		return &model.CommandResponse{}, nil
