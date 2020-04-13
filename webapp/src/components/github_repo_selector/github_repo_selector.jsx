@@ -13,7 +13,7 @@ const initialState = {
 
 export default class GithubRepoSelector extends PureComponent {
     static propTypes = {
-        yourRepos: PropTypes.any,
+        yourRepos: PropTypes.array.isRequired,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         value: PropTypes.string,
@@ -30,9 +30,7 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     componentDidMount() {
-        if (this.props.yourRepos) {
-            this.props.actions.getRepos();
-        }
+        this.props.actions.getRepos();
     }
 
     onChange = (name, newValue) => {
@@ -41,7 +39,7 @@ export default class GithubRepoSelector extends PureComponent {
 
     render() {
         const repoOptions = this.props.yourRepos.map((item) => ({value: item.name, label: item.full_name}));
-        console.log('IN RENDER - OPTIONS', repoOptions);
+
         return (
             <div className={'form-group margin-bottom x3'}>
                 <ReactSelectSetting
@@ -56,7 +54,7 @@ export default class GithubRepoSelector extends PureComponent {
                     theme={this.props.theme}
                     addValidate={this.props.addValidate}
                     removeValidate={this.props.removeValidate}
-                    value={repoOptions.find((option) => option.value === repoOptions.value)}
+                    value={repoOptions.find((option) => option.value === this.props.value)}
                 />
                 <div className={'help-text'}>
                     {'Returns GitHub repositories connected to the user account'} <br/>
