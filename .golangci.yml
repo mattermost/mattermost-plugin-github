@@ -1,0 +1,35 @@
+service:
+  golangci-lint-version: 1.23.0
+
+run:
+  timeout: 5m
+
+linters-settings:
+  gofmt:
+    simplify: true
+  govet:
+    check-shadowing: true
+    enable-all: true
+
+linters:
+  disable-all: true
+  enable:
+    - deadcode
+    - gofmt
+    - gosimple
+    - govet
+    - ineffassign
+    - structcheck
+    - unconvert
+    - unused
+    - varcheck
+    # TODO: enable this later
+    # - errcheck
+
+issues:
+  exclude-rules:
+    - linters:
+      # ignore unused warning for manifest
+      - varcheck
+      - deadcode
+      text: "manifest"

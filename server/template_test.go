@@ -334,7 +334,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Sender: &user,
 			Forced: bToP(false),
 			Commits: []github.PushEventCommit{
-				github.PushEventCommit{
+				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Leverage git-get-head"),
@@ -361,7 +361,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Sender: &user,
 			Forced: bToP(true),
 			Commits: []github.PushEventCommit{
-				github.PushEventCommit{
+				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Leverage git-get-head"),
@@ -389,7 +389,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Sender: &user,
 			Forced: bToP(false),
 			Commits: []github.PushEventCommit{
-				github.PushEventCommit{
+				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Leverage git-get-head"),
@@ -397,7 +397,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 						Name: sToP("panda"),
 					},
 				},
-				github.PushEventCommit{
+				{
 					ID:      sToP("a20867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a20867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Merge master"),
@@ -426,7 +426,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Sender: &user,
 			Forced: bToP(false),
 			Commits: []github.PushEventCommit{
-				github.PushEventCommit{
+				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Leverage git-get-head"),
@@ -434,7 +434,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 						Name: sToP("panda"),
 					},
 				},
-				github.PushEventCommit{
+				{
 					ID:      sToP("a20867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a20867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Merge master"),
@@ -442,7 +442,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 						Name: sToP("panda"),
 					},
 				},
-				github.PushEventCommit{
+				{
 					ID:      sToP("a30867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a30867b14bb761a232cd80139fbd4c0d33264240"),
 					Message: sToP("Fix build"),
