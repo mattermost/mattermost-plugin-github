@@ -3,6 +3,9 @@
 [![Build Status](https://img.shields.io/circleci/project/github/mattermost/mattermost-plugin-github/master.svg)](https://circleci.com/gh/mattermost/mattermost-plugin-github)
 [![Code Coverage](https://img.shields.io/codecov/c/github/mattermost/mattermost-plugin-github/master.svg)](https://codecov.io/gh/mattermost/mattermost-plugin-github)
 
+**Maintainer:** [@hanzei](https://github.com/hanzei)
+**Co-Maintainer:** [@larkox](https://github.com/larkox)
+
 A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ![GitHub plugin screenshot](https://user-images.githubusercontent.com/13119842/54380268-6adab180-4661-11e9-8470-a9c615c00041.png)
