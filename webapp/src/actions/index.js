@@ -86,6 +86,29 @@ export function getReviewsDetails(prList) {
     };
 }
 
+export function getRepos() {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getRepositories();
+        } catch (error) {
+            return {error: data};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_REPOSITORIES,
+            data,
+        });
+
+        return {data};
+    };
+}
+
 export function getYourPrs() {
     return async (dispatch, getState) => {
         let data;
