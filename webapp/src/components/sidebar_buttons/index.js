@@ -4,20 +4,22 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getReviews, getUnreads, getYourPrs, getYourAssignments, updateRhsState} from '../../actions';
+import {getReviews, getUnreads, getYourAssignments, getYourPrs, updateRhsState} from '../../actions';
+
+import {id as pluginId} from '../../manifest';
 
 import SidebarButtons from './sidebar_buttons.jsx';
 
 function mapStateToProps(state) {
     return {
-        connected: state['plugins-github'].connected,
-        clientId: state['plugins-github'].clientId,
-        reviews: state['plugins-github'].reviews,
-        yourPrs: state['plugins-github'].yourPrs,
-        yourAssignments: state['plugins-github'].yourAssignments,
-        unreads: state['plugins-github'].unreads,
-        enterpriseURL: state['plugins-github'].enterpriseURL,
-        showRHSPlugin: state['plugins-github'].rhsPluginAction,
+        connected: state[`plugins-${pluginId}`].connected,
+        clientId: state[`plugins-${pluginId}`].clientId,
+        reviews: state[`plugins-${pluginId}`].reviews,
+        yourPrs: state[`plugins-${pluginId}`].yourPrs,
+        yourAssignments: state[`plugins-${pluginId}`].yourAssignments,
+        unreads: state[`plugins-${pluginId}`].unreads,
+        enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
+        showRHSPlugin: state[`plugins-${pluginId}`].rhsPluginAction,
     };
 }
 

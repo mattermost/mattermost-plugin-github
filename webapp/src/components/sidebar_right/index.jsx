@@ -4,7 +4,8 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getYourPrsDetails, getReviewsDetails} from '../../actions';
+import {getReviewsDetails, getYourPrsDetails} from '../../actions';
+import {id as pluginId} from '../../manifest';
 
 import SidebarRight from './sidebar_right.jsx';
 
@@ -35,14 +36,14 @@ function mapPrsToDetails(prs, details) {
 
 function mapStateToProps(state) {
     return {
-        username: state['plugins-github'].username,
-        reviews: mapPrsToDetails(state['plugins-github'].reviews, state['plugins-github'].reviewsDetails),
-        yourPrs: mapPrsToDetails(state['plugins-github'].yourPrs, state['plugins-github'].yourPrsDetails),
-        yourAssignments: state['plugins-github'].yourAssignments,
-        unreads: state['plugins-github'].unreads,
-        enterpriseURL: state['plugins-github'].enterpriseURL,
-        org: state['plugins-github'].organization,
-        rhsState: state['plugins-github'].rhsState,
+        username: state[`plugins-${pluginId}`].username,
+        reviews: mapPrsToDetails(state[`plugins-${pluginId}`].reviews, state[`plugins-${pluginId}`].reviewsDetails),
+        yourPrs: mapPrsToDetails(state[`plugins-${pluginId}`].yourPrs, state[`plugins-${pluginId}`].yourPrsDetails),
+        yourAssignments: state[`plugins-${pluginId}`].yourAssignments,
+        unreads: state[`plugins-${pluginId}`].unreads,
+        enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
+        org: state[`plugins-${pluginId}`].organization,
+        rhsState: state[`plugins-${pluginId}`].rhsState,
     };
 }
 

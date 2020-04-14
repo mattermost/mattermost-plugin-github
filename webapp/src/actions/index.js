@@ -4,6 +4,8 @@
 import Client from '../client';
 import ActionTypes from '../action_types';
 
+import {id as pluginId} from '../manifest';
+
 export function getConnected(reminder = false) {
     return async (dispatch) => {
         let data;
@@ -209,7 +211,7 @@ export function getGitHubUser(userID) {
             return {};
         }
 
-        const user = getState()['plugins-github'].githubUsers[userID];
+        const user = getState()[`plugins-${pluginId}`].githubUsers[userID];
         if (user && user.last_try && Date.now() - user.last_try < GITHUB_USER_GET_TIMEOUT_MILLISECONDS) {
             return {};
         }
