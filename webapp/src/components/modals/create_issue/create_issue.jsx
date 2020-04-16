@@ -15,6 +15,7 @@ const initialState = {
     error: null,
     repoValue: '',
     issueTitle: '',
+    issueDescription: '',
     showErrors: false,
     issueTitleValid: true,
 };
@@ -34,6 +35,12 @@ export default class CreateIssueModal extends PureComponent {
         this.validator = new Validator();
     }
 
+    componentDidUpdate(prevProps) {
+        if (this.props.post && !prevProps.post) {
+            this.setState({issueDescription: this.props.post.message});
+        }
+    }
+
     // handle issue creation after form is populated
     handleCreate = (e) => {
         if (e && e.preventDefault) {
@@ -50,7 +57,7 @@ export default class CreateIssueModal extends PureComponent {
 
         const issue = {
             title: this.state.issueTitle,
-            body: this.props.post.message,
+            body: this.state.issueDescription,
             repo: this.state.repoValue,
             post_id: this.props.post.id,
         };
@@ -82,6 +89,12 @@ export default class CreateIssueModal extends PureComponent {
     handleIssueTitleChange = (newValue) => {
         this.setState({
             issueTitle: newValue,
+        });
+    };
+
+    handleIssueDescriptionChange = (newValue) => {
+        this.setState({
+            issueDescription: newValue,
         });
     };
 
@@ -137,8 +150,8 @@ export default class CreateIssueModal extends PureComponent {
                 <Input
                     label='Description for the GitHub Issue'
                     type='textarea'
-                    value={this.props.post.message}
-                    disabled={true}
+                    value={this.state.issueDescription}
+                    onChange={this.handleIssueDescriptionChange}
                 />
             </div>
         );
