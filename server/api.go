@@ -303,13 +303,6 @@ type GitHubUserResponse struct {
 	Username string `json:"username"`
 }
 
-type IssueRequest struct {
-	Title  string `json:"title"`
-	Body   string `json:"body"`
-	Repo   string `json:"repo"`
-	PostId string `json:"post_id"`
-}
-
 func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request) {
 	requestorID := r.Header.Get("Mattermost-User-ID")
 	if requestorID == "" {
@@ -970,6 +963,14 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
+
+	type IssueRequest struct {
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+		Repo   string `json:"repo"`
+		PostId string `json:"post_id"`
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be POST", r.Method), http.StatusMethodNotAllowed)
 		return
@@ -983,8 +984,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 
 	// get data for the issue from the request body and fill IssueRequest object
 	issue := &IssueRequest{}
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&issue); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&issue); err != nil {
 		mlog.Error("Error decoding JSON body", mlog.Err(err))
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
@@ -1005,7 +1005,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := context.Background()
-	gh_issue := &github.IssueRequest{
+	ghIssue := &github.IssueRequest{
 		Title: &issue.Title,
 		Body:  &issue.Body,
 	}
@@ -1020,9 +1020,9 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnect(*info.Token)
 
 	// call Create(ctx context.Context, owner string, repo string, issue *IssueRequest)
-	result, resp, api_err := githubClient.Issues.Create(ctx, info.GitHubUsername, issue.Repo, gh_issue)
-	if api_err != nil {
-		mlog.Error(api_err.Error())
+	result, resp, apiErr := githubClient.Issues.Create(ctx, info.GitHubUsername, issue.Repo, ghIssue)
+	if apiErr != nil {
+		mlog.Error(apiErr.Error())
 	}
 
 	if resp.Response.StatusCode == http.StatusGone {
@@ -1030,8 +1030,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	api := p.API
-	post, appErr := api.GetPost(issue.PostId)
+	post, appErr := p.API.GetPost(issue.PostId)
 	if appErr != nil {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId, StatusCode: http.StatusInternalServerError})
 		return
@@ -1054,7 +1053,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		UserId:    userID,
 	}
 
-	_, appErr = api.CreatePost(reply)
+	_, appErr = p.API.CreatePost(reply)
 	if appErr != nil {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + issue.PostId, StatusCode: http.StatusInternalServerError})
 		return
