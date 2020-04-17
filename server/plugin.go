@@ -61,7 +61,7 @@ func NewPlugin() *Plugin {
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
 		"subscribe":   p.handleSubscribe,
-		"unsubscribe": p.handleUnSubscribe,
+		"unsubscribe": p.handleUnsubscribe,
 		"disconnect":  p.handleDisconnect,
 		"todo":        p.handleTodo,
 		"me":          p.handleMe,
