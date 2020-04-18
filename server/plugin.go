@@ -152,7 +152,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	return post, ""
 }
 
-func (p *Plugin) getOAuthConfig() *oauth2.Config {
+func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	config := p.getConfiguration()
 
 	authURL, _ := url.Parse("https://github.com/")
@@ -165,16 +165,16 @@ func (p *Plugin) getOAuthConfig() *oauth2.Config {
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
-	repo := "public_repo"
-	if config.EnablePrivateRepo {
-		// means that asks scope for privaterepositories
-		repo = "repo"
+	repo := github.ScopePublicRepo
+	if config.EnablePrivateRepo && privateAllowed {
+		// means that asks scope for private repositories
+		repo = github.ScopeRepo
 	}
 
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       []string{repo, "notifications"},
+		Scopes:       []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)},
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authURL.String(),
 			TokenURL: tokenURL.String(),

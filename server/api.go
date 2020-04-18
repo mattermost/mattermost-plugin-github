@@ -26,7 +26,15 @@ const (
 	API_PREFIX  = "/api/v1"
 	API_WEBHOOK = "/webhook"
 	API_OAUTH   = "/oauth"
+	// the OAuth token expiry in seconds
+	TokenTTL = 10 * 60
 )
+
+type OAuthState struct {
+	UserID         string `json:"user_id"`
+	Token          string `json:"token"`
+	PrivateAllowed bool   `json:"private_allowed"`
+}
 
 type APIErrorResponse struct {
 	ID         string `json:"id"`
@@ -109,13 +117,33 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
 	return func(_ http.ResponseWriter, _ *http.Request) {
-		conf := p.getOAuthConfig()
+		privateAllowed := false
+		pValBool, _ := strconv.ParseBool(r.URL.Query().Get("private"))
+		if pValBool {
+			privateAllowed = true
+		}
 
-		state := fmt.Sprintf("%v_%v", model.NewId()[0:15], userID)
+		conf := p.getOAuthConfig(privateAllowed)
 
-		p.API.KVSet(state, []byte(state))
+		state := OAuthState{
+			UserID:         userID,
+			Token:          model.NewId()[:15],
+			PrivateAllowed: privateAllowed,
+		}
 
-		url := conf.AuthCodeURL(state, oauth2.AccessTypeOffline)
+		stateBytes, err := json.Marshal(state)
+		if err != nil {
+			http.Error(w, "json marshal failed", http.StatusInternalServerError)
+			return
+		}
+
+		appErr := p.API.KVSetWithExpiry(state.Token, stateBytes, TokenTTL)
+		if appErr != nil {
+			http.Error(w, "error setting stored state", http.StatusBadRequest)
+			return
+		}
+
+		url := conf.AuthCodeURL(state.Token, oauth2.AccessTypeOffline)
 
 		http.Redirect(w, r, url, http.StatusFound)
 	}
@@ -125,36 +153,45 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request, use
 func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request, authedUserID string) http.HandlerFunc {
 
 	return func(_ http.ResponseWriter, _ *http.Request) {
-		config := p.getConfiguration()
-
-		ctx := context.Background()
-		conf := p.getOAuthConfig()
-
 		code := r.URL.Query().Get("code")
 		if len(code) == 0 {
 			http.Error(w, "missing authorization code", http.StatusBadRequest)
 			return
 		}
 
-		state := r.URL.Query().Get("state")
+		stateToken := r.URL.Query().Get("state")
 
-		if storedState, err := p.API.KVGet(state); err != nil {
-			fmt.Println(err.Error())
+		storedState, appErr := p.API.KVGet(stateToken)
+		if appErr != nil {
+			fmt.Println(appErr.Error())
 			http.Error(w, "missing stored state", http.StatusBadRequest)
 			return
-		} else if string(storedState) != state {
-			http.Error(w, "invalid state", http.StatusBadRequest)
+		}
+		appErr = p.API.KVDelete(stateToken)
+		if appErr != nil {
+			fmt.Println(appErr.Error())
+			http.Error(w, "error deleting stored state", http.StatusBadRequest)
 			return
 		}
 
-		userID := strings.Split(state, "_")[1]
+		var state OAuthState
+		if err := json.Unmarshal(storedState, &state); err != nil {
+			http.Error(w, "json unmarshal failed", http.StatusBadRequest)
+			return
+		}
 
-		p.API.KVDelete(state)
+		if state.Token != stateToken {
+			http.Error(w, "invalid state token", http.StatusBadRequest)
+			return
+		}
 
-		if userID != authedUserID {
+		if state.UserID != authedUserID {
 			http.Error(w, "Not authorized, incorrect user", http.StatusUnauthorized)
 			return
 		}
+
+		ctx := context.Background()
+		conf := p.getOAuthConfig(state.PrivateAllowed)
 
 		tok, err := conf.Exchange(ctx, code)
 		if err != nil {
@@ -172,7 +209,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		}
 
 		userInfo := &GitHubUserInfo{
-			UserID:         userID,
+			UserID:         state.UserID,
 			Token:          tok,
 			GitHubUsername: gitUser.GetLogin(),
 			LastToDoPostAt: model.GetMillis(),
@@ -181,7 +218,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 				DailyReminder:  true,
 				Notifications:  true,
 			},
-			AllowedPrivateRepos: config.EnablePrivateRepo,
+			AllowedPrivateRepos: state.PrivateAllowed,
 		}
 
 		if err := p.storeGitHubUserInfo(userInfo); err != nil {
@@ -190,7 +227,7 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), userID); err != nil {
+		if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), state.UserID); err != nil {
 			fmt.Println(err.Error())
 		}
 
@@ -213,7 +250,9 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 			"Click on them!\n\n"+
 			"##### Slash Commands\n"+
 			strings.Replace(COMMAND_HELP, "|", "`", -1), gitUser.GetLogin(), gitUser.GetHTMLURL())
-		p.CreateBotDMPost(userID, message, "custom_git_welcome")
+		p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
+
+		config := p.getConfiguration()
 
 		p.API.PublishWebSocketEvent(
 			WS_EVENT_CONNECT,
@@ -224,22 +263,22 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 				"enterprise_base_url": config.EnterpriseBaseURL,
 				"organization":        config.GitHubOrg,
 			},
-			&model.WebsocketBroadcast{UserId: userID},
+			&model.WebsocketBroadcast{UserId: state.UserID},
 		)
 
 		html := `
-<!DOCTYPE html>
-<html>
-	<head>
-		<script>
-			window.close();
-		</script>
-	</head>
-	<body>
-		<p>Completed connecting to GitHub. Please close this window.</p>
-	</body>
-</html>
-`
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<script>
+				window.close();
+			</script>
+		</head>
+		<body>
+			<p>Completed connecting to GitHub. Please close this window.</p>
+		</body>
+	</html>
+	`
 
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(html))
@@ -274,9 +313,7 @@ type GitHubUserResponse struct {
 }
 
 func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, requestorID string) http.HandlerFunc {
-
 	return func(_ http.ResponseWriter, _ *http.Request) {
-
 		req := &GitHubUserRequest{}
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil || req.UserID == "" {
@@ -360,7 +397,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID str
 				}
 
 				if !hasBeenNotified {
-					p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect`.", "")
+					p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect private`.", "")
 					if err := p.API.KVSet(privateRepoStoreKey, []byte("1")); err != nil {
 						mlog.Error("Unable to set private repo key value, err=" + err.Error())
 					}
@@ -654,19 +691,14 @@ func getFailReason(code int, repo string, username string) string {
 	switch code {
 	case http.StatusInternalServerError:
 		cause = "Internal server error"
-		break
 	case http.StatusBadRequest:
 		cause = "Bad request"
-		break
 	case http.StatusNotFound:
 		cause = fmt.Sprintf("Sorry, either you don't have access to the repo %s with the user %s or it is no longer available", repo, username)
-		break
 	case http.StatusUnauthorized:
 		cause = fmt.Sprintf("Sorry, your user %s is unauthorized to do this action", username)
-		break
 	case http.StatusForbidden:
 		cause = fmt.Sprintf("Sorry, you don't have enough permissions to comment in the repo %s with the user %s", repo, username)
-		break
 	default:
 		cause = fmt.Sprintf("Unknown status code %d", code)
 	}
