@@ -357,13 +357,16 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
-		switch n.GetSubject().GetType() {
+		notificationSubject := n.GetSubject()
+		notificationType := notificationSubject.GetType()
+		switch notificationType {
 		case "RepositoryVulnerabilityAlert":
 			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL()))
 			notificationContent += fmt.Sprintf("* %v\n", message)
 		default:
-			url := fixGithubNotificationSubjectURL(n.GetSubject().GetURL())
-			notificationContent += fmt.Sprintf("* %v\n", url)
+			notificationTitle := notificationSubject.GetTitle()
+			notificationURL := fixGithubNotificationSubjectURL(notificationSubject.GetURL())
+			notificationContent += getToDoDisplayText(notificationTitle, notificationURL, notificationType)
 		}
 
 		notificationCount++
@@ -384,7 +387,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += fmt.Sprintf("* [%v](%v)\n", pr.GetTitle(), pr.GetHTMLURL())
+			text += getToDoDisplayText(pr.GetTitle(), pr.GetHTMLURL(), "")
 		}
 	}
 
@@ -396,7 +399,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
-			text += fmt.Sprintf("* [%v](%v)\n", pr.GetTitle(), pr.GetHTMLURL())
+			text += getToDoDisplayText(pr.GetTitle(), pr.GetHTMLURL(), "")
 		}
 	}
 
@@ -408,7 +411,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
-			text += fmt.Sprintf("* [%v](%v)\n", assign.GetTitle(), assign.GetHTMLURL())
+			text += getToDoDisplayText(assign.GetTitle(), assign.GetHTMLURL(), "")
 		}
 	}
 

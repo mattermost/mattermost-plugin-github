@@ -22,46 +22,24 @@ all: check-style test dist
 apply:
 	./build/bin/manifest apply
 
-## Runs govet and gofmt against all packages.
+## Runs golangci-lint against all packages.
 .PHONY: check-style
-check-style: webapp/.npminstall gofmt govet
+check-style: webapp/.npminstall golangci-lint
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && npm run lint
 endif
 
-## Runs gofmt against all packages.
-.PHONY: gofmt
-gofmt:
-ifneq ($(HAS_SERVER),)
-	@echo Running gofmt
-	@for package in $$(go list ./server/...); do \
-		echo "Checking "$$package; \
-		files=$$(go list -f '{{range .GoFiles}}{{$$.Dir}}/{{.}} {{end}}' $$package); \
-		if [ "$$files" ]; then \
-			gofmt_output=$$(gofmt -d -s $$files 2>&1); \
-			if [ "$$gofmt_output" ]; then \
-				echo "$$gofmt_output"; \
-				echo "Gofmt failure"; \
-				exit 1; \
-			fi; \
-		fi; \
-	done
-	@echo Gofmt success
-endif
+golangci-lint: ## Run golangci-lint on codebase
+# https://stackoverflow.com/a/677212/1027058 (check if a command exists or not)
+	@if ! [ -x "$$(command -v golangci-lint)" ]; then \
+		echo "golangci-lint is not installed. Please see https://github.com/golangci/golangci-lint#install for installation instructions."; \
+		exit 1; \
+	fi; \
 
-## Runs govet against all packages.
-.PHONY: govet
-govet:
-ifneq ($(HAS_SERVER),)
-	@echo Running govet
-	@# Workaround because you can't install binaries without adding them to go.mod
-	env GO111MODULE=off $(GO) get golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow
-	$(GO) vet ./server/...
-	$(GO) vet -vettool=$(GOPATH)/bin/shadow ./server/...
-	@echo Govet success
-endif
+	@echo Running golangci-lint
+	golangci-lint run ./...
 
 ## Builds the server, if it exists, including support for multiple architectures.
 .PHONY: server
