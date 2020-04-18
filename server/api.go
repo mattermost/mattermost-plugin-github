@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gorilla/mux"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
@@ -80,7 +81,7 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResp
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("Mattermost-User-ID")
 		if userID != "" {
-			handler(w, r, userID)
+			handler(w, r, userID)(w, r)
 			return
 		}
 
