@@ -22,10 +22,6 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
-
-	API_PREFIX  = "/api/v1"
-	API_WEBHOOK = "/webhook"
-	API_OAUTH   = "/oauth"
 	// the OAuth token expiry in seconds
 	TokenTTL = 10 * 60
 )
@@ -50,7 +46,7 @@ type PRDetails struct {
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
-type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc
+type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string) func()
 
 func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 	b, _ := json.Marshal(err)
@@ -61,17 +57,17 @@ func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 func (p *Plugin) initialiseAPI() {
 	p.router = mux.NewRouter()
 
-	webHookRouter := p.router.PathPrefix(API_WEBHOOK).Subrouter()
-	oauthRouter := p.router.PathPrefix(API_OAUTH).Subrouter()
-	apiRouter := p.router.PathPrefix(API_PREFIX).Subrouter()
+	webHookRouter := p.router.PathPrefix("/webhook").Subrouter()
+	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
+	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
 
-	webHookRouter.HandleFunc("/", p.handleWebhook)
+	webHookRouter.HandleFunc("/", p.handleWebhook).Methods("POST")
 
-	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false))
-	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false))
+	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods("GET")
+	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods("GET")
 
 	apiRouter.HandleFunc("/connected", p.extractUserMiddleWare(p.getConnected, true)).Methods("GET")
-	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true))
+	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods("POST")
 	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods("GET")
 	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods("GET")
 	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods("POST")
@@ -80,23 +76,23 @@ func (p *Plugin) initialiseAPI() {
 	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods("POST")
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods("GET")
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods("GET")
-	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false))
+	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods("POST")
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods("POST")
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("Mattermost-User-ID")
-		if userID != "" {
-			handler(w, r, userID)(w, r)
+		if userID == "" {
+			if jsonResponse {
+				writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+			} else {
+				http.Error(w, "Not authorized", http.StatusUnauthorized)
+			}
 			return
 		}
 
-		if jsonResponse {
-			writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
-		} else {
-			http.Error(w, "Not authorized", http.StatusUnauthorized)
-		}
+		handler(w, r, userID)()
 	}
 }
 
@@ -113,8 +109,8 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 	p.router.ServeHTTP(w, r)
 }
 
-func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
-	return func(_ http.ResponseWriter, _ *http.Request) {
+func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request, userID string) func() {
+	return func() {
 		privateAllowed := false
 		pValBool, _ := strconv.ParseBool(r.URL.Query().Get("private"))
 		if pValBool {
@@ -148,9 +144,9 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request, use
 
 }
 
-func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request, authedUserID string) http.HandlerFunc {
+func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request, authedUserID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		code := r.URL.Query().Get("code")
 		if len(code) == 0 {
 			http.Error(w, "missing authorization code", http.StatusBadRequest)
@@ -310,8 +306,8 @@ type GitHubUserResponse struct {
 	Username string `json:"username"`
 }
 
-func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, requestorID string) http.HandlerFunc {
-	return func(_ http.ResponseWriter, _ *http.Request) {
+func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string) func() {
+	return func() {
 		req := &GitHubUserRequest{}
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil || req.UserID == "" {
@@ -347,9 +343,9 @@ func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, requestor
 	}
 }
 
-func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		config := p.getConfiguration()
 
 		resp := &ConnectedResponse{
@@ -409,9 +405,9 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID str
 
 }
 
-func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		config := p.getConfiguration()
 
 		ctx := context.Background()
@@ -438,9 +434,9 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID stri
 
 }
 
-func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		ctx := context.Background()
 
 		var githubClient *github.Client
@@ -484,9 +480,9 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 	}
 }
 
-func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		config := p.getConfiguration()
 
 		ctx := context.Background()
@@ -512,8 +508,8 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID strin
 	}
 }
 
-func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
-	return func(_ http.ResponseWriter, _ *http.Request) {
+func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID string) func() {
+	return func() {
 		config := p.getConfiguration()
 
 		ctx := context.Background()
@@ -539,9 +535,9 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID strin
 	}
 }
 
-func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		ctx := context.Background()
 
 		var githubClient *github.Client
@@ -646,9 +642,9 @@ func getRepoOwnerAndNameFromURL(url string) (string, string) {
 	return splitted[len(splitted)-2], splitted[len(splitted)-1]
 }
 
-func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		config := p.getConfiguration()
 
 		if r.Method != http.MethodGet {
@@ -703,8 +699,8 @@ func getFailReason(code int, repo string, username string) string {
 	return cause
 }
 
-func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
-	return func(_ http.ResponseWriter, _ *http.Request) {
+func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, userID string) func() {
+	return func() {
 		req := &CreateIssueCommentRequest{}
 		dec := json.NewDecoder(r.Body)
 		if err := dec.Decode(&req); err != nil {
@@ -817,9 +813,9 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 	}
 }
 
-func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		config := p.getConfiguration()
 
 		ctx := context.Background()
@@ -845,9 +841,9 @@ func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, user
 	}
 }
 
-func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 		var githubClient *github.Client
 		username := ""
 
@@ -874,9 +870,9 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request, userID string)
 	}
 }
 
-func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID string) http.HandlerFunc {
+func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID string) func() {
 
-	return func(_ http.ResponseWriter, _ *http.Request) {
+	return func() {
 
 		var settings *UserSettings
 		json.NewDecoder(r.Body).Decode(&settings)
