@@ -85,7 +85,6 @@ func (p *Plugin) initialiseAPI() {
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("Mattermost-User-ID")
 		if userID != "" {
@@ -98,7 +97,6 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResp
 		} else {
 			http.Error(w, "Not authorized", http.StatusUnauthorized)
 		}
-
 	}
 }
 
@@ -267,18 +265,18 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		)
 
 		html := `
-	<!DOCTYPE html>
-	<html>
-		<head>
+			<!DOCTYPE html>
+			<html>
+			<head>
 			<script>
-				window.close();
+			window.close();
 			</script>
-		</head>
-		<body>
+			</head>
+			<body>
 			<p>Completed connecting to GitHub. Please close this window.</p>
-		</body>
-	</html>
-	`
+			</body>
+			</html>
+			`
 
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(html))
