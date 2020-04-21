@@ -1,46 +1,42 @@
 package main
 
 import (
-	"github.com/mattermost/mattermost-plugin-github/server/util"
+	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestPlugin_ServeHTTP(t *testing.T) {
-
-	tassert := assert.New(t)
-
-	httpTestJson := util.HTTPTest{
-		Assertions: tassert,
-		Encoder:    util.EncodeJSON,
+	httpTestJson := testutils.HTTPTest{
+		T:       t,
+		Encoder: testutils.EncodeJSON,
 	}
 
-	httpTestString := util.HTTPTest{
-		Assertions: tassert,
-		Encoder:    util.EncodeString,
+	httpTestString := testutils.HTTPTest{
+		T:       t,
+		Encoder: testutils.EncodeString,
 	}
 
 	tests := []struct {
 		name             string
-		httpTest         util.HTTPTest
-		request          util.Request
-		expectedResponse util.ExpectedResponse
+		httpTest         testutils.HTTPTest
+		request          testutils.Request
+		expectedResponse testutils.ExpectedResponse
 		userID           string
 	}{
 		{
 			name:     "unauthorized test json",
 			httpTest: httpTestJson,
-			request: util.Request{
+			request: testutils.Request{
 				Method: "GET",
 				URL:    "/api/v1/connected",
 				Body:   nil,
 			},
-			expectedResponse: util.ExpectedResponse{
+			expectedResponse: testutils.ExpectedResponse{
 				StatusCode:   http.StatusUnauthorized,
-				ResponseType: util.ContentTypeJSON,
+				ResponseType: testutils.ContentTypeJSON,
 				Body:         APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized},
 			},
 			userID: "",
@@ -48,14 +44,14 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 		{
 			name:     "unauthorized test http",
 			httpTest: httpTestString,
-			request: util.Request{
+			request: testutils.Request{
 				Method: "GET",
 				URL:    "/api/v1/reviews",
 				Body:   nil,
 			},
-			expectedResponse: util.ExpectedResponse{
+			expectedResponse: testutils.ExpectedResponse{
 				StatusCode:   http.StatusUnauthorized,
-				ResponseType: util.ContentTypePlain,
+				ResponseType: testutils.ContentTypePlain,
 				Body:         "Not authorized\n",
 			},
 			userID: "",
