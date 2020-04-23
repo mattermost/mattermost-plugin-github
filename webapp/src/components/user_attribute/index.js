@@ -6,16 +6,18 @@ import {bindActionCreators} from 'redux';
 
 import {getGitHubUser} from '../../actions';
 
+import {id as pluginId} from '../../manifest';
+
 import UserAttribute from './user_attribute.jsx';
 
 function mapStateToProps(state, ownProps) {
     const id = ownProps.user ? ownProps.user.id : '';
-    const user = state['plugins-github'].githubUsers[id] || {};
+    const user = state[`plugins-${pluginId}`].githubUsers[id] || {};
 
     return {
         id,
         username: user.username,
-        enterpriseURL: state['plugins-github'].enterpriseURL,
+        enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
     };
 }
 

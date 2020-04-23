@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -51,6 +52,8 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *configuration
+
+	router *mux.Router
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -104,6 +107,9 @@ func (p *Plugin) OnActivate() error {
 	if err := config.IsValid(); err != nil {
 		return err
 	}
+
+	p.initialiseAPI()
+
 	p.API.RegisterCommand(getCommand())
 
 	botId, err := p.Helpers.EnsureBot(&model.Bot{

@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
@@ -20,7 +22,6 @@ import (
 
 const (
 	API_ERROR_ID_NOT_CONNECTED = "not_connected"
-
 	// the OAuth token expiry in seconds
 	TokenTTL = 10 * 60
 )
@@ -45,10 +46,53 @@ type PRDetails struct {
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
+type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string)
+
 func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 	b, _ := json.Marshal(err)
 	w.WriteHeader(err.StatusCode)
 	w.Write(b)
+}
+
+func (p *Plugin) initialiseAPI() {
+	p.router = mux.NewRouter()
+
+	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
+	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
+
+	p.router.HandleFunc("/webhook", p.handleWebhook).Methods("POST")
+
+	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods("GET")
+	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods("GET")
+
+	apiRouter.HandleFunc("/connected", p.extractUserMiddleWare(p.getConnected, true)).Methods("GET")
+	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods("POST")
+	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods("GET")
+	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods("GET")
+	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods("POST")
+	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, false)).Methods("GET")
+	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, false)).Methods("GET")
+	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods("POST")
+	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods("GET")
+	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods("GET")
+	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods("POST")
+	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods("POST")
+}
+
+func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := r.Header.Get("Mattermost-User-ID")
+		if userID == "" {
+			if jsonResponse {
+				writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+			} else {
+				http.Error(w, "Not authorized", http.StatusUnauthorized)
+			}
+			return
+		}
+
+		handler(w, r, userID)
+	}
 }
 
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
@@ -61,49 +105,10 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "application/json")
 
-	switch path := r.URL.Path; path {
-	case "/webhook":
-		p.handleWebhook(w, r)
-	case "/oauth/connect":
-		p.connectUserToGitHub(w, r)
-	case "/oauth/complete":
-		p.completeConnectUserToGitHub(w, r)
-	case "/api/v1/connected":
-		p.getConnected(w, r)
-	case "/api/v1/todo":
-		p.postToDo(w, r)
-	case "/api/v1/reviews":
-		p.getReviews(w, r)
-	case "/api/v1/yourprs":
-		p.getYourPrs(w, r)
-	case "/api/v1/prsdetails":
-		p.getPrsDetails(w, r)
-	case "/api/v1/searchissues":
-		p.searchIssues(w, r)
-	case "/api/v1/yourassignments":
-		p.getYourAssignments(w, r)
-	case "/api/v1/createissuecomment":
-		p.createIssueComment(w, r)
-	case "/api/v1/mentions":
-		p.getMentions(w, r)
-	case "/api/v1/unreads":
-		p.getUnreads(w, r)
-	case "/api/v1/settings":
-		p.updateSettings(w, r)
-	case "/api/v1/user":
-		p.getGitHubUser(w, r)
-	default:
-		http.NotFound(w, r)
-	}
+	p.router.ServeHTTP(w, r)
 }
 
-func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
+func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request, userID string) {
 	privateAllowed := false
 	pValBool, _ := strconv.ParseBool(r.URL.Query().Get("private"))
 	if pValBool {
@@ -135,13 +140,7 @@ func (p *Plugin) connectUserToGitHub(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
-func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request) {
-	authedUserID := r.Header.Get("Mattermost-User-ID")
-	if authedUserID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
+func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Request, authedUserID string) {
 	code := r.URL.Query().Get("code")
 	if len(code) == 0 {
 		http.Error(w, "missing authorization code", http.StatusBadRequest)
@@ -256,18 +255,18 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	)
 
 	html := `
-<!DOCTYPE html>
-<html>
-	<head>
-		<script>
+			<!DOCTYPE html>
+			<html>
+			<head>
+			<script>
 			window.close();
-		</script>
-	</head>
-	<body>
-		<p>Completed connecting to GitHub. Please close this window.</p>
-	</body>
-</html>
-`
+			</script>
+			</head>
+			<body>
+			<p>Completed connecting to GitHub. Please close this window.</p>
+			</body>
+			</html>
+			`
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
@@ -299,13 +298,7 @@ type GitHubUserResponse struct {
 	Username string `json:"username"`
 }
 
-func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request) {
-	requestorID := r.Header.Get("Mattermost-User-ID")
-	if requestorID == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
-		return
-	}
-
+func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string) {
 	req := &GitHubUserRequest{}
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil || req.UserID == "" {
@@ -340,14 +333,8 @@ func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
-		return
-	}
 
 	resp := &ConnectedResponse{
 		Connected:         false,
@@ -404,14 +391,8 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
 
 	ctx := context.Background()
 
@@ -435,13 +416,7 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
+func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID string) {
 	ctx := context.Background()
 
 	var githubClient *github.Client
@@ -484,14 +459,8 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
 
 	ctx := context.Background()
 
@@ -515,14 +484,8 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
 
 	ctx := context.Background()
 
@@ -546,13 +509,7 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
+func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID string) {
 	ctx := context.Background()
 
 	var githubClient *github.Client
@@ -656,17 +613,11 @@ func getRepoOwnerAndNameFromURL(url string) (string, string) {
 	return splitted[len(splitted)-2], splitted[len(splitted)-1]
 }
 
-func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
 
 	if r.Method != http.MethodGet {
 		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be GET", r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -715,18 +666,7 @@ func getFailReason(code int, repo string, username string) string {
 	return cause
 }
 
-func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, fmt.Sprintf("Request: %s is not allowed, must be POST", r.Method), http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
+func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, userID string) {
 	req := &CreateIssueCommentRequest{}
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
@@ -838,14 +778,8 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
-
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
 
 	ctx := context.Background()
 
@@ -869,13 +803,7 @@ func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
-		return
-	}
-
+func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request, userID string) {
 	var githubClient *github.Client
 	username := ""
 
@@ -901,13 +829,7 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("{\"status\": \"OK\"}"))
 }
 
-func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request) {
-	userID := r.Header.Get("Mattermost-User-ID")
-	if userID == "" {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
+func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID string) {
 	var settings *UserSettings
 	json.NewDecoder(r.Body).Decode(&settings)
 	if settings == nil {
