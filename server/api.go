@@ -965,10 +965,11 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 
 	type IssueRequest struct {
-		Title  string `json:"title"`
-		Body   string `json:"body"`
-		Repo   string `json:"repo"`
-		PostId string `json:"post_id"`
+		Title       string `json:"title"`
+		Body        string `json:"body"`
+		Repo        string `json:"repo"`
+		PostId      string `json:"post_id"`
+		CurrentTeam string `json:"current_team"`
 	}
 
 	if r.Method != http.MethodPost {
@@ -995,20 +996,30 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if issue.Body == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue description.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
 	if issue.Repo == "" {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo name.", StatusCode: http.StatusBadRequest})
 		return
 	}
+
+	if issue.CurrentTeam == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
+		return
+	}
+
 	ctx := context.Background()
 	ghIssue := &github.IssueRequest{
 		Title: &issue.Title,
 		Body:  &issue.Body,
 	}
+
+	siteUrl := p.API.GetConfig().ServiceSettings.SiteURL
+	permalink := getPermaLink(*siteUrl, issue.PostId, issue.CurrentTeam)
+
+	mmMessage := fmt.Sprintf("_Issue created from a [message in Mattermost](%v)_.", permalink)
+	if len(*ghIssue.Body) > 0 {
+		mmMessage = fmt.Sprintf("\n\n_Issue created from a [message in Mattermost](%v)_.", permalink)
+	}
+	*ghIssue.Body = *ghIssue.Body + mmMessage
 
 	// Make sure user have a connected github account
 	info, err := p.getGitHubUserInfo(userID)
@@ -1018,8 +1029,6 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	githubClient := p.githubConnect(*info.Token)
-
-	// call Create(ctx context.Context, owner string, repo string, issue *IssueRequest)
 	result, resp, apiErr := githubClient.Issues.Create(ctx, info.GitHubUsername, issue.Repo, ghIssue)
 	if apiErr != nil {
 		mlog.Error(apiErr.Error())
