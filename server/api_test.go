@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
-	"github.com/mattermost/mattermost-server/v5/model"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,44 +69,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					EncryptionKey:           "mockKey",
 					EnterpriseBaseURL:       "",
 					EnterpriseUploadURL:     "",
-					PluginsDirectory:        "",
 					EnableCodePreview:       false,
-				},
-				&model.Config{
-					ServiceSettings:         model.ServiceSettings{},
-					TeamSettings:            model.TeamSettings{},
-					ClientRequirements:      model.ClientRequirements{},
-					SqlSettings:             model.SqlSettings{},
-					LogSettings:             model.LogSettings{},
-					NotificationLogSettings: model.NotificationLogSettings{},
-					PasswordSettings:        model.PasswordSettings{},
-					FileSettings:            model.FileSettings{},
-					EmailSettings:           model.EmailSettings{},
-					RateLimitSettings:       model.RateLimitSettings{},
-					PrivacySettings:         model.PrivacySettings{},
-					SupportSettings:         model.SupportSettings{},
-					AnnouncementSettings:    model.AnnouncementSettings{},
-					ThemeSettings:           model.ThemeSettings{},
-					GitLabSettings:          model.SSOSettings{},
-					GoogleSettings:          model.SSOSettings{},
-					Office365Settings:       model.SSOSettings{},
-					LdapSettings:            model.LdapSettings{},
-					ComplianceSettings:      model.ComplianceSettings{},
-					LocalizationSettings:    model.LocalizationSettings{},
-					SamlSettings:            model.SamlSettings{},
-					NativeAppSettings:       model.NativeAppSettings{},
-					ClusterSettings:         model.ClusterSettings{},
-					MetricsSettings:         model.MetricsSettings{},
-					ExperimentalSettings:    model.ExperimentalSettings{},
-					AnalyticsSettings:       model.AnalyticsSettings{},
-					ElasticsearchSettings:   model.ElasticsearchSettings{},
-					DataRetentionSettings:   model.DataRetentionSettings{},
-					MessageExportSettings:   model.MessageExportSettings{},
-					JobSettings:             model.JobSettings{},
-					PluginSettings:          model.PluginSettings{},
-					DisplaySettings:         model.DisplaySettings{},
-					GuestAccountsSettings:   model.GuestAccountsSettings{},
-					ImageProxySettings:      model.ImageProxySettings{},
 				})
 			p.initialiseAPI()
 
