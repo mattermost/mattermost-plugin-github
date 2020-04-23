@@ -57,11 +57,10 @@ func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
 func (p *Plugin) initialiseAPI() {
 	p.router = mux.NewRouter()
 
-	webHookRouter := p.router.PathPrefix("/webhook").Subrouter()
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
 	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
 
-	webHookRouter.HandleFunc("", p.handleWebhook).Methods("POST")
+	p.router.HandleFunc("/webhook", p.handleWebhook).Methods("POST")
 
 	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods("GET")
 	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods("GET")
