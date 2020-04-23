@@ -61,7 +61,7 @@ func (p *Plugin) initialiseAPI() {
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
 	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
 
-	webHookRouter.HandleFunc("/", p.handleWebhook).Methods("POST")
+	webHookRouter.HandleFunc("", p.handleWebhook).Methods("POST")
 
 	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods("GET")
 	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods("GET")
