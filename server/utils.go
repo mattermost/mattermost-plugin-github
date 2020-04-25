@@ -99,7 +99,7 @@ func decrypt(key []byte, text string) (string, error) {
 	}
 
 	if (len(decodedMsg) % aes.BlockSize) != 0 {
-		return "", errors.New("blocksize must be multipe of decoded message length")
+		return "", errors.New("blocksize must be multiple of decoded message length")
 	}
 
 	iv := decodedMsg[:aes.BlockSize]
@@ -256,7 +256,7 @@ func getLine(s string) int {
 	return line
 }
 
-// isInsideLink reports whether the given index in a string is preceeded
+// isInsideLink reports whether the given index in a string is preceded
 // by zero or more space, then (, then ].
 //
 // It is a poor man's version of checking markdown hyperlinks without

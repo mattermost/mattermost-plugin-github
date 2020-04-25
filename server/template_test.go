@@ -180,7 +180,6 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 	})
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(t *testing.T) {
-
 		expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
@@ -795,7 +794,6 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
-
 	})
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
@@ -816,7 +814,6 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
-
 	}))
 }
 

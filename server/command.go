@@ -185,7 +185,7 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
-	return fmt.Sprintf("Succesfully unsubscribed from %s.", repo)
+	return fmt.Sprintf("Successfully unsubscribed from %s.", repo)
 }
 func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	p.disconnectGitHubAccount(args.UserId)

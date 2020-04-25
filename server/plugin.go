@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -13,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/gorilla/mux"
 
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
