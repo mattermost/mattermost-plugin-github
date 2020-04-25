@@ -28,14 +28,18 @@ const (
 	githubTokenKey       = "_githubtoken"
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
-	wsEventConnect       = "connect"
-	wsEventDisconnect    = "disconnect"
-	wsEventRefresh       = "refresh"
+
+	wsEventConnect    = "connect"
+	wsEventDisconnect = "disconnect"
+	wsEventRefresh    = "refresh"
+
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
 	settingReminders     = "reminders"
 	settingOn            = "on"
 	settingOff           = "off"
+
+	notificationReasonSubscribed = "subscribed"
 )
 
 type Plugin struct {
@@ -80,9 +84,8 @@ func NewPlugin() *Plugin {
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 	config := p.getConfiguration()
 
-	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&token)
-	tc := oauth2.NewClient(ctx, ts)
+	tc := oauth2.NewClient(context.Background(), ts)
 
 	if len(config.EnterpriseBaseURL) == 0 || len(config.EnterpriseUploadURL) == 0 {
 		return github.NewClient(tc)
@@ -171,12 +174,9 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	config := p.getConfiguration()
 
-	authURL, _ := url.Parse("https://github.com/")
-	tokenURL, _ := url.Parse("https://github.com/")
-	if len(config.EnterpriseBaseURL) > 0 {
-		authURL, _ = url.Parse(config.EnterpriseBaseURL)
-		tokenURL, _ = url.Parse(config.EnterpriseBaseURL)
-	}
+	baseURL := p.getBaseURL()
+	authURL, _ := url.Parse(baseURL)
+	tokenURL, _ := url.Parse(baseURL)
 
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
@@ -334,6 +334,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
+	baseURL := p.getBaseURL()
 
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
@@ -360,7 +361,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	notificationCount := 0
 	notificationContent := ""
 	for _, n := range notifications {
-		if n.GetReason() == "subscribed" {
+		if n.GetReason() == notificationReasonSubscribed {
 			continue
 		}
 
@@ -382,7 +383,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		default:
 			notificationTitle := notificationSubject.GetTitle()
 			notificationURL := fixGithubNotificationSubjectURL(notificationSubject.GetURL())
-			notificationContent += getToDoDisplayText(notificationTitle, notificationURL, notificationType)
+			notificationContent += getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType)
 		}
 
 		notificationCount++
@@ -403,7 +404,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += getToDoDisplayText(pr.GetTitle(), pr.GetHTMLURL(), "")
+			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "")
 		}
 	}
 
@@ -415,7 +416,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
-			text += getToDoDisplayText(pr.GetTitle(), pr.GetHTMLURL(), "")
+			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "")
 		}
 	}
 
@@ -427,7 +428,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
-			text += getToDoDisplayText(assign.GetTitle(), assign.GetHTMLURL(), "")
+			text += getToDoDisplayText(baseURL, assign.GetTitle(), assign.GetHTMLURL(), "")
 		}
 	}
 
@@ -466,7 +467,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	}
 
 	for _, n := range notifications {
-		if n.GetReason() == "subscribed" {
+		if n.GetReason() == notificationReasonSubscribed {
 			continue
 		}
 
@@ -521,4 +522,13 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
+}
+
+func (p *Plugin) getBaseURL() string {
+	config := p.getConfiguration()
+	if config.EnterpriseBaseURL != "" {
+		return config.EnterpriseBaseURL
+	}
+
+	return "https://github.com/"
 }

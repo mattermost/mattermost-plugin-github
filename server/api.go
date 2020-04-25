@@ -417,8 +417,6 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID stri
 }
 
 func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID string) {
-	ctx := context.Background()
-
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
 		writeAPIError(w, apiErr)
@@ -427,7 +425,7 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 
 	githubClient := p.githubConnect(*info.Token)
 
-	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+	notifications, _, err := githubClient.Activity.ListNotifications(context.Background(), &github.NotificationListOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
 		return
@@ -441,7 +439,7 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 
 	filteredNotifications := []*filteredNotification{}
 	for _, n := range notifications {
-		if n.GetReason() == "subscribed" {
+		if n.GetReason() == notificationReasonSubscribed {
 			continue
 		}
 

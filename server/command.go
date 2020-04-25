@@ -37,9 +37,14 @@ const commandHelp = `* |/github connect [private]| - Connect your Mattermost acc
   * |setting| can be "notifications" or "reminders"
   * |value| can be "on" or "off"`
 
+const (
+	featureIssues = "issues"
+	featurePulls  = "pulls"
+)
+
 var validFeatures = map[string]bool{
-	"issues":         true,
-	"pulls":          true,
+	featureIssues:    true,
+	featurePulls:     true,
 	"pushes":         true,
 	"creates":        true,
 	"deletes":        true,
@@ -67,7 +72,7 @@ func validateFeatures(features []string) (bool, []string) {
 	if valid && hasLabel {
 		// must have "pulls" or "issues" in features when using a label
 		for _, f := range features {
-			if f == "pulls" || f == "issues" {
+			if f == featurePulls || f == featureIssues {
 				return valid, invalidFeatures
 			}
 		}
@@ -101,7 +106,6 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 }
 
 func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	config := p.getConfiguration()
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
@@ -159,7 +163,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
 
-	owner, repo := parseOwnerAndRepo(parameters[0], config.EnterpriseBaseURL)
+	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
@@ -193,10 +197,9 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 	return "Disconnected your GitHub account."
 }
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
 
-	text, err := p.GetToDo(ctx, userInfo.GitHubUsername, githubClient)
+	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
 		mlog.Error(err.Error())
 		return "Encountered an error getting your to do items."
@@ -204,9 +207,8 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 	return text
 }
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
-	gitUser, _, err := githubClient.Users.Get(ctx, "")
+	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
 	if err != nil {
 		return "Encountered an error getting your GitHub profile."
 	}

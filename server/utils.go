@@ -117,9 +117,6 @@ func decrypt(key []byte, text string) (string, error) {
 }
 
 func parseOwnerAndRepo(full, baseURL string) (string, string) {
-	if baseURL == "" {
-		baseURL = "https://github.com/"
-	}
 	full = strings.TrimSuffix(strings.TrimSpace(strings.Replace(full, baseURL, "", 1)), "/")
 	splitStr := strings.Split(full, "/")
 
@@ -310,9 +307,7 @@ func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool)
 }
 
 // getToDoDisplayText returns the text to be displayed in todo listings.
-func getToDoDisplayText(title, url, notifType string) string {
-	baseURL := "https://github.com/"
-
+func getToDoDisplayText(baseURL, title, url, notifType string) string {
 	owner, repo := parseOwnerAndRepo(url, baseURL)
 	repoURL := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
 	repoWords := strings.Split(repo, "-")

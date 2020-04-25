@@ -136,9 +136,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	config := p.getConfiguration()
-	ctx := context.Background()
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, p.getBaseURL())
 
 	if owner == "" {
 		return false
@@ -153,7 +151,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	}
 	githubClient := p.githubConnect(*info.Token)
 
-	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+	if result, _, err := githubClient.Repositories.Get(context.Background(), owner, repo); result == nil || err != nil {
 		if err != nil {
 			mlog.Error(err.Error())
 		}

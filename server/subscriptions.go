@@ -53,11 +53,11 @@ type Subscriptions struct {
 }
 
 func (s *Subscription) Pulls() bool {
-	return strings.Contains(s.Features, "pulls")
+	return strings.Contains(s.Features, featurePulls)
 }
 
 func (s *Subscription) Issues() bool {
-	return strings.Contains(s.Features, "issues")
+	return strings.Contains(s.Features, featureIssues)
 }
 
 func (s *Subscription) Pushes() bool {
@@ -278,9 +278,7 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	config := p.getConfiguration()
-
-	owner, repo := parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
+	owner, repo := parseOwnerAndRepo(repo, p.getBaseURL())
 	if owner == "" && repo == "" {
 		return fmt.Errorf("envalid repository")
 	}
