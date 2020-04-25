@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -705,16 +705,16 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		userId := p.getGitHubToUserIDMapping(username)
-		if userId == "" {
+		userID := p.getGitHubToUserIDMapping(username)
+		if userID == "" {
 			continue
 		}
 
-		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userId, event.GetRepo().GetFullName()) {
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userId, p.BotUserID)
+		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 		if err != nil {
 			continue
 		}

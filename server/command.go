@@ -12,7 +12,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
-const COMMAND_HELP = `* |/github connect [private]| - Connect your Mattermost account to your GitHub account. 
+const commandHelp = `* |/github connect [private]| - Connect your Mattermost account to your GitHub account. 
   * |private| is optional. If used, the github bot will ask for read access to your private repositories. If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.
 * |/github disconnect| - Disconnect your Mattermost account from your GitHub account
 * |/github todo| - Get a list of unread messages and pull requests awaiting your review
@@ -106,9 +106,10 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 	flags := SubscriptionFlags{}
 
 	txt := ""
-	if len(parameters) == 0 {
+	switch {
+	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
-	} else if len(parameters) == 1 && parameters[0] == "list" {
+	case len(parameters) == 1 && parameters[0] == "list":
 		subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 		if err != nil {
 			return err.Error()
@@ -128,7 +129,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 			txt += "\n"
 		}
 		return txt
-	} else if len(parameters) > 1 {
+	case len(parameters) > 1:
 		var optionList []string
 
 		for _, element := range parameters[1:] {
@@ -214,11 +215,11 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 	return text
 }
 func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
-	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
+	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(commandHelp, "|", "`", -1)
 	return text
 }
 func (p *Plugin) handleEmpty(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
-	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(COMMAND_HELP, "|", "`", -1)
+	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(commandHelp, "|", "`", -1)
 	return text
 }
 func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
@@ -227,39 +228,40 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	}
 
 	setting := parameters[0]
-	if setting != SETTING_NOTIFICATIONS && setting != SETTING_REMINDERS {
+	if setting != settingNotifications && setting != settingReminders {
 		return "Unknown setting."
 	}
 
 	strValue := parameters[1]
 	value := false
-	if strValue == SETTING_ON {
+	if strValue == settingOn {
 		value = true
-	} else if strValue != SETTING_OFF {
+	} else if strValue != settingOff {
 		return "Invalid value. Accepted values are: \"on\" or \"off\"."
 	}
 
-	if setting == SETTING_NOTIFICATIONS {
+	if setting == settingNotifications {
 		if value {
 			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
 			if err != nil {
 				mlog.Error(err.Error())
 			}
 		} else {
-			err := p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY)
+			err := p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey)
 			if err != nil {
 				mlog.Error(err.Error())
 			}
 		}
 
 		userInfo.Settings.Notifications = value
-	} else if setting == SETTING_REMINDERS {
+	} else if setting == settingReminders {
 		userInfo.Settings.DailyReminder = value
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)
 	if err != nil {
 		mlog.Error(err.Error())
+		return "Failed to store settings"
 	}
 
 	return "Settings updated."
@@ -302,7 +304,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	info, apiErr := p.getGitHubUserInfo(args.UserId)
 	if apiErr != nil {
 		text := "Unknown error."
-		if apiErr.ID == API_ERROR_ID_NOT_CONNECTED {
+		if apiErr.ID == apiErrorIDNotConnected {
 			text = "You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter `/github connect`."
 		}
 		p.postCommandResponse(args, text)

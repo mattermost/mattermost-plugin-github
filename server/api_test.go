@@ -9,7 +9,7 @@ import (
 )
 
 func TestPlugin_ServeHTTP(t *testing.T) {
-	httpTestJson := testutils.HTTPTest{
+	httpTestJSON := testutils.HTTPTest{
 		T:       t,
 		Encoder: testutils.EncodeJSON,
 	}
@@ -28,7 +28,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 	}{
 		{
 			name:     "unauthorized test json",
-			httpTest: httpTestJson,
+			httpTest: httpTestJSON,
 			request: testutils.Request{
 				Method: "GET",
 				URL:    "/api/v1/connected",

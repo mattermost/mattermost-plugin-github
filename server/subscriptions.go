@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	SUBSCRIPTIONS_KEY       = "subscriptions"
-	EXCLUDE_ORG_MEMBER_FLAG = "exclude-org-member"
+	subcriptionsKey      = "subscriptions"
+	excludeOrgMemberFlag = "exclude-org-member"
 )
 
 type SubscriptionFlags struct {
@@ -23,8 +23,8 @@ type SubscriptionFlags struct {
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
-	switch flag {
-	case EXCLUDE_ORG_MEMBER_FLAG:
+	switch flag { // nolint:gocritic
+	case excludeOrgMemberFlag:
 		s.ExcludeOrgMembers = true
 	}
 }
@@ -33,7 +33,7 @@ func (s SubscriptionFlags) String() string {
 	flags := []string{}
 
 	if s.ExcludeOrgMembers {
-		flag := "--" + EXCLUDE_ORG_MEMBER_FLAG
+		flag := "--" + excludeOrgMemberFlag
 		flags = append(flags, flag)
 	}
 
@@ -97,9 +97,9 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
 }
 
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, owner, repo, channelID, features string, flags SubscriptionFlags) error {
+func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
-		return fmt.Errorf("Invalid repository")
+		return fmt.Errorf("invalid repository")
 	}
 
 	if err := p.checkOrg(owner); err != nil {
@@ -115,7 +115,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 			var ghUser *github.User
 			ghUser, _, err = githubClient.Users.Get(ctx, owner)
 			if ghUser == nil {
-				return fmt.Errorf("Unknown organization %s", owner)
+				return fmt.Errorf("unknown organization %s", owner)
 			}
 		}
 	} else {
@@ -123,18 +123,18 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
 
 		if ghRepo == nil {
-			return fmt.Errorf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
+			return fmt.Errorf("unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 		}
 	}
 
 	if err != nil {
 		mlog.Error(err.Error())
-		return fmt.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
+		return fmt.Errorf("encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
 	sub := &Subscription{
 		ChannelID:  channelID,
-		CreatorID:  userId,
+		CreatorID:  userID,
 		Features:   features,
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
@@ -147,12 +147,12 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string, flags SubscriptionFlags) error {
+func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
 	if org == "" {
-		return fmt.Errorf("Invalid organization")
+		return fmt.Errorf("envalid organization")
 	}
 
-	return p.Subscribe(ctx, githubClient, userId, org, "", channelID, features, flags)
+	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
@@ -218,7 +218,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
-	value, err := p.API.KVGet(SUBSCRIPTIONS_KEY)
+	value, err := p.API.KVGet(subcriptionsKey)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	if err != nil {
 		return err
 	}
-	p.API.KVSet(SUBSCRIPTIONS_KEY, b)
+	p.API.KVSet(subcriptionsKey, b)
 	return nil
 }
 
@@ -282,7 +282,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 
 	owner, repo := parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
 	if owner == "" && repo == "" {
-		return fmt.Errorf("Invalid repository")
+		return fmt.Errorf("envalid repository")
 	}
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 

@@ -25,17 +25,17 @@ import (
 )
 
 const (
-	GITHUB_TOKEN_KEY        = "_githubtoken"
-	GITHUB_USERNAME_KEY     = "_githubusername"
-	GITHUB_PRIVATE_REPO_KEY = "_githubprivate"
-	WS_EVENT_CONNECT        = "connect"
-	WS_EVENT_DISCONNECT     = "disconnect"
-	WS_EVENT_REFRESH        = "refresh"
-	SETTING_BUTTONS_TEAM    = "team"
-	SETTING_NOTIFICATIONS   = "notifications"
-	SETTING_REMINDERS       = "reminders"
-	SETTING_ON              = "on"
-	SETTING_OFF             = "off"
+	githubTokenKey       = "_githubtoken"
+	githubUsernameKey    = "_githubusername"
+	githubPrivateRepoKey = "_githubprivate"
+	wsEventConnect       = "connect"
+	wsEventDisconnect    = "disconnect"
+	wsEventRefresh       = "refresh"
+	settingButtonsTeam   = "team"
+	settingNotifications = "notifications"
+	settingReminders     = "reminders"
+	settingOn            = "on"
+	settingOff           = "off"
 )
 
 type Plugin struct {
@@ -113,7 +113,7 @@ func (p *Plugin) OnActivate() error {
 
 	p.API.RegisterCommand(getCommand())
 
-	botId, err := p.Helpers.EnsureBot(&model.Bot{
+	botID, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
@@ -121,7 +121,7 @@ func (p *Plugin) OnActivate() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure github bot")
 	}
-	p.BotUserID = botId
+	p.BotUserID = botID
 
 	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
@@ -133,7 +133,7 @@ func (p *Plugin) OnActivate() error {
 		return errors.Wrap(err, "couldn't read profile image")
 	}
 
-	appErr := p.API.SetProfileImage(botId, profileImage)
+	appErr := p.API.SetProfileImage(botID, profileImage)
 	if appErr != nil {
 		return errors.Wrap(appErr, "couldn't set profile image")
 	}
@@ -228,7 +228,7 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 		return err
 	}
 
-	if err := p.API.KVSet(info.UserID+GITHUB_TOKEN_KEY, jsonInfo); err != nil {
+	if err := p.API.KVSet(info.UserID+githubTokenKey, jsonInfo); err != nil {
 		return err
 	}
 
@@ -240,8 +240,8 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 	var userInfo GitHubUserInfo
 
-	if infoBytes, err := p.API.KVGet(userID + GITHUB_TOKEN_KEY); err != nil || infoBytes == nil {
-		return nil, &APIErrorResponse{ID: API_ERROR_ID_NOT_CONNECTED, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
+	if infoBytes, err := p.API.KVGet(userID + githubTokenKey); err != nil || infoBytes == nil {
+		return nil, &APIErrorResponse{ID: apiErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
 	} else if err := json.Unmarshal(infoBytes, &userInfo); err != nil {
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
 	}
@@ -258,14 +258,14 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 }
 
 func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error {
-	if err := p.API.KVSet(githubUsername+GITHUB_USERNAME_KEY, []byte(userID)); err != nil {
-		return fmt.Errorf("Encountered error saving github username mapping")
+	if err := p.API.KVSet(githubUsername+githubUsernameKey, []byte(userID)); err != nil {
+		return fmt.Errorf("encountered error saving github username mapping")
 	}
 	return nil
 }
 
 func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
-	userID, _ := p.API.KVGet(githubUsername + GITHUB_USERNAME_KEY)
+	userID, _ := p.API.KVGet(githubUsername + githubUsernameKey)
 	return string(userID)
 }
 
@@ -285,8 +285,8 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		return
 	}
 
-	p.API.KVDelete(userID + GITHUB_TOKEN_KEY)
-	p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY)
+	p.API.KVDelete(userID + githubTokenKey)
+	p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey)
 
 	if user, err := p.API.GetUser(userID); err == nil && user.Props != nil && len(user.Props["git_user"]) > 0 {
 		delete(user.Props, "git_user")
@@ -294,7 +294,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	}
 
 	p.API.PublishWebSocketEvent(
-		WS_EVENT_DISCONNECT,
+		wsEventDisconnect,
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
@@ -443,22 +443,26 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	issues, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
+		return false
 	}
 
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
+		return false
 	}
 
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
+		return false
 	}
 
 	relevantNotifications := false
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
 		mlog.Error(err.Error())
+		return false
 	}
 
 	for _, n := range notifications {
@@ -491,7 +495,7 @@ func (p *Plugin) checkOrg(org string) error {
 
 	configOrg := strings.TrimSpace(config.GitHubOrg)
 	if configOrg != "" && configOrg != org {
-		return fmt.Errorf("Only repositories in the %v organization are supported", configOrg)
+		return fmt.Errorf("only repositories in the %v organization are supported", configOrg)
 	}
 
 	return nil
@@ -513,7 +517,7 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 
 func (p *Plugin) sendRefreshEvent(userID string) {
 	p.API.PublishWebSocketEvent(
-		WS_EVENT_REFRESH,
+		wsEventRefresh,
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)

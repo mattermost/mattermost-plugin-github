@@ -40,15 +40,15 @@ func (c *configuration) Clone() *configuration {
 // IsValid checks if all needed fields are set.
 func (c *configuration) IsValid() error {
 	if c.GitHubOAuthClientID == "" {
-		return fmt.Errorf("Must have a github oauth client id")
+		return fmt.Errorf("must have a github oauth client id")
 	}
 
 	if c.GitHubOAuthClientSecret == "" {
-		return fmt.Errorf("Must have a github oauth client secret")
+		return fmt.Errorf("must have a github oauth client secret")
 	}
 
 	if c.EncryptionKey == "" {
-		return fmt.Errorf("Must have an encryption key")
+		return fmt.Errorf("must have an encryption key")
 	}
 
 	return nil
