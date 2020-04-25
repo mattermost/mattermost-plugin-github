@@ -149,7 +149,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
 	if org == "" {
-		return fmt.Errorf("envalid organization")
+		return fmt.Errorf("invalid organization")
 	}
 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
