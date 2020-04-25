@@ -48,13 +48,40 @@ type PRDetails struct {
 
 type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string)
 
-func writeAPIError(w http.ResponseWriter, err *APIErrorResponse) {
-	b, _ := json.Marshal(err)
-	w.WriteHeader(err.StatusCode)
-	w.Write(b)
+func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		p.API.LogWarn("Failed to marshal JSON response", "error", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogWarn("Failed to write JSON response", "error", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
-func (p *Plugin) initialiseAPI() {
+func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) {
+	b, err := json.Marshal(apiErr)
+	if err != nil {
+		p.API.LogWarn("Failed to marshal API error", "error", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(apiErr.StatusCode)
+
+	_, err = w.Write(b)
+	if err != nil {
+		p.API.LogWarn("Failed to write JSON response", "error", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func (p *Plugin) initializeAPI() {
 	p.router = mux.NewRouter()
 
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
@@ -84,7 +111,7 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResp
 		userID := r.Header.Get("Mattermost-User-ID")
 		if userID == "" {
 			if jsonResponse {
-				writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+				p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
 			} else {
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			}
@@ -209,13 +236,13 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		AllowedPrivateRepos: state.PrivateAllowed,
 	}
 
-	if err := p.storeGitHubUserInfo(userInfo); err != nil {
+	if err = p.storeGitHubUserInfo(userInfo); err != nil {
 		fmt.Println(err.Error())
 		http.Error(w, "Unable to connect user to GitHub", http.StatusInternalServerError)
 		return
 	}
 
-	if err := p.storeGitHubToUserIDMapping(gitUser.GetLogin(), state.UserID); err != nil {
+	if err = p.storeGitHubToUserIDMapping(gitUser.GetLogin(), state.UserID); err != nil {
 		fmt.Println(err.Error())
 	}
 
@@ -269,7 +296,12 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 			`
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	_, err = w.Write([]byte(html))
+	if err != nil {
+		p.API.LogWarn("Failed to write HTML response", "error", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 type ConnectedResponse struct {
@@ -301,39 +333,34 @@ type GitHubUserResponse struct {
 func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string) {
 	req := &GitHubUserRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		mlog.Error("Error decoding JSON body", mlog.Err(err))
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		mlog.Error("Error decoding GitHubUserRequest from JSON body", mlog.Err(err))
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.UserID == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object with a non-blank user_id field.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object with a non-blank user_id field.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	userInfo, apiErr := p.getGitHubUserInfo(req.UserID)
 	if apiErr != nil {
 		if apiErr.ID == apiErrorIDNotConnected {
-			writeAPIError(w, &APIErrorResponse{ID: "", Message: "User is not connected to a GitHub account.", StatusCode: http.StatusNotFound})
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "User is not connected to a GitHub account.", StatusCode: http.StatusNotFound})
 		} else {
-			writeAPIError(w, apiErr)
+			p.writeAPIError(w, apiErr)
 		}
 		return
 	}
 
 	if userInfo == nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "User is not connected to a GitHub account.", StatusCode: http.StatusNotFound})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "User is not connected to a GitHub account.", StatusCode: http.StatusNotFound})
 		return
 	}
 
 	resp := &GitHubUserResponse{Username: userInfo.GitHubUsername}
-	b, err := json.Marshal(resp)
-	if err != nil {
-		mlog.Error("Error encoding JSON response: " + err.Error())
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an unexpected error. Please try again.", StatusCode: http.StatusInternalServerError})
-		return
-	}
-	w.Write(b)
+
+	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) {
@@ -367,7 +394,9 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID str
 				if p.HasUnreads(info) {
 					p.PostToDo(info)
 					info.LastToDoPostAt = now
-					p.storeGitHubUserInfo(info)
+					if err := p.storeGitHubUserInfo(info); err != nil {
+						p.API.LogWarn("Failed to store github info for new user", "userID", userID, "error", err.Error())
+					}
 				}
 			}
 		}
@@ -390,8 +419,7 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID str
 		}
 	}
 
-	b, _ := json.Marshal(resp)
-	w.Write(b)
+	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID string) {
@@ -399,7 +427,7 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID stri
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -412,14 +440,13 @@ func (p *Plugin) getMentions(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	resp, _ := json.Marshal(result.Issues)
-	w.Write(resp)
+	p.writeJSON(w, result.Issues)
 }
 
 func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID string) {
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -453,8 +480,7 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 		})
 	}
 
-	resp, _ := json.Marshal(filteredNotifications)
-	w.Write(resp)
+	p.writeJSON(w, filteredNotifications)
 }
 
 func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID string) {
@@ -462,7 +488,7 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID strin
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -475,8 +501,7 @@ func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID strin
 		return
 	}
 
-	resp, _ := json.Marshal(result.Issues)
-	w.Write(resp)
+	p.writeJSON(w, result.Issues)
 }
 
 func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID string) {
@@ -484,7 +509,7 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID strin
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -497,21 +522,24 @@ func (p *Plugin) getYourPrs(w http.ResponseWriter, r *http.Request, userID strin
 		return
 	}
 
-	resp, _ := json.Marshal(result.Issues)
-	w.Write(resp)
+	p.writeJSON(w, result.Issues)
 }
 
 func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID string) {
 	info, err := p.getGitHubUserInfo(userID)
 	if err != nil {
-		writeAPIError(w, err)
+		p.writeAPIError(w, err)
 		return
 	}
 
 	githubClient := p.githubConnect(*info.Token)
 
 	var prList []*PRDetails
-	json.NewDecoder(r.Body).Decode(&prList)
+	if err := json.NewDecoder(r.Body).Decode(&prList); err != nil {
+		mlog.Error("Error decoding PRDetails JSON body", mlog.Err(err))
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
 
 	prDetails := make([]*PRDetails, len(prList))
 	ctx := context.Background()
@@ -529,8 +557,7 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 
 	wg.Wait()
 
-	resp, _ := json.Marshal(prDetails)
-	w.Write(resp)
+	p.writeJSON(w, prDetails)
 }
 
 func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
@@ -605,7 +632,7 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID str
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -619,8 +646,7 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID str
 		return
 	}
 
-	resp, _ := json.Marshal(result.Issues)
-	w.Write(resp)
+	p.writeJSON(w, result.Issues)
 }
 
 func getPermaLink(siteURL string, postID string, currentTeam string) string {
@@ -649,44 +675,44 @@ func getFailReason(code int, repo string, username string) string {
 func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, userID string) {
 	req := &CreateIssueCommentRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		mlog.Error("Error decoding JSON body", mlog.Err(err))
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		mlog.Error("Error decoding CreateIssueCommentRequest JSON body", mlog.Err(err))
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.PostID == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid post id", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid post id", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.Owner == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.Repo == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.Number == 0 {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue number.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue number.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.Comment == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid non empty comment.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid non empty comment.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if req.CurrentTeam == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -694,23 +720,23 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	post, appErr := p.API.GetPost(req.PostID)
 	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID, StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID, StatusCode: http.StatusInternalServerError})
 		return
 	}
 	if post == nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID + ": not found", StatusCode: http.StatusNotFound})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID + ": not found", StatusCode: http.StatusNotFound})
 		return
 	}
 
 	commentUser, appErr := p.API.GetUser(post.UserId)
 	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
 	currentUser, appErr := p.API.GetUser(userID)
 	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -726,7 +752,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	result, rawResponse, err := githubClient.Issues.CreateComment(context.Background(), req.Owner, req.Repo, req.Number, comment)
 	if err != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUser.Username), StatusCode: rawResponse.StatusCode})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUser.Username), StatusCode: rawResponse.StatusCode})
 		return
 	}
 	rootID := req.PostID
@@ -745,11 +771,11 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	_, appErr = p.API.CreatePost(reply)
 	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostID, StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostID, StatusCode: http.StatusInternalServerError})
 		return
 	}
-	resp, _ := json.Marshal(result)
-	w.Write(resp)
+
+	p.writeJSON(w, result)
 }
 
 func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, userID string) {
@@ -757,7 +783,7 @@ func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, user
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -770,14 +796,13 @@ func (p *Plugin) getYourAssignments(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	resp, _ := json.Marshal(result.Issues)
-	w.Write(resp)
+	p.writeJSON(w, result.Issues)
 }
 
 func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request, userID string) {
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		writeAPIError(w, apiErr)
+		p.writeAPIError(w, apiErr)
 		return
 	}
 
@@ -787,21 +812,27 @@ func (p *Plugin) postToDo(w http.ResponseWriter, r *http.Request, userID string)
 	text, err := p.GetToDo(context.Background(), username, githubClient)
 	if err != nil {
 		mlog.Error(err.Error())
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error getting the to do items.", StatusCode: http.StatusUnauthorized})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error getting the to do items.", StatusCode: http.StatusUnauthorized})
 		return
 	}
 
-	if err := p.CreateBotDMPost(userID, text, "custom_git_todo"); err != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error posting the to do items.", StatusCode: http.StatusUnauthorized})
-		return
-	}
+	p.CreateBotDMPost(userID, text, "custom_git_todo")
 
-	w.Write([]byte("{\"status\": \"OK\"}"))
+	resp := struct {
+		Status string
+	}{"OK"}
+
+	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID string) {
 	var settings *UserSettings
-	json.NewDecoder(r.Body).Decode(&settings)
+	if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
+		mlog.Error("Error decoding settings from JSON body", mlog.Err(err))
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
 	if settings == nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -809,7 +840,7 @@ func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID s
 
 	info, err := p.getGitHubUserInfo(userID)
 	if err != nil {
-		writeAPIError(w, err)
+		p.writeAPIError(w, err)
 		return
 	}
 
@@ -821,6 +852,5 @@ func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID s
 		return
 	}
 
-	resp, _ := json.Marshal(info.Settings)
-	w.Write(resp)
+	p.writeJSON(w, info.Settings)
 }

@@ -72,7 +72,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					EnterpriseUploadURL:     "",
 					EnableCodePreview:       false,
 				})
-			p.initialiseAPI()
+			p.initializeAPI()
 
 			req := tt.httpTest.CreateHTTPRequest(tt.request)
 			req.Header.Add("Mattermost-User-ID", tt.userID)

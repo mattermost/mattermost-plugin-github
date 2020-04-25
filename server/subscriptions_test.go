@@ -24,7 +24,7 @@ func pluginWithMockedSubs(subscriptions []*Subscription) *Plugin {
 	subs := Subscriptions{Repositories: map[string][]*Subscription{}}
 	subs.Repositories[""] = subscriptions
 	jsn, _ := json.Marshal(subs)
-	mockPluginAPI.On("KVGet", subcriptionsKey).Return(jsn, nil)
+	mockPluginAPI.On("KVGet", SubscriptionsKey).Return(jsn, nil)
 	p.SetAPI(mockPluginAPI)
 	return p
 }

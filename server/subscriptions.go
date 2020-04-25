@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	subcriptionsKey      = "subscriptions"
+	SubscriptionsKey     = "subscriptions"
 	excludeOrgMemberFlag = "exclude-org-member"
 )
 
@@ -218,15 +218,18 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
-	value, err := p.API.KVGet(subcriptionsKey)
-	if err != nil {
-		return nil, err
+	value, appErr := p.API.KVGet(SubscriptionsKey)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	if value == nil {
-		subscriptions = &Subscriptions{Repositories: map[string][]*Subscription{}}
-	} else {
-		json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+		return &Subscriptions{Repositories: map[string][]*Subscription{}}, nil
+	}
+
+	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+	if err != nil {
+		return nil, err
 	}
 
 	return subscriptions, nil
@@ -237,7 +240,12 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	if err != nil {
 		return err
 	}
-	p.API.KVSet(subcriptionsKey, b)
+
+	appErr := p.API.KVSet(SubscriptionsKey, b)
+	if appErr != nil {
+		return appErr
+	}
+
 	return nil
 }
 
@@ -280,7 +288,7 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	owner, repo := parseOwnerAndRepo(repo, p.getBaseURL())
 	if owner == "" && repo == "" {
-		return fmt.Errorf("envalid repository")
+		return fmt.Errorf("invalid repository")
 	}
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 

@@ -112,9 +112,11 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
-	p.initialiseAPI()
+	p.initializeAPI()
 
-	p.API.RegisterCommand(getCommand())
+	if err := p.API.RegisterCommand(getCommand()); err != nil {
+		return err
+	}
 
 	botID, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
@@ -240,9 +242,12 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 	var userInfo GitHubUserInfo
 
-	if infoBytes, err := p.API.KVGet(userID + githubTokenKey); err != nil || infoBytes == nil {
+	infoBytes, appErr := p.API.KVGet(userID + githubTokenKey)
+	if appErr != nil || infoBytes == nil {
 		return nil, &APIErrorResponse{ID: apiErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
-	} else if err := json.Unmarshal(infoBytes, &userInfo); err != nil {
+	}
+
+	if err := json.Unmarshal(infoBytes, &userInfo); err != nil {
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
 	}
 
@@ -285,12 +290,26 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		return
 	}
 
-	p.API.KVDelete(userID + githubTokenKey)
-	p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey)
+	if err := p.API.KVDelete(userID + githubTokenKey); err != nil {
+		p.API.LogWarn("Failed to delete github token", "userID", userID, "error", err.Error())
+	}
 
-	if user, err := p.API.GetUser(userID); err == nil && user.Props != nil && len(user.Props["git_user"]) > 0 {
-		delete(user.Props, "git_user")
-		p.API.UpdateUser(user)
+	if err := p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
+		p.API.LogWarn("Failed to delete github token", "userID", userID, "error", err.Error())
+	}
+
+	user, err := p.API.GetUser(userID)
+	if err != nil {
+		p.API.LogWarn("Failed to get user props", "userID", userID, "error", err.Error())
+	} else {
+		_, ok := user.Props["git_user"]
+		if ok {
+			delete(user.Props, "git_user")
+			_, err := p.API.UpdateUser(user)
+			if err != nil {
+				p.API.LogWarn("Failed to get update user props", "userID", userID, "error", err.Error())
+			}
+		}
 	}
 
 	p.API.PublishWebSocketEvent(
@@ -300,11 +319,13 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	)
 }
 
-func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppError {
+// CreateBotDMPost posts a direct message using the bot account.
+// Any error are not returned and instead logged.
+func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 	if err != nil {
-		mlog.Error("Couldn't get bot's DM channel", mlog.String("user_id", userID))
-		return err
+		p.API.LogWarn("Couldn't get bot's DM channel", "userID", userID, "error", err.Error())
+		return
 	}
 
 	post := &model.Post{
@@ -315,17 +336,15 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) *model.AppErr
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
-		mlog.Error(err.Error())
-		return err
+		p.API.LogWarn("Failed to create DM post", "userID", userID, "error", err.Error())
+		return
 	}
-
-	return nil
 }
 
 func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to get todo text", "userID", info.UserID, "error", err.Error())
 		return
 	}
 

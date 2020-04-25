@@ -23,7 +23,7 @@ linters:
   enable:
     - bodyclose
     - deadcode
-    #- errcheck
+    - errcheck
     - goconst
     - gocritic
     - gofmt

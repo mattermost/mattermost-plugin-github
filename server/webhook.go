@@ -16,24 +16,36 @@ import (
 	"github.com/google/go-github/v25/github"
 )
 
-func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
+func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
 	const signaturePrefix = "sha1="
 	const signatureLength = 45
 
 	if len(signature) != signatureLength || !strings.HasPrefix(signature, signaturePrefix) {
-		return false
+		return false, nil
 	}
 
 	actual := make([]byte, 20)
-	hex.Decode(actual, []byte(signature[5:]))
+	_, err := hex.Decode(actual, []byte(signature[5:]))
+	if err != nil {
+		return false, err
+	}
 
-	return hmac.Equal(signBody(secret, body), actual)
+	sb, err := signBody(secret, body)
+	if err != nil {
+		return false, err
+	}
+
+	return hmac.Equal(sb, actual), nil
 }
 
-func signBody(secret, body []byte) []byte {
+func signBody(secret, body []byte) ([]byte, error) {
 	computed := hmac.New(sha1.New, secret)
-	computed.Write(body)
-	return computed.Sum(nil)
+	_, err := computed.Write(body)
+	if err != nil {
+		return nil, err
+	}
+
+	return computed.Sum(nil), nil
 }
 
 // Hack to convert from github.PushEventRepository to github.Repository
@@ -57,7 +69,14 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !verifyWebhookSignature([]byte(config.WebhookSecret), signature, body) {
+	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
+	if err != nil {
+		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if !valid {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
