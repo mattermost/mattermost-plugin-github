@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 )
 
 // maxPermalinkReplacements sets the maximum limit to the number of
