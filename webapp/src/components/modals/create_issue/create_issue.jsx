@@ -38,7 +38,7 @@ export default class CreateIssueModal extends PureComponent {
 
     componentDidUpdate(prevProps) {
         if (this.props.post && !prevProps.post) {
-            this.setState({issueDescription: this.props.post.message});
+            this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
         }
     }
 
