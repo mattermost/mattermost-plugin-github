@@ -10,13 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
-
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
-
-	"github.com/google/go-github/v31/github"
 	"golang.org/x/oauth2"
 )
 
