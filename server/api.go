@@ -952,10 +952,23 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 	githubClient := p.githubConnect(*info.Token)
 
-	repositories, _, apiErr := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
-	if apiErr != nil {
-		mlog.Error(apiErr.Error())
-		return
+	config := p.getConfiguration()
+	org := config.GitHubOrg
+
+	var repositories []*github.Repository
+	var apiErr error
+	if org == "" {
+		repositories, _, apiErr = githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
+		if apiErr != nil {
+			mlog.Error(apiErr.Error())
+			return
+		}
+	} else {
+		repositories, _, apiErr = githubClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{})
+		if apiErr != nil {
+			mlog.Error(apiErr.Error())
+			return
+		}
 	}
 
 	resp, _ := json.Marshal(repositories)
@@ -1028,10 +1041,28 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	currentUser, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	splittedRepo := strings.Split(issue.Repo, "/")
+	owner := splittedRepo[0]
+	repoName := splittedRepo[1]
+
 	githubClient := p.githubConnect(*info.Token)
-	result, resp, apiErr := githubClient.Issues.Create(ctx, info.GitHubUsername, issue.Repo, ghIssue)
+	result, resp, apiErr := githubClient.Issues.Create(ctx, owner, repoName, ghIssue)
 	if apiErr != nil {
-		mlog.Error(apiErr.Error())
+		writeAPIError(w,
+			&APIErrorResponse{
+				ID: "",
+				Message: "failed to create issue: " + getFailReason(resp.StatusCode,
+					issue.Repo,
+					currentUser.Username),
+				StatusCode: resp.StatusCode,
+			})
+		return
 	}
 
 	if resp.Response.StatusCode == http.StatusGone {

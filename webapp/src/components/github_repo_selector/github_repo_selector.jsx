@@ -54,7 +54,7 @@ export default class GithubRepoSelector extends PureComponent {
                     theme={this.props.theme}
                     addValidate={this.props.addValidate}
                     removeValidate={this.props.removeValidate}
-                    value={repoOptions.find((option) => option.value === this.props.value)}
+                    value={repoOptions.find((option) => option.label === this.props.value)}
                 />
                 <div className={'help-text'}>
                     {'Returns GitHub repositories connected to the user account'} <br/>
