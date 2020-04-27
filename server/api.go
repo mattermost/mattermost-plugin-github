@@ -696,8 +696,8 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func getPermaLink(siteUrl string, postId string, currentTeam string) string {
-	return fmt.Sprintf("%v/%v/pl/%v", siteUrl, currentTeam, postId)
+func getPermaLink(siteUrl string, postId string) string {
+	return fmt.Sprintf("%v/_redirect/pl/%v", siteUrl, postId)
 }
 
 func getFailReason(code int, repo string, username string) string {
@@ -805,7 +805,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request) {
 
 	siteUrl := api.GetConfig().ServiceSettings.SiteURL
 
-	permalink := getPermaLink(*siteUrl, req.PostId, req.CurrentTeam)
+	permalink := getPermaLink(*siteUrl, req.PostId)
 
 	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUser.Username, permalink, commentUser.Username)
 
@@ -1013,7 +1013,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	siteUrl := p.API.GetConfig().ServiceSettings.SiteURL
-	permalink := getPermaLink(*siteUrl, issue.PostId, issue.CurrentTeam)
+	permalink := getPermaLink(*siteUrl, issue.PostId)
 
 	mmMessage := fmt.Sprintf("_Issue created from a [message in Mattermost](%v)_.", permalink)
 	if len(*ghIssue.Body) > 0 {
