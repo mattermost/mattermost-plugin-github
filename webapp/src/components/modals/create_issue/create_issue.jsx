@@ -24,7 +24,6 @@ export default class CreateIssueModal extends PureComponent {
     static propTypes = {
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
-        currentTeam: PropTypes.object.isRequired,
         post: PropTypes.object,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
@@ -61,7 +60,6 @@ export default class CreateIssueModal extends PureComponent {
             body: this.state.issueDescription,
             repo: this.state.repoValue,
             post_id: this.props.post.id,
-            current_team: this.props.currentTeam.name,
         };
 
         this.setState({submitting: true});

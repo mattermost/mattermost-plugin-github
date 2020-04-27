@@ -978,11 +978,10 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request) {
 func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 
 	type IssueRequest struct {
-		Title       string `json:"title"`
-		Body        string `json:"body"`
-		Repo        string `json:"repo"`
-		PostId      string `json:"post_id"`
-		CurrentTeam string `json:"current_team"`
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+		Repo   string `json:"repo"`
+		PostId string `json:"post_id"`
 	}
 
 	if r.Method != http.MethodPost {
@@ -1011,11 +1010,6 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 
 	if issue.Repo == "" {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo name.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
-	if issue.CurrentTeam == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
 		return
 	}
 
