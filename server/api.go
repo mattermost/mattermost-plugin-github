@@ -1019,6 +1019,11 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if issue.PostId == "" {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a postID", StatusCode: http.StatusBadRequest})
+		return
+	}
+
 	ctx := context.Background()
 	ghIssue := &github.IssueRequest{
 		Title: &issue.Title,
