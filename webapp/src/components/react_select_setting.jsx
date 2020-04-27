@@ -76,7 +76,7 @@ export default class ReactSelectSetting extends React.PureComponent {
     filterOptions = (input) => {
         let options = this.props.options;
         if (input) {
-            options = options.filter((x) => x.label.toUpperCase().includes(input.toUpperCase()));
+            options = options.filter((x) => x.label.toLowerCase().includes(input.toLowerCase()));
         }
         return Promise.resolve(options.slice(0, MAX_NUM_OPTIONS));
     };
