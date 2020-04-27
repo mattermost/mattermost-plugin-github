@@ -17,7 +17,7 @@ const mapStateToProps = (state) => {
     const currentTeam = getCurrentTeam(state);
 
     return {
-        visible: state[`plugins-${pluginId}`].createIssueModalVisible,
+        visible: state[`plugins-${pluginId}`].isCreateIssueModalVisible,
         post,
         currentTeam,
     };

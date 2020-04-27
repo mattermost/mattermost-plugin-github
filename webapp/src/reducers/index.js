@@ -168,7 +168,7 @@ function rhsState(state = null, action) {
     }
 }
 
-const createIssueModalVisible = (state = false, action) => {
+const isCreateIssueModalVisible = (state = false, action) => {
     switch (action.type) {
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
         return true;
@@ -230,7 +230,7 @@ export default combineReducers({
     githubUsers,
     rhsPluginAction,
     rhsState,
-    createIssueModalVisible,
+    isCreateIssueModalVisible,
     createIssueModalForPostId,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
