@@ -284,12 +284,11 @@ type ConnectedResponse struct {
 }
 
 type CreateIssueCommentRequest struct {
-	PostId      string `json:"post_id"`
-	Owner       string `json:"owner"`
-	Repo        string `json:"repo"`
-	Number      int    `json:"number"`
-	Comment     string `json:"comment"`
-	CurrentTeam string `json:"current_team"`
+	PostId  string `json:"post_id"`
+	Owner   string `json:"owner"`
+	Repo    string `json:"repo"`
+	Number  int    `json:"number"`
+	Comment string `json:"comment"`
 }
 
 type GitHubUserRequest struct {
@@ -699,11 +698,6 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	if req.Comment == "" {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid non empty comment.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
-	if req.CurrentTeam == "" {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
 		return
 	}
 

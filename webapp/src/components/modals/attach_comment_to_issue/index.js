@@ -4,7 +4,6 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
-import {getCurrentTeam} from 'mattermost-redux/selectors/entities/teams';
 
 import {id as pluginId} from 'manifest';
 import {closeAttachCommentToIssueModal, attachCommentToIssue} from 'actions';
@@ -14,12 +13,10 @@ import AttachCommentToIssue from './attach_comment_to_issue';
 const mapStateToProps = (state) => {
     const postId = state[`plugins-${pluginId}`].attachCommentToIssueModalForPostId;
     const post = getPost(state, postId);
-    const currentTeam = getCurrentTeam(state);
 
     return {
         visible: state[`plugins-${pluginId}`].attachCommentToIssueModalVisible,
         post,
-        currentTeam,
     };
 };
 

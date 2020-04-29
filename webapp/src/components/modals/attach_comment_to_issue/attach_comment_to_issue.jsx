@@ -22,7 +22,6 @@ export default class AttachIssueModal extends PureComponent {
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
         post: PropTypes.object,
-        currentTeam: PropTypes.object.isRequired,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
     };
@@ -53,7 +52,6 @@ export default class AttachIssueModal extends PureComponent {
             number,
             comment: this.props.post.message,
             post_id: this.props.post.id,
-            current_team: this.props.currentTeam.name,
         };
 
         this.setState({submitting: true});
