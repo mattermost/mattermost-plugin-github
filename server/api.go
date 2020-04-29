@@ -855,29 +855,43 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 		return
 	}
 
-	ctx := context.Background()
 	githubClient := p.githubConnect(*info.Token)
 
-	config := p.getConfiguration()
-	org := config.GitHubOrg
+	ctx := context.Background()
+	org := p.getConfiguration().GitHubOrg
 
-	var repositories []*github.Repository
-	var apiErr error
+	var allRepos []*github.Repository
+	opt := github.ListOptions{PerPage: 50}
+
 	if org == "" {
-		repositories, _, apiErr = githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{})
-		if apiErr != nil {
-			mlog.Error(apiErr.Error())
-			return
+		for {
+			repos, resp, err := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{ListOptions: opt})
+			if err != nil {
+				mlog.Error(err.Error())
+				return
+			}
+			allRepos = append(allRepos, repos...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
 		}
 	} else {
-		repositories, _, apiErr = githubClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{})
-		if apiErr != nil {
-			mlog.Error(apiErr.Error())
-			return
+		for {
+			repos, resp, err := githubClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
+			if err != nil {
+				mlog.Error(err.Error())
+				return
+			}
+			allRepos = append(allRepos, repos...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
 		}
 	}
 
-	resp, _ := json.Marshal(repositories)
+	resp, _ := json.Marshal(allRepos)
 	w.Write(resp)
 }
 
