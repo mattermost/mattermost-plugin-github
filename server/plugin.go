@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,12 +13,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/go-github/v31/github"
+	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
-
-	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
 
