@@ -644,7 +644,9 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID str
 	w.Write(resp)
 }
 
-func getPermaLink(siteUrl string, postId string) string {
+func (p *Plugin) getPermaLink(postId string) string {
+	siteUrl := p.API.GetConfig().ServiceSettings.SiteURL
+
 	return fmt.Sprintf("%v/_redirect/pl/%v", siteUrl, postId)
 }
 
@@ -669,8 +671,7 @@ func getFailReason(code int, repo string, username string) string {
 
 func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, userID string) {
 	req := &CreateIssueCommentRequest{}
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		mlog.Error("Error decoding JSON body", mlog.Err(err))
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
@@ -735,10 +736,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	siteUrl := api.GetConfig().ServiceSettings.SiteURL
-
-	permalink := getPermaLink(*siteUrl, req.PostId)
-
+	permalink := p.getPermaLink(req.PostId)
 	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUser.Username, permalink, commentUser.Username)
 
 	req.Comment = permalinkMessage + req.Comment
@@ -914,14 +912,12 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	ctx := context.Background()
 	ghIssue := &github.IssueRequest{
 		Title: &issue.Title,
 		Body:  &issue.Body,
 	}
 
-	siteUrl := p.API.GetConfig().ServiceSettings.SiteURL
-	permalink := getPermaLink(*siteUrl, issue.PostId)
+	permalink := p.getPermaLink(issue.PostId)
 
 	mmMessage := fmt.Sprintf("_Issue created from a [message in Mattermost](%v)_.", permalink)
 	if len(*ghIssue.Body) > 0 {
@@ -947,7 +943,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	repoName := splittedRepo[1]
 
 	githubClient := p.githubConnect(*info.Token)
-	result, resp, apiErr := githubClient.Issues.Create(ctx, owner, repoName, ghIssue)
+	result, resp, apiErr := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
 	if apiErr != nil {
 		writeAPIError(w,
 			&APIErrorResponse{
