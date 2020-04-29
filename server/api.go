@@ -645,7 +645,7 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID str
 }
 
 func (p *Plugin) getPermaLink(postId string) string {
-	siteUrl := p.API.GetConfig().ServiceSettings.SiteURL
+	siteUrl := *p.API.GetConfig().ServiceSettings.SiteURL
 
 	return fmt.Sprintf("%v/_redirect/pl/%v", siteUrl, postId)
 }
