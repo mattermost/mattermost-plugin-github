@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/hmac"
-	"crypto/sha1" //nolint:gosec
+	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"

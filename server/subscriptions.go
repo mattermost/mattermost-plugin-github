@@ -22,7 +22,7 @@ type SubscriptionFlags struct {
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
-	switch flag { // nolint:gocritic
+	switch flag { // nolint:gocritic // It's expected that more flags get added.
 	case excludeOrgMemberFlag:
 		s.ExcludeOrgMembers = true
 	}
