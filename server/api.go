@@ -603,7 +603,7 @@ func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, 
 	reviewsList, _, err := client.PullRequests.ListReviews(ctx, repoOwner, repoName, number, nil)
 
 	if err != nil {
-		return []*github.PullRequestReview{}, errors.Wrap(err, "Could not list reviews")
+		return []*github.PullRequestReview{}, errors.Wrap(err, "could not list reviews")
 	}
 
 	return reviewsList, nil

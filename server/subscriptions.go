@@ -100,11 +100,11 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
-		return fmt.Errorf("Invalid repository")
+		return fmt.Errorf("invalid repository")
 	}
 
 	if err := p.checkOrg(owner); err != nil {
-		return errors.Wrap(err, "Organization not supported")
+		return errors.Wrap(err, "organization not supported")
 	}
 
 	var err error
@@ -142,7 +142,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
-		return errors.Wrap(err, "Could not add subscription")
+		return errors.Wrap(err, "could not add subscription")
 	}
 
 	return nil
@@ -160,7 +160,7 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not get subscriptions")
+		return nil, errors.Wrap(err, "could not get subscriptions")
 	}
 
 	for repo, v := range subs.Repositories {
@@ -185,7 +185,7 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return errors.Wrap(err, "Could not get subscriptions")
+		return errors.Wrap(err, "could not get subscriptions")
 	}
 
 	repoSubs := subs.Repositories[repo]
@@ -210,7 +210,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 
 	err = p.StoreSubscriptions(subs)
 	if err != nil {
-		return errors.Wrap(err, "Could not store subscriptions")
+		return errors.Wrap(err, "could not store subscriptions")
 	}
 
 	return nil
@@ -221,7 +221,7 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 
 	value, err := p.API.KVGet(SUBSCRIPTIONS_KEY)
 	if err != nil {
-		return nil, errors.Wrap(err, "Could not get subscriptions from KVStore")
+		return nil, errors.Wrap(err, "could not get subscriptions from KVStore")
 	}
 
 	if value == nil {
@@ -236,11 +236,11 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	b, err := json.Marshal(s)
 	if err != nil {
-		return errors.Wrap(err, "Error while converting subscriptions map to json")
+		return errors.Wrap(err, "error while converting subscriptions map to json")
 	}
-	err = p.API.KVSet(SUBSCRIPTIONS_KEY, b)
-	if err != nil {
-		return errors.Wrap(err, "Could not store subscriptions in KVStore")
+
+	if appErr := p.API.KVSet(SUBSCRIPTIONS_KEY, b); appErr != nil {
+		return errors.Wrap(appErr, "could not store subscriptions in KVStore")
 	}
 	return nil
 }
@@ -292,7 +292,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return errors.Wrap(err, "Could not get subscriptions")
+		return errors.Wrap(err, "could not get subscriptions")
 	}
 
 	repoSubs := subs.Repositories[repoWithOwner]
@@ -312,7 +312,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	if removed {
 		subs.Repositories[repoWithOwner] = repoSubs
 		if err := p.StoreSubscriptions(subs); err != nil {
-			return errors.Wrap(err, "Could not store subscriptions")
+			return errors.Wrap(err, "could not store subscriptions")
 		}
 	}
 

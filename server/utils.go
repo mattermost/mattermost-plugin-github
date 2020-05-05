@@ -71,14 +71,14 @@ func unpad(src []byte) ([]byte, error) {
 func encrypt(key []byte, text string) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", errors.Wrap(err, "Could not create a cipher block, check key")
+		return "", errors.Wrap(err, "could not create a cipher block, check key")
 	}
 
 	msg := pad([]byte(text))
 	ciphertext := make([]byte, aes.BlockSize+len(msg))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", errors.Wrap(err, "ReadFull was unsuccessful, check buffer size")
+		return "", errors.Wrap(err, "readFull was unsuccessful, check buffer size")
 	}
 
 	cfb := cipher.NewCFBEncrypter(block, iv)
@@ -90,12 +90,12 @@ func encrypt(key []byte, text string) (string, error) {
 func decrypt(key []byte, text string) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", errors.Wrap(err, "Could not create a cipher block, check key")
+		return "", errors.Wrap(err, "could not create a cipher block, check key")
 	}
 
 	decodedMsg, err := base64.URLEncoding.DecodeString(text)
 	if err != nil {
-		return "", errors.Wrap(err, "Could not decode the message")
+		return "", errors.Wrap(err, "could not decode the message")
 	}
 
 	if (len(decodedMsg) % aes.BlockSize) != 0 {

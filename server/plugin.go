@@ -105,7 +105,7 @@ func (p *Plugin) OnActivate() error {
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
-		return errors.Wrap(err, "Invalid config")
+		return errors.Wrap(err, "invalid config")
 	}
 
 	p.initialiseAPI()
@@ -224,11 +224,11 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 
 	jsonInfo, err := json.Marshal(info)
 	if err != nil {
-		return errors.Wrap(err, "Error while converting user info to json")
+		return errors.Wrap(err, "error while converting user info to json")
 	}
 
 	if err := p.API.KVSet(info.UserID+GITHUB_TOKEN_KEY, jsonInfo); err != nil {
-		return errors.Wrap(err, "Error occurred while trying to store user info into KVStore")
+		return errors.Wrap(err, "error occurred while trying to store user info into KVStore")
 	}
 
 	return nil
@@ -341,17 +341,17 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
-		return "", errors.Wrap(err, "Error occurred while listing notifications")
+		return "", errors.Wrap(err, "error occurred while listing notifications")
 	}
 
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", errors.Wrap(err, "Error occurred while searching for PRs")
+		return "", errors.Wrap(err, "error occurred while searching for PRs")
 	}
 
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", errors.Wrap(err, "Error occurred while searching for assignments")
+		return "", errors.Wrap(err, "error occurred while searching for assignments")
 	}
 
 	text := "##### Unread Messages\n"
@@ -364,7 +364,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		}
 
 		if n.GetRepository() == nil {
-			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			p.API.LogError("unable to get repository for notification in todo list. Skipping.")
 			continue
 		}
 
