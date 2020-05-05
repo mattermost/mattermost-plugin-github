@@ -727,23 +727,31 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
+	commentUsername := ""
 	commentUser, appErr := api.GetUser(post.UserId)
 	if appErr != nil {
 		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
 		return
 	}
+	if info, err := p.getGitHubUserInfo(post.UserId); err != nil {
+		commentUsername = commentUser.Username
+	} else {
+		commentUsername = info.GitHubUsername
+	}
 
-	currentUser, appErr := api.GetUser(userID)
-	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
+	currentUsername := ""
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
 		return
+	} else {
+		currentUsername = info.GitHubUsername
 	}
 
 	siteUrl := api.GetConfig().ServiceSettings.SiteURL
 
 	permalink := getPermaLink(*siteUrl, req.PostId, req.CurrentTeam)
 
-	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUser.Username, permalink, commentUser.Username)
+	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUsername, permalink, commentUsername)
 
 	req.Comment = permalinkMessage + req.Comment
 	comment := &github.IssueComment{
@@ -752,7 +760,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	result, rawResponse, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment)
 	if err != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUser.Username), StatusCode: rawResponse.StatusCode})
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUsername), StatusCode: rawResponse.StatusCode})
 		return
 	}
 	rootId := req.PostId
