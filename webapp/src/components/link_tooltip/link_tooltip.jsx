@@ -41,11 +41,13 @@ export const LinkTooltip = ({href}) => {
         case 'pull':
             color = '#28a745';
             iconType = GitPullRequest;
-            if (data.state === 'closed' && data.merged) {
-                color = '#6f42c1';
-                iconType = GitMerge;
-            } else {
-                color = '#cb2431';
+            if (data.state === 'closed') {
+                if (data.merged) {
+                    color = '#6f42c1';
+                    iconType = GitMerge;
+                } else {
+                    color = '#cb2431';
+                }
             }
             icon = (
                 <span style={{color}}>

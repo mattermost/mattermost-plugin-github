@@ -889,7 +889,11 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 	owner := r.FormValue("owner")
 	repo := r.FormValue("repo")
 	number := r.FormValue("number")
-	numberInt, _ := strconv.Atoi(number)
+
+	numberInt, err := strconv.Atoi(number)
+	if err != nil {
+		mlog.Error(err.Error())
+	}
 
 	if info, err := p.getGitHubUserInfo(userID); err != nil {
 		writeAPIError(w, err)
