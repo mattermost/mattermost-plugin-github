@@ -77,6 +77,8 @@ func (p *Plugin) initialiseAPI() {
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods("GET")
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods("POST")
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods("POST")
+	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, false)).Methods("GET")
+	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, false)).Methods("GET")
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
@@ -851,5 +853,56 @@ func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID s
 	}
 
 	resp, _ := json.Marshal(info.Settings)
+	w.Write(resp)
+}
+
+func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID string) {
+
+	ctx := context.Background()
+
+	var githubClient *github.Client
+	owner := r.FormValue("owner")
+	repo := r.FormValue("repo")
+	number := r.FormValue("number")
+	numberInt, _ := strconv.Atoi(number)
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = p.githubConnect(*info.Token)
+	}
+
+	result, _, err := githubClient.Issues.Get(ctx, owner, repo, numberInt)
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result)
+	w.Write(resp)
+}
+
+func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID string) {
+	ctx := context.Background()
+
+	var githubClient *github.Client
+	owner := r.FormValue("owner")
+	repo := r.FormValue("repo")
+	number := r.FormValue("number")
+	numberInt, _ := strconv.Atoi(number)
+
+	if info, err := p.getGitHubUserInfo(userID); err != nil {
+		writeAPIError(w, err)
+		return
+	} else {
+		githubClient = p.githubConnect(*info.Token)
+	}
+
+	result, _, err := githubClient.PullRequests.Get(ctx, owner, repo, numberInt)
+	if err != nil {
+		mlog.Error(err.Error())
+	}
+
+	resp, _ := json.Marshal(result)
 	w.Write(resp)
 }
