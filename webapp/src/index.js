@@ -8,6 +8,7 @@ import SidebarHeader from './components/sidebar_header';
 import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
+import {LinkTooltip} from './components/link_tooltip/link_tooltip';
 import Reducer from './reducers';
 import {getConnected, setShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
@@ -27,6 +28,7 @@ class PluginClass {
         registry.registerPopoverUserAttributesComponent(UserAttribute);
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
+        registry.registerLinkTooltipComponent(LinkTooltip);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
