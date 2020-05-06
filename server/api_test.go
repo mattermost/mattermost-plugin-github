@@ -30,7 +30,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			name:     "unauthorized test json",
 			httpTest: httpTestJSON,
 			request: testutils.Request{
-				Method: "GET",
+				Method: http.MethodGet,
 				URL:    "/api/v1/connected",
 				Body:   nil,
 			},
@@ -45,7 +45,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			name:     "unauthorized test http",
 			httpTest: httpTestString,
 			request: testutils.Request{
-				Method: "GET",
+				Method: http.MethodGet,
 				URL:    "/api/v1/reviews",
 				Body:   nil,
 			},

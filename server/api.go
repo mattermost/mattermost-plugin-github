@@ -85,23 +85,23 @@ func (p *Plugin) initializeAPI() {
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
 	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
 
-	p.router.HandleFunc("/webhook", p.handleWebhook).Methods("POST")
+	p.router.HandleFunc("/webhook", p.handleWebhook).Methods(http.MethodPost)
 
-	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods("GET")
-	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods("GET")
+	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods(http.MethodGet)
+	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods(http.MethodGet)
 
-	apiRouter.HandleFunc("/connected", p.extractUserMiddleWare(p.getConnected, true)).Methods("GET")
-	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods("POST")
-	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods("GET")
-	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods("GET")
-	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods("POST")
-	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, false)).Methods("GET")
-	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, false)).Methods("GET")
-	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods("POST")
-	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods("GET")
-	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods("GET")
-	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods("POST")
-	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods("POST")
+	apiRouter.HandleFunc("/connected", p.extractUserMiddleWare(p.getConnected, true)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
