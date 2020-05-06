@@ -82,12 +82,8 @@ export const LinkTooltip = ({href}) => {
         date = date.toDateString();
 
         return (
-            <div
-                className='github-tooltip'
-            >
-                <div
-                    className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'
-                >
+            <div className='github-tooltip'>
+                <div className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'>
                     <div className='header mb-1'>
                         <a
                             title={data.repo}
@@ -102,11 +98,9 @@ export const LinkTooltip = ({href}) => {
 
                         {/* info */}
                         <div className='tooltip-info mt-1'>
-                            <a
-                                href={href}
-                            >
+                            <a href={href}>
                                 <h5 className='mr-1'>{data.title}</h5>
-                                <span className='text-gray-light'>#{data.number}</span>
+                                <span>#{data.number}</span>
                             </a>
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown
@@ -118,7 +112,7 @@ export const LinkTooltip = ({href}) => {
 
                             {/* base <- head */}
                             {data.type === 'pull' && (
-                                <div className='base-head text-gray mt-1 mr-3'>
+                                <div className='base-head mt-1 mr-3'>
                                     <span
                                         title={data.base.ref}
                                         className='commit-ref'
@@ -129,7 +123,6 @@ export const LinkTooltip = ({href}) => {
                                     <span
                                         title={data.head.ref}
                                         className='commit-ref'
-                                        style={{maxWidth: '140px'}}
                                     >{data.head.ref}
                                     </span>
                                 </div>

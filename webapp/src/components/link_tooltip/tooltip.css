@@ -113,4 +113,5 @@
     white-space: nowrap;
     background-color: var(--light-blue);
     border-radius: 3px;
+    maxWidth: 140px;
 }
