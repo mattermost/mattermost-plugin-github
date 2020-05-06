@@ -775,8 +775,9 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		rootId = post.RootId
 	}
 
+	permalinkReplyMessage := fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number)
 	reply := &model.Post{
-		Message:   fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number),
+		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
 		RootId:    rootId,
 		ParentId:  rootId,
