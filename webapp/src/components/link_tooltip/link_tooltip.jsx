@@ -5,6 +5,7 @@ import Octicon, {GitMerge, GitPullRequest, IssueClosed, IssueOpened} from '@prim
 import ReactMarkdown from 'react-markdown';
 
 import Client from 'client';
+import {getLabelFontColor} from '../../utils/styles';
 
 export const LinkTooltip = ({href}) => {
     const [data, setData] = useState(null);
@@ -74,14 +75,6 @@ export const LinkTooltip = ({href}) => {
             break;
         }
         return icon;
-    };
-
-    const getLabelFontColor = (hexcolor) => {
-        const r = parseInt(hexcolor.substr(0, 2), 16);
-        const g = parseInt(hexcolor.substr(2, 2), 16);
-        const b = parseInt(hexcolor.substr(4, 2), 16);
-        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return (yiq >= 128) ? 'black' : 'white';
     };
 
     if (data) {
