@@ -152,6 +152,6 @@ export const LinkTooltip = ({href}) => {
     return null;
 };
 
-LinkTooltip.PropTypes = {
+LinkTooltip.propTypes = {
     href: PropTypes.string.isRequired,
 };
