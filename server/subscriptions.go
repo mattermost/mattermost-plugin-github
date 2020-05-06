@@ -100,7 +100,7 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userId, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
-		return fmt.Errorf("invalid repository")
+		return errors.Errorf("invalid repository")
 	}
 
 	if err := p.checkOrg(owner); err != nil {
@@ -116,7 +116,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 			var ghUser *github.User
 			ghUser, _, err = githubClient.Users.Get(ctx, owner)
 			if ghUser == nil {
-				return fmt.Errorf("Unknown organization %s", owner)
+				return errors.Errorf("Unknown organization %s", owner)
 			}
 		}
 	} else {
@@ -124,13 +124,13 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
 
 		if ghRepo == nil {
-			return fmt.Errorf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
+			return errors.Errorf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 		}
 	}
 
 	if err != nil {
 		mlog.Error(err.Error())
-		return fmt.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
+		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
 	sub := &Subscription{
@@ -150,7 +150,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userId, org, channelID, features string, flags SubscriptionFlags) error {
 	if org == "" {
-		return fmt.Errorf("Invalid organization")
+		return errors.New("Invalid organization")
 	}
 
 	return p.Subscribe(ctx, githubClient, userId, org, "", channelID, features, flags)
@@ -227,7 +227,10 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	if value == nil {
 		subscriptions = &Subscriptions{Repositories: map[string][]*Subscription{}}
 	} else {
-		json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+		err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not properly decode subscriptions key")
+		}
 	}
 
 	return subscriptions, nil
@@ -286,7 +289,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 
 	owner, repo := parseOwnerAndRepo(repo, config.EnterpriseBaseURL)
 	if owner == "" && repo == "" {
-		return fmt.Errorf("Invalid repository")
+		return errors.New("Invalid repository")
 	}
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 

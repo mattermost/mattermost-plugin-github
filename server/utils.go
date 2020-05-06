@@ -205,7 +205,10 @@ func filterLines(s string, start, end int) (string, error) {
 		buf.WriteByte(byte('\n'))
 	}
 
-	return buf.String(), errors.Wrap(scanner.Err(), "scanner error occurred")
+	if err := scanner.Err(); err != nil {
+		return "", errors.Wrap(err, "scanner error occurred")
+	}
+	return buf.String(), nil
 }
 
 // getLineNumbers return the start and end lines from an anchor tag
