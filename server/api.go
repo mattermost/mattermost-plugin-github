@@ -728,20 +728,26 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 	}
 
 	commentUsername := ""
-	commentUser, appErr := api.GetUser(post.UserId)
-	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
-		return
-	}
-	if info, err := p.getGitHubUserInfo(post.UserId); err != nil {
-		commentUsername = commentUser.Username
+
+	if info, apiEr := p.getGitHubUserInfo(post.UserId); apiEr != nil {
+		if apiEr.ID == API_ERROR_ID_NOT_CONNECTED {
+			commentUser, appEr := api.GetUser(post.UserId)
+			if appEr != nil {
+				writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
+				return
+			}
+			commentUsername = commentUser.Username
+		} else {
+			writeAPIError(w, apiEr)
+			return
+		}
 	} else {
 		commentUsername = info.GitHubUsername
 	}
 
 	currentUsername := ""
-	if info, err := p.getGitHubUserInfo(userID); err != nil {
-		writeAPIError(w, err)
+	if info, apiEr := p.getGitHubUserInfo(userID); apiEr != nil {
+		writeAPIError(w, apiEr)
 		return
 	} else {
 		currentUsername = info.GitHubUsername
