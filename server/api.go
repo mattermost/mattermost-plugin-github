@@ -891,7 +891,19 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 		}
 	}
 
-	resp, _ := json.Marshal(allRepos)
+	// Only send down fields to client that are needed
+	type RepositoryResponse struct {
+		Name     string
+		FullName string
+	}
+
+	response := make([]RepositoryResponse, len(allRepos))
+	for i, r := range allRepos {
+		response[i].Name = r.GetName()
+		response[i].FullName = r.GetFullName()
+	}
+
+	resp, _ := json.Marshal(response)
 	w.Write(resp)
 }
 
