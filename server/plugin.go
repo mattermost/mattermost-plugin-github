@@ -516,3 +516,22 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		&model.WebsocketBroadcast{UserId: userID},
 	)
 }
+
+// getUsername returns the GitHub username for a given Mattermost user,
+// if the user is connected to GitHub via this plugin.
+// Otherwise it return the Mattermost username. It will be escaped via backticks.
+func (p *Plugin) getUsername(mmUserID string) (string, error) {
+	info, apiEr := p.getGitHubUserInfo(mmUserID)
+	if apiEr != nil {
+		if apiEr.ID == API_ERROR_ID_NOT_CONNECTED {
+			user, appEr := p.API.GetUser(mmUserID)
+			if appEr != nil {
+				return "", appEr
+			}
+			return fmt.Sprintf("`@%s`", user.Username), nil
+		} else {
+			return "", apiEr
+		}
+	}
+	return "@" + info.GitHubUsername, nil
+}

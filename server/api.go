@@ -38,6 +38,10 @@ type APIErrorResponse struct {
 	StatusCode int    `json:"status_code"`
 }
 
+func (e *APIErrorResponse) Error() string {
+	return e.Message
+}
+
 type PRDetails struct {
 	URL                string                      `json:"url"`
 	Number             int                         `json:"number"`
@@ -893,8 +897,8 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 
 	// Only send down fields to client that are needed
 	type RepositoryResponse struct {
-		Name     string
-		FullName string
+		Name     string `json:"name,omitempty"`
+		FullName string `json:"full_name,omitempty"`
 	}
 
 	response := make([]RepositoryResponse, len(allRepos))
@@ -938,6 +942,29 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
+	// Make sure user have a connected github account
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		writeAPIError(w, apiErr)
+		return
+	}
+
+	post, appErr := p.API.GetPost(issue.PostId)
+	if appErr != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId, StatusCode: http.StatusInternalServerError})
+		return
+	}
+	if post == nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId + ": not found", StatusCode: http.StatusNotFound})
+		return
+	}
+
+	username, err := p.getUsername(post.UserId)
+	if err != nil {
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
 	ghIssue := &github.IssueRequest{
 		Title: &issue.Title,
 		Body:  &issue.Body,
@@ -945,18 +972,12 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 
 	permalink := p.getPermaLink(issue.PostId)
 
-	mmMessage := fmt.Sprintf("_Issue created from a [message in Mattermost](%v)_.", permalink)
-	if len(*ghIssue.Body) > 0 {
-		mmMessage = fmt.Sprintf("\n\n_Issue created from a [message in Mattermost](%v)_.", permalink)
-	}
-	*ghIssue.Body = *ghIssue.Body + mmMessage
+	mmMessage := fmt.Sprintf("_Issue created from a [Mattermost message](%v) by *from %s*._", permalink, username)
 
-	// Make sure user have a connected github account
-	info, err := p.getGitHubUserInfo(userID)
-	if err != nil {
-		writeAPIError(w, err)
-		return
+	if ghIssue.GetBody() != "" {
+		mmMessage = "\n\n" + mmMessage
 	}
+	*ghIssue.Body = ghIssue.GetBody() + mmMessage
 
 	currentUser, appErr := p.API.GetUser(userID)
 	if appErr != nil {
@@ -969,8 +990,8 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	repoName := splittedRepo[1]
 
 	githubClient := p.githubConnect(*info.Token)
-	result, resp, apiErr := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
-	if apiErr != nil {
+	result, resp, err := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
+	if err != nil {
 		writeAPIError(w,
 			&APIErrorResponse{
 				ID: "",
@@ -987,23 +1008,13 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	post, appErr := p.API.GetPost(issue.PostId)
-	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId, StatusCode: http.StatusInternalServerError})
-		return
-	}
-	if post == nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostId + ": not found", StatusCode: http.StatusNotFound})
-		return
-	}
-
 	rootId := issue.PostId
 	if post.RootId != "" {
 		rootId = post.RootId
 	}
 
 	reply := &model.Post{
-		Message:   fmt.Sprintf("Created GitHub issue [#%v](%v)", *result.Number, *result.HTMLURL),
+		Message:   fmt.Sprintf("Created GitHub issue [#%v](%v) from a [message](%s)", *result.Number, *result.HTMLURL, permalink),
 		ChannelId: post.ChannelId,
 		RootId:    rootId,
 		ParentId:  rootId,
