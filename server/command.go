@@ -37,18 +37,23 @@ const commandHelp = `* |/github connect [private]| - Connect your Mattermost acc
   * |value| can be "on" or "off"`
 
 const (
-	featureIssues = "issues"
-	featurePulls  = "pulls"
+	featureIssues        = "issues"
+	featurePulls         = "pulls"
+	featurePushes        = "pushes"
+	featureCreates       = "creates"
+	featureDeletes       = "deletes"
+	featureIssueComments = "issue_comments"
+	featurePullReviews   = "pull_reviews"
 )
 
 var validFeatures = map[string]bool{
-	featureIssues:    true,
-	featurePulls:     true,
-	"pushes":         true,
-	"creates":        true,
-	"deletes":        true,
-	"issue_comments": true,
-	"pull_reviews":   true,
+	featureIssues:        true,
+	featurePulls:         true,
+	featurePushes:        true,
+	featureCreates:       true,
+	featureDeletes:       true,
+	featureIssueComments: true,
+	featurePullReviews:   true,
 }
 
 // validateFeatures returns false when 1 or more given features
