@@ -8,10 +8,9 @@ import GitHubIcon from '../../icon';
 
 export default class CreateIssuePostMenuAction extends PureComponent {
     static propTypes = {
-        isSystemMessage: PropTypes.bool.isRequired,
+        show: PropTypes.bool.isRequired,
         open: PropTypes.func.isRequired,
         postId: PropTypes.string,
-        connected: PropTypes.bool.isRequired,
     };
 
     static defaultTypes = {
@@ -25,7 +24,7 @@ export default class CreateIssuePostMenuAction extends PureComponent {
     };
 
     render() {
-        if (this.props.isSystemMessage || !this.props.connected) {
+        if (!this.props.show) {
             return null;
         }
 

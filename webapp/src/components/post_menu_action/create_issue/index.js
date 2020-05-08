@@ -16,8 +16,7 @@ const mapStateToProps = (state, ownProps) => {
     const systemMessage = post ? isSystemMessage(post) : true;
 
     return {
-        isSystemMessage: systemMessage,
-        connected: state[`plugins-${pluginId}`].connected,
+        show: state[`plugins-${pluginId}`].connected && !systemMessage,
     };
 };
 
