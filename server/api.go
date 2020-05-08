@@ -972,7 +972,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 
 	permalink := p.getPermaLink(issue.PostId)
 
-	mmMessage := fmt.Sprintf("_Issue created from a [Mattermost message](%v) by *from %s*._", permalink, username)
+	mmMessage := fmt.Sprintf("_Issue created from a [Mattermost message](%v) *from %s*._", permalink, username)
 
 	if ghIssue.GetBody() != "" {
 		mmMessage = "\n\n" + mmMessage
