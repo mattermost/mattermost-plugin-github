@@ -4,13 +4,14 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
+import {id as pluginId} from 'manifest';
 import {getRepos} from '../../actions';
 
 import GithubRepoSelector from './github_repo_selector.jsx';
 
 function mapStateToProps(state) {
     return {
-        yourRepos: state['plugins-github'].yourRepos,
+        yourRepos: state[`plugins-${pluginId}`].yourRepos,
     };
 }
 
