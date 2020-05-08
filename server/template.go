@@ -165,6 +165,10 @@ func init() {
 #pull-request-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}
 `))
 
+	template.Must(masterTemplate.New("pullRequestMentionNotification").Funcs(funcMap).Parse(`
+{{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}}) - {{.GetPullRequest.GetTitle}}:
+>{{.GetPullRequest.GetBody | trimBody | replaceAllGitHubUsernames}}`))
+
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
