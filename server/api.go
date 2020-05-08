@@ -942,7 +942,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	// Make sure user have a connected github account
+	// Make sure user has a connected github account
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
 		writeAPIError(w, apiErr)
