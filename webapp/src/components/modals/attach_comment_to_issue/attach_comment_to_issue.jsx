@@ -119,7 +119,7 @@ export default class AttachIssueModal extends PureComponent {
         return (
             <Modal
                 dialogClassName='modal--scroll'
-                show={visible}
+                show={true}
                 onHide={this.handleClose}
                 onExited={this.handleClose}
                 bsSize='large'

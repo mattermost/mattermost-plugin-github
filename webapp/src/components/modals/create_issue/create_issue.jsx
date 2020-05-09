@@ -102,7 +102,11 @@ export default class CreateIssueModal extends PureComponent {
     };
 
     render() {
-        const {visible, theme} = this.props;
+        if (!this.props.visible) {
+            return null;
+        }
+
+        const theme = this.props.theme;
         const {error, submitting} = this.state;
         const style = getStyle(theme);
 
@@ -114,10 +118,6 @@ export default class CreateIssueModal extends PureComponent {
                     <span>{requiredMsg}</span>
                 </p>
             );
-        }
-
-        if (!visible) {
-            return null;
         }
 
         let submitError = null;
@@ -162,7 +162,7 @@ export default class CreateIssueModal extends PureComponent {
         return (
             <Modal
                 dialogClassName='modal--scroll'
-                show={visible}
+                show={true}
                 onHide={this.handleClose}
                 onExited={this.handleClose}
                 bsSize='large'
