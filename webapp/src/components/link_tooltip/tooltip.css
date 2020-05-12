@@ -78,6 +78,11 @@
     display: none;
 }
 
+.github-tooltip .see-more {
+    font-weight: 600;
+    font-size: 12px;
+}
+
 /* Labels */
 .github-tooltip .labels {
     justify-content: flex-start;

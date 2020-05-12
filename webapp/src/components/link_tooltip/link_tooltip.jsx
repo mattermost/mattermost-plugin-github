@@ -128,6 +128,14 @@ export const LinkTooltip = ({href}) => {
                                 </div>
                             )}
 
+                            <div className='see-more mt-1'>
+                                <a
+                                    href={href}
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                >See more</a>
+                            </div>
+
                             {/* Labels */}
                             <div className='labels mt-3'>
                                 {data.labels && data.labels.map((label, idx) => {
