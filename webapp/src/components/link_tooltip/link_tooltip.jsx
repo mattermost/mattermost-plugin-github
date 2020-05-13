@@ -31,6 +31,9 @@ export const LinkTooltip = ({href}) => {
                 setData(res);
             }
         };
+        if (data) {
+            return;
+        }
         init();
     }, []);
 
