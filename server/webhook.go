@@ -275,9 +275,6 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 	}
 
 	body := event.GetPullRequest().GetBody()
-	if strings.Contains(body, "notifications@github.com") {
-		body = strings.Split(body, "\n\nOn")[0]
-	}
 
 	mentionedUsernames := parseGitHubUsernamesFromText(body)
 
@@ -295,12 +292,11 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 
 	for _, username := range mentionedUsernames {
 		// Don't notify user of their own comment
-
 		if username == event.GetSender().GetLogin() {
 			continue
 		}
 
-		// Notifications for issue authors are handled separately
+		// Notifications for pull request authors are handled separately
 		if username == event.GetPullRequest().GetUser().GetLogin() {
 			continue
 		}
