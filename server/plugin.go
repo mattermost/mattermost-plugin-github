@@ -107,6 +107,10 @@ func (p *Plugin) OnActivate() error {
 		return err
 	}
 
+	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
+		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
+	}
+
 	p.initialiseAPI()
 
 	p.API.RegisterCommand(getCommand())
