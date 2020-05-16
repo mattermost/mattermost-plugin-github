@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -604,7 +605,7 @@ func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, 
 	reviewsList, _, err := client.PullRequests.ListReviews(ctx, repoOwner, repoName, number, nil)
 
 	if err != nil {
-		return []*github.PullRequestReview{}, err
+		return []*github.PullRequestReview{}, errors.Wrap(err, "could not list reviews")
 	}
 
 	return reviewsList, nil
@@ -729,23 +730,37 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	commentUser, appErr := api.GetUser(post.UserId)
-	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
-		return
+	commentUsername := ""
+
+	if info, apiEr := p.getGitHubUserInfo(post.UserId); apiEr != nil {
+		if apiEr.ID == API_ERROR_ID_NOT_CONNECTED {
+			commentUser, appEr := api.GetUser(post.UserId)
+			if appEr != nil {
+				writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post.UserID " + post.UserId + ": not found", StatusCode: http.StatusInternalServerError})
+				return
+			}
+			commentUsername = commentUser.Username
+		} else {
+			writeAPIError(w, apiEr)
+			return
+		}
+	} else {
+		commentUsername = info.GitHubUsername
 	}
 
-	currentUser, appErr := api.GetUser(userID)
-	if appErr != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
+	currentUsername := ""
+	if info, apiEr := p.getGitHubUserInfo(userID); apiEr != nil {
+		writeAPIError(w, apiEr)
 		return
+	} else {
+		currentUsername = info.GitHubUsername
 	}
 
 	siteUrl := api.GetConfig().ServiceSettings.SiteURL
 
 	permalink := getPermaLink(*siteUrl, req.PostId, req.CurrentTeam)
 
-	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUser.Username, permalink, commentUser.Username)
+	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUsername, permalink, commentUsername)
 
 	req.Comment = permalinkMessage + req.Comment
 	comment := &github.IssueComment{
@@ -754,7 +769,7 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	result, rawResponse, err := githubClient.Issues.CreateComment(ctx, req.Owner, req.Repo, req.Number, comment)
 	if err != nil {
-		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUser.Username), StatusCode: rawResponse.StatusCode})
+		writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUsername), StatusCode: rawResponse.StatusCode})
 		return
 	}
 	rootId := req.PostId
@@ -763,8 +778,9 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		rootId = post.RootId
 	}
 
+	permalinkReplyMessage := fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number)
 	reply := &model.Post{
-		Message:   fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number),
+		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
 		RootId:    rootId,
 		ParentId:  rootId,
