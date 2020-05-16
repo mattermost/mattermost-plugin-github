@@ -7,9 +7,8 @@ import ReactMarkdown from 'react-markdown';
 import Client from 'client';
 import {getLabelFontColor} from '../../utils/styles';
 
-export const LinkTooltip = ({href}) => {
+export const LinkTooltip = ({href, connected}) => {
     const [data, setData] = useState(null);
-
     useEffect(() => {
         const init = async () => {
             if (href.includes('github.com/')) {
@@ -34,7 +33,9 @@ export const LinkTooltip = ({href}) => {
         if (data) {
             return;
         }
-        init();
+        if (connected) {
+            init();
+        }
     }, []);
 
     const getIconElement = () => {
@@ -165,4 +166,5 @@ export const LinkTooltip = ({href}) => {
 
 LinkTooltip.propTypes = {
     href: PropTypes.string.isRequired,
+    connected: PropTypes.bool.isRequired,
 };
