@@ -105,12 +105,15 @@ func (p *Plugin) OnActivate() error {
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
-		return err
+		return errors.Wrap(err, "invalid config")
 	}
 
 	p.initialiseAPI()
 
-	p.API.RegisterCommand(getCommand())
+	err := p.API.RegisterCommand(getCommand())
+	if err != nil {
+		return errors.Wrap(err, "failed to register command")
+	}
 
 	botId, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
@@ -217,18 +220,18 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 
 	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occurred while encrypting access token")
 	}
 
 	info.Token.AccessToken = encryptedToken
 
 	jsonInfo, err := json.Marshal(info)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error while converting user info to json")
 	}
 
 	if err := p.API.KVSet(info.UserID+GITHUB_TOKEN_KEY, jsonInfo); err != nil {
-		return err
+		return errors.Wrap(err, "error occurred while trying to store user info into KVStore")
 	}
 
 	return nil
@@ -258,7 +261,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error {
 	if err := p.API.KVSet(githubUsername+GITHUB_USERNAME_KEY, []byte(userID)); err != nil {
-		return fmt.Errorf("Encountered error saving github username mapping")
+		return errors.New("Encountered error saving github username mapping")
 	}
 	return nil
 }
@@ -284,12 +287,19 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		return
 	}
 
-	p.API.KVDelete(userID + GITHUB_TOKEN_KEY)
-	p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY)
+	if appErr := p.API.KVDelete(userID + GITHUB_TOKEN_KEY); appErr != nil {
+		mlog.Error("Could not delete userid from kvstore")
+	}
+
+	if appErr := p.API.KVDelete(userInfo.GitHubUsername + GITHUB_USERNAME_KEY); appErr != nil {
+		mlog.Error("Could not delete user info from kvstore")
+	}
 
 	if user, err := p.API.GetUser(userID); err == nil && user.Props != nil && len(user.Props["git_user"]) > 0 {
 		delete(user.Props, "git_user")
-		p.API.UpdateUser(user)
+		if _, appErr := p.API.UpdateUser(user); appErr != nil {
+			mlog.Error("Could not delete user info from kvstore")
+		}
 	}
 
 	p.API.PublishWebSocketEvent(
@@ -328,7 +338,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 		return
 	}
 
-	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
+	_ = p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
@@ -336,22 +346,22 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Error occurred while searching for reviews")
 	}
 
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error occurred while listing notifications")
 	}
 
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error occurred while searching for PRs")
 	}
 
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error occurred while searching for assignments")
 	}
 
 	text := "##### Unread Messages\n"
@@ -364,7 +374,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		}
 
 		if n.GetRepository() == nil {
-			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			p.API.LogError("unable to get repository for notification in todo list. Skipping.")
 			continue
 		}
 
@@ -490,7 +500,7 @@ func (p *Plugin) checkOrg(org string) error {
 
 	configOrg := strings.TrimSpace(config.GitHubOrg)
 	if configOrg != "" && configOrg != org {
-		return fmt.Errorf("Only repositories in the %v organization are supported", configOrg)
+		return errors.Errorf("Only repositories in the %v organization are supported", configOrg)
 	}
 
 	return nil
