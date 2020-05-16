@@ -290,7 +290,7 @@ func renderTemplate(name string, data interface{}) (string, error) {
 
 	err := t.Execute(&output, data)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "Could not execute template named %s", name)
 	}
 
 	return output.String(), nil

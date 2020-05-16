@@ -7,8 +7,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"path"
 	"strconv"
@@ -71,14 +71,14 @@ func unpad(src []byte) ([]byte, error) {
 func encrypt(key []byte, text string) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not create a cipher block, check key")
 	}
 
 	msg := pad([]byte(text))
 	ciphertext := make([]byte, aes.BlockSize+len(msg))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		return "", err
+		return "", errors.Wrap(err, "readFull was unsuccessful, check buffer size")
 	}
 
 	cfb := cipher.NewCFBEncrypter(block, iv)
@@ -90,12 +90,12 @@ func encrypt(key []byte, text string) (string, error) {
 func decrypt(key []byte, text string) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not create a cipher block, check key")
 	}
 
 	decodedMsg, err := base64.URLEncoding.DecodeString(text)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "could not decode the message")
 	}
 
 	if (len(decodedMsg) % aes.BlockSize) != 0 {
@@ -110,7 +110,7 @@ func decrypt(key []byte, text string) (string, error) {
 
 	unpadMsg, err := unpad(msg)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "unpad error, check key")
 	}
 
 	return string(unpadMsg), nil
@@ -205,7 +205,10 @@ func filterLines(s string, start, end int) (string, error) {
 		buf.WriteByte(byte('\n'))
 	}
 
-	return buf.String(), scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return "", errors.Wrap(err, "scanner error occurred")
+	}
+	return buf.String(), nil
 }
 
 // getLineNumbers return the start and end lines from an anchor tag
