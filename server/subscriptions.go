@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 )
@@ -98,11 +100,11 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
-		return fmt.Errorf("invalid repository")
+		return errors.Errorf("invalid repository")
 	}
 
 	if err := p.checkOrg(owner); err != nil {
-		return err
+		return errors.Wrap(err, "organization not supported")
 	}
 
 	var err error
@@ -114,7 +116,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 			var ghUser *github.User
 			ghUser, _, err = githubClient.Users.Get(ctx, owner)
 			if ghUser == nil {
-				return fmt.Errorf("unknown organization %s", owner)
+				return errors.Errorf("Unknown organization %s", owner)
 			}
 		}
 	} else {
@@ -122,13 +124,13 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
 
 		if ghRepo == nil {
-			return fmt.Errorf("unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
+			return errors.Errorf("unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 		}
 	}
 
 	if err != nil {
 		mlog.Error(err.Error())
-		return fmt.Errorf("encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
+		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
 	sub := &Subscription{
@@ -140,7 +142,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
-		return err
+		return errors.Wrap(err, "could not add subscription")
 	}
 
 	return nil
@@ -148,7 +150,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
 	if org == "" {
-		return fmt.Errorf("invalid organization")
+		return errors.New("invalid organization")
 	}
 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
@@ -158,7 +160,7 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not get subscriptions")
 	}
 
 	for repo, v := range subs.Repositories {
@@ -183,7 +185,7 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not get subscriptions")
 	}
 
 	repoSubs := subs.Repositories[repo]
@@ -208,7 +210,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 
 	err = p.StoreSubscriptions(subs)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not store subscriptions")
 	}
 
 	return nil
@@ -219,7 +221,7 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 
 	value, appErr := p.API.KVGet(SubscriptionsKey)
 	if appErr != nil {
-		return nil, appErr
+		return nil, errors.Wrap(appErr, "could not get subscriptions from KVStore")
 	}
 
 	if value == nil {
@@ -228,7 +230,7 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 
 	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "could not properly decode subscriptions key")
 	}
 
 	return subscriptions, nil
@@ -237,12 +239,11 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	b, err := json.Marshal(s)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error while converting subscriptions map to json")
 	}
 
-	appErr := p.API.KVSet(SubscriptionsKey, b)
-	if appErr != nil {
-		return appErr
+	if appErr := p.API.KVSet(SubscriptionsKey, b); appErr != nil {
+		return errors.Wrap(appErr, "could not store subscriptions in KV store")
 	}
 
 	return nil
@@ -287,13 +288,13 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	owner, repo := parseOwnerAndRepo(repo, p.getBaseURL())
 	if owner == "" && repo == "" {
-		return fmt.Errorf("invalid repository")
+		return errors.New("invalid repository")
 	}
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not get subscriptions")
 	}
 
 	repoSubs := subs.Repositories[repoWithOwner]
@@ -313,7 +314,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	if removed {
 		subs.Repositories[repoWithOwner] = repoSubs
 		if err := p.StoreSubscriptions(subs); err != nil {
-			return err
+			return errors.Wrap(err, "could not store subscriptions")
 		}
 	}
 

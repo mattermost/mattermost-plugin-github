@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -40,15 +39,15 @@ func (c *configuration) Clone() *configuration {
 // IsValid checks if all needed fields are set.
 func (c *configuration) IsValid() error {
 	if c.GitHubOAuthClientID == "" {
-		return fmt.Errorf("must have a github oauth client id")
+		return errors.New("must have a github oauth client id")
 	}
 
 	if c.GitHubOAuthClientSecret == "" {
-		return fmt.Errorf("must have a github oauth client secret")
+		return errors.New("must have a github oauth client secret")
 	}
 
 	if c.EncryptionKey == "" {
-		return fmt.Errorf("must have an encryption key")
+		return errors.New("must have an encryption key")
 	}
 
 	return nil

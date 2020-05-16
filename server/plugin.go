@@ -107,13 +107,14 @@ func (p *Plugin) OnActivate() error {
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
-		return err
+		return errors.Wrap(err, "invalid config")
 	}
 
 	p.initializeAPI()
 
-	if err := p.API.RegisterCommand(getCommand()); err != nil {
-		return err
+	err := p.API.RegisterCommand(getCommand())
+	if err != nil {
+		return errors.Wrap(err, "failed to register command")
 	}
 
 	botID, err := p.Helpers.EnsureBot(&model.Bot{
@@ -218,18 +219,18 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 
 	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error occurred while encrypting access token")
 	}
 
 	info.Token.AccessToken = encryptedToken
 
 	jsonInfo, err := json.Marshal(info)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error while converting user info to json")
 	}
 
 	if err := p.API.KVSet(info.UserID+githubTokenKey, jsonInfo); err != nil {
-		return err
+		return errors.Wrap(err, "error occurred while trying to store user info into KV store")
 	}
 
 	return nil
@@ -262,7 +263,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error {
 	if err := p.API.KVSet(githubUsername+githubUsernameKey, []byte(userID)); err != nil {
-		return fmt.Errorf("encountered error saving github username mapping")
+		return errors.New("encountered error saving github username mapping")
 	}
 	return nil
 }
@@ -288,24 +289,24 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		return
 	}
 
-	if err := p.API.KVDelete(userID + githubTokenKey); err != nil {
-		p.API.LogWarn("Failed to delete github token", "userID", userID, "error", err.Error())
+	if appErr := p.API.KVDelete(userID + githubTokenKey); appErr != nil {
+		p.API.LogWarn("Failed to delete github token from KV store", "userID", userID, "error", appErr.Error())
 	}
 
-	if err := p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
-		p.API.LogWarn("Failed to delete github token", "userID", userID, "error", err.Error())
+	if appErr := p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey); appErr != nil {
+		p.API.LogWarn("Failed to delete github token from KV store", "userID", userID, "error", appErr.Error())
 	}
 
-	user, err := p.API.GetUser(userID)
-	if err != nil {
-		p.API.LogWarn("Failed to get user props", "userID", userID, "error", err.Error())
+	user, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		p.API.LogWarn("Failed to get user props", "userID", userID, "error", appErr.Error())
 	} else {
 		_, ok := user.Props["git_user"]
 		if ok {
 			delete(user.Props, "git_user")
-			_, err := p.API.UpdateUser(user)
-			if err != nil {
-				p.API.LogWarn("Failed to get update user props", "userID", userID, "error", err.Error())
+			_, appErr := p.API.UpdateUser(user)
+			if appErr != nil {
+				p.API.LogWarn("Failed to get update user props", "userID", userID, "error", appErr.Error())
 			}
 		}
 	}
@@ -355,22 +356,22 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "Error occurred while searching for reviews")
 	}
 
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error occurred while listing notifications")
 	}
 
 	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error occurred while searching for PRs")
 	}
 
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "error occurred while searching for assignments")
 	}
 
 	text := "##### Unread Messages\n"
@@ -383,7 +384,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		}
 
 		if n.GetRepository() == nil {
-			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			p.API.LogError("unable to get repository for notification in todo list. Skipping.")
 			continue
 		}
 
@@ -513,7 +514,7 @@ func (p *Plugin) checkOrg(org string) error {
 
 	configOrg := strings.TrimSpace(config.GitHubOrg)
 	if configOrg != "" && configOrg != org {
-		return fmt.Errorf("only repositories in the %v organization are supported", configOrg)
+		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
 	}
 
 	return nil
@@ -548,4 +549,25 @@ func (p *Plugin) getBaseURL() string {
 	}
 
 	return "https://github.com/"
+}
+
+// getUsername returns the GitHub username for a given Mattermost user,
+// if the user is connected to GitHub via this plugin.
+// Otherwise it return the Mattermost username. It will be escaped via backticks.
+func (p *Plugin) getUsername(mmUserID string) (string, error) {
+	info, apiEr := p.getGitHubUserInfo(mmUserID)
+	if apiEr != nil {
+		if apiEr.ID != apiErrorIDNotConnected {
+			return "", apiEr
+		}
+
+		user, appEr := p.API.GetUser(mmUserID)
+		if appEr != nil {
+			return "", appEr
+		}
+
+		return fmt.Sprintf("`@%s`", user.Username), nil
+	}
+
+	return "@" + info.GitHubUsername, nil
 }
