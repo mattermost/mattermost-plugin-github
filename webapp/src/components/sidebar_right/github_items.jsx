@@ -35,7 +35,7 @@ function GithubItems(props) {
         if (item.number) {
             number = (
                 <strong>
-                    <i className='fa fa-code-fork'/> #{item.number}
+                    <i className='fa fa-code-fork'/>{' #' + item.number}
                 </strong>);
         }
 
@@ -57,7 +57,7 @@ function GithubItems(props) {
                             target='_blank'
                             rel='noopener noreferrer'
                         >
-                            <i className='fa fa-code-fork'/> #{item.number}
+                            <i className='fa fa-code-fork'/>{' #' + item.number}
                         </a>
                     </strong>);
             }
@@ -109,11 +109,11 @@ function GithubItems(props) {
             >
                 <div>
                     <strong>
-                        {title}{status}
+                        {title + status}
                     </strong>
                 </div>
                 <div>
-                    {number} <span className='light'>({repoName})</span>
+                    {number} <span className='light'>{'(' + repoName + ')'}</span>
                 </div>
                 <GithubLabels labels={item.labels}/>
                 <div
@@ -124,11 +124,10 @@ function GithubItems(props) {
                     {userName && ' by ' + userName}
                     {(item.created_at || userName) && '.'}
                     {milestone}
-                    {item.reason ?
-                        (<React.Fragment>
-                            {(item.created_at || userName || milestone) && (<br/>)}
-                            {notificationReasons[item.reason]}
-                        </React.Fragment>) : null }
+                    {item.reason ? (<React.Fragment>
+                        {(item.created_at || userName || milestone) && (<br/>)}
+                        {notificationReasons[item.reason]}
+                    </React.Fragment>) : null }
                 </div>
                 {reviews}
             </div>
@@ -242,7 +241,7 @@ function getReviewText(item, style, secondLine) {
         } else {
             reviewName = 'reviews';
         }
-        reviews = (<span>{approved} out of {totalReviewers} {reviewName} complete.</span>);
+        reviews = (<span>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
     }
 
     if (changesRequested > 0) {
@@ -250,7 +249,7 @@ function getReviewText(item, style, secondLine) {
             <OverlayTrigger
                 key='changesRequestedDot'
                 placement='bottom'
-                overlay={<Tooltip id='changesRequestedTooltip'>Changes Requested</Tooltip>}
+                overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
             >
                 <div style={{...style.icon, fill: '#c11b28'}}><ChangesRequestedIcon/></div>
             </OverlayTrigger>
