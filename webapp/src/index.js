@@ -1,9 +1,10 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
-
 import AttachCommentToIssuePostMenuAction from 'components/post_menu_actions/attach_comment_to_issue';
 import AttachCommentToIssueModal from 'components/modals/attach_comment_to_issue';
 
+import CreateIssueModal from './components/modals/create_issue';
+import CreateIssuePostMenuAction from './components/post_menu_action/create_issue';
 import SidebarHeader from './components/sidebar_header';
 import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
@@ -26,6 +27,8 @@ class PluginClass {
         registry.registerLeftSidebarHeaderComponent(SidebarHeader);
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
+        registry.registerRootComponent(CreateIssueModal);
+        registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
         registry.registerLinkTooltipComponent(LinkTooltip);

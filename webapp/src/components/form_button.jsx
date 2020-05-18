@@ -33,7 +33,7 @@ export default class FormButton extends PureComponent {
             contents = (
                 <span>
                     <span
-                        className='fa fa-spinner icon--rotate'
+                        className='fa fa-spin fa-spinner'
                         title={'Loading Icon'}
                     />
                     {savingMessage}

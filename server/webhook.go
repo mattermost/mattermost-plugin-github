@@ -13,7 +13,7 @@ import (
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {

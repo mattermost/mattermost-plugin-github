@@ -6,23 +6,23 @@ import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 
 import {id as pluginId} from 'manifest';
-import {closeAttachCommentToIssueModal, attachCommentToIssue} from 'actions';
+import {closeCreateIssueModal, createIssue} from 'actions';
 
-import AttachCommentToIssue from './attach_comment_to_issue';
+import CreateIssueModal from './create_issue';
 
 const mapStateToProps = (state) => {
-    const postId = state[`plugins-${pluginId}`].attachCommentToIssueModalForPostId;
+    const postId = state[`plugins-${pluginId}`].createIssueModalForPostId;
     const post = getPost(state, postId);
 
     return {
-        visible: state[`plugins-${pluginId}`].attachCommentToIssueModalVisible,
+        visible: state[`plugins-${pluginId}`].isCreateIssueModalVisible,
         post,
     };
 };
 
 const mapDispatchToProps = (dispatch) => bindActionCreators({
-    close: closeAttachCommentToIssueModal,
-    create: attachCommentToIssue,
+    close: closeCreateIssueModal,
+    create: createIssue,
 }, dispatch);
 
-export default connect(mapStateToProps, mapDispatchToProps)(AttachCommentToIssue);
+export default connect(mapStateToProps, mapDispatchToProps)(CreateIssueModal);

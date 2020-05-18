@@ -6,18 +6,21 @@ import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
 import FormButton from 'components/form_button';
+import GithubRepoSelector from 'components/github_repo_selector';
+import Validator from 'components/validator';
 import Input from 'components/input';
-
-import GithubIssueSelector from 'components/github_issue_selector';
 
 const initialState = {
     submitting: false,
-    issueValue: null,
-    textSearchTerms: '',
     error: null,
+    repoValue: '',
+    issueTitle: '',
+    issueDescription: '',
+    showErrors: false,
+    issueTitleValid: true,
 };
 
-export default class AttachIssueModal extends PureComponent {
+export default class CreateIssueModal extends PureComponent {
     static propTypes = {
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
@@ -29,28 +32,33 @@ export default class AttachIssueModal extends PureComponent {
     constructor(props) {
         super(props);
         this.state = initialState;
+        this.validator = new Validator();
     }
 
+    componentDidUpdate(prevProps) {
+        if (this.props.post && !prevProps.post) {
+            this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
+        }
+    }
+
+    // handle issue creation after form is populated
     handleCreate = (e) => {
         if (e && e.preventDefault) {
             e.preventDefault();
         }
 
-        if (!this.state.issueValue) {
+        if (!this.validator.validate() || !this.state.issueTitle) {
+            this.setState({
+                issueTitleValid: Boolean(this.state.issueTitle),
+                showErrors: true,
+            });
             return;
         }
 
-        const number = this.state.issueValue.number;
-        const repoUrl = this.state.issueValue.repository_url;
-        const repoUrlParts = repoUrl.split('/');
-        const repo = repoUrlParts.pop();
-        const owner = repoUrlParts.pop();
-
         const issue = {
-            owner,
-            repo,
-            number,
-            comment: this.props.post.message,
+            title: this.state.issueTitle,
+            body: this.state.issueDescription,
+            repo: this.state.repoValue,
             post_id: this.props.post.id,
         };
 
@@ -58,16 +66,12 @@ export default class AttachIssueModal extends PureComponent {
 
         this.props.create(issue).then((created) => {
             if (created.error) {
-                let errMessage = created.error.message;
-                if (created.error.response &&
-                    created.error.response.body &&
-                    created.error.response.body.message) {
-                    errMessage = created.error.response.body.message;
-                }
-                this.setState({error: errMessage, submitting: false});
+                this.setState({
+                    error: created.error.message,
+                    showErrors: true,
+                    submitting: false});
                 return;
             }
-
             this.handleClose(e);
         });
     };
@@ -76,42 +80,81 @@ export default class AttachIssueModal extends PureComponent {
         if (e && e.preventDefault) {
             e.preventDefault();
         }
-        const {close} = this.props;
-        this.setState(initialState, close);
+        this.setState(initialState, this.props.close);
     };
 
-    handleIssueValueChange = (newValue) => {
+    handleRepoValueChange = (name) => {
         this.setState({
-            issueValue: newValue,
+            repoValue: name,
+        });
+    };
+
+    handleIssueTitleChange = (newValue) => {
+        this.setState({
+            issueTitle: newValue,
+        });
+    };
+
+    handleIssueDescriptionChange = (newValue) => {
+        this.setState({
+            issueDescription: newValue,
         });
     };
 
     render() {
-        const {visible, theme} = this.props;
+        if (!this.props.visible) {
+            return null;
+        }
+
+        const theme = this.props.theme;
         const {error, submitting} = this.state;
         const style = getStyle(theme);
 
-        if (!visible) {
-            return null;
+        const requiredMsg = 'This field is required.';
+        let issueTitleValidationError = null;
+        if (this.state.showErrors && !this.state.issueTitleValid) {
+            issueTitleValidationError = (
+                <p className='help-text error-text'>
+                    <span>{requiredMsg}</span>
+                </p>
+            );
+        }
+
+        let submitError = null;
+        if (error) {
+            submitError = (
+                <p className='help-text error-text'>
+                    <span>{error}</span>
+                </p>
+            );
         }
 
         const component = (
             <div>
-                <GithubIssueSelector
-                    id={'issue'}
-                    onChange={this.handleIssueValueChange}
+                <GithubRepoSelector
+                    onChange={this.handleRepoValueChange}
+                    value={this.state.repoValue}
                     required={true}
                     theme={theme}
-                    error={error}
-                    value={this.state.issueValue}
+                    addValidate={this.validator.addComponent}
+                    removeValidate={this.validator.removeComponent}
                 />
                 <Input
-                    label='Message Attached to GitHub Issue'
-                    type='textarea'
-                    isDisabled={true}
-                    value={this.props.post.message}
+                    id={'title'}
+                    label='Title for the GitHub Issue'
+                    type='input'
+                    required={true}
                     disabled={false}
-                    readOnly={true}
+                    maxLength={65}
+                    value={this.state.issueTitle}
+                    onChange={this.handleIssueTitleChange}
+                />
+                {issueTitleValidationError}
+                <Input
+                    label='Description for the GitHub Issue'
+                    type='textarea'
+                    value={this.state.issueDescription}
+                    onChange={this.handleIssueDescriptionChange}
                 />
             </div>
         );
@@ -127,7 +170,7 @@ export default class AttachIssueModal extends PureComponent {
             >
                 <Modal.Header closeButton={true}>
                     <Modal.Title>
-                        {'Attach Message to GitHub Issue'}
+                        {'Create GitHub Issue'}
                     </Modal.Title>
                 </Modal.Header>
                 <form
@@ -141,6 +184,7 @@ export default class AttachIssueModal extends PureComponent {
                         {component}
                     </Modal.Body>
                     <Modal.Footer>
+                        {submitError}
                         <FormButton
                             type='button'
                             btnClass='btn-link'
@@ -151,10 +195,10 @@ export default class AttachIssueModal extends PureComponent {
                             type='submit'
                             btnClass='btn btn-primary'
                             saving={submitting}
-                            defaultMessage='Attach'
-                            savingMessage='Attaching'
+                            defaultMessage='Submit'
+                            savingMessage='Submitting'
                         >
-                            {'Attach'}
+                            {'Submit'}
                         </FormButton>
                     </Modal.Footer>
                 </form>
