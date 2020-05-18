@@ -41,6 +41,14 @@ export default class Client {
         return this.doPost(`${this.url}/user`, {user_id: userID});
     }
 
+    getRepositories = async () => {
+        return this.doGet(`${this.url}/repositories`);
+    }
+
+    createIssue = async (payload) => {
+        return this.doPost(`${this.url}/createissue`, payload);
+    }
+
     searchIssues = async (searchTerm) => {
         return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
     }

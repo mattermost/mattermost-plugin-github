@@ -102,9 +102,11 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/createissue", p.extractUserMiddleWare(p.createIssue, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
 }
@@ -307,33 +309,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-type ConnectedResponse struct {
-	Connected         bool          `json:"connected"`
-	GitHubUsername    string        `json:"github_username"`
-	GitHubClientID    string        `json:"github_client_id"`
-	EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
-	Organization      string        `json:"organization"`
-	Settings          *UserSettings `json:"settings"`
-}
-
-type CreateIssueCommentRequest struct {
-	PostID      string `json:"post_id"`
-	Owner       string `json:"owner"`
-	Repo        string `json:"repo"`
-	Number      int    `json:"number"`
-	Comment     string `json:"comment"`
-	CurrentTeam string `json:"current_team"`
-}
-
-type GitHubUserRequest struct {
-	UserID string `json:"user_id"`
-}
-
-type GitHubUserResponse struct {
-	Username string `json:"username"`
-}
-
 func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string) {
+	type GitHubUserRequest struct {
+		UserID string `json:"user_id"`
+	}
+
 	req := &GitHubUserRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		mlog.Error("Error decoding GitHubUserRequest from JSON body", mlog.Err(err))
@@ -361,13 +341,25 @@ func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string)
 		return
 	}
 
-	resp := &GitHubUserResponse{Username: userInfo.GitHubUsername}
+	type GitHubUserResponse struct {
+		Username string `json:"username"`
+	}
 
+	resp := &GitHubUserResponse{Username: userInfo.GitHubUsername}
 	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) {
 	config := p.getConfiguration()
+
+	type ConnectedResponse struct {
+		Connected         bool          `json:"connected"`
+		GitHubUsername    string        `json:"github_username"`
+		GitHubClientID    string        `json:"github_client_id"`
+		EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
+		Organization      string        `json:"organization"`
+		Settings          *UserSettings `json:"settings"`
+	}
 
 	resp := &ConnectedResponse{
 		Connected:         false,
@@ -654,8 +646,10 @@ func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID str
 	p.writeJSON(w, result.Issues)
 }
 
-func getPermaLink(siteURL string, postID string, currentTeam string) string {
-	return fmt.Sprintf("%v/%v/pl/%v", siteURL, currentTeam, postID)
+func (p *Plugin) getPermaLink(postID string) string {
+	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL
+
+	return fmt.Sprintf("%v/_redirect/pl/%v", siteURL, postID)
 }
 
 func getFailReason(code int, repo string, username string) string {
@@ -678,6 +672,14 @@ func getFailReason(code int, repo string, username string) string {
 }
 
 func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, userID string) {
+	type CreateIssueCommentRequest struct {
+		PostID  string `json:"post_id"`
+		Owner   string `json:"owner"`
+		Repo    string `json:"repo"`
+		Number  int    `json:"number"`
+		Comment string `json:"comment"`
+	}
+
 	req := &CreateIssueCommentRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		mlog.Error("Error decoding CreateIssueCommentRequest JSON body", mlog.Err(err))
@@ -710,11 +712,6 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	if req.CurrentTeam == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid team", StatusCode: http.StatusBadRequest})
-		return
-	}
-
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
 		p.writeAPIError(w, apiErr)
@@ -740,11 +737,8 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 	}
 
 	currentUsername := info.GitHubUsername
-
-	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL
-	permalink := getPermaLink(siteURL, req.PostID, req.CurrentTeam)
-
-	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from @%s*\n", currentUsername, permalink, commentUsername)
+	permalink := p.getPermaLink(req.PostID)
+	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from %s*\n\n", currentUsername, permalink, commentUsername)
 
 	req.Comment = permalinkMessage + req.Comment
 	comment := &github.IssueComment{
@@ -756,13 +750,14 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUsername), StatusCode: rawResponse.StatusCode})
 		return
 	}
+
 	rootID := req.PostID
 	if post.RootId != "" {
 		// the original post was a reply
 		rootID = post.RootId
 	}
 
-	permalinkReplyMessage := fmt.Sprintf("Message attached to [#%v](https://github.com/%v/%v/issues/%v)", req.Number, req.Owner, req.Repo, req.Number)
+	permalinkReplyMessage := fmt.Sprintf("[Message](%v) attached to GitHub issue [#%v](%v)", permalink, req.Number, result.GetHTMLURL())
 	reply := &model.Post{
 		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
@@ -855,4 +850,184 @@ func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID s
 	}
 
 	p.writeJSON(w, info.Settings)
+}
+
+func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID string) {
+	info, err := p.getGitHubUserInfo(userID)
+	if err != nil {
+		p.writeAPIError(w, err)
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+
+	ctx := context.Background()
+	org := p.getConfiguration().GitHubOrg
+
+	var allRepos []*github.Repository
+	opt := github.ListOptions{PerPage: 50}
+
+	if org == "" {
+		for {
+			repos, resp, err := githubClient.Repositories.List(ctx, "", &github.RepositoryListOptions{ListOptions: opt})
+			if err != nil {
+				mlog.Error(err.Error())
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+				return
+			}
+			allRepos = append(allRepos, repos...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
+		}
+	} else {
+		for {
+			repos, resp, err := githubClient.Repositories.ListByOrg(ctx, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
+			if err != nil {
+				mlog.Error(err.Error())
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+				return
+			}
+			allRepos = append(allRepos, repos...)
+			if resp.NextPage == 0 {
+				break
+			}
+			opt.Page = resp.NextPage
+		}
+	}
+
+	// Only send down fields to client that are needed
+	type RepositoryResponse struct {
+		Name     string `json:"name,omitempty"`
+		FullName string `json:"full_name,omitempty"`
+	}
+
+	resp := make([]RepositoryResponse, len(allRepos))
+	for i, r := range allRepos {
+		resp[i].Name = r.GetName()
+		resp[i].FullName = r.GetFullName()
+	}
+
+	p.writeJSON(w, resp)
+}
+
+func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID string) {
+	type IssueRequest struct {
+		Title  string `json:"title"`
+		Body   string `json:"body"`
+		Repo   string `json:"repo"`
+		PostID string `json:"post_id"`
+	}
+
+	// get data for the issue from the request body and fill IssueRequest object
+	issue := &IssueRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&issue); err != nil {
+		mlog.Error("Error decoding JSON body", mlog.Err(err))
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if issue.Title == "" {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue title.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if issue.Repo == "" {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo name.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if issue.PostID == "" {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a postID", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	// Make sure user has a connected github account
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	post, appErr := p.API.GetPost(issue.PostID)
+	if appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID, StatusCode: http.StatusInternalServerError})
+		return
+	}
+	if post == nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID + ": not found", StatusCode: http.StatusNotFound})
+		return
+	}
+
+	username, err := p.getUsername(post.UserId)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	ghIssue := &github.IssueRequest{
+		Title: &issue.Title,
+		Body:  &issue.Body,
+	}
+
+	permalink := p.getPermaLink(issue.PostID)
+
+	mmMessage := fmt.Sprintf("_Issue created from a [Mattermost message](%v) *by %s*._", permalink, username)
+
+	if ghIssue.GetBody() != "" {
+		mmMessage = "\n\n" + mmMessage
+	}
+	*ghIssue.Body = ghIssue.GetBody() + mmMessage
+
+	currentUser, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	splittedRepo := strings.Split(issue.Repo, "/")
+	owner := splittedRepo[0]
+	repoName := splittedRepo[1]
+
+	githubClient := p.githubConnect(*info.Token)
+	result, resp, err := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
+	if err != nil {
+		p.writeAPIError(w,
+			&APIErrorResponse{
+				ID: "",
+				Message: "failed to create issue: " + getFailReason(resp.StatusCode,
+					issue.Repo,
+					currentUser.Username),
+				StatusCode: resp.StatusCode,
+			})
+		return
+	}
+
+	if resp.Response.StatusCode == http.StatusGone {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+		return
+	}
+
+	rootID := issue.PostID
+	if post.RootId != "" {
+		rootID = post.RootId
+	}
+
+	message := fmt.Sprintf("Created GitHub issue [#%v](%v) from a [message](%s)", result.GetNumber(), result.GetHTMLURL(), permalink)
+	reply := &model.Post{
+		Message:   message,
+		ChannelId: post.ChannelId,
+		RootId:    rootID,
+		ParentId:  rootID,
+		UserId:    userID,
+	}
+
+	_, appErr = p.API.CreatePost(reply)
+	if appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + issue.PostID, StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
 }

@@ -8,10 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/mlog"
+	"github.com/pkg/errors"
 )
 
 const (
