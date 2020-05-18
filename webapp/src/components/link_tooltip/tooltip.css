@@ -64,13 +64,12 @@
 }
 
 .github-tooltip .tooltip-info .markdown-text {
-    -ms-overflow-style: none;
     -webkit-hyphens: auto;
     -ms-hyphens: auto;
     hyphens: auto;
     max-height: 150px;
     line-height: 1.25;
-    overflow: overlay;
+    overflow: hidden;
     font-size: 12px;
 }
 
