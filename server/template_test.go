@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -333,7 +333,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(false),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -360,7 +360,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(true),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -388,7 +388,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(false),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -425,7 +425,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(false),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),

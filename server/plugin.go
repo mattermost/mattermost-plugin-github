@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -14,12 +13,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/go-github/v31/github"
+	"github.com/gorilla/mux"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
-
-	"github.com/google/go-github/v25/github"
 	"golang.org/x/oauth2"
 )
 
@@ -106,6 +105,10 @@ func (p *Plugin) OnActivate() error {
 
 	if err := config.IsValid(); err != nil {
 		return errors.Wrap(err, "invalid config")
+	}
+
+	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
+		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
 	}
 
 	p.initialiseAPI()
@@ -526,4 +529,23 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
+}
+
+// getUsername returns the GitHub username for a given Mattermost user,
+// if the user is connected to GitHub via this plugin.
+// Otherwise it return the Mattermost username. It will be escaped via backticks.
+func (p *Plugin) getUsername(mmUserID string) (string, error) {
+	info, apiEr := p.getGitHubUserInfo(mmUserID)
+	if apiEr != nil {
+		if apiEr.ID == API_ERROR_ID_NOT_CONNECTED {
+			user, appEr := p.API.GetUser(mmUserID)
+			if appEr != nil {
+				return "", appEr
+			}
+			return fmt.Sprintf("`@%s`", user.Username), nil
+		} else {
+			return "", apiEr
+		}
+	}
+	return "@" + info.GitHubUsername, nil
 }
