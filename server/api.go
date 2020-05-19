@@ -71,7 +71,7 @@ func (p *Plugin) initialiseAPI() {
 	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods("GET")
 	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods("GET")
 
-	apiRouter.HandleFunc("/connected", p.extractUserMiddleWare(p.getConnected, true)).Methods("GET")
+	apiRouter.HandleFunc("/connected", p.getConnected).Methods("GET")
 	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods("POST")
 	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods("GET")
 	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods("GET")
@@ -342,7 +342,7 @@ func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string)
 	w.Write(b)
 }
 
-func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) {
+func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
 	resp := &ConnectedResponse{
@@ -350,6 +350,8 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID str
 		EnterpriseBaseURL: config.EnterpriseBaseURL,
 		Organization:      config.GitHubOrg,
 	}
+
+	userID := r.Header.Get("Mattermost-User-ID")
 
 	info, _ := p.getGitHubUserInfo(userID)
 	if info != nil && info.Token != nil {
