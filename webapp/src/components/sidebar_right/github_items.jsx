@@ -14,6 +14,7 @@ import DotIcon from 'images/icons/dot.jsx';
 import TickIcon from 'images/icons/tick.jsx';
 import SignIcon from 'images/icons/sign.jsx';
 import ChangesRequestedIcon from 'images/icons/changes_requested.jsx';
+import {getLabelFontColor} from '../../utils/styles';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
@@ -181,7 +182,7 @@ function GithubLabels(props) {
         return (
             <Badge
                 key={label.id}
-                style={{...itemStyle.label, ...{backgroundColor: `#${label.color}`}}}
+                style={{...itemStyle.label, ...{backgroundColor: `#${label.color}`, color: getLabelFontColor(label.color)}}}
             >{label.name}</Badge>
         );
     }) : null;

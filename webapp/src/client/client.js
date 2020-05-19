@@ -57,6 +57,14 @@ export default class Client {
         return this.doPost(`${this.url}/createissuecomment`, payload);
     }
 
+    getIssue = async (owner, repo, issueNumber) => {
+        return this.doGet(`${this.url}/issue?owner=${owner}&repo=${repo}&number=${issueNumber}`);
+    }
+
+    getPullRequest = async (owner, repo, prNumber) => {
+        return this.doGet(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
+    }
+
     doGet = async (url, body, headers = {}) => {
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
 

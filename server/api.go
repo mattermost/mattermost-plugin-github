@@ -109,6 +109,8 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, false)).Methods(http.MethodGet)
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
@@ -850,6 +852,61 @@ func (p *Plugin) updateSettings(w http.ResponseWriter, r *http.Request, userID s
 	}
 
 	p.writeJSON(w, info.Settings)
+}
+
+func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID string) {
+	owner := r.FormValue("owner")
+	repo := r.FormValue("repo")
+	number := r.FormValue("number")
+	numberInt, err := strconv.Atoi(number)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid param 'number'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+	githubClient := p.githubConnect(*info.Token)
+
+	result, _, err := githubClient.Issues.Get(context.Background(), owner, repo, numberInt)
+	if err != nil {
+		mlog.Error(err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could get issue.", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
+}
+
+func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID string) {
+	owner := r.FormValue("owner")
+	repo := r.FormValue("repo")
+	number := r.FormValue("number")
+
+	numberInt, err := strconv.Atoi(number)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid param 'number'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+	githubClient := p.githubConnect(*info.Token)
+
+	result, _, err := githubClient.PullRequests.Get(context.Background(), owner, repo, numberInt)
+	if err != nil {
+		mlog.Error(err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could get pull request.", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
 }
 
 func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID string) {
