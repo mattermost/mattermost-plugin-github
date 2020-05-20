@@ -110,7 +110,7 @@ function GithubItems(props) {
             >
                 <div>
                     <strong>
-                        {title + status}
+                        {title}{status}
                     </strong>
                 </div>
                 <div>
