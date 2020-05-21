@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 )
 
 func TestPlugin_ServeHTTP(t *testing.T) {
@@ -29,8 +30,8 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			name:     "unauthorized test json",
 			httpTest: httpTestJson,
 			request: testutils.Request{
-				Method: "GET",
-				URL:    "/api/v1/connected",
+				Method: "POST",
+				URL:    "/api/v1/todo",
 				Body:   nil,
 			},
 			expectedResponse: testutils.ExpectedResponse{
