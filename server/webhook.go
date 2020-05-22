@@ -3,37 +3,48 @@ package main
 import (
 	"context"
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
-
-	"github.com/google/go-github/v31/github"
 )
 
-func verifyWebhookSignature(secret []byte, signature string, body []byte) bool {
+func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
 	const signaturePrefix = "sha1="
 	const signatureLength = 45
 
 	if len(signature) != signatureLength || !strings.HasPrefix(signature, signaturePrefix) {
-		return false
+		return false, nil
 	}
 
 	actual := make([]byte, 20)
-	hex.Decode(actual, []byte(signature[5:]))
+	_, err := hex.Decode(actual, []byte(signature[5:]))
+	if err != nil {
+		return false, err
+	}
 
-	return hmac.Equal(signBody(secret, body), actual)
+	sb, err := signBody(secret, body)
+	if err != nil {
+		return false, err
+	}
+
+	return hmac.Equal(sb, actual), nil
 }
 
-func signBody(secret, body []byte) []byte {
+func signBody(secret, body []byte) ([]byte, error) {
 	computed := hmac.New(sha1.New, secret)
-	computed.Write(body)
-	return computed.Sum(nil)
+	_, err := computed.Write(body)
+	if err != nil {
+		return nil, err
+	}
+
+	return computed.Sum(nil), nil
 }
 
 // Hack to convert from github.PushEventRepository to github.Repository
@@ -57,7 +68,14 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !verifyWebhookSignature([]byte(config.WebhookSecret), signature, body) {
+	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
+	if err != nil {
+		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if !valid {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
@@ -136,9 +154,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	config := p.getConfiguration()
-	ctx := context.Background()
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.EnterpriseBaseURL)
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, p.getBaseURL())
 
 	if owner == "" {
 		return false
@@ -153,7 +169,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	}
 	githubClient := p.githubConnect(*info.Token)
 
-	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+	if result, _, err := githubClient.Repositories.Get(context.Background(), owner, repo); result == nil || err != nil {
 		if err != nil {
 			mlog.Error(err.Error())
 		}
@@ -705,16 +721,16 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		userId := p.getGitHubToUserIDMapping(username)
-		if userId == "" {
+		userID := p.getGitHubToUserIDMapping(username)
+		if userID == "" {
 			continue
 		}
 
-		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userId, event.GetRepo().GetFullName()) {
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userId, p.BotUserID)
+		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
 		if err != nil {
 			continue
 		}

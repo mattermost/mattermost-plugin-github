@@ -92,7 +92,9 @@ export const LinkTooltip = ({href, connected}) => {
                         <a
                             title={data.repo}
                             href={href}
-                        >{data.repo}</a>&nbsp;on&nbsp;<span>{date}</span>
+                        >{data.repo}</a>
+                        {' on '}
+                        <span>{date}</span>
                     </div>
 
                     <div className='body d-flex mt-2'>
@@ -104,7 +106,7 @@ export const LinkTooltip = ({href, connected}) => {
                         <div className='tooltip-info mt-1'>
                             <a href={href}>
                                 <h5 className='mr-1'>{data.title}</h5>
-                                <span>#{data.number}</span>
+                                <span>{'#' + data.number}</span>
                             </a>
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown
@@ -123,7 +125,7 @@ export const LinkTooltip = ({href, connected}) => {
                                         style={{maxWidth: '140px'}}
                                     >{data.base.ref}
                                     </span>
-                                    <span className='mx-1'>←</span>
+                                    <span className='mx-1'>{'←'}</span>
                                     <span
                                         title={data.head.ref}
                                         className='commit-ref'
@@ -137,7 +139,7 @@ export const LinkTooltip = ({href, connected}) => {
                                     href={href}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                >See more</a>
+                                >{'See more'}</a>
                             </div>
 
                             {/* Labels */}

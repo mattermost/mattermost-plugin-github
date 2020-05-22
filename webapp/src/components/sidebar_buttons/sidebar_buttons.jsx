@@ -97,7 +97,7 @@ export default class SidebarButtons extends React.PureComponent {
                     <OverlayTrigger
                         key='githubConnectLink'
                         placement={placement}
-                        overlay={<Tooltip id='reviewTooltip'>Connect to your GitHub</Tooltip>}
+                        overlay={<Tooltip id='reviewTooltip'>{'Connect to your GitHub'}</Tooltip>}
                     >
                         <a
                             href='/plugins/github/oauth/connect'
@@ -137,7 +137,7 @@ export default class SidebarButtons extends React.PureComponent {
                 <OverlayTrigger
                     key='githubYourPrsLink'
                     placement={placement}
-                    overlay={<Tooltip id='yourPrsTooltip'>Your open pull requests</Tooltip>}
+                    overlay={<Tooltip id='yourPrsTooltip'>{'Your open pull requests'}</Tooltip>}
                 >
                     <a
                         style={button}
@@ -150,7 +150,7 @@ export default class SidebarButtons extends React.PureComponent {
                 <OverlayTrigger
                     key='githubReviewsLink'
                     placement={placement}
-                    overlay={<Tooltip id='reviewTooltip'>Pull requests needing review</Tooltip>}
+                    overlay={<Tooltip id='reviewTooltip'>{'Pull requests needing review'}</Tooltip>}
                 >
                     <a
                         onClick={() => this.openRHS(RHSStates.REVIEWS)}
@@ -163,7 +163,7 @@ export default class SidebarButtons extends React.PureComponent {
                 <OverlayTrigger
                     key='githubAssignmentsLink'
                     placement={placement}
-                    overlay={<Tooltip id='reviewTooltip'>Your assignments</Tooltip>}
+                    overlay={<Tooltip id='reviewTooltip'>{'Your assignments'}</Tooltip>}
                 >
                     <a
                         onClick={() => this.openRHS(RHSStates.ASSIGNMENTS)}
@@ -176,7 +176,7 @@ export default class SidebarButtons extends React.PureComponent {
                 <OverlayTrigger
                     key='githubUnreadsLink'
                     placement={placement}
-                    overlay={<Tooltip id='unreadsTooltip'>Unread messages</Tooltip>}
+                    overlay={<Tooltip id='unreadsTooltip'>{'Unread messages'}</Tooltip>}
                 >
                     <a
                         onClick={() => this.openRHS(RHSStates.UNREADS)}
@@ -189,7 +189,7 @@ export default class SidebarButtons extends React.PureComponent {
                 <OverlayTrigger
                     key='githubRefreshButton'
                     placement={placement}
-                    overlay={<Tooltip id='refreshTooltip'>Refresh</Tooltip>}
+                    overlay={<Tooltip id='refreshTooltip'>{'Refresh'}</Tooltip>}
                 >
                     <a
                         href='#'
