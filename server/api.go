@@ -95,7 +95,7 @@ func (p *Plugin) initializeAPI() {
 	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods(http.MethodGet)
 	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods(http.MethodGet)
 
-	apiRouter.HandleFunc("/connected", p.extractUserMiddleWare(p.getConnected, true)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/connected", p.getConnected).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods(http.MethodGet)
@@ -351,7 +351,7 @@ func (p *Plugin) getGitHubUser(w http.ResponseWriter, r *http.Request, _ string)
 	p.writeJSON(w, resp)
 }
 
-func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID string) {
+func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
 	type ConnectedResponse struct {
@@ -369,51 +369,60 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request, userID str
 		Organization:      config.GitHubOrg,
 	}
 
+	userID := r.Header.Get("Mattermost-User-ID")
+	if userID == "" {
+		p.writeJSON(w, resp)
+		return
+	}
+
 	info, _ := p.getGitHubUserInfo(userID)
-	if info != nil && info.Token != nil {
-		resp.Connected = true
-		resp.GitHubUsername = info.GitHubUsername
-		resp.GitHubClientID = config.GitHubOAuthClientID
-		resp.Settings = info.Settings
+	if info == nil || info.Token == nil {
+		p.writeJSON(w, resp)
+		return
+	}
 
-		if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
-			lastPostAt := info.LastToDoPostAt
+	resp.Connected = true
+	resp.GitHubUsername = info.GitHubUsername
+	resp.GitHubClientID = config.GitHubOAuthClientID
+	resp.Settings = info.Settings
 
-			var timezone *time.Location
-			offset, _ := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
-			timezone = time.FixedZone("local", -60*offset)
+	if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
+		lastPostAt := info.LastToDoPostAt
 
-			// Post to do message if it's the next day and been more than an hour since the last post
-			now := model.GetMillis()
-			nt := time.Unix(now/1000, 0).In(timezone)
-			lt := time.Unix(lastPostAt/1000, 0).In(timezone)
-			if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
-				if p.HasUnreads(info) {
-					p.PostToDo(info)
-					info.LastToDoPostAt = now
-					if err := p.storeGitHubUserInfo(info); err != nil {
-						p.API.LogWarn("Failed to store github info for new user", "userID", userID, "error", err.Error())
-					}
+		var timezone *time.Location
+		offset, _ := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
+		timezone = time.FixedZone("local", -60*offset)
+
+		// Post to do message if it's the next day and been more than an hour since the last post
+		now := model.GetMillis()
+		nt := time.Unix(now/1000, 0).In(timezone)
+		lt := time.Unix(lastPostAt/1000, 0).In(timezone)
+		if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
+			if p.HasUnreads(info) {
+				p.PostToDo(info)
+				info.LastToDoPostAt = now
+				if err := p.storeGitHubUserInfo(info); err != nil {
+					p.API.LogWarn("Failed to store github info for new user", "userID", userID, "error", err.Error())
 				}
 			}
 		}
+	}
 
-		privateRepoStoreKey := info.UserID + githubPrivateRepoKey
-		if config.EnablePrivateRepo && !info.AllowedPrivateRepos {
-			val, err := p.API.KVGet(privateRepoStoreKey)
+	privateRepoStoreKey := info.UserID + githubPrivateRepoKey
+	if config.EnablePrivateRepo && !info.AllowedPrivateRepos {
+		val, err := p.API.KVGet(privateRepoStoreKey)
+		if err != nil {
+			mlog.Error("Unable to get private repo key value, err=" + err.Error())
+			return
+		}
+
+		// Inform the user once that private repositories enabled
+		if val == nil {
+			p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect private`.", "")
+
+			err := p.API.KVSet(privateRepoStoreKey, []byte("1"))
 			if err != nil {
-				mlog.Error("Unable to get private repo key value, err=" + err.Error())
-				return
-			}
-
-			// Inform the user once that private repositories enabled
-			if val == nil {
-				p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect private`.", "")
-
-				err := p.API.KVSet(privateRepoStoreKey, []byte("1"))
-				if err != nil {
-					mlog.Error("Unable to set private repo key value, err=" + err.Error())
-				}
+				mlog.Error("Unable to set private repo key value, err=" + err.Error())
 			}
 		}
 	}

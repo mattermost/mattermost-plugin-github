@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
+
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 )
 
@@ -30,8 +32,8 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			name:     "unauthorized test json",
 			httpTest: httpTestJSON,
 			request: testutils.Request{
-				Method: http.MethodGet,
-				URL:    "/api/v1/connected",
+				Method: http.MethodPost,
+				URL:    "/api/v1/todo",
 				Body:   nil,
 			},
 			expectedResponse: testutils.ExpectedResponse{
@@ -73,6 +75,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					EnableCodePreview:       false,
 				})
 			p.initializeAPI()
+			p.SetAPI(&plugintest.API{})
 
 			req := tt.httpTest.CreateHTTPRequest(tt.request)
 			req.Header.Add("Mattermost-User-ID", tt.userID)
