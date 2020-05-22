@@ -8,11 +8,10 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v31/github"
+	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
 )
 
 func TestGetReplacements(t *testing.T) {

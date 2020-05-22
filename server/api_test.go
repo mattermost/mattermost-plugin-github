@@ -5,11 +5,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
+
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 )
 
 func TestPlugin_ServeHTTP(t *testing.T) {
-	httpTestJson := testutils.HTTPTest{
+	httpTestJSON := testutils.HTTPTest{
 		T:       t,
 		Encoder: testutils.EncodeJSON,
 	}
@@ -28,9 +30,9 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 	}{
 		{
 			name:     "unauthorized test json",
-			httpTest: httpTestJson,
+			httpTest: httpTestJSON,
 			request: testutils.Request{
-				Method: "POST",
+				Method: http.MethodPost,
 				URL:    "/api/v1/todo",
 				Body:   nil,
 			},
@@ -45,7 +47,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			name:     "unauthorized test http",
 			httpTest: httpTestString,
 			request: testutils.Request{
-				Method: "GET",
+				Method: http.MethodGet,
 				URL:    "/api/v1/reviews",
 				Body:   nil,
 			},
@@ -72,7 +74,8 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					EnterpriseUploadURL:     "",
 					EnableCodePreview:       false,
 				})
-			p.initialiseAPI()
+			p.initializeAPI()
+			p.SetAPI(&plugintest.API{})
 
 			req := tt.httpTest.CreateHTTPRequest(tt.request)
 			req.Header.Add("Mattermost-User-ID", tt.userID)

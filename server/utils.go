@@ -8,12 +8,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"path"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/pkg/errors"
 )
 
 func getMentionSearchQuery(username, org string) string {
@@ -99,7 +100,7 @@ func decrypt(key []byte, text string) (string, error) {
 	}
 
 	if (len(decodedMsg) % aes.BlockSize) != 0 {
-		return "", errors.New("blocksize must be multipe of decoded message length")
+		return "", errors.New("blocksize must be multiple of decoded message length")
 	}
 
 	iv := decodedMsg[:aes.BlockSize]
@@ -117,9 +118,6 @@ func decrypt(key []byte, text string) (string, error) {
 }
 
 func parseOwnerAndRepo(full, baseURL string) (string, string) {
-	if baseURL == "" {
-		baseURL = "https://github.com/"
-	}
 	full = strings.TrimSuffix(strings.TrimSpace(strings.Replace(full, baseURL, "", 1)), "/")
 	splitStr := strings.Split(full, "/")
 
@@ -259,7 +257,7 @@ func getLine(s string) int {
 	return line
 }
 
-// isInsideLink reports whether the given index in a string is preceeded
+// isInsideLink reports whether the given index in a string is preceded
 // by zero or more space, then (, then ].
 //
 // It is a poor man's version of checking markdown hyperlinks without
@@ -313,9 +311,7 @@ func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool)
 }
 
 // getToDoDisplayText returns the text to be displayed in todo listings.
-func getToDoDisplayText(title, url, notifType string) string {
-	baseURL := "https://github.com/"
-
+func getToDoDisplayText(baseURL, title, url, notifType string) string {
 	owner, repo := parseOwnerAndRepo(url, baseURL)
 	repoURL := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
 	repoWords := strings.Split(repo, "-")
