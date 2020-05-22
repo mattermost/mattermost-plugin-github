@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,22 +61,24 @@ func TestParseOwnerAndRepo(t *testing.T) {
 	}{
 		{Full: "mattermost", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: ""},
 		{Full: "mattermost", BaseURL: "https://github.com/", ExpectedOwner: "mattermost", ExpectedRepo: ""},
-		{Full: "https://github.com/mattermost", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: ""},
+		{Full: "https://example.org/mattermost", BaseURL: "https://example.org/", ExpectedOwner: "mattermost", ExpectedRepo: ""},
 		{Full: "https://github.com/mattermost", BaseURL: "https://github.com/", ExpectedOwner: "mattermost", ExpectedRepo: ""},
 		{Full: "mattermost/mattermost-server", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
 		{Full: "mattermost/mattermost-server", BaseURL: "https://github.com/", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
-		{Full: "https://github.com/mattermost/mattermost-server", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
+		{Full: "https://example.org/mattermost/mattermost-server", BaseURL: "https://example.org/", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
 		{Full: "https://github.com/mattermost/mattermost-server", BaseURL: "https://github.com/", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost-server"},
 		{Full: "", BaseURL: "", ExpectedOwner: "", ExpectedRepo: ""},
 		{Full: "mattermost/mattermost/invalid_repo_url", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost"},
-		{Full: "https://github.com/mattermost/mattermost/invalid_repo_url", BaseURL: "", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost"},
+		{Full: "https://github.com/mattermost/mattermost/invalid_repo_url", BaseURL: "https://github.com/", ExpectedOwner: "mattermost", ExpectedRepo: "mattermost"},
 	}
 
-	for _, tc := range tcs {
-		owner, repo := parseOwnerAndRepo(tc.Full, tc.BaseURL)
+	for i, tc := range tcs {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
+			owner, repo := parseOwnerAndRepo(tc.Full, tc.BaseURL)
 
-		assert.Equal(t, owner, tc.ExpectedOwner)
-		assert.Equal(t, repo, tc.ExpectedRepo)
+			assert.Equal(t, tc.ExpectedOwner, owner)
+			assert.Equal(t, tc.ExpectedRepo, repo)
+		})
 	}
 }
 
@@ -244,7 +247,7 @@ func TestGetToDoDisplayText(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			got := getToDoDisplayText(tc.in.title, tc.in.url, tc.in.notifType)
+			got := getToDoDisplayText("https://github.com/", tc.in.title, tc.in.url, tc.in.notifType)
 			assert.Equal(t, tc.want, got)
 		})
 	}

@@ -29,6 +29,7 @@
 .github-tooltip .header {
     color: var(--light-gray);
     font-size: 12px;
+    white-space: nowrap;
 }
 
 .github-tooltip .header a {

@@ -3,12 +3,13 @@ package testutils
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -32,7 +33,7 @@ type Request struct {
 	Body   interface{}
 }
 
-// ExpectedResponse stores expected responce basic data
+// ExpectedResponse stores expected response basic data
 type ExpectedResponse struct {
 	StatusCode   int
 	ResponseType contentType
@@ -56,7 +57,6 @@ func EncodeJSON(data interface{}) ([]byte, error) {
 	}
 
 	return b, nil
-
 }
 
 // EncodeJSON encodes json data in bytes
