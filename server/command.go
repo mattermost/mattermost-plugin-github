@@ -292,18 +292,33 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		config := p.API.GetConfig()
-		if config.ServiceSettings.SiteURL == nil {
+		siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+		if siteURL == nil {
 			p.postCommandResponse(args, "Encountered an error connecting to GitHub.")
 			return &model.CommandResponse{}, nil
 		}
 
+		privateAllowed := false
+		if len(parameters) > 0 {
+			if len(parameters) != 1 || parameters[0] != "private" {
+				p.postCommandResponse(args, fmt.Sprintf("Unknown command `%v`. Do you meant `/github connect private`?", args.Command))
+				return &model.CommandResponse{}, nil
+			}
+
+			privateAllowed = true
+		}
+
 		qparams := ""
-		if len(parameters) == 1 && parameters[0] == "private" {
+		if privateAllowed {
+			if !p.getConfiguration().EnablePrivateRepo {
+				p.postCommandResponse(args, "Private repositories are disabled. Please ask a System Admin to enabled them.")
+				return &model.CommandResponse{}, nil
+			}
 			qparams = "?private=true"
 		}
 
-		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *config.ServiceSettings.SiteURL, qparams))
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *siteURL, qparams)
+		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}
 
