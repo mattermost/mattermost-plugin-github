@@ -2,22 +2,17 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
+import Octicon, {TickIcon} from '@primer/octicons-react'
 
-export default class TickIcon extends React.PureComponent {
-    render() {
-        return (
-            <svg
-                viewBox='0 0 12 16'
-                version='1.1'
-                width='12'
-                height='16'
-                role='img'
-            >
-                <path
-                    fillRule='evenodd'
-                    d='M12 5l-8 8-4-4 1.5-1.5L4 10l6.5-6.5L12 5z'
-                />
-            </svg>
-        );
-    }
+export default function OcticonsList() {
+  return (
+    <ul>
+      {Object.keys(TickIcon).map(check => (
+        <li check={check}>
+          <tt>{check}</tt>
+          <Octicon icon={TickIcon[check]}/>
+        </li>
+      ))}
+    </ul>
+  )
 }
