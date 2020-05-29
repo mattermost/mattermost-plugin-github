@@ -45,6 +45,7 @@ type PRDetails struct {
 	URL                string                      `json:"url"`
 	Number             int                         `json:"number"`
 	Status             string                      `json:"status"`
+	Mergeable          bool                        `json:"mergeable"`
 	RequestedReviewers []*string                   `json:"requestedReviewers"`
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
@@ -569,7 +570,8 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 }
 
 func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
-	status := ""
+	var status string
+	var mergeable bool
 	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
 	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
@@ -599,6 +601,9 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 			mlog.Error(err.Error())
 			return
 		}
+
+		mergeable = prInfo.GetMergeable()
+
 		for _, v := range prInfo.RequestedReviewers {
 			requestedReviewers = append(requestedReviewers, v.Login)
 		}
@@ -615,6 +620,7 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 		URL:                prURL,
 		Number:             prNumber,
 		Status:             status,
+		Mergeable:          mergeable,
 		RequestedReviewers: requestedReviewers,
 		Reviews:            reviewsList,
 	}

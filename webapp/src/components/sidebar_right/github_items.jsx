@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import Octicon, {Alert} from '@primer/octicons-react';
 
 import {formatTimeSince} from 'utils/date_utils';
 
@@ -103,6 +104,29 @@ function GithubItems(props) {
             }
         }
 
+        let hasConflict = '';
+        if (item.mergeable != null && !item.mergeable) {
+            hasConflict = (
+                <OverlayTrigger
+                    key='githubRHSPRMergeableIndicator'
+                    placement='top'
+                    overlay={
+                        <Tooltip id='githubRHSPRMergeableTooltip'>
+                            {'This pull request has conflicts that must be resolved'}
+                        </Tooltip>
+                    }
+                >
+                    <span>
+                        <Octicon
+                            icon={Alert}
+                            size='small'
+                            verticalAlign='middle'
+                        />
+                    </span>
+                </OverlayTrigger>
+            );
+        }
+
         return (
             <div
                 key={item.id}
@@ -110,7 +134,7 @@ function GithubItems(props) {
             >
                 <div>
                     <strong>
-                        {title}{status}
+                        {title}{hasConflict}{status}
                     </strong>
                 </div>
                 <div>
