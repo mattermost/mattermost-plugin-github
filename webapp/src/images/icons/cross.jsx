@@ -2,17 +2,11 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {CrossIcon} from '@primer/octicons-react'
+import Octicon, {x} from '@primer/octicons-react'
 
-export default function OcticonsList() {
-  return (
-    <ul>
-      {Object.keys(CrossIcon).map(x => (
-        <li x={x}>
-          <tt>{x}</tt>
-          <Octicon icon={CrossIcon[x]}/>
-        </li>
-      ))}
-    </ul>
-  )
-}
+export default () => (
+      <Octicon icon={x} 
+      size='small' 
+      verticalAlign='middle' 
+      />
+)

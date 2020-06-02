@@ -2,17 +2,12 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {TickIcon} from '@primer/octicons-react'
+import Octicon, {check} from '@primer/octicons-react'
 
-export default function OcticonsList() {
-  return (
-    <ul>
-      {Object.keys(TickIcon).map(check => (
-        <li check={check}>
-          <tt>{check}</tt>
-          <Octicon icon={TickIcon[check]}/>
-        </li>
-      ))}
-    </ul>
-  )
-}
+export default () => (
+      <Octicon icon={check} 
+      size='small' 
+      verticalAlign='middle' 
+      />
+
+)

@@ -2,17 +2,11 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {DotIcon} from '@primer/octicons-react'
+import Octicon, {primitive-dot} from '@primer/octicons-react'
 
-export default function OcticonsList() {
-  return (
-    <ul>
-      {Object.keys(DotIcon).map(primitive-dot => (
-        <li primitive-dot={primitive-dot}>
-          <tt>{primitive-dot}</tt>
-          <Octicon icon={DotIcon[primitive-dot]}/>
-        </li>
-      ))}
-    </ul>
-  )
-}
+export default () => (
+      <Octicon icon={primitive-dot} 
+      size='small' 
+      verticalAlign='middle' 
+      />
+)
