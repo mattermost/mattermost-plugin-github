@@ -116,13 +116,7 @@ function GithubItems(props) {
                         </Tooltip>
                     }
                 >
-                    <span>
-                        <Octicon
-                            icon={Alert}
-                            size='small'
-                            verticalAlign='middle'
-                        />
-                    </span>
+                    <i className='icon icon-alert-outline'/>
                 </OverlayTrigger>
             );
         }
