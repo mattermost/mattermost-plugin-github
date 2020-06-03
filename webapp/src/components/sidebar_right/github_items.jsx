@@ -6,7 +6,6 @@ import PropTypes from 'prop-types';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import Octicon, {Alert} from '@primer/octicons-react';
 
 import {formatTimeSince} from 'utils/date_utils';
 
@@ -116,7 +115,10 @@ function GithubItems(props) {
                         </Tooltip>
                     }
                 >
-                    <i className='icon icon-alert-outline'/>
+                    <i
+                        style={style.conflictIcon}
+                        className='icon icon-alert-outline'
+                    />
                 </OverlayTrigger>
             );
         }
@@ -180,10 +182,13 @@ const getStyle = makeStyleFromTheme((theme) => {
         icon: {
             top: 3,
             position: 'relative',
-            left: 6,
+            left: 3,
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
+        },
+        conflictIcon: {
+            color: theme.errorTextColor,
         },
         milestoneIcon: {
             top: 3,
