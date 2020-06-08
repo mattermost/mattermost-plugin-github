@@ -91,7 +91,7 @@ export const LinkTooltip = ({href, connected}) => {
                     <div className='header mb-1'>
                         <a
                             title={data.repo}
-                            href={href}
+                            href={data.base.repo.html_url}
                             target='_blank'
                             rel='noopener noreferrer'
                         >
