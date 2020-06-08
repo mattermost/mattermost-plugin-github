@@ -92,7 +92,11 @@ export const LinkTooltip = ({href, connected}) => {
                         <a
                             title={data.repo}
                             href={href}
-                        >{data.repo}</a>
+                            target='_blank'
+                            rel='noopener noreferrer'
+                        >
+                            {data.repo}
+                        </a>
                         {' on '}
                         <span>{date}</span>
                     </div>
@@ -104,7 +108,11 @@ export const LinkTooltip = ({href, connected}) => {
 
                         {/* info */}
                         <div className='tooltip-info mt-1'>
-                            <a href={href}>
+                            <a
+                                href={href}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                            >
                                 <h5 className='mr-1'>{data.title}</h5>
                                 <span>{'#' + data.number}</span>
                             </a>
