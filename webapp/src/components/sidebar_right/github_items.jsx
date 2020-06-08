@@ -14,6 +14,7 @@ import DotIcon from 'images/icons/dot.jsx';
 import TickIcon from 'images/icons/tick.jsx';
 import SignIcon from 'images/icons/sign.jsx';
 import ChangesRequestedIcon from 'images/icons/changes_requested.jsx';
+import {getLabelFontColor} from '../../utils/styles';
 
 function GithubItems(props) {
     const style = getStyle(props.theme);
@@ -35,7 +36,7 @@ function GithubItems(props) {
         if (item.number) {
             number = (
                 <strong>
-                    <i className='fa fa-code-fork'/> #{item.number}
+                    <i className='fa fa-code-fork'/>{' #' + item.number}
                 </strong>);
         }
 
@@ -57,7 +58,7 @@ function GithubItems(props) {
                             target='_blank'
                             rel='noopener noreferrer'
                         >
-                            <i className='fa fa-code-fork'/> #{item.number}
+                            <i className='fa fa-code-fork'/>{' #' + item.number}
                         </a>
                     </strong>);
             }
@@ -113,7 +114,7 @@ function GithubItems(props) {
                     </strong>
                 </div>
                 <div>
-                    {number} <span className='light'>({repoName})</span>
+                    {number} <span className='light'>{'(' + repoName + ')'}</span>
                 </div>
                 <GithubLabels labels={item.labels}/>
                 <div
@@ -124,11 +125,10 @@ function GithubItems(props) {
                     {userName && ' by ' + userName}
                     {(item.created_at || userName) && '.'}
                     {milestone}
-                    {item.reason ?
-                        (<React.Fragment>
-                            {(item.created_at || userName || milestone) && (<br/>)}
-                            {notificationReasons[item.reason]}
-                        </React.Fragment>) : null }
+                    {item.reason ? (<React.Fragment>
+                        {(item.created_at || userName || milestone) && (<br/>)}
+                        {notificationReasons[item.reason]}
+                    </React.Fragment>) : null }
                 </div>
                 {reviews}
             </div>
@@ -182,7 +182,7 @@ function GithubLabels(props) {
         return (
             <Badge
                 key={label.id}
-                style={{...itemStyle.label, ...{backgroundColor: `#${label.color}`}}}
+                style={{...itemStyle.label, ...{backgroundColor: `#${label.color}`, color: getLabelFontColor(label.color)}}}
             >{label.name}</Badge>
         );
     }) : null;
@@ -242,7 +242,7 @@ function getReviewText(item, style, secondLine) {
         } else {
             reviewName = 'reviews';
         }
-        reviews = (<span>{approved} out of {totalReviewers} {reviewName} complete.</span>);
+        reviews = (<span>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
     }
 
     if (changesRequested > 0) {
@@ -250,7 +250,7 @@ function getReviewText(item, style, secondLine) {
             <OverlayTrigger
                 key='changesRequestedDot'
                 placement='bottom'
-                overlay={<Tooltip id='changesRequestedTooltip'>Changes Requested</Tooltip>}
+                overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
             >
                 <div style={{...style.icon, fill: '#c11b28'}}><ChangesRequestedIcon/></div>
             </OverlayTrigger>

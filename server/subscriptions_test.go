@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func CheckError(t *testing.T, wantErr bool, err error) {
@@ -23,7 +24,7 @@ func pluginWithMockedSubs(subscriptions []*Subscription) *Plugin {
 	subs := Subscriptions{Repositories: map[string][]*Subscription{}}
 	subs.Repositories[""] = subscriptions
 	jsn, _ := json.Marshal(subs)
-	mockPluginAPI.On("KVGet", SUBSCRIPTIONS_KEY).Return(jsn, nil)
+	mockPluginAPI.On("KVGet", SubscriptionsKey).Return(jsn, nil)
 	p.SetAPI(mockPluginAPI)
 	return p
 }
@@ -41,7 +42,6 @@ func wantedSubscriptions(repoNames []string, chanelID string) []*Subscription {
 }
 
 func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
-
 	type args struct {
 		channelID string
 	}

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v25/github"
+	"github.com/google/go-github/v31/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -180,7 +180,6 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 	})
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(t *testing.T) {
-
 		expected := `
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
@@ -333,7 +332,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(false),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -360,7 +359,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(true),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -388,7 +387,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(false),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -425,7 +424,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Repo:   &pushEventRepository,
 			Sender: &user,
 			Forced: bToP(false),
-			Commits: []github.PushEventCommit{
+			Commits: []*github.HeadCommit{
 				{
 					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
 					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
@@ -795,7 +794,6 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
-
 	})
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
@@ -816,7 +814,6 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
-
 	}))
 }
 

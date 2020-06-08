@@ -41,12 +41,28 @@ export default class Client {
         return this.doPost(`${this.url}/user`, {user_id: userID});
     }
 
+    getRepositories = async () => {
+        return this.doGet(`${this.url}/repositories`);
+    }
+
+    createIssue = async (payload) => {
+        return this.doPost(`${this.url}/createissue`, payload);
+    }
+
     searchIssues = async (searchTerm) => {
         return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
     }
 
     attachCommentToIssue = async (payload) => {
         return this.doPost(`${this.url}/createissuecomment`, payload);
+    }
+
+    getIssue = async (owner, repo, issueNumber) => {
+        return this.doGet(`${this.url}/issue?owner=${owner}&repo=${repo}&number=${issueNumber}`);
+    }
+
+    getPullRequest = async (owner, repo, prNumber) => {
+        return this.doGet(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
     }
 
     doGet = async (url, body, headers = {}) => {
