@@ -119,7 +119,6 @@ export const LinkTooltip = ({href, connected}) => {
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown
                                     source={data.body}
-                                    disallowedTypes={['heading']}
                                     linkTarget='_blank'
                                 />
                             </div>
