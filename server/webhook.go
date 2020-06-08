@@ -320,7 +320,8 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 		if err != nil {
 			mlog.Error("Error creating mention post: " + err.Error())
 		}
-		p.sendRefreshEvent(p.BotUserID)
+
+		p.sendRefreshEvent(userId)
 	}
 
 }
@@ -783,7 +784,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			mlog.Error("Error creating mention post: " + err.Error())
 		}
 
-		p.sendRefreshEvent(p.BotUserID)
+		p.sendRefreshEvent(userId)
 	}
 }
 
