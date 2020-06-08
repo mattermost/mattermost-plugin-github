@@ -115,8 +115,10 @@
     padding: 0 5px;
     font: .75em/2 SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
     color: var(--blue);
-    white-space: nowrap;
     background-color: var(--light-blue);
     border-radius: 3px;
-    maxWidth: 140px;
+    max-width: 140px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }

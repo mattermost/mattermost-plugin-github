@@ -129,7 +129,6 @@ export const LinkTooltip = ({href, connected}) => {
                                     <span
                                         title={data.base.ref}
                                         className='commit-ref'
-                                        style={{maxWidth: '140px'}}
                                     >{data.base.ref}
                                     </span>
                                     <span className='mx-1'>{'←'}</span>
