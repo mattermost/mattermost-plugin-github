@@ -88,16 +88,16 @@ export const LinkTooltip = ({href, connected, theme}) => {
             <div className='github-tooltip'>
                 <div
                     className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'
-                    style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, 0.16)}`}}
+                    style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
                 >
-                    <div
-                        className='header mb-1'
-                    >
+                    <div className='header mb-1'>
                         <a
                             title={data.repo}
                             href={href}
                             style={{color: theme.centerChannelColor}}
-                        >{data.repo}</a>&nbsp;on&nbsp;<span>{date}</span>
+                        >{data.repo}</a>
+                        {' on '}
+                        <span>{date}</span>
                     </div>
 
                     <div className='body d-flex mt-2'>
@@ -106,16 +106,13 @@ export const LinkTooltip = ({href, connected, theme}) => {
                         </span>
 
                         {/* info */}
-                        <div
-                            className='tooltip-info mt-1'
-
-                        >
+                        <div className='tooltip-info mt-1'>
                             <a
                                 href={href}
                                 style={{color: theme.centerChannelColor}}
                             >
                                 <h5 className='mr-1'>{data.title}</h5>
-                                <span>#{data.number}</span>
+                                <span>{'#' + data.number}</span>
                             </a>
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown
@@ -148,7 +145,7 @@ export const LinkTooltip = ({href, connected, theme}) => {
                                     href={href}
                                     target='_blank'
                                     rel='noopener noreferrer'
-                                >See more</a>
+                                >{'See more'}</a>
                             </div>
 
                             {/* Labels */}
