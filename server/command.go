@@ -93,6 +93,7 @@ func getCommand() *model.Command {
 		AutoComplete:     true,
 		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
 		AutoCompleteHint: "[command]",
+		AutocompleteData: getAutocompleteData(),
 	}
 }
 
@@ -325,4 +326,100 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	p.postCommandResponse(args, fmt.Sprintf("Unknown action %v", action))
 	return &model.CommandResponse{}, nil
+}
+
+func getAutocompleteData() *model.AutocompleteData {
+	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
+
+	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
+	private := model.NewAutocompleteData("private", "", "If used, the github bot will ask for read access to your private repositories")
+	connect.AddCommand(private)
+	github.AddCommand(connect)
+
+	disconnect := model.NewAutocompleteData("disconnect", "", "Disconnect your Mattermost account from your GitHub account")
+	github.AddCommand(disconnect)
+
+	todo := model.NewAutocompleteData("todo", "", "Get a list of unread messages and pull requests awaiting your review")
+	github.AddCommand(todo)
+
+	// subscribe := model.NewAutocompleteData("subscribe", "[command/owner/repo] [features] [flags]", "Use command list or enter owner/repo name")
+	// subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
+
+	// subscribe.AddTextArgument("Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository", "[owner/repo]", "")
+	// features := []model.AutocompleteListItem{{
+	// 	HelpText: "includes new and closed issues",
+	// 	Hint:     "(optional)",
+	// 	Item:     "issues",
+	// }, {
+	// 	HelpText: "includes new and closed pull requests",
+	// 	Hint:     "(optional)",
+	// 	Item:     "pulls",
+	// }, {
+	// 	HelpText: "includes pushes",
+	// 	Hint:     "(optional)",
+	// 	Item:     "pushes",
+	// }, {
+	// 	HelpText: "includes branch and tag creations",
+	// 	Hint:     "(optional)",
+	// 	Item:     "creates",
+	// }, {
+	// 	HelpText: "includes branch and tag deletions",
+	// 	Hint:     "(optional)",
+	// 	Item:     "deletes",
+	// }, {
+	// 	HelpText: "includes new issue comments",
+	// 	Hint:     "(optional)",
+	// 	Item:     "issue_comments",
+	// }, {
+	// 	HelpText: "includes pull request reviews",
+	// 	Hint:     "(optional)",
+	// 	Item:     "pull_reviews",
+	// }, {
+	// 	HelpText: "must include \"pulls\" or \"issues\" in feature list when using a label",
+	// 	Hint:     "(optional)",
+	// 	Item:     "label:\"<labelname>\"",
+	// }}
+	// subscribe.AddStaticListArgument("Defaults to \"pulls,issues,creates,deletes\"", false, features)
+
+	// flags := []model.AutocompleteListItem{{
+	// 	HelpText: "events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
+	// 	Hint:     "(optional)",
+	// 	Item:     "--exclude-org-member",
+	// }}
+	// subscribe.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
+	// subscribe.AddCommand(subscribeList)
+	//subscribe.AddCommand(subscribeOwner)
+	// github.AddCommand(subscribe)
+
+	unsubscribe := model.NewAutocompleteData("unsubscribe", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
+	unsubscribe.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
+	github.AddCommand(unsubscribe)
+
+	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
+	github.AddCommand(me)
+
+	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
+	setting := []model.AutocompleteListItem{{
+		HelpText: "Turn notifications on/off",
+		Hint:     "",
+		Item:     "notifications",
+	}, {
+		HelpText: "Turn reminders on/off",
+		Hint:     "",
+		Item:     "reminders",
+	}}
+	settings.AddStaticListArgument("Setting to update", true, setting)
+	value := []model.AutocompleteListItem{{
+		HelpText: "Turn setting on",
+		Hint:     "",
+		Item:     "on",
+	}, {
+		HelpText: "Turn setting off",
+		Hint:     "",
+		Item:     "off",
+	}}
+	settings.AddStaticListArgument("New value", true, value)
+	github.AddCommand(settings)
+
+	return github
 }
