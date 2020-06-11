@@ -342,54 +342,20 @@ func getAutocompleteData() *model.AutocompleteData {
 	todo := model.NewAutocompleteData("todo", "", "Get a list of unread messages and pull requests awaiting your review")
 	github.AddCommand(todo)
 
-	// subscribe := model.NewAutocompleteData("subscribe", "[command/owner/repo] [features] [flags]", "Use command list or enter owner/repo name")
-	// subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
+	subscribe := model.NewAutocompleteData("subscribe", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
+	subscribe.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
+	subscribe.AddTextArgument("(Optional) Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Detaults to pulls,issues,creates,deletes", "[features]", `/[^,-\s]+(,[^,-\s]+)*/`)
+	flags := []model.AutocompleteListItem{{
+		HelpText: "events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
+		Hint:     "(optional)",
+		Item:     "--exclude-org-member",
+	}}
+	subscribe.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
 
-	// subscribe.AddTextArgument("Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository", "[owner/repo]", "")
-	// features := []model.AutocompleteListItem{{
-	// 	HelpText: "includes new and closed issues",
-	// 	Hint:     "(optional)",
-	// 	Item:     "issues",
-	// }, {
-	// 	HelpText: "includes new and closed pull requests",
-	// 	Hint:     "(optional)",
-	// 	Item:     "pulls",
-	// }, {
-	// 	HelpText: "includes pushes",
-	// 	Hint:     "(optional)",
-	// 	Item:     "pushes",
-	// }, {
-	// 	HelpText: "includes branch and tag creations",
-	// 	Hint:     "(optional)",
-	// 	Item:     "creates",
-	// }, {
-	// 	HelpText: "includes branch and tag deletions",
-	// 	Hint:     "(optional)",
-	// 	Item:     "deletes",
-	// }, {
-	// 	HelpText: "includes new issue comments",
-	// 	Hint:     "(optional)",
-	// 	Item:     "issue_comments",
-	// }, {
-	// 	HelpText: "includes pull request reviews",
-	// 	Hint:     "(optional)",
-	// 	Item:     "pull_reviews",
-	// }, {
-	// 	HelpText: "must include \"pulls\" or \"issues\" in feature list when using a label",
-	// 	Hint:     "(optional)",
-	// 	Item:     "label:\"<labelname>\"",
-	// }}
-	// subscribe.AddStaticListArgument("Defaults to \"pulls,issues,creates,deletes\"", false, features)
+	github.AddCommand(subscribe)
 
-	// flags := []model.AutocompleteListItem{{
-	// 	HelpText: "events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
-	// 	Hint:     "(optional)",
-	// 	Item:     "--exclude-org-member",
-	// }}
-	// subscribe.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
-	// subscribe.AddCommand(subscribeList)
-	//subscribe.AddCommand(subscribeOwner)
-	// github.AddCommand(subscribe)
+	subscribeList := model.NewAutocompleteData("subscribe list", "", "List the current channel subscriptions")
+	github.AddCommand(subscribeList)
 
 	unsubscribe := model.NewAutocompleteData("unsubscribe", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
 	unsubscribe.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
