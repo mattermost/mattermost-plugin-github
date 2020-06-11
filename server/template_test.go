@@ -460,7 +460,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 func TestCreateMessageTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) just created branch [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch)
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) branch [branch](https://github.com/mattermost/mattermost-plugin-github/tree/branch) created by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("newCreateMessage", &github.CreateEvent{
@@ -475,7 +475,7 @@ func TestCreateMessageTemplate(t *testing.T) {
 
 func TestDeletedMessageTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) just deleted branch \[mattermost-plugin-github:branch]
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) branch branch deleted by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("newDeleteMessage", &github.DeleteEvent{
