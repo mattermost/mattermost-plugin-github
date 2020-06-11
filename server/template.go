@@ -263,6 +263,33 @@ func init() {
 {{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
 {{if .GetReview.GetBody}}>{{.Review.GetBody | replaceAllGitHubUsernames}}
 {{else}}{{end}}`))
+
+	template.Must(masterTemplate.New("helpText").Parse("" +
+		"* `/github connect{{if .EnablePrivateRepo}} [private]{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
+		"{{if .EnablePrivateRepo}}" +
+		"  * `private` is optional. If used, the GitHub bot will ask for read access to your private repositories. " +
+		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
+		"{{end}}" +
+		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
+		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
+		"* `/github subscribe list` - Will list the current channel subscriptions\n" +
+		"* `/github subscribe owner[/repo] [features] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
+		"  * `features` is a comma-delimited list of one or more the following:\n" +
+		"    * `issues` - includes new and closed issues\n" +
+		"    * `pulls` - includes new and closed pull requests\n" +
+		"    * `pushes` - includes pushes\n" +
+		"    * `creates` - includes branch and tag creations\n" +
+		"    * `deletes` - includes branch and tag deletions\n" +
+		"    * `issue_comments` - includes new issue comments\n" +
+		"    * `pull_reviews` - includes pull request reviews\n" +
+		"    * `label:<labelname>` - must include `pulls` or `issues` in feature list when using a label. Defaults to `pulls,issues,creates,deletes`\n" +
+		"  * `flags` currently supported:\n" +
+		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
+		"* `/github unsubscribe owner/repo` - Unsubscribe the current channel from a repository\n" +
+		"* `/github me` - Display the connected GitHub account\n" +
+		"* `/github settings [setting] [value]` - Update your user settings\n" +
+		"  * `setting` can be `notifications` or `reminders`\n" +
+		"  * `value` can be `on` or `off`\n"))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
