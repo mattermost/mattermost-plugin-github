@@ -11,31 +11,6 @@ import (
 	"github.com/mattermost/mattermost-server/v5/plugin"
 )
 
-const commandHelp = `* |/github connect [private]| - Connect your Mattermost account to your GitHub account. 
-  * |private| is optional. If used, the github bot will ask for read access to your private repositories. If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.
-* |/github disconnect| - Disconnect your Mattermost account from your GitHub account
-* |/github todo| - Get a list of unread messages and pull requests awaiting your review
-* |/github subscribe list| - Will list the current channel subscriptions
-* |/github subscribe owner[/repo] [features] [flags]| - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository
-  * |features| is a comma-delimited list of one or more the following:
-    * issues - includes new and closed issues
-	* pulls - includes new and closed pull requests
-    * pushes - includes pushes
-    * creates - includes branch and tag creations
-    * deletes - includes branch and tag deletions
-    * issue_comments - includes new issue comments
-    * pull_reviews - includes pull request reviews
-	* label:"<labelname>" - must include "pulls" or "issues" in feature list when using a label
-	Defaults to "pulls,issues,creates,deletes"
-  * |flags| currently supported:
-    * --exclude-org-member - events triggered by organization members will not be delivered (the GitHub organization config
-		should be set, otherwise this flag has not effect)
-* |/github unsubscribe owner/repo| - Unsubscribe the current channel from a repository
-* |/github me| - Display the connected GitHub account
-* |/github settings [setting] [value]| - Update your user settings
-  * |setting| can be "notifications" or "reminders"
-  * |value| can be "on" or "off"`
-
 const (
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
@@ -183,6 +158,7 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 
 	return fmt.Sprintf("Successfully subscribed to %s.", repo)
 }
+
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
@@ -197,10 +173,12 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 
 	return fmt.Sprintf("Successfully unsubscribed from %s.", repo)
 }
+
 func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	p.disconnectGitHubAccount(args.UserId)
 	return "Disconnected your GitHub account."
 }
+
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.getGithubClient(userInfo)
 
@@ -211,6 +189,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 	}
 	return text
 }
+
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.getGithubClient(userInfo)
 	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
@@ -221,14 +200,17 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 	text := fmt.Sprintf("You are connected to GitHub as:\n# [![image](%s =40x40)](%s) [%s](%s)", gitUser.GetAvatarURL(), gitUser.GetHTMLURL(), gitUser.GetLogin(), gitUser.GetHTMLURL())
 	return text
 }
+
 func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
-	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(commandHelp, "|", "`", -1)
-	return text
+	message, err := renderTemplate("helpText", p.getConfiguration())
+	if err != nil {
+		p.API.LogWarn("failed to render help template", "error", err.Error())
+		return "Encountered an error posting help text."
+	}
+
+	return "###### Mattermost GitHub Plugin - Slash Command Help\n" + message
 }
-func (p *Plugin) handleEmpty(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
-	text := "###### Mattermost GitHub Plugin - Slash Command Help\n" + strings.Replace(commandHelp, "|", "`", -1)
-	return text
-}
+
 func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) < 2 {
 		return "Please specify both a setting and value. Use `/github help` for more usage information."
@@ -293,18 +275,33 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		config := p.API.GetConfig()
-		if config.ServiceSettings.SiteURL == nil {
+		siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+		if siteURL == nil {
 			p.postCommandResponse(args, "Encountered an error connecting to GitHub.")
 			return &model.CommandResponse{}, nil
 		}
 
+		privateAllowed := false
+		if len(parameters) > 0 {
+			if len(parameters) != 1 || parameters[0] != "private" {
+				p.postCommandResponse(args, fmt.Sprintf("Unknown command `%v`. Do you meant `/github connect private`?", args.Command))
+				return &model.CommandResponse{}, nil
+			}
+
+			privateAllowed = true
+		}
+
 		qparams := ""
-		if len(parameters) == 1 && parameters[0] == "private" {
+		if privateAllowed {
+			if !p.getConfiguration().EnablePrivateRepo {
+				p.postCommandResponse(args, "Private repositories are disabled. Please ask a System Admin to enabled them.")
+				return &model.CommandResponse{}, nil
+			}
 			qparams = "?private=true"
 		}
 
-		p.postCommandResponse(args, fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *config.ServiceSettings.SiteURL, qparams))
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *siteURL, qparams)
+		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}
 
