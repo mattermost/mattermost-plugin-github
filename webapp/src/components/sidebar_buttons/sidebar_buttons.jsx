@@ -41,10 +41,10 @@ export default class SidebarButtons extends React.PureComponent {
     componentDidMount() {
         if (this.props.connected) {
             this.getData();
-            return
+            return;
         }
 
-        this.props.actions.getConnected(true)
+        this.props.actions.getConnected(true);
     }
 
     componentDidUpdate(prevProps) {

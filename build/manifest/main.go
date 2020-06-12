@@ -103,6 +103,7 @@ func dumpPluginVersion(manifest *model.Manifest) {
 // applyManifest propagates the plugin_id into the server and webapp folders, as necessary
 func applyManifest(manifest *model.Manifest) error {
 	if manifest.HasServer() {
+		//nolint:gosec
 		if err := ioutil.WriteFile(
 			"server/manifest.go",
 			[]byte(fmt.Sprintf(pluginIDGoFileTemplate, manifest.Id, manifest.Version)),
@@ -113,6 +114,7 @@ func applyManifest(manifest *model.Manifest) error {
 	}
 
 	if manifest.HasWebapp() {
+		//nolint:gosec
 		if err := ioutil.WriteFile(
 			"webapp/src/manifest.js",
 			[]byte(fmt.Sprintf(pluginIDJSFileTemplate, manifest.Id, manifest.Version)),
