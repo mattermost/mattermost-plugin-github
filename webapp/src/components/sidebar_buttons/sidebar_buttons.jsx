@@ -21,6 +21,7 @@ export default class SidebarButtons extends React.PureComponent {
         isTeamSidebar: PropTypes.bool,
         showRHSPlugin: PropTypes.func.isRequired,
         actions: PropTypes.shape({
+            getConnected: PropTypes.func.isRequired,
             getReviews: PropTypes.func.isRequired,
             getUnreads: PropTypes.func.isRequired,
             getYourPrs: PropTypes.func.isRequired,
@@ -40,7 +41,10 @@ export default class SidebarButtons extends React.PureComponent {
     componentDidMount() {
         if (this.props.connected) {
             this.getData();
+            return
         }
+
+        this.props.actions.getConnected(true)
     }
 
     componentDidUpdate(prevProps) {
