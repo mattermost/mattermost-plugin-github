@@ -364,7 +364,6 @@ func getAutocompleteData() *model.AutocompleteData {
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
 	setting := []model.AutocompleteListItem{{
 		HelpText: "Turn notifications on/off",
-		Hint:     "",
 		Item:     "notifications",
 	}, {
 		HelpText: "Turn reminders on/off",
