@@ -72,7 +72,7 @@ func NewPlugin() *Plugin {
 		"todo":        p.handleTodo,
 		"me":          p.handleMe,
 		"help":        p.handleHelp,
-		"":            p.handleEmpty,
+		"":            p.handleHelp,
 		"settings":    p.handleSettings,
 	}
 
