@@ -367,7 +367,6 @@ func getAutocompleteData() *model.AutocompleteData {
 		Item:     "notifications",
 	}, {
 		HelpText: "Turn reminders on/off",
-		Hint:     "",
 		Item:     "reminders",
 	}}
 	settings.AddStaticListArgument("Setting to update", true, setting)
