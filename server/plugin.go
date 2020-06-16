@@ -162,6 +162,16 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
+	shouldProcessMessage, e := p.Helpers.ShouldProcessMessage(post)
+	if e != nil {
+		p.API.LogError("error while checking if the message should be processed", "error", e.Error())
+		return nil, ""
+	}
+
+	if !shouldProcessMessage {
+		return nil, ""
+	}
+
 	msg := post.Message
 	info, err := p.getGitHubUserInfo(post.UserId)
 	if err != nil {
