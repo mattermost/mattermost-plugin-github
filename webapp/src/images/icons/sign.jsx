@@ -2,11 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {sign-in} from '@primer/octicons-react'
+import {SignInIcon} from '@primer/octicons-react'
 
 export default () => (
-      <Octicon icon={sign-in} 
-      size='small' 
-      verticalAlign='middle' 
-      />
+      <SignInIcon size={16} />
 )

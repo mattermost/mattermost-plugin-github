@@ -2,11 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {request-change} from '@primer/octicons-react'
+import {GitPullRequestIcon} from '@primer/octicons-react'
 
 export default () => (
-      <Octicon icon={request-change} 
-      size='small' 
-      verticalAlign='middle' 
-      />
+      <GitPullRequestIcon size={16} />
 )

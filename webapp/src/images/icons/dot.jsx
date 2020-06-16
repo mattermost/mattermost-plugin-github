@@ -2,11 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {primitive-dot} from '@primer/octicons-react'
+import {DotIcon} from "@primer/octicons-react"
 
 export default () => (
-      <Octicon icon={primitive-dot} 
-      size='small' 
-      verticalAlign='middle' 
-      />
+      <DotIcon size={16} />
 )

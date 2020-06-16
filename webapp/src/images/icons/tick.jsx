@@ -2,12 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import Octicon, {check} from '@primer/octicons-react'
+import {CheckIcon} from '@primer/octicons-react'
 
 export default () => (
-      <Octicon icon={check} 
-      size='small' 
-      verticalAlign='middle' 
-      />
-
+      <CheckIcon size={16} />
 )
