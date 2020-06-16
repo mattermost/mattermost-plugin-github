@@ -341,7 +341,7 @@ func getAutocompleteData() *model.AutocompleteData {
 
 	subscribe := model.NewAutocompleteData("subscribe", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscribe.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscribe.AddTextArgument("(Optional) Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Detaults to pulls,issues,creates,deletes", "[features]", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscribe.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Detaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	flags := []model.AutocompleteListItem{{
 		HelpText: "events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
 		Hint:     "(optional)",
