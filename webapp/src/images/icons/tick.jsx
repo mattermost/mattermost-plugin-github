@@ -2,8 +2,8 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {CheckIcon} from '@primer/octicons-react'
+import {CheckIcon} from '@primer/octicons-react';
 
 export default () => (
-      <CheckIcon size={16} />
-)
+    <CheckIcon size={16}/>
+);
