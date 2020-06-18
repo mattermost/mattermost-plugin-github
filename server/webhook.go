@@ -96,6 +96,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		handler = func() {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
+			p.handlePRDescriptionMentionNotification(event)
 		}
 	case *github.IssuesEvent:
 		repo = event.GetRepo()
@@ -280,6 +281,63 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
 		}
+	}
+}
+
+func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
+	action := event.GetAction()
+	if action != "opened" {
+		return
+	}
+
+	body := event.GetPullRequest().GetBody()
+
+	mentionedUsernames := parseGitHubUsernamesFromText(body)
+
+	message, err := renderTemplate("pullRequestMentionNotification", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
+
+	post := &model.Post{
+		UserId:  p.BotUserID,
+		Message: message,
+		Type:    "custom_git_mention",
+	}
+
+	for _, username := range mentionedUsernames {
+		// Don't notify user of their own comment
+		if username == event.GetSender().GetLogin() {
+			continue
+		}
+
+		// Notifications for pull request authors are handled separately
+		if username == event.GetPullRequest().GetUser().GetLogin() {
+			continue
+		}
+
+		userID := p.getGitHubToUserIDMapping(username)
+		if userID == "" {
+			continue
+		}
+
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
+			continue
+		}
+
+		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
+		if err != nil {
+			continue
+		}
+
+		post.ChannelId = channel.Id
+		_, err = p.API.CreatePost(post)
+		if err != nil {
+			mlog.Error("Error creating mention post: " + err.Error())
+		}
+
+		p.sendRefreshEvent(userID)
 	}
 }
 
@@ -741,7 +799,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			mlog.Error("Error creating mention post: " + err.Error())
 		}
 
-		p.sendRefreshEvent(p.BotUserID)
+		p.sendRefreshEvent(userID)
 	}
 }
 

@@ -254,6 +254,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		fmt.Println(err.Error())
 	}
 
+	commandHelp, err := renderTemplate("helpText", p.getConfiguration())
+	if err != nil {
+		p.API.LogWarn("failed to render help template", "error", err.Error())
+	}
+
 	// Post intro post
 	message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
 		"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
@@ -272,7 +277,8 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		"* The fifth will refresh the numbers.\n\n"+
 		"Click on them!\n\n"+
 		"##### Slash Commands\n"+
-		strings.Replace(commandHelp, "|", "`", -1), gitUser.GetLogin(), gitUser.GetHTMLURL())
+		commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
+
 	p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
 
 	config := p.getConfiguration()
