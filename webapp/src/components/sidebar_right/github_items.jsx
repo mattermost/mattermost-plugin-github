@@ -103,6 +103,26 @@ function GithubItems(props) {
             }
         }
 
+        let hasConflict = '';
+        if (item.mergeable != null && !item.mergeable) {
+            hasConflict = (
+                <OverlayTrigger
+                    key='githubRHSPRMergeableIndicator'
+                    placement='top'
+                    overlay={
+                        <Tooltip id='githubRHSPRMergeableTooltip'>
+                            {'This pull request has conflicts that must be resolved'}
+                        </Tooltip>
+                    }
+                >
+                    <i
+                        style={style.conflictIcon}
+                        className='icon icon-alert-outline'
+                    />
+                </OverlayTrigger>
+            );
+        }
+
         return (
             <div
                 key={item.id}
@@ -110,7 +130,7 @@ function GithubItems(props) {
             >
                 <div>
                     <strong>
-                        {title}{status}
+                        {title}{hasConflict}{status}
                     </strong>
                 </div>
                 <div>
@@ -162,10 +182,13 @@ const getStyle = makeStyleFromTheme((theme) => {
         icon: {
             top: 3,
             position: 'relative',
-            left: 6,
+            left: 3,
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
+        },
+        conflictIcon: {
+            color: theme.errorTextColor,
         },
         milestoneIcon: {
             top: 3,
