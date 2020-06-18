@@ -475,13 +475,11 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
-
 	if len(subs) == 0 {
 		return
 	}
 
 	typ := event.GetRefType()
-
 	if typ != "tag" && typ != "branch" {
 		return
 	}
