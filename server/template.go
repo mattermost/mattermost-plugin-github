@@ -165,6 +165,10 @@ func init() {
 #pull-request-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}
 `))
 
+	template.Must(masterTemplate.New("pullRequestMentionNotification").Funcs(funcMap).Parse(`
+{{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}}) - {{.GetPullRequest.GetTitle}}:
+>{{.GetPullRequest.GetBody | trimBody | replaceAllGitHubUsernames}}`))
+
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
@@ -191,11 +195,11 @@ func init() {
 `))
 
 	template.Must(masterTemplate.New("newCreateMessage").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} just created {{.GetRefType}} [\[{{.GetRepo.GetFullName}}:{{.GetRef}}\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef}})
+{{template "repo" .GetRepo}} {{.GetRefType}} [{{.GetRef}}]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef}}) created by {{template "user" .GetSender}}
 `))
 
 	template.Must(masterTemplate.New("newDeleteMessage").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} just deleted {{.GetRefType}} \[{{.GetRepo.GetFullName}}:{{.GetRef}}]
+{{template "repo" .GetRepo}} {{.GetRefType}} {{.GetRef}} deleted by {{template "user" .GetSender}}
 `))
 
 	template.Must(masterTemplate.New("issueComment").Funcs(funcMap).Parse(`
