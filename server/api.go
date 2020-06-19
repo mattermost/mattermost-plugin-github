@@ -45,6 +45,7 @@ type PRDetails struct {
 	URL                string                      `json:"url"`
 	Number             int                         `json:"number"`
 	Status             string                      `json:"status"`
+	Mergeable          bool                        `json:"mergeable"`
 	RequestedReviewers []*string                   `json:"requestedReviewers"`
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
@@ -253,6 +254,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		fmt.Println(err.Error())
 	}
 
+	commandHelp, err := renderTemplate("helpText", p.getConfiguration())
+	if err != nil {
+		p.API.LogWarn("failed to render help template", "error", err.Error())
+	}
+
 	// Post intro post
 	message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
 		"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
@@ -271,7 +277,8 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		"* The fifth will refresh the numbers.\n\n"+
 		"Click on them!\n\n"+
 		"##### Slash Commands\n"+
-		strings.Replace(commandHelp, "|", "`", -1), gitUser.GetLogin(), gitUser.GetHTMLURL())
+		commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
+
 	p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
 
 	config := p.getConfiguration()
@@ -569,7 +576,8 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 }
 
 func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
-	status := ""
+	var status string
+	var mergeable bool
 	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
 	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
@@ -599,6 +607,9 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 			mlog.Error(err.Error())
 			return
 		}
+
+		mergeable = prInfo.GetMergeable()
+
 		for _, v := range prInfo.RequestedReviewers {
 			requestedReviewers = append(requestedReviewers, v.Login)
 		}
@@ -615,6 +626,7 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 		URL:                prURL,
 		Number:             prNumber,
 		Status:             status,
+		Mergeable:          mergeable,
 		RequestedReviewers: requestedReviewers,
 		Reviews:            reviewsList,
 	}

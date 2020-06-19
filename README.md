@@ -76,7 +76,7 @@ __If you are using GitHub Enterprise, replace all GitHub links below with your G
    - **Payload URL**: `https://your-mattermost-url.com/plugins/github/webhook`, replacing `https://your-mattermost-url.com` with your Mattermost URL
    - **Content Type**: `application/json`
    - **Secret**: the webhook secret you copied previously
-6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?", then select the following events: Issues, Issue comments, Pull requests, Pull request reviews, Pull request review comments, Pushes, Branch or Tag creation, Branch or Tag deletion
+6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?", then select the following events:  `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`
 7. Hit **Add Webhook** to save it.
 
 ### Step 3: Configure plugin in Mattermost
