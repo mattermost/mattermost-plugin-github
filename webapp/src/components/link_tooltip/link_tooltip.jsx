@@ -5,9 +5,9 @@ import Octicon, {GitMerge, GitPullRequest, IssueClosed, IssueOpened} from '@prim
 import ReactMarkdown from 'react-markdown';
 
 import Client from 'client';
-import {getLabelFontColor} from '../../utils/styles';
+import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 
-export const LinkTooltip = ({href, connected}) => {
+export const LinkTooltip = ({href, connected, theme}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         const init = async () => {
@@ -84,16 +84,19 @@ export const LinkTooltip = ({href, connected}) => {
     if (data) {
         let date = new Date(data.created_at);
         date = date.toDateString();
-
         return (
             <div className='github-tooltip'>
-                <div className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'>
+                <div
+                    className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'
+                    style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
+                >
                     <div className='header mb-1'>
                         <a
                             title={data.repo}
                             href={data.base.repo.html_url}
                             target='_blank'
                             rel='noopener noreferrer'
+                            style={{color: theme.centerChannelColor}}
                         >
                             {data.repo}
                         </a>
@@ -112,6 +115,7 @@ export const LinkTooltip = ({href, connected}) => {
                                 href={href}
                                 target='_blank'
                                 rel='noopener noreferrer'
+                                style={{color: theme.centerChannelColor}}
                             >
                                 <h5 className='mr-1'>{data.title}</h5>
                                 <span>{'#' + data.number}</span>
@@ -175,4 +179,5 @@ export const LinkTooltip = ({href, connected}) => {
 LinkTooltip.propTypes = {
     href: PropTypes.string.isRequired,
     connected: PropTypes.bool.isRequired,
+    theme: PropTypes.object.isRequired,
 };
