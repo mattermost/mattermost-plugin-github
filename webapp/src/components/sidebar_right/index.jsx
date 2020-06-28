@@ -28,6 +28,7 @@ function mapPrsToDetails(prs, details) {
         return {
             ...pr,
             status: foundDetails.status,
+            mergeable: foundDetails.mergeable,
             requestedReviewers: foundDetails.requestedReviewers,
             reviews: foundDetails.reviews,
         };
