@@ -34,7 +34,7 @@ func (p *pluginAPIRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 	return resp, nil
 }
 
-func NewClientPlugin(api PluginAPI) *Client {
+func NewPluginClient(api PluginAPI) *Client {
 	client := &Client{}
 	client.httpClient.Transport = &pluginAPIRoundTripper{api}
 

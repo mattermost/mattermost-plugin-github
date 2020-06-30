@@ -60,7 +60,7 @@ func TestGetConfiguration(t *testing.T) {
 		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(b)})
 		defer pluginAPI.AssertExpectations(t)
 
-		client := NewClientPlugin(pluginAPI)
+		client := NewPluginClient(pluginAPI)
 
 		rConfig, err := client.GetConfiguration()
 		assert.NoError(t, err)
@@ -72,7 +72,7 @@ func TestGetConfiguration(t *testing.T) {
 		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(nil)
 		defer pluginAPI.AssertExpectations(t)
 
-		client := NewClientPlugin(pluginAPI)
+		client := NewPluginClient(pluginAPI)
 
 		config, err := client.GetConfiguration()
 		assert.Error(t, err)
@@ -94,7 +94,7 @@ func TestGetToken(t *testing.T) {
 		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(b)})
 		defer pluginAPI.AssertExpectations(t)
 
-		client := NewClientPlugin(pluginAPI)
+		client := NewPluginClient(pluginAPI)
 
 		rToken, err := client.GetToken("someUserID")
 		assert.NoError(t, err)
@@ -106,7 +106,7 @@ func TestGetToken(t *testing.T) {
 		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(nil)
 		defer pluginAPI.AssertExpectations(t)
 
-		client := NewClientPlugin(pluginAPI)
+		client := NewPluginClient(pluginAPI)
 
 		token, err := client.GetToken("someUserID")
 		assert.Error(t, err)
