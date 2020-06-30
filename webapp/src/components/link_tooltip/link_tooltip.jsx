@@ -91,15 +91,9 @@ export const LinkTooltip = ({href, connected, theme}) => {
                     style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
                 >
                     <div className='header mb-1'>
-                        <a
-                            title={data.repo}
-                            href={data.base.repo.html_url}
-                            target='_blank'
-                            rel='noopener noreferrer'
-                            style={{color: theme.centerChannelColor}}
-                        >
+                        <span style={{color: theme.centerChannelColor}}>
                             {data.repo}
-                        </a>
+                        </span>
                         {' on '}
                         <span>{date}</span>
                     </div>
