@@ -35,7 +35,7 @@ export default class CreateIssuePostMenuAction extends PureComponent {
                 onClick={this.handleClick}
             >
                 <GitHubIcon type='menu'/>
-                {'Create Github Issue'}
+                {'Create GitHub Issue'}
             </button>
         );
 
