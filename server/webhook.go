@@ -350,7 +350,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	action := event.GetAction()
-	if action != "opened" && action != "labeled" && action != "closed" {
+	if action != "opened" && action != "labeled" && action != "closed" && action != "reopened" {
 		return
 	}
 
@@ -368,6 +368,12 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	closedIssueMessage, err := renderTemplate("closedIssue", event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
+
+	reopenedIssueMessage, err := renderTemplate("reopenedIssue", event)
 	if err != nil {
 		mlog.Error("failed to render template", mlog.Err(err))
 		return
@@ -420,6 +426,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 		if action == "closed" {
 			post.Message = closedIssueMessage
+		}
+
+		if action == "reopened" {
+			post.Message = reopenedIssueMessage
 		}
 
 		post.ChannelId = sub.ChannelID
