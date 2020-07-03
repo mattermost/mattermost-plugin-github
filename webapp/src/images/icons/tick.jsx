@@ -5,5 +5,5 @@ import React from 'react';
 import {CheckIcon} from '@primer/octicons-react';
 
 export default () => (
-    <CheckIcon size={16}/>
+    <CheckIcon size='small'/>
 );

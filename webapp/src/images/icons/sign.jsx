@@ -5,5 +5,5 @@ import React from 'react';
 import {SignInIcon} from '@primer/octicons-react';
 
 export default () => (
-    <SignInIcon size={16}/>
+    <SignInIcon size='small'/>
 );
