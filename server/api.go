@@ -50,7 +50,7 @@ type PRDetails struct {
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
-// HTTPHandlerFuncWithUser is http.handlefunc but userID is already exported
+// HTTPHandlerFuncWithUser is http.HandleFunc but userID is already exported
 type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string)
 
 // ResponseType indicates type of response returned by api
@@ -59,7 +59,7 @@ type ResponseType string
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
-	// ResponseTypePlain indicates thhat response type is text plain
+	// ResponseTypePlain indicates that response type is text plain
 	ResponseTypePlain = "TEXT_RESPONSE"
 )
 
