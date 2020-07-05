@@ -21,7 +21,7 @@ import (
 
 const (
 	apiErrorIDNotConnected = "not_connected"
-	// the OAuth token expiry in seconds
+	//TokenTTL the OAuth token expiry in seconds
 	TokenTTL = 10 * 60
 )
 
@@ -50,13 +50,17 @@ type PRDetails struct {
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
+// HTTPHandlerFuncWithUser is http.handlefunc but userID is already exported
 type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string)
 
+// ResponseType indicates type of response returned by api
 type ResponseType string
 
 const (
-	ResponseTypeJson  ResponseType = "JSON_RESPONSE"
-	ResponseTypePlain              = "TEXT_RESPONSE"
+	// ResponseTypeJSON indicates that response type is json
+	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
+	// ResponseTypePlain indicates thhat response type is text plain
+	ResponseTypePlain = "TEXT_RESPONSE"
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
@@ -104,7 +108,7 @@ func (p *Plugin) initializeAPI() {
 	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/connected", p.getConnected).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, ResponseTypeJson)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, ResponseTypePlain)).Methods(http.MethodPost)
@@ -116,7 +120,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJson)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, ResponseTypePlain)).Methods(http.MethodGet)
 }
@@ -126,7 +130,7 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, response
 		userID := r.Header.Get("Mattermost-User-ID")
 		if userID == "" {
 			switch responseType {
-			case ResponseTypeJson:
+			case ResponseTypeJSON:
 				p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
 			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
