@@ -52,6 +52,13 @@ type PRDetails struct {
 
 type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string)
 
+type ResponseType string
+
+const (
+	ResponseTypeJson  ResponseType = "JSON_RESPONSE"
+	ResponseTypePlain              = "TEXT_RESPONSE"
+)
+
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -93,34 +100,35 @@ func (p *Plugin) initializeAPI() {
 
 	p.router.HandleFunc("/webhook", p.handleWebhook).Methods(http.MethodPost)
 
-	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods(http.MethodGet)
-	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods(http.MethodGet)
+	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, ResponseTypePlain)).Methods(http.MethodGet)
+	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/connected", p.getConnected).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/createissue", p.extractUserMiddleWare(p.createIssue, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, ResponseTypeJson)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/createissue", p.extractUserMiddleWare(p.createIssue, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJson)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, ResponseTypePlain)).Methods(http.MethodGet)
 }
 
-func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
+func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, responseType ResponseType) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("Mattermost-User-ID")
 		if userID == "" {
-			if jsonResponse {
+			switch responseType {
+			case ResponseTypeJson:
 				p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
-			} else {
+			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			}
 			return
