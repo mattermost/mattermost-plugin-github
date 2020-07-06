@@ -355,35 +355,37 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	action := event.GetAction()
-	if action == "opened" {
+	switch action {
+	case "opened":
 		newIssueMessage, err := renderTemplate("newIssue", event)
 		if err != nil {
 			mlog.Error("failed to render template", mlog.Err(err))
 			return
 		}
 		post.Message = newIssueMessage
-	} else if action == "closed" {
+
+	case "closed":
 		closedIssueMessage, err := renderTemplate("closedIssue", event)
 		if err != nil {
 			mlog.Error("failed to render template", mlog.Err(err))
 			return
 		}
 		post.Message = closedIssueMessage
-	} else if action == "reopened" {
+	case "reopened":
 		reopenedIssueMessage, err := renderTemplate("reopenedIssue", event)
 		if err != nil {
 			mlog.Error("failed to render template", mlog.Err(err))
 			return
 		}
 		post.Message = reopenedIssueMessage
-	} else if action == "labeled" {
+	case "labeled":
 		issueLabelledMessage, err := renderTemplate("issueLabelled", event)
 		if err != nil {
 			mlog.Error("failed to render template", mlog.Err(err))
 			return
 		}
 		post.Message = issueLabelledMessage
-	} else {
+	default:
 		return
 	}
 
