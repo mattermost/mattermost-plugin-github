@@ -22,6 +22,12 @@ export const LinkTooltip = ({href, connected, theme}) => {
                     res = await Client.getPullRequest(owner, repo, number);
                     break;
                 }
+
+                // JSON response is empty i.e {}
+                if (Object.keys(res).length === 0) {
+                    res = null;
+                }
+
                 if (res) {
                     res.owner = owner;
                     res.repo = repo;
