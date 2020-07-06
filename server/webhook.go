@@ -344,13 +344,46 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	repo := event.GetRepo()
 
-	subs := p.GetSubscribedChannelsForRepository(repo)
-	if len(subs) == 0 {
+	subscribedChannels := p.GetSubscribedChannelsForRepository(repo)
+	if len(subscribedChannels) == 0 {
 		return
 	}
 
+	post := &model.Post{
+		UserId: p.BotUserID,
+		Type:   "custom_git_issue",
+	}
+
 	action := event.GetAction()
-	if action != "opened" && action != "labeled" && action != "closed" && action != "reopened" {
+	if action == "opened" {
+		newIssueMessage, err := renderTemplate("newIssue", event)
+		if err != nil {
+			mlog.Error("failed to render template", mlog.Err(err))
+			return
+		}
+		post.Message = newIssueMessage
+	} else if action == "closed" {
+		closedIssueMessage, err := renderTemplate("closedIssue", event)
+		if err != nil {
+			mlog.Error("failed to render template", mlog.Err(err))
+			return
+		}
+		post.Message = closedIssueMessage
+	} else if action == "reopened" {
+		reopenedIssueMessage, err := renderTemplate("reopenedIssue", event)
+		if err != nil {
+			mlog.Error("failed to render template", mlog.Err(err))
+			return
+		}
+		post.Message = reopenedIssueMessage
+	} else if action == "labeled" {
+		issueLabelledMessage, err := renderTemplate("issueLabelled", event)
+		if err != nil {
+			mlog.Error("failed to render template", mlog.Err(err))
+			return
+		}
+		post.Message = issueLabelledMessage
+	} else {
 		return
 	}
 
@@ -361,30 +394,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		labels[i] = v.GetName()
 	}
 
-	newIssueMessage, err := renderTemplate("newIssue", event)
-	if err != nil {
-		mlog.Error("failed to render template", mlog.Err(err))
-		return
-	}
-
-	closedIssueMessage, err := renderTemplate("closedIssue", event)
-	if err != nil {
-		mlog.Error("failed to render template", mlog.Err(err))
-		return
-	}
-
-	reopenedIssueMessage, err := renderTemplate("reopenedIssue", event)
-	if err != nil {
-		mlog.Error("failed to render template", mlog.Err(err))
-		return
-	}
-
-	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_issue",
-	}
-
-	for _, sub := range subs {
+	for _, sub := range subscribedChannels {
 		if !sub.Issues() {
 			continue
 		}
@@ -407,29 +417,9 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 
 		if action == "labeled" {
-			if label != "" && label == eventLabel {
-				issueLabelledMessage, err := renderTemplate("issueLabelled", event)
-				if err != nil {
-					mlog.Error("failed to render template", mlog.Err(err))
-					return
-				}
-
-				post.Message = issueLabelledMessage
-			} else {
+			if label == "" || label != eventLabel {
 				continue
 			}
-		}
-
-		if action == "opened" {
-			post.Message = newIssueMessage
-		}
-
-		if action == "closed" {
-			post.Message = closedIssueMessage
-		}
-
-		if action == "reopened" {
-			post.Message = reopenedIssueMessage
 		}
 
 		post.ChannelId = sub.ChannelID
