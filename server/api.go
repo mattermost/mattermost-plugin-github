@@ -899,7 +899,7 @@ func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID
 		var gerr *github.ErrorResponse
 		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
 			p.API.LogDebug("Issue not found", "owner", owner, "repo", repo, "number", numberInt)
-			p.writeJSON(w, github.PullRequest{})
+			p.writeJSON(w, nil)
 			return
 		}
 
@@ -936,7 +936,7 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 		var gerr *github.ErrorResponse
 		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
 			p.API.LogDebug("Pull request not found", "owner", owner, "repo", repo, "number", numberInt)
-			p.writeJSON(w, github.PullRequest{})
+			p.writeJSON(w, nil)
 			return
 		}
 
