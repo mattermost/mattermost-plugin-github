@@ -349,44 +349,34 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_issue",
-	}
-
 	action := event.GetAction()
+	issueTemplate := ""
 	switch action {
 	case "opened":
-		newIssueMessage, err := renderTemplate("newIssue", event)
-		if err != nil {
-			mlog.Error("failed to render template", mlog.Err(err))
-			return
-		}
-		post.Message = newIssueMessage
+		issueTemplate = "newIssue"
 
 	case "closed":
-		closedIssueMessage, err := renderTemplate("closedIssue", event)
-		if err != nil {
-			mlog.Error("failed to render template", mlog.Err(err))
-			return
-		}
-		post.Message = closedIssueMessage
+		issueTemplate = "closedIssue"
+
 	case "reopened":
-		reopenedIssueMessage, err := renderTemplate("reopenedIssue", event)
-		if err != nil {
-			mlog.Error("failed to render template", mlog.Err(err))
-			return
-		}
-		post.Message = reopenedIssueMessage
+		issueTemplate = "reopenedIssue"
+
 	case "labeled":
-		issueLabelledMessage, err := renderTemplate("issueLabelled", event)
-		if err != nil {
-			mlog.Error("failed to render template", mlog.Err(err))
-			return
-		}
-		post.Message = issueLabelledMessage
+		issueTemplate = "issueLabelled"
+
 	default:
 		return
+	}
+
+	renderedMessage, err := renderTemplate(issueTemplate, event)
+	if err != nil {
+		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
+	post := &model.Post{
+		UserId:  p.BotUserID,
+		Type:    "custom_git_issue",
+		Message: renderedMessage,
 	}
 
 	issue := event.GetIssue()
