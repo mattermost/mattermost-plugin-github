@@ -48,7 +48,7 @@ func TestFixGithubNotificationSubjectURL(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		assert.Equal(t, tc.Expected, fixGithubNotificationSubjectURL(tc.Text))
+		assert.Equal(t, tc.Expected, fixGithubNotificationSubjectURL(tc.Text, ""))
 	}
 }
 
