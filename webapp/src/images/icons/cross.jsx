@@ -5,6 +5,5 @@ import React from 'react';
 import {XIcon} from '@primer/octicons-react';
 
 export default () => (
-    
     <XIcon size='small'/>
 );

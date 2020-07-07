@@ -5,6 +5,5 @@ import React from 'react';
 import {GitPullRequestIcon} from '@primer/octicons-react';
 
 export default () => (
-    
     <GitPullRequestIcon size='small'/>
 );
