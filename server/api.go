@@ -489,9 +489,16 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 			continue
 		}
 
+		issueURL := n.GetSubject().GetURL()
+		issueNum := string(issueURL[len(issueURL)-1])
+		subjectUrl := n.GetSubject().GetURL()
+		if n.GetSubject().GetLatestCommentURL() != "" {
+			subjectUrl = n.GetSubject().GetLatestCommentURL()
+		}
+
 		filteredNotifications = append(filteredNotifications, &filteredNotification{
 			Notification: *n,
-			HTMLUrl:      fixGithubNotificationSubjectURL(n.GetSubject().GetURL()),
+			HTMLUrl:      fixGithubNotificationSubjectURL(subjectUrl, issueNum),
 		})
 	}
 
