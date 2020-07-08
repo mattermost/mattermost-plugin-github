@@ -819,7 +819,8 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 
 func TestCommentAuthorIssueNotificationTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) commented on your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head
+[panda](https://github.com/panda) commented on your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+>@cpanato, anytime?
 `
 
 	actual, err := renderTemplate("commentAuthorIssueNotification", &github.IssueCommentEvent{
