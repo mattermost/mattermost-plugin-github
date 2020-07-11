@@ -1,4 +1,4 @@
-package main
+package plugin
 
 import (
 	"context"
@@ -45,6 +45,7 @@ type PRDetails struct {
 	URL                string                      `json:"url"`
 	Number             int                         `json:"number"`
 	Status             string                      `json:"status"`
+	Mergeable          bool                        `json:"mergeable"`
 	RequestedReviewers []*string                   `json:"requestedReviewers"`
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
@@ -111,6 +112,9 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, false)).Methods(http.MethodGet)
+
+	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
@@ -129,6 +133,19 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResp
 	}
 }
 
+func checkPluginRequest(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// All other plugins are allowed
+		pluginID := r.Header.Get("Mattermost-Plugin-ID")
+		if pluginID == "" {
+			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
@@ -137,6 +154,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	r.Header.Add("Mattermost-Plugin-ID", c.SourcePluginId)
 	w.Header().Set("Content-Type", "application/json")
 
 	p.router.ServeHTTP(w, r)
@@ -253,6 +271,11 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		fmt.Println(err.Error())
 	}
 
+	commandHelp, err := renderTemplate("helpText", p.getConfiguration())
+	if err != nil {
+		p.API.LogWarn("failed to render help template", "error", err.Error())
+	}
+
 	// Post intro post
 	message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
 		"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
@@ -271,7 +294,8 @@ func (p *Plugin) completeConnectUserToGitHub(w http.ResponseWriter, r *http.Requ
 		"* The fifth will refresh the numbers.\n\n"+
 		"Click on them!\n\n"+
 		"##### Slash Commands\n"+
-		strings.Replace(commandHelp, "|", "`", -1), gitUser.GetLogin(), gitUser.GetHTMLURL())
+		commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
+
 	p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
 
 	config := p.getConfiguration()
@@ -569,7 +593,8 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 }
 
 func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
-	status := ""
+	var status string
+	var mergeable bool
 	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
 	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
@@ -599,6 +624,9 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 			mlog.Error(err.Error())
 			return
 		}
+
+		mergeable = prInfo.GetMergeable()
+
 		for _, v := range prInfo.RequestedReviewers {
 			requestedReviewers = append(requestedReviewers, v.Login)
 		}
@@ -615,6 +643,7 @@ func fetchPRDetails(ctx context.Context, client *github.Client, prURL string, pr
 		URL:                prURL,
 		Number:             prNumber,
 		Status:             status,
+		Mergeable:          mergeable,
 		RequestedReviewers: requestedReviewers,
 		Reviews:            reviewsList,
 	}
@@ -1096,4 +1125,26 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	p.writeJSON(w, result)
+}
+
+func (p *Plugin) getConfig(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
+	p.writeJSON(w, config)
+}
+
+func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
+	userID := r.FormValue("userID")
+	if userID == "" {
+		http.Error(w, "please provide a userID", http.StatusBadRequest)
+		return
+	}
+
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		http.Error(w, apiErr.Error(), apiErr.StatusCode)
+		return
+	}
+
+	p.writeJSON(w, info.Token)
 }

@@ -1,4 +1,4 @@
-package main
+package plugin
 
 import (
 	"context"
@@ -54,7 +54,7 @@ type Plugin struct {
 
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
-	configuration *configuration
+	configuration *Configuration
 
 	router *mux.Router
 }
@@ -72,7 +72,7 @@ func NewPlugin() *Plugin {
 		"todo":        p.handleTodo,
 		"me":          p.handleMe,
 		"help":        p.handleHelp,
-		"":            p.handleEmpty,
+		"":            p.handleHelp,
 		"settings":    p.handleSettings,
 	}
 
@@ -82,11 +82,21 @@ func NewPlugin() *Plugin {
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 	config := p.getConfiguration()
 
+	client, err := GetGitHubClient(token, config)
+	if err != nil {
+		p.API.LogError("failed to create GitHub client", "error", err.Error())
+		return nil
+	}
+
+	return client
+}
+
+func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client, error) {
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(context.Background(), ts)
 
-	if len(config.EnterpriseBaseURL) == 0 || len(config.EnterpriseUploadURL) == 0 {
-		return github.NewClient(tc)
+	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
+		return github.NewClient(tc), nil
 	}
 
 	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
@@ -97,10 +107,10 @@ func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 
 	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), tc)
 	if err != nil {
-		mlog.Error(err.Error())
-		return github.NewClient(tc)
+		return nil, err
 	}
-	return client
+
+	return client, nil
 }
 
 func (p *Plugin) OnActivate() error {
