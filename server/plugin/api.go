@@ -21,7 +21,7 @@ import (
 
 const (
 	apiErrorIDNotConnected = "not_connected"
-	//TokenTTL the OAuth token expiry in seconds
+	//TokenTTL  is the OAuth token expiry duration in seconds
 	TokenTTL = 10 * 60
 )
 
@@ -60,7 +60,7 @@ const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
 	// ResponseTypePlain indicates that response type is text plain
-	ResponseTypePlain = "TEXT_RESPONSE"
+	ResponseTypePlain ResponseType = "TEXT_RESPONSE"
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
