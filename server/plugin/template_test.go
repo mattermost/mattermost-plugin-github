@@ -1,4 +1,4 @@
-package main
+package plugin
 
 import (
 	"strings"
@@ -753,7 +753,7 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 		expected := `
 @pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
-` + usernameMentions + `
+>` + usernameMentions + `
 `
 
 		actual, err := renderTemplate("commentMentionNotification", &github.IssueCommentEvent{
@@ -773,7 +773,7 @@ func TestCommentMentionNotificationTemplate(t *testing.T) {
 		expected := `
 @pandabot mentioned you on [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
-` + usernameMentions + `
+>` + usernameMentions + `
 `
 
 		actual, err := renderTemplate("commentMentionNotification", &github.IssueCommentEvent{
@@ -814,7 +814,7 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 		expected := `
 @pandabot commented on your pull request [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
 >@cpanato, anytime?
-` + usernameMentions + `
+>` + usernameMentions + `
 `
 
 		actual, err := renderTemplate("commentAuthorPullRequestNotification", &github.IssueCommentEvent{
@@ -833,7 +833,8 @@ func TestCommentAuthorPullRequestNotificationTemplate(t *testing.T) {
 
 func TestCommentAuthorIssueNotificationTemplate(t *testing.T) {
 	expected := `
-[panda](https://github.com/panda) commented on your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head
+[panda](https://github.com/panda) commented on your issue [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1/comment/3) - Implement git-get-head:
+>@cpanato, anytime?
 `
 
 	actual, err := renderTemplate("commentAuthorIssueNotification", &github.IssueCommentEvent{
@@ -1042,7 +1043,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 		expected := `
 @pandabot approved your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#issuecomment-123456) - Leverage git-get-head
 >Excited to see git-get-head land!
-` + usernameMentions + `
+>` + usernameMentions + `
 `
 
 		actual, err := renderTemplate("pullRequestReviewNotification", &github.PullRequestReviewEvent{
