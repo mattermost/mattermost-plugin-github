@@ -943,7 +943,7 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could get pull request.", StatusCode: http.StatusInternalServerError})
 		return
 	}
-
+	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
 	p.writeJSON(w, result)
 }
 
