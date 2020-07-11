@@ -915,7 +915,7 @@ func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could get issue.", StatusCode: http.StatusInternalServerError})
 		return
 	}
-
+	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
 	p.writeJSON(w, result)
 }
 
