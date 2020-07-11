@@ -1,4 +1,4 @@
-package main
+package plugin
 
 import (
 	"reflect"
@@ -17,7 +17,7 @@ import (
 //
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
-type configuration struct {
+type Configuration struct {
 	GitHubOrg               string
 	GitHubOAuthClientID     string
 	GitHubOAuthClientSecret string
@@ -31,13 +31,13 @@ type configuration struct {
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
-func (c *configuration) Clone() *configuration {
+func (c *Configuration) Clone() *Configuration {
 	var clone = *c
 	return &clone
 }
 
 // IsValid checks if all needed fields are set.
-func (c *configuration) IsValid() error {
+func (c *Configuration) IsValid() error {
 	if c.GitHubOAuthClientID == "" {
 		return errors.New("must have a github oauth client id")
 	}
@@ -56,12 +56,12 @@ func (c *configuration) IsValid() error {
 // getConfiguration retrieves the active configuration under lock, making it safe to use
 // concurrently. The active configuration may change underneath the client of this method, but
 // the struct returned by this API call is considered immutable.
-func (p *Plugin) getConfiguration() *configuration {
+func (p *Plugin) getConfiguration() *Configuration {
 	p.configurationLock.RLock()
 	defer p.configurationLock.RUnlock()
 
 	if p.configuration == nil {
-		return &configuration{}
+		return &Configuration{}
 	}
 
 	return p.configuration
@@ -76,7 +76,7 @@ func (p *Plugin) getConfiguration() *configuration {
 // This method panics if setConfiguration is called with the existing configuration. This almost
 // certainly means that the configuration was modified without being cloned and may result in
 // an unsafe access.
-func (p *Plugin) setConfiguration(configuration *configuration) {
+func (p *Plugin) setConfiguration(configuration *Configuration) {
 	p.configurationLock.Lock()
 	defer p.configurationLock.Unlock()
 
@@ -96,7 +96,7 @@ func (p *Plugin) setConfiguration(configuration *configuration) {
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	var configuration = new(configuration)
+	var configuration = new(Configuration)
 
 	// Load the public configuration fields from the Mattermost server configuration.
 	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
