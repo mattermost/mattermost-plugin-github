@@ -137,6 +137,8 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, response
 				p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
 			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
+			default:
+				mlog.Error("Unknown ResponseType detected")
 			}
 			return
 		}
