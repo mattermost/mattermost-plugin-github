@@ -4,7 +4,7 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getReviews, getUnreads, getYourAssignments, getYourPrs, updateRhsState} from '../../actions';
+import {getConnected, getReviews, getUnreads, getYourAssignments, getYourPrs, updateRhsState} from '../../actions';
 
 import {id as pluginId} from '../../manifest';
 
@@ -26,6 +26,7 @@ function mapStateToProps(state) {
 function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators({
+            getConnected,
             getReviews,
             getUnreads,
             getYourPrs,
