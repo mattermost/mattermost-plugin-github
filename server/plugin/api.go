@@ -21,7 +21,7 @@ import (
 
 const (
 	apiErrorIDNotConnected = "not_connected"
-	//TokenTTL  is the OAuth token expiry duration in seconds
+	// TokenTTL is the OAuth token expiry duration in seconds
 	TokenTTL = 10 * 60
 )
 
@@ -138,7 +138,7 @@ func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, response
 			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			default:
-				mlog.Error("Unknown ResponseType detected")
+				p.API.LogError("Unknown ResponseType detected")
 			}
 			return
 		}
