@@ -925,8 +925,17 @@ func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID
 
 	result, _, err := githubClient.Issues.Get(context.Background(), owner, repo, numberInt)
 	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Could get issue.", StatusCode: http.StatusInternalServerError})
+		// If the issue is not found, it's probably behind a private repo.
+		// Return an empty repose in this case.
+		var gerr *github.ErrorResponse
+		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
+			p.API.LogDebug("Issue not found", "owner", owner, "repo", repo, "number", numberInt)
+			p.writeJSON(w, nil)
+			return
+		}
+
+		p.API.LogDebug("Could not get issue", "owner", owner, "repo", repo, "number", numberInt, "error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get issue", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -953,8 +962,17 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 
 	result, _, err := githubClient.PullRequests.Get(context.Background(), owner, repo, numberInt)
 	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Could get pull request.", StatusCode: http.StatusInternalServerError})
+		// If the pull request is not found, it's probably behind a private repo.
+		// Return an empty repose in this case.
+		var gerr *github.ErrorResponse
+		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
+			p.API.LogDebug("Pull request not found", "owner", owner, "repo", repo, "number", numberInt)
+			p.writeJSON(w, nil)
+			return
+		}
+
+		p.API.LogDebug("Could not get pull request", "owner", owner, "repo", repo, "number", numberInt, "error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get pull request", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
