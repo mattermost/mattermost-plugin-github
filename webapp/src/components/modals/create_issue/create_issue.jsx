@@ -124,7 +124,7 @@ export default class CreateIssueModal extends PureComponent {
         if (error) {
             submitError = (
                 <p className='help-text error-text'>
-                    <span>{error}</span>
+                    <span>{JSON.parse(error).message}</span>
                 </p>
             );
         }
