@@ -185,7 +185,9 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	msg := post.Message
 	info, appErr := p.getGitHubUserInfo(post.UserId)
 	if appErr != nil {
-		p.API.LogError("error in getting user info", "error", appErr.Message)
+		if appErr.ID != apiErrorIDNotConnected {
+			p.API.LogError("error in getting user info", "error", appErr.Message)
+		}
 		return nil, ""
 	}
 	// TODO: make this part of the Plugin struct and reuse it.
