@@ -149,10 +149,24 @@ func init() {
 		`{{template "eventRepoIssueFullLink" .}} - {{.GetIssue.GetTitle}}`,
 	))
 
+	template.Must(masterTemplate.New("labels").Funcs(funcMap).Parse(`
+{{- if .Labels }}
+Labels: {{range .Labels -}}` + "`[{{ .Name }}]({{ .URL }})` " + `{{end -}}
+{{ end -}}
+`))
+
+	template.Must(masterTemplate.New("assignee").Funcs(funcMap).Parse(`
+{{- if .GetAssignee }}
+Assignee: [{{ .GetAssignee.GetLogin }}]({{ .GetAssignee.GetHTMLURL }})
+{{- end -}}
+`))
+
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
 #new-pull-request by {{template "user" .GetSender}}
+{{- template "labels" .GetPullRequest }}
+{{- template "assignee" .GetPullRequest }}
 
 {{.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
@@ -178,6 +192,8 @@ func init() {
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
 #new-issue by {{template "user" .GetSender}}
+{{- template "labels" .GetIssue }}
+{{- template "assignee" .GetIssue }}
 
 {{.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
