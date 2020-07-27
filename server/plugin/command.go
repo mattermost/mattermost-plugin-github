@@ -258,16 +258,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	split := strings.Fields(args.Command)
-	command := split[0]
-	var parameters []string
-	action := ""
-	if len(split) > 1 {
-		action = split[1]
-	}
-	if len(split) > 2 {
-		parameters = split[2:]
-	}
+	command, action, parameters := p.parseCommand(args.Command)
 
 	if command != "/github" {
 		return &model.CommandResponse{}, nil
@@ -322,4 +313,29 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	p.postCommandResponse(args, fmt.Sprintf("Unknown action %v", action))
 	return &model.CommandResponse{}, nil
+}
+
+// parseCommand parses the entire command input string and retrieves the command, action and parameters
+func (p *Plugin) parseCommand(input string) (command, action string, parameters []string) {
+	// do not split if the whitespace is in between 2 quotes, e.g. "Hello World"
+	foundQuote := false
+	split := strings.FieldsFunc(input, func(c rune) bool {
+		if c == '"' {
+			foundQuote = !foundQuote
+		}
+
+		return c == ' ' && !foundQuote
+	})
+
+	command = split[0]
+
+	if len(split) > 1 {
+		action = split[1]
+	}
+
+	if len(split) > 2 {
+		parameters = split[2:]
+	}
+
+	return command, action, parameters
 }
