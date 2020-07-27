@@ -83,9 +83,7 @@ func init() {
 	}
 
 	// Escape characters not allowed in URL path
-	funcMap["pathEscape"] = func(s string) string {
-		return url.PathEscape(s)
-	}
+	funcMap["pathEscape"] = url.PathEscape
 
 	// Transform multiple variables to dictionary
 	funcMap["dict"] = func(values ...interface{}) (map[string]interface{}, error) {
@@ -93,7 +91,7 @@ func init() {
 			return nil, errors.New("invalid dict call, exactly one value is required for every key")
 		}
 		dict := make(map[string]interface{}, len(values)/2)
-		for i := 0; i < len(values); i+=2 {
+		for i := 0; i < len(values); i += 2 {
 			key, ok := values[i].(string)
 			if !ok {
 				return nil, errors.New("dict keys must be strings")
