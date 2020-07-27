@@ -258,7 +258,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	command, action, parameters := p.parseCommand(args.Command)
+	command, action, parameters := parseCommand(args.Command)
 
 	if command != "/github" {
 		return &model.CommandResponse{}, nil
@@ -316,7 +316,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 }
 
 // parseCommand parses the entire command input string and retrieves the command, action and parameters
-func (p *Plugin) parseCommand(input string) (command, action string, parameters []string) {
+func parseCommand(input string) (command, action string, parameters []string) {
 	// do not split if the whitespace is in between 2 quotes, e.g. "Hello World"
 	foundQuote := false
 	split := strings.FieldsFunc(input, func(c rune) bool {
