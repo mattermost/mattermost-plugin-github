@@ -21,11 +21,9 @@ var pushEventRepository = github.PushEventRepository{
 
 var labels = []*github.Label{
 	{
-		URL:  sToP("https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted"),
 		Name: sToP("Help Wanted"),
 	},
 	{
-		URL:  sToP("https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo"),
 		Name: sToP("Tech/Go"),
 	},
 }
@@ -241,7 +239,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 #### Leverage git-get-head
 ##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
 #new-pull-request by [panda](https://github.com/panda)
-Labels: ` + "`[Help Wanted](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted)` `[Tech/Go](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)`" + ` 
+Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted) [`Tech/Go`](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)" + ` 
 Assignee: [panda](https://github.com/panda)
 
 git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
@@ -345,12 +343,12 @@ git-get-head sounds like a great feature we should support
 		require.Equal(t, expected, actual)
 	}))
 
-	t.Run("with labels", func(t *testing.T) {
+	t.Run("with labels and assignee", func(t *testing.T) {
 		expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
 #new-issue by [panda](https://github.com/panda)
-Labels: ` + "`[Help Wanted](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted)` `[Tech/Go](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)`" + ` 
+Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted) [`Tech/Go`](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)" + ` 
 Assignee: [panda](https://github.com/panda)
 
 git-get-head sounds like a great feature we should support
