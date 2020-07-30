@@ -192,6 +192,10 @@ func init() {
 #issue-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}.
 `))
 
+	template.Must(masterTemplate.New("reopenedIssue").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} Issue {{template "issue" .GetIssue}} reopened by {{template "user" .GetSender}}.
+`))
+
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} {{if .GetForced}}force-{{end}}pushed [{{len .Commits}} new commit{{if ne (len .Commits) 1}}s{{end}}]({{.GetCompare}}) to [\[{{.GetRepo.GetFullName}}:{{.GetRef | trimRef}}\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef | trimRef}}):
 {{range .Commits -}}
