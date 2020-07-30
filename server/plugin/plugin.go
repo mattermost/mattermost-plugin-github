@@ -172,10 +172,22 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
-	msg := post.Message
-	info, err := p.getGitHubUserInfo(post.UserId)
+	shouldProcessMessage, err := p.Helpers.ShouldProcessMessage(post)
 	if err != nil {
-		p.API.LogError("error in getting user info", "error", err.Message)
+		p.API.LogError("error while checking if the message should be processed", "error", err.Error())
+		return nil, ""
+	}
+
+	if !shouldProcessMessage {
+		return nil, ""
+	}
+
+	msg := post.Message
+	info, appErr := p.getGitHubUserInfo(post.UserId)
+	if appErr != nil {
+		if appErr.ID != apiErrorIDNotConnected {
+			p.API.LogError("error in getting user info", "error", appErr.Message)
+		}
 		return nil, ""
 	}
 	// TODO: make this part of the Plugin struct and reuse it.
