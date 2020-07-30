@@ -171,7 +171,7 @@ func init() {
 
 	template.Must(masterTemplate.New("labels").Funcs(funcMap).Parse(`
 {{- if .Labels }}
-Labels: {{range .Labels -}}` + "[`{{ .Name }}`]({{ $.RepositoryURL }}/labels/{{ .Name | pathEscape }}) " + `{{end -}}
+Labels: {{range $i, $el := .Labels -}}` + "{{- if $i}}, {{end}}[`{{ $el.Name }}`]({{ $.RepositoryURL }}/labels/{{ $el.Name | pathEscape }})" + `{{end -}}
 {{ end -}}
 `))
 
