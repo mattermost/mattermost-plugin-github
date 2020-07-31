@@ -23,7 +23,7 @@ export default class GithubLabelSelector extends PureComponent {
         return (
             <div className='form-group margin-bottom x3'>
                 <label className='control-label margin-bottom x2'>
-                    {'Github Label'}
+                    {'Labels'}
                 </label>
                 <CreatableSelect
                     isMulti={true}
