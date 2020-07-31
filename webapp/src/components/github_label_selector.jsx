@@ -20,7 +20,7 @@ export default class GithubLabelSelector extends PureComponent {
 
     render() {
         return (
-            <div className={'form-group margin-bottom x3'}>
+            <div className='form-group margin-bottom x3'>
                 <label className='control-label margin-bottom x2'>
                     {'Github Label'}
                 </label>
