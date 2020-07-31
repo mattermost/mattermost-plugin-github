@@ -13,9 +13,10 @@ export default class GithubLabelSelector extends PureComponent {
         onChange: PropTypes.func,
     };
 
+    // in order to avoid duplicate labels, convert array to set and then back to array
     handleChange = (items) => {
-        const labels = items.map((i) => i.value);
-        this.props.onChange(labels);
+        const labels = new Set(items.map((i) => i.value));
+        this.props.onChange([...labels]);
     };
 
     render() {

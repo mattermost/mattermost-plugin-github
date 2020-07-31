@@ -93,13 +93,7 @@ export default class CreateIssueModal extends PureComponent {
         });
     };
 
-    handleLabelsChange = (labels) => {
-        // in order to avoid duplicate labels, convert array to set and then back to array
-        const uniqueLabels = new Set(labels);
-        this.setState({
-            labels: [...uniqueLabels],
-        });
-    };
+    handleLabelsChange = (labels) => this.setState({labels});
 
     handleIssueTitleChange = (newValue) => {
         this.setState({
