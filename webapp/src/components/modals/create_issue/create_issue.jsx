@@ -44,7 +44,7 @@ export default class CreateIssueModal extends PureComponent {
     }
 
     // handle issue creation after form is populated
-    handleCreate = (e) => {
+    handleCreate = async (e) => {
         if (e && e.preventDefault) {
             e.preventDefault();
         }
@@ -61,22 +61,23 @@ export default class CreateIssueModal extends PureComponent {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
             repo: this.state.repoValue,
+            labels: this.state.labels,
             post_id: this.props.post.id,
         };
 
         this.setState({submitting: true});
 
-        this.props.create(issue).then((created) => {
-            if (created.error) {
-                this.setState({
-                    error: created.error.message,
-                    showErrors: true,
-                    submitting: false,
-                });
-                return;
-            }
-            this.handleClose(e);
-        });
+        const created = await this.props.create(issue);
+
+        if (created.error) {
+            this.setState({
+                error: created.error.message,
+                showErrors: true,
+                submitting: false,
+            });
+            return;
+        }
+        this.handleClose(e);
     };
 
     handleClose = (e) => {
@@ -181,9 +182,7 @@ export default class CreateIssueModal extends PureComponent {
                 backdrop='static'
             >
                 <Modal.Header closeButton={true}>
-                    <Modal.Title>
-                        {'Create GitHub Issue'}
-                    </Modal.Title>
+                    <Modal.Title>{'Create GitHub Issue'}</Modal.Title>
                 </Modal.Header>
                 <form
                     role='form'

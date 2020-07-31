@@ -1027,10 +1027,11 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 
 func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID string) {
 	type IssueRequest struct {
-		Title  string `json:"title"`
-		Body   string `json:"body"`
-		Repo   string `json:"repo"`
-		PostID string `json:"post_id"`
+		Title  string   `json:"title"`
+		Body   string   `json:"body"`
+		Repo   string   `json:"repo"`
+		PostID string   `json:"post_id"`
+		Labels []string `json:"labels"`
 	}
 
 	// get data for the issue from the request body and fill IssueRequest object
@@ -1080,8 +1081,9 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	ghIssue := &github.IssueRequest{
-		Title: &issue.Title,
-		Body:  &issue.Body,
+		Title:  &issue.Title,
+		Body:   &issue.Body,
+		Labels: &issue.Labels,
 	}
 
 	permalink := p.getPermaLink(issue.PostID)
