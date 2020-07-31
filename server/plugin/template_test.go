@@ -302,6 +302,20 @@ func TestClosedIssueTemplate(t *testing.T) {
 	require.Equal(t, expected, actual)
 }
 
+func TestReopenedIssueTemplate(t *testing.T) {
+	expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) reopened by [panda](https://github.com/panda).
+`
+
+	actual, err := renderTemplate("reopenedIssue", &github.IssuesEvent{
+		Repo:   &repo,
+		Issue:  &issue,
+		Sender: &user,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
 func TestIssueLabelledTemplate(t *testing.T) {
 	expected := `
 #### Implement git-get-head
