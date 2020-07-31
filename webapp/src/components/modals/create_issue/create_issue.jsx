@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
 import FormButton from 'components/form_button';
+import GithubLabelSelector from 'components/github_label_selector';
 import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
 import Input from 'components/input';
@@ -15,6 +16,7 @@ const initialState = {
     error: null,
     repoValue: '',
     issueTitle: '',
+    labels: [],
     issueDescription: '',
     showErrors: false,
     issueTitleValid: true,
@@ -69,7 +71,8 @@ export default class CreateIssueModal extends PureComponent {
                 this.setState({
                     error: created.error.message,
                     showErrors: true,
-                    submitting: false});
+                    submitting: false,
+                });
                 return;
             }
             this.handleClose(e);
@@ -88,6 +91,8 @@ export default class CreateIssueModal extends PureComponent {
             repoValue: name,
         });
     };
+
+    handleLabelsChange = (labels) => this.setState({labels});
 
     handleIssueTitleChange = (newValue) => {
         this.setState({
@@ -139,6 +144,7 @@ export default class CreateIssueModal extends PureComponent {
                     addValidate={this.validator.addComponent}
                     removeValidate={this.validator.removeComponent}
                 />
+
                 <Input
                     id={'title'}
                     label='Title for the GitHub Issue'
@@ -150,6 +156,12 @@ export default class CreateIssueModal extends PureComponent {
                     onChange={this.handleIssueTitleChange}
                 />
                 {issueTitleValidationError}
+
+                <GithubLabelSelector
+                    theme={theme}
+                    onChange={this.handleLabelsChange}
+                />
+
                 <Input
                     label='Description for the GitHub Issue'
                     type='textarea'
