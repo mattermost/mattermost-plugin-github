@@ -10,7 +10,7 @@ export default class Client {
     }
 
     getConnected = async (reminder = false) => {
-        return this.doGet(`${this.url}/connected?reminder=` + reminder);
+        return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
 
     getReviews = async () => {
@@ -43,6 +43,10 @@ export default class Client {
 
     getRepositories = async () => {
         return this.doGet(`${this.url}/repositories`);
+    }
+
+    getLabels = async (repo, query) => {
+        return this.doGet(`${this.url}/labels?repo=${repo}&q=${query}`);
     }
 
     createIssue = async (payload) => {

@@ -107,6 +107,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.searchLabels, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
@@ -965,6 +966,33 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 	p.writeJSON(w, result)
 }
 
+func (p *Plugin) searchLabels(w http.ResponseWriter, r *http.Request, userID string) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	repo := r.URL.Query().Get("repo")
+	query := r.URL.Query().Get("q")
+	repoID, err := strconv.ParseInt(repo, 10, 64)
+	if err != nil {
+		mlog.Error(err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid Repo ID", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	result, _, err := githubClient.Search.Labels(context.Background(), repoID, query, &github.SearchOptions{})
+	if err != nil {
+		mlog.Error(err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result.Labels)
+}
+
 func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID string) {
 	info, err := p.getGitHubUserInfo(userID)
 	if err != nil {
@@ -1012,12 +1040,14 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 
 	// Only send down fields to client that are needed
 	type RepositoryResponse struct {
+		ID       int64  `json:"id,omitempty"`
 		Name     string `json:"name,omitempty"`
 		FullName string `json:"full_name,omitempty"`
 	}
 
 	resp := make([]RepositoryResponse, len(allRepos))
 	for i, r := range allRepos {
+		resp[i].ID = r.GetID()
 		resp[i].Name = r.GetName()
 		resp[i].FullName = r.GetFullName()
 	}

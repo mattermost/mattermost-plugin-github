@@ -111,6 +111,32 @@ export function getRepos() {
     };
 }
 
+export function getLabels(repo, query) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getLabels(repo, query);
+        } catch (error) {
+            return {error: data};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(
+            dispatch,
+            getState
+        );
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_LABELS,
+            data,
+        });
+
+        return {data};
+    };
+}
+
 export function getYourPrs() {
     return async (dispatch, getState) => {
         let data;

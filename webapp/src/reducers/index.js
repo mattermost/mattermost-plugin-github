@@ -102,6 +102,15 @@ function yourRepos(state = [], action) {
     }
 }
 
+function labels(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_LABELS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function yourPrsDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
@@ -225,6 +234,7 @@ export default combineReducers({
     yourRepos,
     yourPrsDetails,
     yourAssignments,
+    labels,
     mentions,
     unreads,
     githubUsers,

@@ -14,6 +14,7 @@ import Input from 'components/input';
 const initialState = {
     submitting: false,
     error: null,
+    repoID: 0,
     repoValue: '',
     issueTitle: '',
     labels: [],
@@ -87,8 +88,9 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoValueChange = (name) => {
+    handleRepoChange = (id, name) => {
         this.setState({
+            repoID: id,
             repoValue: name,
         });
     };
@@ -138,7 +140,7 @@ export default class CreateIssueModal extends PureComponent {
         const component = (
             <div>
                 <GithubRepoSelector
-                    onChange={this.handleRepoValueChange}
+                    onChange={this.handleRepoChange}
                     value={this.state.repoValue}
                     required={true}
                     theme={theme}
@@ -159,6 +161,7 @@ export default class CreateIssueModal extends PureComponent {
                 {issueTitleValidationError}
 
                 <GithubLabelSelector
+                    repo={this.state.repoID}
                     theme={theme}
                     onChange={this.handleLabelsChange}
                 />
