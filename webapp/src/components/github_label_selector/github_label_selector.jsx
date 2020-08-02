@@ -18,17 +18,6 @@ export default class GithubLabelSelector extends PureComponent {
         }).isRequired,
     };
 
-    componentDidMount() {
-        this.fetchLabels();
-    }
-
-    componentDidUpdate(prevProps) {
-        if (prevProps.repo === this.props.repo) {
-            return;
-        }
-        this.fetchLabels();
-    }
-
     fetchLabels = (query) => {
         // no point in searching without a repo ID or a query string
         if (!this.props.repo || !query) {
@@ -48,6 +37,20 @@ export default class GithubLabelSelector extends PureComponent {
         this.props.onChange([...labels]);
     };
 
+    showNoOptionsMessage = ({inputValue}) => {
+        // labels will be retrieved for the selected repository
+        if (!this.props.repo) {
+            return 'Select a repository first';
+        }
+
+        // user has typed a query string but the API returned no results
+        if (inputValue) {
+            return 'No match found';
+        }
+
+        return 'Start typing...';
+    };
+
     render() {
         const options = this.props.labels.map((item) => ({
             value: item.name,
@@ -65,10 +68,10 @@ export default class GithubLabelSelector extends PureComponent {
                     className='basic-multi-select'
                     classNamePrefix='select'
                     styles={getStyleForReactSelect(this.props.theme)}
-                    onInputChange={(query) => this.fetchLabels(query)}
+                    onInputChange={this.fetchLabels}
                     onChange={this.handleChange}
                     options={options}
-                    noOptionsMessage={() => 'Start typing...'}
+                    noOptionsMessage={this.showNoOptionsMessage}
                 />
             </div>
         );

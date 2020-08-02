@@ -17,8 +17,8 @@ const initialState = {
     repoID: 0,
     repoValue: '',
     issueTitle: '',
-    labels: [],
     issueDescription: '',
+    labels: [],
     showErrors: false,
     issueTitleValid: true,
 };
