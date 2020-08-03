@@ -33,18 +33,7 @@ export default class GithubRepoSelector extends PureComponent {
         this.props.actions.getRepos();
     }
 
-    onChange = (name, newValue) => {
-        const newID = this.props.yourRepos.reduce((id, repo) => {
-            return repo.full_name === newValue ? repo.id : id;
-        }, 0);
-
-        // return if there's no match (ideally this should never happen)
-        if (newID === 0) {
-            return;
-        }
-
-        this.props.onChange(newID, newValue);
-    };
+    onChange = (name, newValue) => this.props.onChange(newValue);
 
     render() {
         const repoOptions = this.props.yourRepos.map((item) => ({value: item.name, label: item.full_name}));

@@ -45,8 +45,8 @@ export default class Client {
         return this.doGet(`${this.url}/repositories`);
     }
 
-    getLabels = async (repo, query) => {
-        return this.doGet(`${this.url}/labels?repo=${repo}&q=${query}`);
+    getLabels = async (repo) => {
+        return this.doGet(`${this.url}/labels?repo=${repo}`);
     }
 
     createIssue = async (payload) => {

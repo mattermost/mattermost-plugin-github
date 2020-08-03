@@ -111,19 +111,16 @@ export function getRepos() {
     };
 }
 
-export function getLabels(repo, query) {
+export function getLabels(repo) {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client.getLabels(repo, query);
+            data = await Client.getLabels(repo);
         } catch (error) {
             return {error: data};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(
-            dispatch,
-            getState
-        );
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
             return {error: data};
         }

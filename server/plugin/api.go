@@ -107,7 +107,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.searchLabels, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.getLabels, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, false)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
@@ -966,7 +966,7 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) searchLabels(w http.ResponseWriter, r *http.Request, userID string) {
+func (p *Plugin) getLabels(w http.ResponseWriter, r *http.Request, userID string) {
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
 		p.writeAPIError(w, apiErr)
@@ -974,23 +974,27 @@ func (p *Plugin) searchLabels(w http.ResponseWriter, r *http.Request, userID str
 	}
 
 	repo := r.URL.Query().Get("repo")
-	query := r.URL.Query().Get("q")
-	repoID, err := strconv.ParseInt(repo, 10, 64)
-	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid Repo ID", StatusCode: http.StatusBadRequest})
+	if repo == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Repository cannot be blank", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	splitted := strings.Split(repo, "/")
+	if len(splitted) != 2 {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid repository", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	githubClient := p.githubConnect(*info.Token)
-	result, _, err := githubClient.Search.Labels(context.Background(), repoID, query, &github.SearchOptions{})
+	result, _, err := githubClient.Issues.ListLabels(context.Background(), splitted[0], splitted[1], &github.ListOptions{})
+
 	if err != nil {
 		mlog.Error(err.Error())
 		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
-	p.writeJSON(w, result.Labels)
+	p.writeJSON(w, result)
 }
 
 func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID string) {
