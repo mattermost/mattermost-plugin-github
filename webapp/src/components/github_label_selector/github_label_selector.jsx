@@ -45,14 +45,19 @@ export default class GithubLabelSelector extends Component {
         };
 
         return (
-            <BackendSelector
-                name={'labels'}
-                required={false}
-                isMulti={true}
-                theme={this.props.theme}
-                onChange={this.handleChange}
-                load={loadLabels}
-            />
+            <div className='form-group margin-bottom x3'>
+                <label className='control-label margin-bottom x2'>
+                    {'Labels'}
+                </label>
+                <BackendSelector
+                    name={'labels'}
+                    required={false}
+                    isMulti={true}
+                    theme={this.props.theme}
+                    onChange={this.handleChange}
+                    load={loadLabels}
+                />
+            </div>
         );
     }
 }
