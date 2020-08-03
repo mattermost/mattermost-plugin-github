@@ -17,7 +17,7 @@ export default class BackendSelector extends PureComponent {
         addValidate: PropTypes.func,
         removeValidate: PropTypes.func,
         onChange: PropTypes.func,
-        fetch: PropTypes.func,
+        load: PropTypes.func,
         theme: PropTypes.object.isRequired,
         value: PropTypes.oneOfType([
             PropTypes.object,
@@ -106,7 +106,7 @@ export default class BackendSelector extends PureComponent {
     };
 
     loadOptions = async () => {
-        const options = await this.props.fetch();
+        const options = await this.props.load();
 
         // prevent re-render if the options remain unchanged
         if (JSON.stringify(options) === JSON.stringify(this.state.options)) {

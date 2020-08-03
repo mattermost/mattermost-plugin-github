@@ -31,7 +31,7 @@ export default class GithubLabelSelector extends Component {
     };
 
     render() {
-        const fetch = async () => {
+        const loadLabels = async () => {
             if (this.props.repo === '') {
                 return [];
             }
@@ -51,7 +51,7 @@ export default class GithubLabelSelector extends Component {
                 isMulti={true}
                 theme={this.props.theme}
                 onChange={this.handleChange}
-                fetch={fetch}
+                load={loadLabels}
             />
         );
     }
