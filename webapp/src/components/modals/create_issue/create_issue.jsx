@@ -87,23 +87,13 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoChange = (name) => {
-        this.setState({repoValue: name});
-    };
+    handleRepoChange = (repoValue) => this.setState({repoValue});
 
     handleLabelsChange = (labels) => this.setState({labels});
 
-    handleIssueTitleChange = (newValue) => {
-        this.setState({
-            issueTitle: newValue,
-        });
-    };
+    handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
 
-    handleIssueDescriptionChange = (newValue) => {
-        this.setState({
-            issueDescription: newValue,
-        });
-    };
+    handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
 
     render() {
         if (!this.props.visible) {
