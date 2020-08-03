@@ -171,7 +171,9 @@ export default class CreateIssueModal extends PureComponent {
                 backdrop='static'
             >
                 <Modal.Header closeButton={true}>
-                    <Modal.Title>{'Create GitHub Issue'}</Modal.Title>
+                    <Modal.Title>
+                        {'Create GitHub Issue'}
+                    </Modal.Title>
                 </Modal.Header>
                 <form
                     role='form'

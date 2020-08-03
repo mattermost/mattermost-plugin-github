@@ -122,9 +122,7 @@ export default class BackendSelector extends PureComponent {
         return (
             <Setting {...this.props}>
                 <ReactSelect
-                    required={this.props.required}
-                    isMulti={this.props.isMulti}
-                    name={this.props.name}
+                    {...this.props}
                     onChange={this.onChange}
                     options={this.state.options}
                     styles={getStyleForReactSelect(this.props.theme)}
