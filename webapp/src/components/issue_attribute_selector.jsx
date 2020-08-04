@@ -32,9 +32,10 @@ export default class IssueAttributeSelector extends PureComponent {
 
         this.state = {
             options: [],
+            values: [],
+            isLoading: false,
             invalid: false,
             error: '',
-            loading: false,
         };
     }
 
@@ -60,13 +61,30 @@ export default class IssueAttributeSelector extends PureComponent {
         }
     }
 
-    onChange = (options) => {
-        if (!options) {
+    loadOptions = async () => {
+        this.setState({isLoading: true});
+        const options = await this.props.load();
+
+        // filter out currently selected options that do not exist in the new repo
+        const optionValues = options.map((option) => option.value);
+        const validValues = this.state.values.filter((value) => optionValues.includes(value.value));
+
+        this.setState({
+            options,
+            values: validValues,
+            isLoading: false,
+        });
+    }
+
+    onChange = (values) => {
+        this.setState({values});
+
+        if (!values) {
             this.props.onChange(this.props.isMulti ? [] : '');
             return;
         }
 
-        this.props.onChange(this.props.isMulti ? options.map((v) => v.value) : options.value);
+        this.props.onChange(this.props.isMulti ? values.map((v) => v.value) : values.value);
 
         if (this.props.resetInvalidOnChange) {
             this.setState({invalid: false});
@@ -111,19 +129,6 @@ export default class IssueAttributeSelector extends PureComponent {
         );
     };
 
-    loadOptions = async () => {
-        this.setState({isLoading: true});
-        const options = await this.props.load();
-        this.setState({isLoading: false});
-
-        // prevent re-render if the options remain unchanged
-        if (JSON.stringify(options) === JSON.stringify(this.state.options)) {
-            return;
-        }
-
-        this.setState({options});
-    }
-
     render = () => {
         return (
             <Setting {...this.props}>
@@ -131,7 +136,10 @@ export default class IssueAttributeSelector extends PureComponent {
                     {...this.props}
                     onChange={this.onChange}
                     options={this.state.options}
+                    value={this.state.values}
                     isLoading={this.state.isLoading}
+                    closeMenuOnSelect={false}
+                    hideSelectedOptions={true}
                     styles={getStyleForReactSelect(this.props.theme)}
                 />
                 {this.errorComponent()}
