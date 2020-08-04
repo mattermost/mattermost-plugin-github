@@ -44,32 +44,32 @@ func TestValidateFeatures(t *testing.T) {
 		},
 		{
 			name: "all features valid with label but issues and pulls missing",
-			args: []string{"pushes", "label:\"ruby\""},
+			args: []string{"pushes", `label:"ruby"`},
 			want: output{false, []string{}},
 		},
 		{
 			name: "all features valid with label and issues in features",
-			args: []string{"issues", "label:\"ruby\""},
+			args: []string{"issues", `label:"ruby"`},
 			want: output{true, []string{}},
 		},
 		{
 			name: "all features valid with label and pulls in features",
-			args: []string{"pulls", "label:\"ruby\""},
+			args: []string{"pulls", `label:"ruby"`},
 			want: output{true, []string{}},
 		},
 		{
 			name: "multiple features invalid with label but issues and pulls missing",
-			args: []string{"issue", "push", "label:\"ruby\""},
+			args: []string{"issue", "push", `label:"ruby"`},
 			want: output{false, []string{"issue", "push"}},
 		},
 		{
 			name: "multiple features invalid with label and issues in features",
-			args: []string{"issues", "push", "create", "label:\"ruby\""},
+			args: []string{"issues", "push", "create", `label:"ruby"`},
 			want: output{false, []string{"push", "create"}},
 		},
 		{
 			name: "multiple features invalid with label and pulls in features",
-			args: []string{"pulls", "push", "create", "label:\"ruby\""},
+			args: []string{"pulls", "push", "create", `label:"ruby"`},
 			want: output{false, []string{"push", "create"}},
 		},
 	}
@@ -116,29 +116,29 @@ func TestParseCommand(t *testing.T) {
 		},
 		{
 			name:  "simple one-word label",
-			input: "/github subscribe DHaussermann/hello-world issues,label:\"Help\"",
+			input: `/github subscribe DHaussermann/hello-world issues,label:"Help"`,
 			want: output{
 				"/github",
 				"subscribe",
-				[]string{"DHaussermann/hello-world", "issues,label:\"Help\""},
+				[]string{"DHaussermann/hello-world", `issues,label:"Help"`},
 			},
 		},
 		{
 			name:  "two-word label",
-			input: "/github subscribe DHaussermann/hello-world issues,label:\"Help Wanted\"",
+			input: `/github subscribe DHaussermann/hello-world issues,label:"Help Wanted"`,
 			want: output{
 				"/github",
 				"subscribe",
-				[]string{"DHaussermann/hello-world", "issues,label:\"Help Wanted\""},
+				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
 			},
 		},
 		{
 			name:  "multi-word label",
-			input: "/github subscribe DHaussermann/hello-world issues,label:\"Good First Issue\"",
+			input: `/github subscribe DHaussermann/hello-world issues,label:"Good First Issue"`,
 			want: output{
 				"/github",
 				"subscribe",
-				[]string{"DHaussermann/hello-world", "issues,label:\"Good First Issue\""},
+				[]string{"DHaussermann/hello-world", `issues,label:"Good First Issue"`},
 			},
 		},
 	}
