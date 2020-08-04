@@ -8,9 +8,10 @@ import PropTypes from 'prop-types';
 import {getStyleForReactSelect} from 'utils/styles';
 import Setting from 'components/setting';
 
-export default class BackendSelector extends PureComponent {
+export default class IssueAttributeSelector extends PureComponent {
     static propTypes = {
         name: PropTypes.string,
+        repo: PropTypes.string,
         required: PropTypes.bool,
         isMulti: PropTypes.bool,
         resetInvalidOnChange: PropTypes.bool,
@@ -33,6 +34,7 @@ export default class BackendSelector extends PureComponent {
             options: [],
             invalid: false,
             error: '',
+            loading: false,
         };
     }
 
@@ -51,6 +53,10 @@ export default class BackendSelector extends PureComponent {
     componentDidUpdate(prevProps, prevState) {
         if (prevState.invalid && this.props.value !== prevProps.value) {
             this.setState({invalid: false}); //eslint-disable-line react/no-did-update-set-state
+        }
+
+        if (prevProps.repo !== this.props.repo) {
+            this.loadOptions();
         }
     }
 
@@ -106,7 +112,9 @@ export default class BackendSelector extends PureComponent {
     };
 
     loadOptions = async () => {
+        this.setState({isLoading: true});
         const options = await this.props.load();
+        this.setState({isLoading: false});
 
         // prevent re-render if the options remain unchanged
         if (JSON.stringify(options) === JSON.stringify(this.state.options)) {
@@ -117,14 +125,13 @@ export default class BackendSelector extends PureComponent {
     }
 
     render = () => {
-        this.loadOptions();
-
         return (
             <Setting {...this.props}>
                 <ReactSelect
                     {...this.props}
                     onChange={this.onChange}
                     options={this.state.options}
+                    isLoading={this.state.isLoading}
                     styles={getStyleForReactSelect(this.props.theme)}
                 />
                 {this.errorComponent()}

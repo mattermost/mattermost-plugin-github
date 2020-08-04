@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import BackendSelector from 'components/backend_selector';
+import IssueAttributeSelector from 'components/issue_attribute_selector';
 
 export default class GithubLabelSelector extends PureComponent {
     static propTypes = {
@@ -44,8 +44,9 @@ export default class GithubLabelSelector extends PureComponent {
                 <label className='control-label margin-bottom x2'>
                     {'Labels'}
                 </label>
-                <BackendSelector
+                <IssueAttributeSelector
                     name={'labels'}
+                    repo={this.props.repo}
                     required={false}
                     isMulti={true}
                     theme={this.props.theme}
