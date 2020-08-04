@@ -545,7 +545,7 @@
       }
     ],
     "react/prefer-es6-class": 2,
-    "react/prefer-stateless-function": 2,
+    "react/prefer-stateless-function": 0,
     "react/prop-types": [
       2,
       {
