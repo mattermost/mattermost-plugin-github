@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -317,15 +318,41 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 // parseCommand parses the entire command input string and retrieves the command, action and parameters
 func parseCommand(input string) (command, action string, parameters []string) {
-	// do not split if the whitespace is in between 2 quotes, e.g. "Hello World"
-	foundQuote := false
-	split := strings.FieldsFunc(input, func(c rune) bool {
-		if c == '"' {
-			foundQuote = !foundQuote
+	split := make([]string, 0)
+	current := ""
+	inQuotes := false
+
+	for _, char := range input {
+		if unicode.IsSpace(char) {
+			// keep whitespaces that are inside double qoutes
+			if inQuotes {
+				current += " "
+				continue
+			}
+
+			// ignore successive whitespaces that are outside of double quotes
+			if len(current) == 0 && !inQuotes {
+				continue
+			}
+
+			// append the current word to the list & move on to the next word/expression
+			split = append(split, current)
+			current = ""
+			continue
 		}
 
-		return c == ' ' && !foundQuote
-	})
+		// append the current character to the current word
+		current += string(char)
+
+		if char == '"' {
+			inQuotes = !inQuotes
+		}
+	}
+
+	// append the last word/expression to the list
+	if len(current) > 0 {
+		split = append(split, current)
+	}
 
 	command = split[0]
 

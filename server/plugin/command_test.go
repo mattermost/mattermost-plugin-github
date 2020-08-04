@@ -159,6 +159,24 @@ func TestParseCommand(t *testing.T) {
 				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
 			},
 		},
+		{
+			name:  "trailing whitespaces",
+			input: `/github subscribe DHaussermann/hello-world issues,label:"Help Wanted" `,
+			want: output{
+				"/github",
+				"subscribe",
+				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
+			},
+		},
+		{
+			name:  "non-ASCII characters",
+			input: `/github subscribe طماطم issues,label:"日本語"`,
+			want: output{
+				"/github",
+				"subscribe",
+				[]string{"طماطم", `issues,label:"日本語"`},
+			},
+		},
 	}
 
 	for _, tc := range tt {
