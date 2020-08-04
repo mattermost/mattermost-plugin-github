@@ -177,7 +177,7 @@ Labels: {{range $i, $el := .Labels -}}` + "{{- if $i}}, {{end}}[`{{ $el.Name }}`
 
 	template.Must(masterTemplate.New("assignee").Funcs(funcMap).Parse(`
 {{- if .Assignees }}
-Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}[{{ $el.GetLogin }}]({{ $el.GetHTMLURL }}){{end -}}
+Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
 {{- end -}}
 `))
 
