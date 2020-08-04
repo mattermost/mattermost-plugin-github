@@ -177,6 +177,15 @@ func TestParseCommand(t *testing.T) {
 				[]string{"طماطم", `issues,label:"日本語"`},
 			},
 		},
+		{
+			name:  "line breaks",
+			input: "/github \nsubscribe\nDHaussermann/hello-world\nissues,label:\"Good First Issue\"",
+			want: output{
+				"/github",
+				"subscribe",
+				[]string{"DHaussermann/hello-world", `issues,label:"Good First Issue"`},
+			},
+		},
 	}
 
 	for _, tc := range tt {
