@@ -141,6 +141,24 @@ func TestParseCommand(t *testing.T) {
 				[]string{"DHaussermann/hello-world", `issues,label:"Good First Issue"`},
 			},
 		},
+		{
+			name:  "multiple spaces inside double-quotes",
+			input: `/github subscribe DHaussermann/hello-world issues,label:"Help    Wanted"`,
+			want: output{
+				"/github",
+				"subscribe",
+				[]string{"DHaussermann/hello-world", `issues,label:"Help    Wanted"`},
+			},
+		},
+		{
+			name:  "multiple spaces outside of double-quotes",
+			input: `  /github    subscribe     DHaussermann/hello-world issues,label:"Help Wanted"`,
+			want: output{
+				"/github",
+				"subscribe",
+				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
+			},
+		},
 	}
 
 	for _, tc := range tt {
