@@ -134,6 +134,29 @@ export function getLabels(repo) {
     };
 }
 
+export function getAssignees(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getAssignees(repo);
+        } catch (error) {
+            return {error: data};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_ASSIGNEES,
+            data,
+        });
+
+        return {data};
+    };
+}
+
 export function getMilestones(repo) {
     return async (dispatch, getState) => {
         let data;

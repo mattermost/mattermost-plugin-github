@@ -43,18 +43,7 @@ export default class IssueAttributeSelector extends PureComponent {
 
         try {
             const options = await this.props.loadOptions();
-
-            // filter out currently selected options that do not exist in the new repo
-            const optionValues = options.map((option) => option.value);
-
-            let validSelection;
-            if (this.props.isMulti) {
-                validSelection = this.props.selection.filter((v) => optionValues.includes(v.value));
-            } else {
-                validSelection = optionValues.includes(this.props.selection.value) ? this.props.selection : {};
-            }
-
-            this.props.onChange(validSelection);
+            this.filterSelection(options);
             this.setState({
                 options,
                 isLoading: false,
@@ -67,6 +56,20 @@ export default class IssueAttributeSelector extends PureComponent {
         }
     };
 
+    filterSelection = (options) => {
+        const optionValues = options.map((option) => option.value);
+
+        // filter out currently selected options that do not exist in the new repo
+        let validSelection;
+        if (this.props.isMulti) {
+            validSelection = this.props.selection.filter((v) => optionValues.includes(v.value));
+        } else {
+            validSelection = optionValues.includes(this.props.selection.value) ? this.props.selection : {};
+        }
+
+        this.props.onChange(validSelection);
+    }
+
     onChange = (selection) => {
         const blank = this.props.isMulti ? [] : '';
         this.props.onChange(selection || blank);
@@ -77,8 +80,9 @@ export default class IssueAttributeSelector extends PureComponent {
             <Setting {...this.props}>
                 <ReactSelect
                     {...this.props}
-                    closeMenuOnSelect={false}
-                    hideSelectedOptions={true}
+                    placeholder={'Select...'}
+                    closeMenuOnSelect={!this.props.isMulti}
+                    hideSelectedOptions={this.props.isMulti}
                     onChange={this.onChange}
                     options={this.state.options}
                     value={this.props.selection}

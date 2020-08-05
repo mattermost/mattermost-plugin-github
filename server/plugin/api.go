@@ -120,6 +120,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.getLabels, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/milestones", p.extractUserMiddleWare(p.getMilestones, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/assignees", p.extractUserMiddleWare(p.getAssignees, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJSON)).Methods(http.MethodPost)
@@ -1006,6 +1007,31 @@ func (p *Plugin) getLabels(w http.ResponseWriter, r *http.Request, userID string
 	p.writeJSON(w, result)
 }
 
+func (p *Plugin) getAssignees(w http.ResponseWriter, r *http.Request, userID string) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	result, _, err := githubClient.Issues.ListAssignees(context.Background(), owner, repo, &github.ListOptions{})
+
+	if err != nil {
+		mlog.Error(err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
+}
+
 func (p *Plugin) getMilestones(w http.ResponseWriter, r *http.Request, userID string) {
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
@@ -1098,6 +1124,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		Repo      string   `json:"repo"`
 		PostID    string   `json:"post_id"`
 		Labels    []string `json:"labels"`
+		Assignees []string `json:"assignees"`
 		Milestone int      `json:"milestone"`
 	}
 
@@ -1151,7 +1178,13 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		Title:     &issue.Title,
 		Body:      &issue.Body,
 		Labels:    &issue.Labels,
-		Milestone: &issue.Milestone,
+		Assignees: &issue.Assignees,
+	}
+
+	// submitting the request with an invalid milestone ID results in a 422 error
+	// we make sure it's not zero here, because the MM client might have left this field empty
+	if issue.Milestone > 0 {
+		ghIssue.Milestone = &issue.Milestone
 	}
 
 	permalink := p.getPermaLink(issue.PostID)
@@ -1176,12 +1209,14 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	githubClient := p.githubConnect(*info.Token)
 	result, resp, err := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
 	if err != nil {
+		mlog.Error(fmt.Sprintf("Failed to create issue: %v", err.Error()))
 		p.writeAPIError(w,
 			&APIErrorResponse{
 				ID: "",
 				Message: "failed to create issue: " + getFailReason(resp.StatusCode,
 					issue.Repo,
-					currentUser.Username),
+					currentUser.Username,
+				),
 				StatusCode: resp.StatusCode,
 			})
 		return
@@ -1240,12 +1275,12 @@ func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 // parseRepo parses the owner & repository name from the repo query parameter
 func parseRepo(repoParam string) (owner, repo string, err error) {
 	if repoParam == "" {
-		return "", "", errors.New("Repository cannot be blank")
+		return "", "", errors.New("repository cannot be blank")
 	}
 
 	splitted := strings.Split(repoParam, "/")
 	if len(splitted) != 2 {
-		return "", "", errors.New("Invalid repository")
+		return "", "", errors.New("invalid repository")
 	}
 
 	return splitted[0], splitted[1], nil

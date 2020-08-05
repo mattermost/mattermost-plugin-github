@@ -29,15 +29,15 @@ export default class GithubMilestoneSelector extends PureComponent {
             return [];
         }
 
-        return milestones.data.map((item) => ({
-            value: item.title,
-            label: item.title,
+        return milestones.data.map((milestone) => ({
+            value: milestone.title,
+            label: milestone.title,
         }));
     };
 
     onChange = (selection) => {
-        if (!selection) {
-            this.props.onChange('');
+        if (!selection || Object.keys(selection).length === 0) {
+            this.props.onChange({});
             return;
         }
 
@@ -52,7 +52,8 @@ export default class GithubMilestoneSelector extends PureComponent {
     }
 
     render() {
-        const selectedMilestone = {
+        const isSelectionBlank = Object.keys(this.props.selectedMilestone).length === 0;
+        const selection = isSelectionBlank ? '' : {
             label: this.props.selectedMilestone.label,
             value: this.props.selectedMilestone.value,
         };
@@ -65,7 +66,7 @@ export default class GithubMilestoneSelector extends PureComponent {
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={false}
-                    selection={selectedMilestone}
+                    selection={selection}
                     loadOptions={this.loadMilestones}
                     onChange={this.onChange}
                 />

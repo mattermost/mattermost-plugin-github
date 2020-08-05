@@ -6,31 +6,31 @@ import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from 'components/issue_attribute_selector';
 
-export default class GithubLabelSelector extends PureComponent {
+export default class GithubAssigneeSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
-        selectedLabels: PropTypes.array.isRequired,
+        selectedAssignees: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
         actions: PropTypes.shape({
-            getLabels: PropTypes.func.isRequired,
+            getAssignees: PropTypes.func.isRequired,
         }).isRequired,
     };
 
-    loadLabels = async () => {
+    loadAssignees = async () => {
         if (this.props.repo === '') {
             return [];
         }
 
-        const labels = await this.props.actions.getLabels(this.props.repo);
+        const assignees = await this.props.actions.getAssignees(this.props.repo);
 
-        if (!labels || !labels.data) {
+        if (!assignees || !assignees.data) {
             return [];
         }
 
-        return labels.data.map((label) => ({
-            value: label.name,
-            label: label.name,
+        return assignees.data.map((assignee) => ({
+            value: assignee.login,
+            label: assignee.login,
         }));
     };
 
@@ -38,13 +38,13 @@ export default class GithubLabelSelector extends PureComponent {
         return (
             <div className='form-group margin-bottom x3'>
                 <label className='control-label margin-bottom x2'>
-                    {'Labels'}
+                    {'Assignees'}
                 </label>
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={true}
-                    selection={this.props.selectedLabels}
-                    loadOptions={this.loadLabels}
+                    selection={this.props.selectedAssignees}
+                    loadOptions={this.loadAssignees}
                 />
             </div>
         );

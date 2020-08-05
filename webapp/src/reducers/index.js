@@ -111,6 +111,15 @@ function labels(state = [], action) {
     }
 }
 
+function assignees(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_ASSIGNEES:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function milestones(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_MILESTONES:
@@ -244,6 +253,7 @@ export default combineReducers({
     yourPrsDetails,
     yourAssignments,
     labels,
+    assignees,
     milestones,
     mentions,
     unreads,
