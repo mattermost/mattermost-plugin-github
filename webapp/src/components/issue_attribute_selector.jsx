@@ -67,7 +67,7 @@ export default class IssueAttributeSelector extends PureComponent {
         this.props.onChange(selectedValues.map((v) => v.value));
     };
 
-    render = () => {
+    render() {
         return (
             <Setting {...this.props}>
                 <ReactSelect
@@ -93,5 +93,5 @@ export default class IssueAttributeSelector extends PureComponent {
                 )}
             </Setting>
         );
-    };
+    }
 }
