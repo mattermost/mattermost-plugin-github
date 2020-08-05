@@ -49,6 +49,10 @@ export default class Client {
         return this.doGet(`${this.url}/labels?repo=${repo}`);
     }
 
+    getMilestones = async (repo) => {
+        return this.doGet(`${this.url}/milestones?repo=${repo}`);
+    }
+
     createIssue = async (payload) => {
         return this.doPost(`${this.url}/createissue`, payload);
     }

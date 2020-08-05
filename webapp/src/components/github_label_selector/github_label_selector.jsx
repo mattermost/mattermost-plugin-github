@@ -42,7 +42,8 @@ export default class GithubLabelSelector extends PureComponent {
                 </label>
                 <IssueAttributeSelector
                     {...this.props}
-                    selectedValues={this.props.selectedLabels}
+                    isMulti={true}
+                    selection={this.props.selectedLabels}
                     loadOptions={this.loadLabels}
                 />
             </div>

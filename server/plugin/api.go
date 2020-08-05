@@ -119,6 +119,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.getLabels, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/milestones", p.extractUserMiddleWare(p.getMilestones, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJSON)).Methods(http.MethodPost)
@@ -987,24 +988,43 @@ func (p *Plugin) getLabels(w http.ResponseWriter, r *http.Request, userID string
 		return
 	}
 
-	repo := r.URL.Query().Get("repo")
-	if repo == "" {
-		p.writeAPIError(w, &APIErrorResponse{Message: "Repository cannot be blank", StatusCode: http.StatusBadRequest})
-		return
-	}
-
-	splitted := strings.Split(repo, "/")
-	if len(splitted) != 2 {
-		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid repository", StatusCode: http.StatusBadRequest})
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	githubClient := p.githubConnect(*info.Token)
-	result, _, err := githubClient.Issues.ListLabels(context.Background(), splitted[0], splitted[1], &github.ListOptions{})
+	result, _, err := githubClient.Issues.ListLabels(context.Background(), owner, repo, &github.ListOptions{})
 
 	if err != nil {
 		mlog.Error(err.Error())
 		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
+}
+
+func (p *Plugin) getMilestones(w http.ResponseWriter, r *http.Request, userID string) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	result, _, err := githubClient.Issues.ListMilestones(context.Background(), owner, repo, &github.MilestoneListOptions{})
+
+	if err != nil {
+		mlog.Error(err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -1073,11 +1093,12 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 
 func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID string) {
 	type IssueRequest struct {
-		Title  string   `json:"title"`
-		Body   string   `json:"body"`
-		Repo   string   `json:"repo"`
-		PostID string   `json:"post_id"`
-		Labels []string `json:"labels"`
+		Title     string   `json:"title"`
+		Body      string   `json:"body"`
+		Repo      string   `json:"repo"`
+		PostID    string   `json:"post_id"`
+		Labels    []string `json:"labels"`
+		Milestone int      `json:"milestone"`
 	}
 
 	// get data for the issue from the request body and fill IssueRequest object
@@ -1127,9 +1148,10 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	ghIssue := &github.IssueRequest{
-		Title:  &issue.Title,
-		Body:   &issue.Body,
-		Labels: &issue.Labels,
+		Title:     &issue.Title,
+		Body:      &issue.Body,
+		Labels:    &issue.Labels,
+		Milestone: &issue.Milestone,
 	}
 
 	permalink := p.getPermaLink(issue.PostID)
@@ -1213,4 +1235,18 @@ func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.writeJSON(w, info.Token)
+}
+
+// parseRepo parses the owner & repository name from the repo query parameter
+func parseRepo(repoParam string) (owner, repo string, err error) {
+	if repoParam == "" {
+		return "", "", errors.New("Repository cannot be blank")
+	}
+
+	splitted := strings.Split(repoParam, "/")
+	if len(splitted) != 2 {
+		return "", "", errors.New("Invalid repository")
+	}
+
+	return splitted[0], splitted[1], nil
 }

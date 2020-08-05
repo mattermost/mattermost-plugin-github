@@ -7,6 +7,7 @@ import {Modal} from 'react-bootstrap';
 
 import FormButton from 'components/form_button';
 import GithubLabelSelector from 'components/github_label_selector';
+import GithubMilestoneSelector from 'components/github_milestone_selector';
 import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
 import Input from 'components/input';
@@ -18,6 +19,7 @@ const initialState = {
     issueTitle: '',
     issueDescription: '',
     labels: [],
+    milestone: {},
     showErrors: false,
     issueTitleValid: true,
 };
@@ -62,6 +64,7 @@ export default class CreateIssueModal extends PureComponent {
             body: this.state.issueDescription,
             repo: this.state.repoValue,
             labels: this.state.labels.map((label) => label.value),
+            milestone: this.state.milestone.number,
             post_id: this.props.post.id,
         };
 
@@ -90,6 +93,8 @@ export default class CreateIssueModal extends PureComponent {
     handleRepoChange = (repoValue) => this.setState({repoValue});
 
     handleLabelsChange = (labels) => this.setState({labels});
+
+    handleMilestoneChange = (milestone) => this.setState({milestone});
 
     handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
 
@@ -151,6 +156,13 @@ export default class CreateIssueModal extends PureComponent {
                     theme={theme}
                     selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
+                />
+
+                <GithubMilestoneSelector
+                    repo={this.state.repoValue}
+                    theme={theme}
+                    selectedMilestone={this.state.milestone}
+                    onChange={this.handleMilestoneChange}
                 />
 
                 <Input
