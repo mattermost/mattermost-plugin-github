@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React from 'react';
-import {DotIcon} from '@primer/octicons-react';
+import DotIcon from '@primer/octicons-react';
 
 export default () => (
     <DotIcon size='small'/>
