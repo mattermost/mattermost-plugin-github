@@ -35,7 +35,7 @@ export default class IssueAttributeSelector extends PureComponent {
             values: [],
             isLoading: false,
             invalid: false,
-            error: '',
+            error: null,
         };
     }
 
@@ -63,17 +63,25 @@ export default class IssueAttributeSelector extends PureComponent {
 
     loadOptions = async () => {
         this.setState({isLoading: true});
-        const options = await this.props.load();
 
-        // filter out currently selected options that do not exist in the new repo
-        const optionValues = options.map((option) => option.value);
-        const validValues = this.state.values.filter((value) => optionValues.includes(value.value));
+        try {
+            const options = await this.props.load();
 
-        this.setState({
-            options,
-            values: validValues,
-            isLoading: false,
-        });
+            // filter out currently selected options that do not exist in the new repo
+            const optionValues = options.map((option) => option.value);
+            const validValues = this.state.values.filter((value) => optionValues.includes(value.value));
+
+            this.setState({
+                options,
+                values: validValues,
+                isLoading: false,
+            });
+        } catch (err) {
+            this.setState({
+                error: err,
+                isLoading: false,
+            });
+        }
     }
 
     onChange = (values) => {
@@ -112,7 +120,7 @@ export default class IssueAttributeSelector extends PureComponent {
                     className='fa fa-warning'
                     title='Warning Icon'
                 />
-                <span> {this.state.error.toString()}</span>
+                <span> {this.state.error.message}</span>
             </p>
         );
     };
