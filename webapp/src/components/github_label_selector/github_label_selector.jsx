@@ -23,6 +23,10 @@ export default class GithubLabelSelector extends PureComponent {
 
         const labels = await this.props.actions.getLabels(this.props.repo);
 
+        if (!labels || !labels.data) {
+            return [];
+        }
+
         return labels.data.map((item) => ({
             value: item.name,
             label: item.name,
@@ -36,11 +40,7 @@ export default class GithubLabelSelector extends PureComponent {
                     {'Labels'}
                 </label>
                 <IssueAttributeSelector
-                    repo={this.props.repo}
-                    required={false}
-                    isMulti={true}
-                    theme={this.props.theme}
-                    onChange={this.props.onChange}
+                    {...this.props}
                     loadOptions={this.loadLabels}
                 />
             </div>

@@ -11,19 +11,9 @@ import Setting from 'components/setting';
 export default class IssueAttributeSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
+        theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         loadOptions: PropTypes.func.isRequired,
-        theme: PropTypes.object.isRequired,
-        value: PropTypes.oneOfType([
-            PropTypes.object,
-            PropTypes.array,
-            PropTypes.string,
-        ]),
-        required: PropTypes.bool,
-        isMulti: PropTypes.bool,
-        addValidate: PropTypes.func,
-        removeValidate: PropTypes.func,
-        resetInvalidOnChange: PropTypes.bool,
     };
 
     constructor(props) {
@@ -31,30 +21,13 @@ export default class IssueAttributeSelector extends PureComponent {
 
         this.state = {
             options: [],
-            values: [],
+            selectedValues: [],
             isLoading: false,
-            invalid: false,
             error: null,
         };
     }
 
-    componentDidMount() {
-        if (this.props.addValidate) {
-            this.props.addValidate(this.isValid);
-        }
-    }
-
-    componentWillUnmount() {
-        if (this.props.removeValidate) {
-            this.props.removeValidate(this.isValid);
-        }
-    }
-
-    componentDidUpdate(prevProps, prevState) {
-        if (prevState.invalid && this.props.value !== prevProps.value) {
-            this.setState({invalid: false}); //eslint-disable-line react/no-did-update-set-state
-        }
-
+    componentDidUpdate(prevProps) {
         if (this.props.repo && prevProps.repo !== this.props.repo) {
             this.loadOptions();
         }
@@ -68,12 +41,12 @@ export default class IssueAttributeSelector extends PureComponent {
 
             // filter out currently selected options that do not exist in the new repo
             const optionValues = options.map((option) => option.value);
-            const validValues = this.state.values.filter((value) => optionValues.includes(value.value));
+            const validValues = this.state.selectedValues.filter((value) => optionValues.includes(value.value));
 
             this.setState({
                 options,
-                values: validValues,
                 isLoading: false,
+                selectedValues: validValues,
             });
         } catch (err) {
             this.setState({
@@ -81,59 +54,17 @@ export default class IssueAttributeSelector extends PureComponent {
                 isLoading: false,
             });
         }
-    }
+    };
 
-    onChange = (values) => {
-        this.setState({values});
+    onChange = (selectedValues) => {
+        this.setState({selectedValues});
 
-        if (!values) {
-            this.props.onChange(this.props.isMulti ? [] : '');
+        if (!selectedValues) {
+            this.props.onChange([]);
             return;
         }
 
-        this.props.onChange(this.props.isMulti ? values.map((v) => v.value) : values.value);
-
-        if (this.props.resetInvalidOnChange) {
-            this.setState({invalid: false});
-        }
-    };
-
-    isValid = () => {
-        if (!this.props.required) {
-            return true;
-        }
-
-        const valid = Boolean(this.props.value && this.props.value.toString().length !== 0);
-        this.setState({invalid: !valid});
-        return valid;
-    };
-
-    errorComponent = () => {
-        if (!this.state.error) {
-            return null;
-        }
-
-        return (
-            <p className='alert alert-danger'>
-                <i
-                    className='fa fa-warning'
-                    title='Warning Icon'
-                />
-                <span> {this.state.error.message}</span>
-            </p>
-        );
-    };
-
-    validationError = () => {
-        if (!this.props.required || !this.state.invalid) {
-            return null;
-        }
-
-        return (
-            <p className='help-text error-text'>
-                <span>{'This field is required.'}</span>
-            </p>
-        );
+        this.props.onChange(selectedValues.map((v) => v.value));
     };
 
     render = () => {
@@ -141,16 +72,25 @@ export default class IssueAttributeSelector extends PureComponent {
             <Setting {...this.props}>
                 <ReactSelect
                     {...this.props}
-                    onChange={this.onChange}
-                    options={this.state.options}
-                    value={this.state.values}
-                    isLoading={this.state.isLoading}
+                    isMulti={true}
                     closeMenuOnSelect={false}
                     hideSelectedOptions={true}
+                    onChange={this.onChange}
+                    options={this.state.options}
+                    value={this.state.selectedValues}
+                    isLoading={this.state.isLoading}
                     styles={getStyleForReactSelect(this.props.theme)}
                 />
-                {this.errorComponent()}
-                {this.validationError()}
+
+                {this.state.error && (
+                    <p className='alert alert-danger'>
+                        <i
+                            className='fa fa-warning'
+                            title='Warning Icon'
+                        />
+                        <span> {this.state.error.message}</span>
+                    </p>
+                )}
             </Setting>
         );
     };
