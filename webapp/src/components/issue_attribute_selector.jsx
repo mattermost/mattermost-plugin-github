@@ -14,6 +14,11 @@ export default class IssueAttributeSelector extends PureComponent {
         onChange: PropTypes.func.isRequired,
         loadOptions: PropTypes.func.isRequired,
         theme: PropTypes.object.isRequired,
+        value: PropTypes.oneOfType([
+            PropTypes.object,
+            PropTypes.array,
+            PropTypes.string,
+        ]),
         required: PropTypes.bool,
         isMulti: PropTypes.bool,
         addValidate: PropTypes.func,
@@ -50,7 +55,7 @@ export default class IssueAttributeSelector extends PureComponent {
             this.setState({invalid: false}); //eslint-disable-line react/no-did-update-set-state
         }
 
-        if (prevProps.repo !== this.props.repo) {
+        if (this.props.repo && prevProps.repo !== this.props.repo) {
             this.loadOptions();
         }
     }
