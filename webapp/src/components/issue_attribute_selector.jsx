@@ -12,6 +12,7 @@ export default class IssueAttributeSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
+        selectedValues: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
         loadOptions: PropTypes.func.isRequired,
     };
@@ -21,7 +22,6 @@ export default class IssueAttributeSelector extends PureComponent {
 
         this.state = {
             options: [],
-            selectedValues: [],
             isLoading: false,
             error: null,
         };
@@ -41,12 +41,12 @@ export default class IssueAttributeSelector extends PureComponent {
 
             // filter out currently selected options that do not exist in the new repo
             const optionValues = options.map((option) => option.value);
-            const validValues = this.state.selectedValues.filter((value) => optionValues.includes(value.value));
+            const validValues = this.props.selectedValues.filter((v) => optionValues.includes(v.value));
 
+            this.props.onChange(validValues);
             this.setState({
                 options,
                 isLoading: false,
-                selectedValues: validValues,
             });
         } catch (err) {
             this.setState({
@@ -56,16 +56,7 @@ export default class IssueAttributeSelector extends PureComponent {
         }
     };
 
-    onChange = (selectedValues) => {
-        this.setState({selectedValues});
-
-        if (!selectedValues) {
-            this.props.onChange([]);
-            return;
-        }
-
-        this.props.onChange(selectedValues.map((v) => v.value));
-    };
+    onChange = (selectedValues) => this.props.onChange(selectedValues || []);
 
     render() {
         return (
@@ -77,7 +68,7 @@ export default class IssueAttributeSelector extends PureComponent {
                     hideSelectedOptions={true}
                     onChange={this.onChange}
                     options={this.state.options}
-                    value={this.state.selectedValues}
+                    value={this.props.selectedValues}
                     isLoading={this.state.isLoading}
                     styles={getStyleForReactSelect(this.props.theme)}
                 />

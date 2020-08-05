@@ -10,6 +10,7 @@ export default class GithubLabelSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
+        selectedLabels: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
         actions: PropTypes.shape({
             getLabels: PropTypes.func.isRequired,
@@ -41,6 +42,7 @@ export default class GithubLabelSelector extends PureComponent {
                 </label>
                 <IssueAttributeSelector
                     {...this.props}
+                    selectedValues={this.props.selectedLabels}
                     loadOptions={this.loadLabels}
                 />
             </div>

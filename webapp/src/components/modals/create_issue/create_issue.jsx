@@ -61,7 +61,7 @@ export default class CreateIssueModal extends PureComponent {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
             repo: this.state.repoValue,
-            labels: this.state.labels,
+            labels: this.state.labels.map((label) => label.value),
             post_id: this.props.post.id,
         };
 
@@ -149,6 +149,7 @@ export default class CreateIssueModal extends PureComponent {
                 <GithubLabelSelector
                     repo={this.state.repoValue}
                     theme={theme}
+                    selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
                 />
 
