@@ -14,11 +14,6 @@ export default class IssueAttributeSelector extends PureComponent {
         onChange: PropTypes.func.isRequired,
         loadOptions: PropTypes.func.isRequired,
         theme: PropTypes.object.isRequired,
-        value: PropTypes.oneOfType([
-            PropTypes.object,
-            PropTypes.array,
-            PropTypes.string,
-        ]).isRequired,
         required: PropTypes.bool,
         isMulti: PropTypes.bool,
         addValidate: PropTypes.func,

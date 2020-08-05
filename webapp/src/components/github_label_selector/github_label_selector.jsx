@@ -16,20 +16,20 @@ export default class GithubLabelSelector extends PureComponent {
         }).isRequired,
     };
 
+    loadLabels = async () => {
+        if (this.props.repo === '') {
+            return [];
+        }
+
+        const labels = await this.props.actions.getLabels(this.props.repo);
+
+        return labels.data.map((item) => ({
+            value: item.name,
+            label: item.name,
+        }));
+    };
+
     render() {
-        const loadLabels = async () => {
-            if (this.props.repo === '') {
-                return [];
-            }
-
-            const labels = await this.props.actions.getLabels(this.props.repo);
-
-            return labels.data.map((item) => ({
-                value: item.name,
-                label: item.name,
-            }));
-        };
-
         return (
             <div className='form-group margin-bottom x3'>
                 <label className='control-label margin-bottom x2'>
@@ -41,7 +41,7 @@ export default class GithubLabelSelector extends PureComponent {
                     isMulti={true}
                     theme={this.props.theme}
                     onChange={this.props.onChange}
-                    loadOptions={loadLabels}
+                    loadOptions={this.loadLabels}
                 />
             </div>
         );
