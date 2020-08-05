@@ -10,21 +10,20 @@ import Setting from 'components/setting';
 
 export default class IssueAttributeSelector extends PureComponent {
     static propTypes = {
-        name: PropTypes.string,
-        repo: PropTypes.string,
-        required: PropTypes.bool,
-        isMulti: PropTypes.bool,
-        resetInvalidOnChange: PropTypes.bool,
-        addValidate: PropTypes.func,
-        removeValidate: PropTypes.func,
-        onChange: PropTypes.func,
-        load: PropTypes.func,
+        repo: PropTypes.string.isRequired,
+        onChange: PropTypes.func.isRequired,
+        loadOptions: PropTypes.func.isRequired,
         theme: PropTypes.object.isRequired,
         value: PropTypes.oneOfType([
             PropTypes.object,
             PropTypes.array,
             PropTypes.string,
-        ]),
+        ]).isRequired,
+        required: PropTypes.bool,
+        isMulti: PropTypes.bool,
+        addValidate: PropTypes.func,
+        removeValidate: PropTypes.func,
+        resetInvalidOnChange: PropTypes.bool,
     };
 
     constructor(props) {
@@ -65,7 +64,7 @@ export default class IssueAttributeSelector extends PureComponent {
         this.setState({isLoading: true});
 
         try {
-            const options = await this.props.load();
+            const options = await this.props.loadOptions();
 
             // filter out currently selected options that do not exist in the new repo
             const optionValues = options.map((option) => option.value);

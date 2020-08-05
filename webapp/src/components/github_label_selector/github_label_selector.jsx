@@ -8,21 +8,12 @@ import IssueAttributeSelector from 'components/issue_attribute_selector';
 
 export default class GithubLabelSelector extends PureComponent {
     static propTypes = {
-        repo: PropTypes.string,
+        repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
-        labels: PropTypes.array.isRequired,
-        onChange: PropTypes.func,
+        onChange: PropTypes.func.isRequired,
         actions: PropTypes.shape({
             getLabels: PropTypes.func.isRequired,
         }).isRequired,
-    };
-
-    handleChange = (items) => {
-        if (!items || items.length === 0) {
-            return;
-        }
-
-        this.props.onChange(items);
     };
 
     render() {
@@ -31,9 +22,9 @@ export default class GithubLabelSelector extends PureComponent {
                 return [];
             }
 
-            await this.props.actions.getLabels(this.props.repo);
+            const labels = await this.props.actions.getLabels(this.props.repo);
 
-            return this.props.labels.map((item) => ({
+            return labels.data.map((item) => ({
                 value: item.name,
                 label: item.name,
             }));
@@ -45,13 +36,12 @@ export default class GithubLabelSelector extends PureComponent {
                     {'Labels'}
                 </label>
                 <IssueAttributeSelector
-                    name={'labels'}
                     repo={this.props.repo}
                     required={false}
                     isMulti={true}
                     theme={this.props.theme}
-                    onChange={this.handleChange}
-                    load={loadLabels}
+                    onChange={this.props.onChange}
+                    loadOptions={loadLabels}
                 />
             </div>
         );
