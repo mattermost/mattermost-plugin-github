@@ -118,7 +118,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
-  apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.getLabels, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.getLabels, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJSON)).Methods(http.MethodPost)
