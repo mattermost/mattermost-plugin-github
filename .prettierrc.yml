@@ -1,0 +1,9 @@
+semi: true
+tabWidth: 4
+endOfLine: "lf"
+singleQuote: true
+jsxSingleQuote: true
+arrowParens: "always"
+bracketSpacing: false
+trailingComma: "es5"
+jsxBracketSameLine: false
