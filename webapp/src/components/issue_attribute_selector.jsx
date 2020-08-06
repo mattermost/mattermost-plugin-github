@@ -16,7 +16,6 @@ export default class IssueAttributeSelector extends PureComponent {
         onChange: PropTypes.func.isRequired,
         loadOptions: PropTypes.func.isRequired,
         selection: PropTypes.oneOfType([
-            PropTypes.object,
             PropTypes.array,
             PropTypes.string,
         ]).isRequired,
@@ -62,20 +61,39 @@ export default class IssueAttributeSelector extends PureComponent {
         // filter out currently selected options that do not exist in the new repo
         let validSelection;
         if (this.props.isMulti) {
-            validSelection = this.props.selection.filter((v) => optionValues.includes(v.value));
+            validSelection = this.props.selection.filter((v) => optionValues.includes(v));
         } else {
-            validSelection = optionValues.includes(this.props.selection.value) ? this.props.selection : {};
+            validSelection = optionValues.includes(this.props.selection) ? this.props.selection : {};
         }
 
         this.props.onChange(validSelection);
     }
 
     onChange = (selection) => {
-        const blank = this.props.isMulti ? [] : '';
-        this.props.onChange(selection || blank);
+        if (this.props.isMulti) {
+            this.props.onChange(selection ? selection.map((s) => s.value) : []);
+            return;
+        }
+
+        if (!selection || !selection.value) {
+            this.props.onChange('');
+            return;
+        }
+
+        this.props.onChange(selection.value);
     };
 
     render() {
+        let selection;
+        if (this.props.isMulti) {
+            selection = this.props.selection.map((s) => ({label: s, value: s}));
+        } else {
+            selection = this.props.selection ? {
+                label: this.props.selection,
+                value: this.props.selection,
+            } : '';
+        }
+
         return (
             <Setting {...this.props}>
                 <ReactSelect
@@ -86,7 +104,7 @@ export default class IssueAttributeSelector extends PureComponent {
                     hideSelectedOptions={this.props.isMulti}
                     onChange={this.onChange}
                     options={this.state.options}
-                    value={this.props.selection}
+                    value={selection}
                     isLoading={this.state.isLoading}
                     styles={getStyleForReactSelect(this.props.theme)}
                 />

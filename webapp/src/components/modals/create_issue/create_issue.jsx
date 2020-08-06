@@ -21,7 +21,7 @@ const initialState = {
     issueDescription: '',
     labels: [],
     assignees: [],
-    milestone: {},
+    milestone: 0,
     showErrors: false,
     issueTitleValid: true,
 };
@@ -65,9 +65,9 @@ export default class CreateIssueModal extends PureComponent {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
             repo: this.state.repoValue,
-            labels: this.state.labels.map((label) => label.value),
-            assignees: this.state.assignees.map((assignee) => assignee.value),
-            milestone: this.state.milestone.number,
+            labels: this.state.labels,
+            assignees: this.state.assignees,
+            milestone: this.state.milestone,
             post_id: this.props.post.id,
         };
 

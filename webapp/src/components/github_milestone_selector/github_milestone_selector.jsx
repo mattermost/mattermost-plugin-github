@@ -10,7 +10,7 @@ export default class GithubMilestoneSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
-        selectedMilestone: PropTypes.object.isRequired,
+        selectedMilestone: PropTypes.number.isRequired,
         onChange: PropTypes.func.isRequired,
         milestones: PropTypes.array,
         actions: PropTypes.shape({
@@ -40,27 +40,21 @@ export default class GithubMilestoneSelector extends PureComponent {
     };
 
     onChange = (selection) => {
-        if (!selection || Object.keys(selection).length === 0) {
-            this.props.onChange({});
+        if (!this.props.milestones) {
+            this.props.onChange(0);
             return;
         }
 
         // we have to find the selected milestone from the options in order to insert its number
-        const milestone = this.props.milestones.find((m) => m.title === selection.value);
-
-        this.props.onChange({
-            number: milestone.number,
-            label: milestone.title,
-            value: milestone.title,
-        });
+        const milestone = this.props.milestones.find((m) => m.title === selection);
+        this.props.onChange(milestone ? milestone.number : 0);
     }
 
     render() {
-        const isSelectionBlank = Object.keys(this.props.selectedMilestone).length === 0;
-        const selection = isSelectionBlank ? '' : {
-            label: this.props.selectedMilestone.label,
-            value: this.props.selectedMilestone.value,
-        };
+        let milestone = '';
+        if (this.props.selectedMilestone > 0 && this.props.milestones) {
+            milestone = this.props.milestones.find((m) => m.number === this.props.selectedMilestone).title;
+        }
 
         return (
             <div className='form-group margin-bottom x3'>
@@ -70,7 +64,7 @@ export default class GithubMilestoneSelector extends PureComponent {
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={false}
-                    selection={selection}
+                    selection={milestone}
                     loadOptions={this.loadMilestones}
                     onChange={this.onChange}
                 />
