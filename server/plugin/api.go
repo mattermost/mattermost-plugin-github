@@ -996,15 +996,24 @@ func (p *Plugin) getLabels(w http.ResponseWriter, r *http.Request, userID string
 	}
 
 	githubClient := p.githubConnect(*info.Token)
-	result, _, err := githubClient.Issues.ListLabels(context.Background(), owner, repo, &github.ListOptions{})
+	var allLabels []*github.Label
+	opt := github.ListOptions{PerPage: 50}
 
-	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
-		return
+	for {
+		labels, resp, err := githubClient.Issues.ListLabels(context.Background(), owner, repo, &opt)
+		if err != nil {
+			mlog.Error(err.Error())
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allLabels = append(allLabels, labels...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 
-	p.writeJSON(w, result)
+	p.writeJSON(w, allLabels)
 }
 
 func (p *Plugin) getAssignees(w http.ResponseWriter, r *http.Request, userID string) {
@@ -1021,15 +1030,24 @@ func (p *Plugin) getAssignees(w http.ResponseWriter, r *http.Request, userID str
 	}
 
 	githubClient := p.githubConnect(*info.Token)
-	result, _, err := githubClient.Issues.ListAssignees(context.Background(), owner, repo, &github.ListOptions{})
+	var allAssignees []*github.User
+	opt := github.ListOptions{PerPage: 50}
 
-	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
-		return
+	for {
+		assignees, resp, err := githubClient.Issues.ListAssignees(context.Background(), owner, repo, &opt)
+		if err != nil {
+			mlog.Error(err.Error())
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allAssignees = append(allAssignees, assignees...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 
-	p.writeJSON(w, result)
+	p.writeJSON(w, allAssignees)
 }
 
 func (p *Plugin) getMilestones(w http.ResponseWriter, r *http.Request, userID string) {
@@ -1046,15 +1064,24 @@ func (p *Plugin) getMilestones(w http.ResponseWriter, r *http.Request, userID st
 	}
 
 	githubClient := p.githubConnect(*info.Token)
-	result, _, err := githubClient.Issues.ListMilestones(context.Background(), owner, repo, &github.MilestoneListOptions{})
+	var allMilestones []*github.Milestone
+	opt := github.ListOptions{PerPage: 50}
 
-	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
-		return
+	for {
+		milestones, resp, err := githubClient.Issues.ListMilestones(context.Background(), owner, repo, &github.MilestoneListOptions{ListOptions: opt})
+		if err != nil {
+			mlog.Error(err.Error())
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allMilestones = append(allMilestones, milestones...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
 	}
 
-	p.writeJSON(w, result)
+	p.writeJSON(w, allMilestones)
 }
 
 func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID string) {

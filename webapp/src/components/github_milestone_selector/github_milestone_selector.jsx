@@ -12,7 +12,7 @@ export default class GithubMilestoneSelector extends PureComponent {
         theme: PropTypes.object.isRequired,
         selectedMilestone: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
-        milestones: PropTypes.array.isRequired,
+        milestones: PropTypes.array,
         actions: PropTypes.shape({
             getMilestones: PropTypes.func.isRequired,
         }).isRequired,
