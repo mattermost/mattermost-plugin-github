@@ -22,15 +22,19 @@ export default class GithubAssigneeSelector extends PureComponent {
             return [];
         }
 
-        const assignees = await this.props.actions.getAssignees(this.props.repo);
+        const options = await this.props.actions.getAssignees(this.props.repo);
 
-        if (!assignees || !assignees.data) {
+        if (options.error) {
+            throw new Error('Failed to load assignees');
+        }
+
+        if (!options || !options.data) {
             return [];
         }
 
-        return assignees.data.map((assignee) => ({
-            value: assignee.login,
-            label: assignee.login,
+        return options.data.map((option) => ({
+            value: option.login,
+            label: option.login,
         }));
     };
 

@@ -117,7 +117,7 @@ export function getLabels(repo) {
         try {
             data = await Client.getLabels(repo);
         } catch (error) {
-            return {error: data};
+            return {error};
         }
 
         const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
@@ -140,7 +140,7 @@ export function getAssignees(repo) {
         try {
             data = await Client.getAssignees(repo);
         } catch (error) {
-            return {error: data};
+            return {error};
         }
 
         const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
@@ -163,7 +163,7 @@ export function getMilestones(repo) {
         try {
             data = await Client.getMilestones(repo);
         } catch (error) {
-            return {error: data};
+            return {error};
         }
 
         const connected = await checkAndHandleNotConnected(data)(dispatch, getState);

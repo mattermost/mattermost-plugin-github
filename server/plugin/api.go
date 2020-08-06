@@ -1182,7 +1182,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	// submitting the request with an invalid milestone ID results in a 422 error
-	// we make sure it's not zero here, because the MM client might have left this field empty
+	// we make sure it's not zero here, because the webapp client might have left this field empty
 	if issue.Milestone > 0 {
 		ghIssue.Milestone = &issue.Milestone
 	}

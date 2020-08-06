@@ -22,15 +22,19 @@ export default class GithubLabelSelector extends PureComponent {
             return [];
         }
 
-        const labels = await this.props.actions.getLabels(this.props.repo);
+        const options = await this.props.actions.getLabels(this.props.repo);
 
-        if (!labels || !labels.data) {
+        if (options.error) {
+            throw new Error('Failed to load labels');
+        }
+
+        if (!options || !options.data) {
             return [];
         }
 
-        return labels.data.map((label) => ({
-            value: label.name,
-            label: label.name,
+        return options.data.map((option) => ({
+            value: option.name,
+            label: option.name,
         }));
     };
 

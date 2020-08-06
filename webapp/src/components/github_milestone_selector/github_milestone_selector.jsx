@@ -23,15 +23,19 @@ export default class GithubMilestoneSelector extends PureComponent {
             return [];
         }
 
-        const milestones = await this.props.actions.getMilestones(this.props.repo);
+        const options = await this.props.actions.getMilestones(this.props.repo);
 
-        if (!milestones || !milestones.data) {
+        if (options.error) {
+            throw new Error('Failed to load milestones');
+        }
+
+        if (!options || !options.data) {
             return [];
         }
 
-        return milestones.data.map((milestone) => ({
-            value: milestone.title,
-            label: milestone.title,
+        return options.data.map((option) => ({
+            value: option.title,
+            label: option.title,
         }));
     };
 
