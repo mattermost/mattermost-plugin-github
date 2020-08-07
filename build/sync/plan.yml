@@ -8,11 +8,6 @@ checks:
 actions:
   - paths:
       - build
-    actions:
-      - type: overwrite_directory
-        params:
-          create: true
-  - paths:
       - Makefile
       - go.mod
       - .circleci/config.yml
