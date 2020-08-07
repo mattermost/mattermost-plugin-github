@@ -1,4 +1,4 @@
-package main
+package plugin
 
 import (
 	"bytes"
@@ -74,6 +74,11 @@ func init() {
 
 			return prefix + username
 		})
+	}
+
+	// Quote the body
+	funcMap["quote"] = func(body string) string {
+		return ">" + strings.ReplaceAll(body, "\n", "\n>")
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
@@ -167,7 +172,7 @@ func init() {
 
 	template.Must(masterTemplate.New("pullRequestMentionNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}}) - {{.GetPullRequest.GetTitle}}:
->{{.GetPullRequest.GetBody | trimBody | replaceAllGitHubUsernames}}`))
+{{.GetPullRequest.GetBody | trimBody | quote | replaceAllGitHubUsernames}}`))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 #### {{.GetIssue.GetTitle}}
@@ -185,6 +190,10 @@ func init() {
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
 #issue-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}.
+`))
+
+	template.Must(masterTemplate.New("reopenedIssue").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} Issue {{template "issue" .GetIssue}} reopened by {{template "user" .GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
@@ -227,16 +236,17 @@ func init() {
 
 	template.Must(masterTemplate.New("commentMentionNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.Issue.GetNumber}}]({{.GetComment.GetHTMLURL}}) - {{.Issue.GetTitle}}:
->{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssueFullLinkWithTitle" .}}:
->{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueFullLinkWithTitle" .}}
+{{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueFullLinkWithTitle" .}}:
+{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestNotification").Funcs(funcMap).Parse(`
@@ -265,7 +275,7 @@ func init() {
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
 {{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
-{{if .GetReview.GetBody}}>{{.Review.GetBody | replaceAllGitHubUsernames}}
+{{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 {{else}}{{end}}`))
 
 	template.Must(masterTemplate.New("helpText").Parse("" +

@@ -1,4 +1,4 @@
-package main
+package plugin
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 
 const (
 	apiErrorIDNotConnected = "not_connected"
-	// the OAuth token expiry in seconds
+	// TokenTTL is the OAuth token expiry duration in seconds
 	TokenTTL = 10 * 60
 )
 
@@ -50,7 +50,18 @@ type PRDetails struct {
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
+// HTTPHandlerFuncWithUser is http.HandleFunc but userID is already exported
 type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID string)
+
+// ResponseType indicates type of response returned by api
+type ResponseType string
+
+const (
+	// ResponseTypeJSON indicates that response type is json
+	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
+	// ResponseTypePlain indicates that response type is text plain
+	ResponseTypePlain ResponseType = "TEXT_RESPONSE"
+)
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 	b, err := json.Marshal(v)
@@ -93,40 +104,59 @@ func (p *Plugin) initializeAPI() {
 
 	p.router.HandleFunc("/webhook", p.handleWebhook).Methods(http.MethodPost)
 
-	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, false)).Methods(http.MethodGet)
-	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, false)).Methods(http.MethodGet)
+	oauthRouter.HandleFunc("/connect", p.extractUserMiddleWare(p.connectUserToGitHub, ResponseTypePlain)).Methods(http.MethodGet)
+	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/connected", p.getConnected).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, true)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/createissue", p.extractUserMiddleWare(p.createIssue, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, false)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, true)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, false)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, false)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, ResponseTypeJSON)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/prsdetails", p.extractUserMiddleWare(p.getPrsDetails, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/searchissues", p.extractUserMiddleWare(p.searchIssues, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/yourassignments", p.extractUserMiddleWare(p.getYourAssignments, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/createissue", p.extractUserMiddleWare(p.createIssue, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJSON)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/issue", p.extractUserMiddleWare(p.getIssueByNumber, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, ResponseTypePlain)).Methods(http.MethodGet)
+
+	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
 }
 
-func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, jsonResponse bool) http.HandlerFunc {
+func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, responseType ResponseType) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := r.Header.Get("Mattermost-User-ID")
 		if userID == "" {
-			if jsonResponse {
+			switch responseType {
+			case ResponseTypeJSON:
 				p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
-			} else {
+			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
+			default:
+				p.API.LogError("Unknown ResponseType detected")
 			}
 			return
 		}
 
 		handler(w, r, userID)
+	}
+}
+
+func checkPluginRequest(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// All other plugins are allowed
+		pluginID := r.Header.Get("Mattermost-Plugin-ID")
+		if pluginID == "" {
+			http.Error(w, "Not authorized", http.StatusUnauthorized)
+			return
+		}
+
+		next(w, r)
 	}
 }
 
@@ -138,6 +168,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	r.Header.Add("Mattermost-Plugin-ID", c.SourcePluginId)
 	w.Header().Set("Content-Type", "application/json")
 
 	p.router.ServeHTTP(w, r)
@@ -894,11 +925,20 @@ func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID
 
 	result, _, err := githubClient.Issues.Get(context.Background(), owner, repo, numberInt)
 	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Could get issue.", StatusCode: http.StatusInternalServerError})
+		// If the issue is not found, it's probably behind a private repo.
+		// Return an empty repose in this case.
+		var gerr *github.ErrorResponse
+		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
+			p.API.LogDebug("Issue not found", "owner", owner, "repo", repo, "number", numberInt)
+			p.writeJSON(w, nil)
+			return
+		}
+
+		p.API.LogDebug("Could not get issue", "owner", owner, "repo", repo, "number", numberInt, "error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get issue", StatusCode: http.StatusInternalServerError})
 		return
 	}
-
+	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
 	p.writeJSON(w, result)
 }
 
@@ -922,11 +962,20 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 
 	result, _, err := githubClient.PullRequests.Get(context.Background(), owner, repo, numberInt)
 	if err != nil {
-		mlog.Error(err.Error())
-		p.writeAPIError(w, &APIErrorResponse{Message: "Could get pull request.", StatusCode: http.StatusInternalServerError})
+		// If the pull request is not found, it's probably behind a private repo.
+		// Return an empty repose in this case.
+		var gerr *github.ErrorResponse
+		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
+			p.API.LogDebug("Pull request not found", "owner", owner, "repo", repo, "number", numberInt)
+			p.writeJSON(w, nil)
+			return
+		}
+
+		p.API.LogDebug("Could not get pull request", "owner", owner, "repo", repo, "number", numberInt, "error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get pull request", StatusCode: http.StatusInternalServerError})
 		return
 	}
-
+	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
 	p.writeJSON(w, result)
 }
 
@@ -1108,4 +1157,26 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	p.writeJSON(w, result)
+}
+
+func (p *Plugin) getConfig(w http.ResponseWriter, r *http.Request) {
+	config := p.getConfiguration()
+
+	p.writeJSON(w, config)
+}
+
+func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
+	userID := r.FormValue("userID")
+	if userID == "" {
+		http.Error(w, "please provide a userID", http.StatusBadRequest)
+		return
+	}
+
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		http.Error(w, apiErr.Error(), apiErr.StatusCode)
+		return
+	}
+
+	p.writeJSON(w, info.Token)
 }
