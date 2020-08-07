@@ -164,7 +164,7 @@ func (p *Plugin) OnActivate() error {
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
 	// If not enabled in config, ignore.
 	config := p.getConfiguration()
-	if !config.EnableCodePreview {
+	if config.EnableCodePreview == "disable" {
 		return nil, ""
 	}
 
