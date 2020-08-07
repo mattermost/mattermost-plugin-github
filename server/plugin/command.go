@@ -60,7 +60,7 @@ func validateFeatures(features []string) (bool, []string) {
 	return valid, invalidFeatures
 }
 
-func getCommand() *model.Command {
+func getCommand(config *Configuration) *model.Command {
 	return &model.Command{
 		Trigger:          "github",
 		DisplayName:      "GitHub",
@@ -68,7 +68,7 @@ func getCommand() *model.Command {
 		AutoComplete:     true,
 		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
 		AutoCompleteHint: "[command]",
-		AutocompleteData: getAutocompleteData(),
+		AutocompleteData: getAutocompleteData(config),
 	}
 }
 
@@ -325,7 +325,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	return &model.CommandResponse{}, nil
 }
 
-func getAutocompleteData() *model.AutocompleteData {
+func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
@@ -341,14 +341,15 @@ func getAutocompleteData() *model.AutocompleteData {
 
 	subscribe := model.NewAutocompleteData("subscribe", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscribe.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscribe.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Detaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
-	flags := []model.AutocompleteListItem{{
-		HelpText: "events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
-		Hint:     "(optional)",
-		Item:     "--exclude-org-member",
-	}}
-	subscribe.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
-
+	subscribe.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	if config.GitHubOrg != "" {
+		flags := []model.AutocompleteListItem{{
+			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
+			Hint:     "(optional)",
+			Item:     "--exclude-org-member",
+		}}
+		subscribe.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
+	}
 	github.AddCommand(subscribe)
 
 	subscribeList := model.NewAutocompleteData("subscribe list", "", "List the current channel subscriptions")
@@ -372,14 +373,12 @@ func getAutocompleteData() *model.AutocompleteData {
 	settings.AddStaticListArgument("Setting to update", true, setting)
 	value := []model.AutocompleteListItem{{
 		HelpText: "Turn setting on",
-		Hint:     "",
 		Item:     "on",
 	}, {
 		HelpText: "Turn setting off",
-		Hint:     "",
 		Item:     "off",
 	}}
-	settings.AddStaticListArgument("New value", true, value)
+	settings.AddStaticListArgument("", true, value)
 	github.AddCommand(settings)
 
 	return github

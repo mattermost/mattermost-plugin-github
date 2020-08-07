@@ -126,11 +126,6 @@ func (p *Plugin) OnActivate() error {
 
 	p.initializeAPI()
 
-	err := p.API.RegisterCommand(getCommand())
-	if err != nil {
-		return errors.Wrap(err, "failed to register command")
-	}
-
 	botID, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
