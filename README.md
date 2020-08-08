@@ -24,11 +24,11 @@ Once connected, you'll have access to the following features:
     * hover over a post to reveal the post actions menu and click the __More Actions (...)__ option
 * __Sidebar buttons__ - stay up-to-date with how many reviews, unread messages, assignments and open pull requests you have with buttons in the Mattermost sidebar
 * __Slash commands__ - interact with the GitHub plugin using the `/github` slash command
-    * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation and more in a GitHub repository.
+    * __Subscribe to a respository__ - Use `/github subscriptions add` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation and more in a GitHub repository.
         - For instance, to post notifications for issues, issue comments and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use
 
           ```
-          /github subscribe mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
+          /github subscriptions add mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
           ```
         - The following flags are supported:
            - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization
@@ -159,7 +159,7 @@ The reminder and `/github todo` will still search the whole organization, but on
 Suppose you want to send notifications to a Mattermost channel when `Severity/Critical` label is applied to any issue in the `mattermost/mattermost-plugin-github` repository. Then, use this command to subscribe to these notifications:
 
 ```
-/github subscribe mattermost/mattermost-plugin-github issues,label:"Severity/Critical"
+/github subscriptions add mattermost/mattermost-plugin-github issues,label:"Severity/Critical"
 ```
 
 ### How do I share feedback on this plugin?
