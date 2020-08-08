@@ -5,6 +5,7 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from 'components/issue_attribute_selector';
+import Client from 'client';
 
 export default class GithubLabelSelector extends PureComponent {
     static propTypes = {
@@ -12,9 +13,6 @@ export default class GithubLabelSelector extends PureComponent {
         theme: PropTypes.object.isRequired,
         selectedLabels: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
-        actions: PropTypes.shape({
-            getLabels: PropTypes.func.isRequired,
-        }).isRequired,
     };
 
     loadLabels = async () => {
@@ -22,20 +20,15 @@ export default class GithubLabelSelector extends PureComponent {
             return [];
         }
 
-        const options = await this.props.actions.getLabels(this.props.repo);
-
-        if (options.error) {
-            throw new Error('Failed to load labels');
+        try {
+            const options = await Client.getLabels(this.props.repo) || [];
+            return options.map((option) => ({
+                value: option.name,
+                label: option.name,
+            }));
+        } catch (err) {
+            throw new Error(`Failed to load labels: ${err}`);
         }
-
-        if (!options || !options.data) {
-            return [];
-        }
-
-        return options.data.map((option) => ({
-            value: option.name,
-            label: option.name,
-        }));
     };
 
     render() {

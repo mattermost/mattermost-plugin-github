@@ -5,6 +5,7 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from 'components/issue_attribute_selector';
+import Client from 'client';
 
 export default class GithubAssigneeSelector extends PureComponent {
     static propTypes = {
@@ -12,9 +13,6 @@ export default class GithubAssigneeSelector extends PureComponent {
         theme: PropTypes.object.isRequired,
         selectedAssignees: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
-        actions: PropTypes.shape({
-            getAssignees: PropTypes.func.isRequired,
-        }).isRequired,
     };
 
     loadAssignees = async () => {
@@ -22,20 +20,15 @@ export default class GithubAssigneeSelector extends PureComponent {
             return [];
         }
 
-        const options = await this.props.actions.getAssignees(this.props.repo);
-
-        if (options.error) {
-            throw new Error('Failed to load assignees');
+        try {
+            const options = await Client.getAssignees(this.props.repo) || [];
+            return options.map((option) => ({
+                value: option.login,
+                label: option.login,
+            }));
+        } catch (err) {
+            throw new Error(`Failed to load assignees: ${err}`);
         }
-
-        if (!options || !options.data) {
-            return [];
-        }
-
-        return options.data.map((option) => ({
-            value: option.login,
-            label: option.login,
-        }));
     };
 
     render() {

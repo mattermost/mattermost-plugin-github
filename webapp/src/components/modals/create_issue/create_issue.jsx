@@ -5,12 +5,12 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import FormButton from 'components/form_button';
 import GithubLabelSelector from 'components/github_label_selector';
 import GithubAssigneeSelector from 'components/github_assignee_selector';
 import GithubMilestoneSelector from 'components/github_milestone_selector';
 import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
+import FormButton from 'components/form_button';
 import Input from 'components/input';
 
 const initialState = {

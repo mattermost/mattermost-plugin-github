@@ -111,52 +111,6 @@ export function getRepos() {
     };
 }
 
-export function getLabels(repo) {
-    return async (dispatch, getState) => {
-        let data;
-        try {
-            data = await Client.getLabels(repo);
-        } catch (error) {
-            return {error};
-        }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_LABELS,
-            data,
-        });
-
-        return {data};
-    };
-}
-
-export function getAssignees(repo) {
-    return async (dispatch, getState) => {
-        let data;
-        try {
-            data = await Client.getAssignees(repo);
-        } catch (error) {
-            return {error};
-        }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_ASSIGNEES,
-            data,
-        });
-
-        return {data};
-    };
-}
-
 export function getMilestones(repo) {
     return async (dispatch, getState) => {
         let data;
