@@ -21,7 +21,7 @@ const initialState = {
     issueDescription: '',
     labels: [],
     assignees: [],
-    milestone: 0,
+    milestone: null,
     showErrors: false,
     issueTitleValid: true,
 };

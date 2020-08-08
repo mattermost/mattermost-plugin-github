@@ -41,7 +41,7 @@ export default class GithubMilestoneSelector extends PureComponent {
 
     onChange = (selection) => {
         if (!this.props.milestones) {
-            this.props.onChange(0);
+            this.props.onChange(null);
             return;
         }
 
