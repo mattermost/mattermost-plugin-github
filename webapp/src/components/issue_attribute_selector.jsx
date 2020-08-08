@@ -98,8 +98,8 @@ export default class IssueAttributeSelector extends PureComponent {
             <Setting {...this.props}>
                 <ReactSelect
                     {...this.props}
+                    isClearable={true}
                     placeholder={'Select...'}
-                    isClearable={!this.props.isMulti}
                     closeMenuOnSelect={!this.props.isMulti}
                     hideSelectedOptions={this.props.isMulti}
                     onChange={this.onChange}
