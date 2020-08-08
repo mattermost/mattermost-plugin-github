@@ -96,12 +96,15 @@ export default class IssueAttributeSelector extends PureComponent {
             } : '';
         }
 
+        const noOptionsMessage = this.props.repo ? 'No options' : 'Please select a repository first';
+
         return (
             <Setting {...this.props}>
                 <ReactSelect
                     {...this.props}
                     isClearable={true}
                     placeholder={'Select...'}
+                    noOptionsMessage={() => noOptionsMessage}
                     closeMenuOnSelect={!this.props.isMulti}
                     hideSelectedOptions={this.props.isMulti}
                     onChange={this.onChange}
