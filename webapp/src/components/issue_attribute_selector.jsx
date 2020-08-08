@@ -46,8 +46,10 @@ export default class IssueAttributeSelector extends PureComponent {
             this.setState({
                 options,
                 isLoading: false,
+                error: null,
             });
         } catch (err) {
+            this.filterSelection([]);
             this.setState({
                 error: err,
                 isLoading: false,

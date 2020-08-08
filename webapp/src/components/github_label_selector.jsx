@@ -27,7 +27,7 @@ export default class GithubLabelSelector extends PureComponent {
                 label: option.name,
             }));
         } catch (err) {
-            throw new Error(`Failed to load labels: ${err}`);
+            throw new Error('Failed to load labels');
         }
     };
 

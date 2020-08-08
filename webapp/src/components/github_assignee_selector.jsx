@@ -27,7 +27,7 @@ export default class GithubAssigneeSelector extends PureComponent {
                 label: option.login,
             }));
         } catch (err) {
-            throw new Error(`Failed to load assignees: ${err}`);
+            throw new Error('Failed to load assignees');
         }
     };
 
