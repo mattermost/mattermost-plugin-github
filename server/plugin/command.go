@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/go-github/v31/github"
@@ -85,35 +86,69 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 	return p.githubConnect(*userInfo.Token)
 }
 
-func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	features := "pulls,issues,creates,deletes"
-	flags := SubscriptionFlags{}
-
-	txt := ""
+func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
 	case len(parameters) == 1 && parameters[0] == "list":
-		subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
-		if err != nil {
-			return err.Error()
-		}
+		return p.handleSubscriptionsList(c, args, parameters[1:], userInfo)
+	default:
+		return p.handleSubscribesAdd(c, args, parameters, userInfo)
+	}
+}
 
-		if len(subs) == 0 {
-			txt = "Currently there are no subscriptions in this channel"
-		} else {
-			txt = "### Subscriptions in this channel\n"
+func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid subscribe command. Available commands are 'list', 'add' and 'delete'."
+	}
+
+	command := parameters[0]
+	parameters = parameters[1:]
+
+	switch {
+	case command == "list":
+		return p.handleSubscriptionsList(c, args, parameters, userInfo)
+	case command == "add":
+		return p.handleSubscribesAdd(c, args, parameters, userInfo)
+	case command == "delete":
+		return p.handleUnsubscribe(c, args, parameters, userInfo)
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
+}
+
+func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
+	log.Printf("parameters: %#+v\n", parameters)
+
+	txt := ""
+	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
+	if err != nil {
+		return err.Error()
+	}
+
+	if len(subs) == 0 {
+		txt = "Currently there are no subscriptions in this channel"
+	} else {
+		txt = "### Subscriptions in this channel\n"
+	}
+	for _, sub := range subs {
+		subFlags := sub.Flags.String()
+		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
+		if subFlags != "" {
+			txt += fmt.Sprintf(" %s", subFlags)
 		}
-		for _, sub := range subs {
-			subFlags := sub.Flags.String()
-			txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
-			if subFlags != "" {
-				txt += fmt.Sprintf(" %s", subFlags)
-			}
-			txt += "\n"
-		}
-		return txt
-	case len(parameters) > 1:
+		txt += "\n"
+	}
+
+	return txt
+}
+
+func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	log.Printf("parameters: %#+v\n", parameters)
+	features := "pulls,issues,creates,deletes"
+	flags := SubscriptionFlags{}
+
+	if len(parameters) > 1 {
 		var optionList []string
 
 		for _, element := range parameters[1:] {
@@ -160,6 +195,8 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 }
 
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
+	log.Printf("parameters: %#+v\n", parameters)
+
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
@@ -339,25 +376,29 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	todo := model.NewAutocompleteData("todo", "", "Get a list of unread messages and pull requests awaiting your review")
 	github.AddCommand(todo)
 
-	subscribe := model.NewAutocompleteData("subscribe", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
-	subscribe.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscribe.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: List, Add, Delete")
+
+	subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
+	subscriptions.AddCommand(subscribeList)
+
+	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
+	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
+	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
 		flags := []model.AutocompleteListItem{{
 			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
 			Hint:     "(optional)",
 			Item:     "--exclude-org-member",
 		}}
-		subscribe.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
+		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
 	}
-	github.AddCommand(subscribe)
+	subscriptions.AddCommand(subscriptionsAdd)
 
-	subscribeList := model.NewAutocompleteData("subscribe list", "", "List the current channel subscriptions")
-	github.AddCommand(subscribeList)
+	subscriptionsDelete := model.NewAutocompleteData("delete", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
+	subscriptionsDelete.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
+	subscriptions.AddCommand(subscriptionsDelete)
 
-	unsubscribe := model.NewAutocompleteData("unsubscribe", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
-	unsubscribe.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
-	github.AddCommand(unsubscribe)
+	github.AddCommand(subscriptions)
 
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
