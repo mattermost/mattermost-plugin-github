@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"unicode"
 
@@ -119,8 +118,6 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 }
 
 func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
-	log.Printf("parameters: %#+v\n", parameters)
-
 	txt := ""
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
@@ -145,7 +142,6 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	log.Printf("parameters: %#+v\n", parameters)
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
@@ -205,8 +201,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 }
 
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
-	log.Printf("parameters: %#+v\n", parameters)
-
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
