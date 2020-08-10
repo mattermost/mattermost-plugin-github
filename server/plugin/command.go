@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"unicode"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/mlog"
@@ -191,7 +192,16 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return err.Error()
 	}
 
-	return fmt.Sprintf("Successfully subscribed to %s.", repo)
+	msg := fmt.Sprintf("Successfully subscribed to %s.", repo)
+
+	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if err != nil {
+		p.API.LogWarn("Failed to fetch repository", "error", err.Error())
+	} else if ghRepo != nil && ghRepo.GetPrivate() {
+		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+	}
+
+	return msg
 }
 
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
@@ -296,16 +306,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	split := strings.Fields(args.Command)
-	command := split[0]
-	var parameters []string
-	action := ""
-	if len(split) > 1 {
-		action = split[1]
-	}
-	if len(split) > 2 {
-		parameters = split[2:]
-	}
+	command, action, parameters := parseCommand(args.Command)
 
 	if command != "/github" {
 		return &model.CommandResponse{}, nil
@@ -423,4 +424,55 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(settings)
 
 	return github
+}
+
+// parseCommand parses the entire command input string and retrieves the command, action and parameters
+func parseCommand(input string) (command, action string, parameters []string) {
+	split := make([]string, 0)
+	current := ""
+	inQuotes := false
+
+	for _, char := range input {
+		if unicode.IsSpace(char) {
+			// keep whitespaces that are inside double qoutes
+			if inQuotes {
+				current += " "
+				continue
+			}
+
+			// ignore successive whitespaces that are outside of double quotes
+			if len(current) == 0 && !inQuotes {
+				continue
+			}
+
+			// append the current word to the list & move on to the next word/expression
+			split = append(split, current)
+			current = ""
+			continue
+		}
+
+		// append the current character to the current word
+		current += string(char)
+
+		if char == '"' {
+			inQuotes = !inQuotes
+		}
+	}
+
+	// append the last word/expression to the list
+	if len(current) > 0 {
+		split = append(split, current)
+	}
+
+	command = split[0]
+
+	if len(split) > 1 {
+		action = split[1]
+	}
+
+	if len(split) > 2 {
+		parameters = split[2:]
+	}
+
+	return command, action, parameters
 }

@@ -19,6 +19,21 @@ var pushEventRepository = github.PushEventRepository{
 	HTMLURL:  sToP("https://github.com/mattermost/mattermost-plugin-github"),
 }
 
+var singleLabel = []*github.Label{
+	{
+		Name: sToP("Help Wanted"),
+	},
+}
+
+var labels = []*github.Label{
+	{
+		Name: sToP("Help Wanted"),
+	},
+	{
+		Name: sToP("Tech/Go"),
+	},
+}
+
 var pullRequest = github.PullRequest{
 	Number:    iToP(42),
 	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42"),
@@ -44,6 +59,36 @@ var pullRequestWithMentions = github.PullRequest{
 - Added tests
 - Removed console logs
 -->`),
+}
+
+var pullRequestWithLabelAndAssignee = github.PullRequest{
+	Number:    iToP(42),
+	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42"),
+	Title:     sToP("Leverage git-get-head"),
+	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
+	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
+	Labels:    singleLabel,
+	Assignees: []*github.User{&user},
+}
+
+var pullRequestWithMultipleLabelsAndAssignees = github.PullRequest{
+	Number:    iToP(42),
+	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42"),
+	Title:     sToP("Leverage git-get-head"),
+	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
+	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
+	Body: sToP(`<!-- Thank you for opening this pull request-->git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+<!-- Please make sure you have done the following :
+- Added tests
+- Removed console logs
+-->`),
+	Labels:    labels,
+	Assignees: []*github.User{&user, &user},
 }
 
 var mergedPullRequest = github.PullRequest{
@@ -77,6 +122,29 @@ var issueWithMentions = github.Issue{
 	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
 	Body: sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support
 ` + gitHubMentions),
+}
+
+var issueWithLabelAndAssignee = github.Issue{
+	Number:    iToP(1),
+	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1"),
+	Title:     sToP("Implement git-get-head"),
+	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
+	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
+	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
+	Labels:    singleLabel,
+	Assignee:  &user,
+	Assignees: []*github.User{&user},
+}
+
+var issueWithMultipleLabelsAndAssignee = github.Issue{
+	Number:    iToP(1),
+	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1"),
+	Title:     sToP("Implement git-get-head"),
+	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
+	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
+	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
+	Labels:    labels,
+	Assignees: []*github.User{&user, &user},
 }
 
 var user = github.User{
@@ -198,6 +266,48 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	}))
+
+	t.Run("with single label and assignee", func(t *testing.T) {
+		expected := `
+#### Leverage git-get-head
+##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by [panda](https://github.com/panda)
+Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted)" + `
+Assignees: [panda](https://github.com/panda)
+
+git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+
+`
+
+		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequestWithLabelAndAssignee,
+			Sender:      &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with multiple labels and assignees", func(t *testing.T) {
+		expected := `
+#### Leverage git-get-head
+##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by [panda](https://github.com/panda)
+Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted), [`Tech/Go`](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)" + `
+Assignees: [panda](https://github.com/panda), [panda](https://github.com/panda)
+
+git-get-head gets the non-sent upstream heads inside the stashed non-cleaned applied areas, and after pruning bases to many archives, you can initialize the origin of the bases.
+
+`
+
+		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequestWithMultipleLabelsAndAssignees,
+			Sender:      &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestClosedPRMessageTemplate(t *testing.T) {
@@ -286,6 +396,46 @@ git-get-head sounds like a great feature we should support
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	}))
+
+	t.Run("with single label and assignee", func(t *testing.T) {
+		expected := `
+#### Implement git-get-head
+##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by [panda](https://github.com/panda)
+Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted)" + `
+Assignees: [panda](https://github.com/panda)
+
+git-get-head sounds like a great feature we should support
+`
+
+		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
+			Repo:   &repo,
+			Issue:  &issueWithLabelAndAssignee,
+			Sender: &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with multiple labels and assignees", func(t *testing.T) {
+		expected := `
+#### Implement git-get-head
+##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by [panda](https://github.com/panda)
+Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted), [`Tech/Go`](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)" + `
+Assignees: [panda](https://github.com/panda), [panda](https://github.com/panda)
+
+git-get-head sounds like a great feature we should support
+`
+
+		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
+			Repo:   &repo,
+			Issue:  &issueWithMultipleLabelsAndAssignee,
+			Sender: &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestClosedIssueTemplate(t *testing.T) {

@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"net/url"
 	"regexp"
 	"strings"
 	"text/template"
@@ -81,6 +82,25 @@ func init() {
 		return ">" + strings.ReplaceAll(body, "\n", "\n>")
 	}
 
+	// Escape characters not allowed in URL path
+	funcMap["pathEscape"] = url.PathEscape
+
+	// Transform multiple variables to dictionary
+	funcMap["dict"] = func(values ...interface{}) (map[string]interface{}, error) {
+		if len(values)%2 != 0 {
+			return nil, errors.New("invalid dict call, exactly one value is required for every key")
+		}
+		dict := make(map[string]interface{}, len(values)/2)
+		for i := 0; i < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				return nil, errors.New("dict keys must be strings")
+			}
+			dict[key] = values[i+1]
+		}
+		return dict, nil
+	}
+
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
 
 	// The user template links to the corresponding GitHub user. If the GitHub user is a known
@@ -149,10 +169,24 @@ func init() {
 		`{{template "eventRepoIssueFullLink" .}} - {{.GetIssue.GetTitle}}`,
 	))
 
+	template.Must(masterTemplate.New("labels").Funcs(funcMap).Parse(`
+{{- if .Labels }}
+Labels: {{range $i, $el := .Labels -}}` + "{{- if $i}}, {{end}}[`{{ $el.Name }}`]({{ $.RepositoryURL }}/labels/{{ $el.Name | pathEscape }})" + `{{end -}}
+{{ end -}}
+`))
+
+	template.Must(masterTemplate.New("assignee").Funcs(funcMap).Parse(`
+{{- if .Assignees }}
+Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
+{{- end -}}
+`))
+
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
 #new-pull-request by {{template "user" .GetSender}}
+{{- template "labels" dict "Labels" .GetPullRequest.Labels "RepositoryURL" .GetRepo.GetHTMLURL  }}
+{{- template "assignee" .GetPullRequest }}
 
 {{.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
@@ -178,6 +212,8 @@ func init() {
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
 #new-issue by {{template "user" .GetSender}}
+{{- template "labels" dict "Labels" .GetIssue.Labels "RepositoryURL" .GetRepo.GetHTMLURL  }}
+{{- template "assignee" .GetIssue }}
 
 {{.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
