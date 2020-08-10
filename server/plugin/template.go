@@ -332,7 +332,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    * `deletes` - includes branch and tag deletions\n" +
 		"    * `issue_comments` - includes new issue comments\n" +
 		"    * `pull_reviews` - includes pull request reviews\n" +
-		"    * `label:<labelname>` - must include `pulls` or `issues` in feature list when using a label. Defaults to `pulls,issues,creates,deletes`\n" +
+		"    * `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
+		"    * Defaults to `pulls,issues,creates,deletes`\n" +
 		"  * `flags` currently supported:\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"* `/github unsubscribe owner/repo` - Unsubscribe the current channel from a repository\n" +
