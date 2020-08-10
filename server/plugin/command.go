@@ -155,7 +155,16 @@ func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, par
 		return err.Error()
 	}
 
-	return fmt.Sprintf("Successfully subscribed to %s.", repo)
+	msg := fmt.Sprintf("Successfully subscribed to %s.", repo)
+
+	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if err != nil {
+		p.API.LogWarn("Failed to fetch repository", "error", err.Error())
+	} else if ghRepo != nil && ghRepo.GetPrivate() {
+		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+	}
+
+	return msg
 }
 
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
