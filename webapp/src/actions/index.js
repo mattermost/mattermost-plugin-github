@@ -111,29 +111,6 @@ export function getRepos() {
     };
 }
 
-export function getMilestones(repo) {
-    return async (dispatch, getState) => {
-        let data;
-        try {
-            data = await Client.getMilestones(repo);
-        } catch (error) {
-            return {error};
-        }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_MILESTONES,
-            data,
-        });
-
-        return {data};
-    };
-}
-
 export function getYourPrs() {
     return async (dispatch, getState) => {
         let data;

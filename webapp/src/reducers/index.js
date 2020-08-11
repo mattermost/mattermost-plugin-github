@@ -102,15 +102,6 @@ function yourRepos(state = [], action) {
     }
 }
 
-function milestones(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_MILESTONES:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
 function yourPrsDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
@@ -234,7 +225,6 @@ export default combineReducers({
     yourRepos,
     yourPrsDetails,
     yourAssignments,
-    milestones,
     mentions,
     unreads,
     githubUsers,

@@ -31,6 +31,14 @@ export default class GithubAssigneeSelector extends PureComponent {
         }
     };
 
+    onChange = (selection) => {
+        if (!selection) {
+            this.onChange([]);
+        }
+
+        this.props.onChange(selection.map((s) => s.value));
+    }
+
     render() {
         return (
             <div className='form-group margin-bottom x3'>
@@ -40,6 +48,7 @@ export default class GithubAssigneeSelector extends PureComponent {
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={true}
+                    onChange={this.onChange}
                     selection={this.props.selectedAssignees}
                     loadOptions={this.loadAssignees}
                 />

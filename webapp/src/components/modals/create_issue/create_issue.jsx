@@ -67,7 +67,7 @@ export default class CreateIssueModal extends PureComponent {
             repo: this.state.repoValue,
             labels: this.state.labels,
             assignees: this.state.assignees,
-            milestone: this.state.milestone,
+            milestone: this.state.milestone && this.state.milestone.value,
             post_id: this.props.post.id,
         };
 

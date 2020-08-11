@@ -17,7 +17,7 @@ export default class IssueAttributeSelector extends PureComponent {
         loadOptions: PropTypes.func.isRequired,
         selection: PropTypes.oneOfType([
             PropTypes.array,
-            PropTypes.string,
+            PropTypes.object,
         ]).isRequired,
     };
 
@@ -58,31 +58,34 @@ export default class IssueAttributeSelector extends PureComponent {
     };
 
     filterSelection = (options) => {
-        const optionValues = options.map((option) => option.value);
-
-        // filter out currently selected options that do not exist in the new repo
-        let validSelection;
         if (this.props.isMulti) {
-            validSelection = this.props.selection.filter((v) => optionValues.includes(v));
-        } else {
-            validSelection = optionValues.includes(this.props.selection) ? this.props.selection : {};
+            const filtered = options.filter((option) => this.props.selection.includes(option.value));
+            this.props.onChange(filtered);
+            return;
         }
 
-        this.props.onChange(validSelection);
+        if (!this.props.selection) {
+            this.props.onChange({});
+            return;
+        }
+
+        for (const option of options) {
+            if (option.value === this.props.selection.value) {
+                this.props.onChange(option);
+                return;
+            }
+        }
+
+        this.props.onChange({});
     }
 
     onChange = (selection) => {
         if (this.props.isMulti) {
-            this.props.onChange(selection ? selection.map((s) => s.value) : []);
+            this.props.onChange(selection || []);
             return;
         }
 
-        if (!selection || !selection.value) {
-            this.props.onChange('');
-            return;
-        }
-
-        this.props.onChange(selection.value);
+        this.props.onChange(selection || {});
     };
 
     render() {
@@ -90,10 +93,7 @@ export default class IssueAttributeSelector extends PureComponent {
         if (this.props.isMulti) {
             selection = this.props.selection.map((s) => ({label: s, value: s}));
         } else {
-            selection = this.props.selection ? {
-                label: this.props.selection,
-                value: this.props.selection,
-            } : '';
+            selection = this.props.selection || {};
         }
 
         const noOptionsMessage = this.props.repo ? 'No options' : 'Please select a repository first';
