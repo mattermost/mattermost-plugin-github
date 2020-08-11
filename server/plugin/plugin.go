@@ -422,11 +422,19 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		notificationType := notificationSubject.GetType()
 		switch notificationType {
 		case "RepositoryVulnerabilityAlert":
-			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL()))
+			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL(), ""))
 			notificationContent += fmt.Sprintf("* %v\n", message)
 		default:
+			issueURL := n.GetSubject().GetURL()
+			issueNumIndex := strings.LastIndex(issueURL, "/")
+			issueNum := issueURL[issueNumIndex+1:]
+			subjectURL := n.GetSubject().GetURL()
+			if n.GetSubject().GetLatestCommentURL() != "" {
+				subjectURL = n.GetSubject().GetLatestCommentURL()
+			}
+
 			notificationTitle := notificationSubject.GetTitle()
-			notificationURL := fixGithubNotificationSubjectURL(notificationSubject.GetURL())
+			notificationURL := fixGithubNotificationSubjectURL(subjectURL, issueNum)
 			notificationContent += getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType)
 		}
 
