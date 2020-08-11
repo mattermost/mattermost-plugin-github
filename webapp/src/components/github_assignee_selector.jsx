@@ -31,13 +31,7 @@ export default class GithubAssigneeSelector extends PureComponent {
         }
     };
 
-    onChange = (selection) => {
-        if (!selection) {
-            this.onChange([]);
-        }
-
-        this.props.onChange(selection.map((s) => s.value));
-    }
+    onChange = (selection) => this.props.onChange(selection.map((s) => s.value));
 
     render() {
         return (
