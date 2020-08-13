@@ -5,14 +5,16 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from 'components/issue_attribute_selector';
-import Client from 'client';
 
 export default class GithubMilestoneSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
-        selectedMilestone: PropTypes.object.isRequired,
+        selectedMilestone: PropTypes.object,
         onChange: PropTypes.func.isRequired,
+        actions: PropTypes.shape({
+            getMilestoneOptions: PropTypes.func.isRequired,
+        }).isRequired,
     };
 
     loadMilestones = async () => {
@@ -20,15 +22,20 @@ export default class GithubMilestoneSelector extends PureComponent {
             return [];
         }
 
-        try {
-            const options = await Client.getMilestones(this.props.repo) || [];
-            return options.map((option) => ({
-                value: option.number,
-                label: option.title,
-            }));
-        } catch (err) {
+        const options = await this.props.actions.getMilestoneOptions(this.props.repo);
+
+        if (options.error) {
             throw new Error('Failed to load milestones');
         }
+
+        if (!options || !options.data) {
+            return [];
+        }
+
+        return options.data.map((option) => ({
+            value: option.number,
+            label: option.title,
+        }));
     };
 
     onChange = (selection) => {

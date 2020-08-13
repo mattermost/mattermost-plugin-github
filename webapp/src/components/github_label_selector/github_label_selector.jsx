@@ -5,30 +5,37 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from 'components/issue_attribute_selector';
-import Client from 'client';
 
-export default class GithubAssigneeSelector extends PureComponent {
+export default class GithubLabelSelector extends PureComponent {
     static propTypes = {
         repo: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
-        selectedAssignees: PropTypes.array.isRequired,
+        selectedLabels: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
+        actions: PropTypes.shape({
+            getLabelOptions: PropTypes.func.isRequired,
+        }).isRequired,
     };
 
-    loadAssignees = async () => {
+    loadLabels = async () => {
         if (this.props.repo === '') {
             return [];
         }
 
-        try {
-            const options = await Client.getAssignees(this.props.repo) || [];
-            return options.map((option) => ({
-                value: option.login,
-                label: option.login,
-            }));
-        } catch (err) {
-            throw new Error('Failed to load assignees');
+        const options = await this.props.actions.getLabelOptions(this.props.repo);
+
+        if (options.error) {
+            throw new Error('Failed to load labels');
         }
+
+        if (!options || !options.data) {
+            return [];
+        }
+
+        return options.data.map((option) => ({
+            value: option.name,
+            label: option.name,
+        }));
     };
 
     onChange = (selection) => this.props.onChange(selection.map((s) => s.value));
@@ -37,14 +44,14 @@ export default class GithubAssigneeSelector extends PureComponent {
         return (
             <div className='form-group margin-bottom x3'>
                 <label className='control-label margin-bottom x2'>
-                    {'Assignees'}
+                    {'Labels'}
                 </label>
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={true}
                     onChange={this.onChange}
-                    selection={this.props.selectedAssignees}
-                    loadOptions={this.loadAssignees}
+                    selection={this.props.selectedLabels}
+                    loadOptions={this.loadLabels}
                 />
             </div>
         );
