@@ -6,7 +6,7 @@ import {bindActionCreators} from 'redux';
 
 import {getAssigneeOptions} from '../../actions';
 
-import GithubMilestoneSelector from './github_assignee_selector.jsx';
+import GithubAssigneeSelector from './github_assignee_selector.jsx';
 
 const mapDispatchToProps = (dispatch) => ({
     actions: bindActionCreators({getAssigneeOptions}, dispatch),
@@ -15,4 +15,4 @@ const mapDispatchToProps = (dispatch) => ({
 export default connect(
     null,
     mapDispatchToProps
-)(GithubMilestoneSelector);
+)(GithubAssigneeSelector);

@@ -6,7 +6,7 @@ import {bindActionCreators} from 'redux';
 
 import {getLabelOptions} from '../../actions';
 
-import GithubMilestoneSelector from './github_label_selector.jsx';
+import GithubLabelSelector from './github_label_selector.jsx';
 
 const mapDispatchToProps = (dispatch) => ({
     actions: bindActionCreators({getLabelOptions}, dispatch),
@@ -15,4 +15,4 @@ const mapDispatchToProps = (dispatch) => ({
 export default connect(
     null,
     mapDispatchToProps
-)(GithubMilestoneSelector);
+)(GithubLabelSelector);

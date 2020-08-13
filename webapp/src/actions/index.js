@@ -158,71 +158,35 @@ export function getYourPrsDetails(prList) {
 }
 
 export function getLabelOptions(repo) {
-    return async (dispatch, getState) => {
-        let data;
+    return async () => {
         try {
-            data = await Client.getLabels(repo);
+            const data = await Client.getLabels(repo);
+            return {data};
         } catch (error) {
             return {error};
         }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_LABEL_OPTIONS,
-            data,
-        });
-
-        return {data};
     };
 }
 
 export function getAssigneeOptions(repo) {
-    return async (dispatch, getState) => {
-        let data;
+    return async () => {
         try {
-            data = await Client.getAssignees(repo);
+            const data = await Client.getAssignees(repo);
+            return {data};
         } catch (error) {
             return {error};
         }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_ASSIGNEE_OPTIONS,
-            data,
-        });
-
-        return {data};
     };
 }
 
 export function getMilestoneOptions(repo) {
-    return async (dispatch, getState) => {
-        let data;
+    return async () => {
         try {
-            data = await Client.getMilestones(repo);
+            const data = await Client.getMilestones(repo);
+            return {data};
         } catch (error) {
             return {error};
         }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_MILESTONE_OPTIONS,
-            data,
-        });
-
-        return {data};
     };
 }
 
