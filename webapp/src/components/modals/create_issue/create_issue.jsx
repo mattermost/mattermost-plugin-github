@@ -16,7 +16,7 @@ import Input from 'components/input';
 const initialState = {
     submitting: false,
     error: null,
-    repoValue: '',
+    repo: {},
     issueTitle: '',
     issueDescription: '',
     labels: [],
@@ -64,7 +64,7 @@ export default class CreateIssueModal extends PureComponent {
         const issue = {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
-            repo: this.state.repoValue,
+            repo: this.state.repo.name,
             labels: this.state.labels,
             assignees: this.state.assignees,
             milestone: this.state.milestone && this.state.milestone.value,
@@ -93,7 +93,7 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoChange = (repoValue) => this.setState({repoValue});
+    handleRepoChange = (repo) => this.setState({repo});
 
     handleLabelsChange = (labels) => this.setState({labels});
 
@@ -104,6 +104,37 @@ export default class CreateIssueModal extends PureComponent {
     handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
 
     handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
+
+    renderIssueAttributeSelectors = () => {
+        if (this.state.repo && this.state.repo.permissions && !this.state.repo.permissions.push) {
+            return null;
+        }
+
+        return (
+            <>
+                <GithubLabelSelector
+                    repo={this.state.repo.name}
+                    theme={this.props.theme}
+                    selectedLabels={this.state.labels}
+                    onChange={this.handleLabelsChange}
+                />
+
+                <GithubAssigneeSelector
+                    repo={this.state.repo.name}
+                    theme={this.props.theme}
+                    selectedAssignees={this.state.assignees}
+                    onChange={this.handleAssigneesChange}
+                />
+
+                <GithubMilestoneSelector
+                    repo={this.state.repo.name}
+                    theme={this.props.theme}
+                    selectedMilestone={this.state.milestone}
+                    onChange={this.handleMilestoneChange}
+                />
+            </>
+        );
+    }
 
     render() {
         if (!this.props.visible) {
@@ -137,7 +168,7 @@ export default class CreateIssueModal extends PureComponent {
             <div>
                 <GithubRepoSelector
                     onChange={this.handleRepoChange}
-                    value={this.state.repoValue}
+                    value={this.state.repo.name}
                     required={true}
                     theme={theme}
                     addValidate={this.validator.addComponent}
@@ -156,26 +187,7 @@ export default class CreateIssueModal extends PureComponent {
                 />
                 {issueTitleValidationError}
 
-                <GithubLabelSelector
-                    repo={this.state.repoValue}
-                    theme={theme}
-                    selectedLabels={this.state.labels}
-                    onChange={this.handleLabelsChange}
-                />
-
-                <GithubAssigneeSelector
-                    repo={this.state.repoValue}
-                    theme={theme}
-                    selectedAssignees={this.state.assignees}
-                    onChange={this.handleAssigneesChange}
-                />
-
-                <GithubMilestoneSelector
-                    repo={this.state.repoValue}
-                    theme={theme}
-                    selectedMilestone={this.state.milestone}
-                    onChange={this.handleMilestoneChange}
-                />
+                {this.renderIssueAttributeSelectors()}
 
                 <Input
                     label='Description for the GitHub Issue'
