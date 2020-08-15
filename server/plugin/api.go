@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -98,6 +99,7 @@ func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) 
 
 func (p *Plugin) initializeAPI() {
 	p.router = mux.NewRouter()
+	p.router.Use(p.withRecovery)
 
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
 	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
@@ -126,6 +128,21 @@ func (p *Plugin) initializeAPI() {
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
+}
+
+func (p *Plugin) withRecovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if x := recover(); x != nil {
+				p.API.LogError("Recovered from a panic",
+					"url", r.URL.String(),
+					"error", x,
+					"stack", string(debug.Stack()))
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, responseType ResponseType) http.HandlerFunc {
