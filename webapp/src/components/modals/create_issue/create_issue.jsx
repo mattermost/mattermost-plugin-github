@@ -16,7 +16,7 @@ import Input from 'components/input';
 const initialState = {
     submitting: false,
     error: null,
-    repo: {},
+    repo: null,
     issueTitle: '',
     issueDescription: '',
     labels: [],
@@ -64,7 +64,7 @@ export default class CreateIssueModal extends PureComponent {
         const issue = {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
-            repo: this.state.repo.name,
+            repo: this.state.repo && this.state.repo.name,
             labels: this.state.labels,
             assignees: this.state.assignees,
             milestone: this.state.milestone && this.state.milestone.value,
@@ -106,7 +106,7 @@ export default class CreateIssueModal extends PureComponent {
     handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        if (this.state.repo && this.state.repo.permissions && !this.state.repo.permissions.push) {
+        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
             return null;
         }
 
@@ -168,7 +168,7 @@ export default class CreateIssueModal extends PureComponent {
             <div>
                 <GithubRepoSelector
                     onChange={this.handleRepoChange}
-                    value={this.state.repo.name}
+                    value={this.state.repo && this.state.repo.name}
                     required={true}
                     theme={theme}
                     addValidate={this.validator.addComponent}

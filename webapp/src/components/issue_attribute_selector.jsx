@@ -31,6 +31,12 @@ export default class IssueAttributeSelector extends PureComponent {
         };
     }
 
+    componentDidMount() {
+        if (this.props.repo) {
+            this.loadOptions();
+        }
+    }
+
     componentDidUpdate(prevProps) {
         if (this.props.repo && prevProps.repo !== this.props.repo) {
             this.loadOptions();
