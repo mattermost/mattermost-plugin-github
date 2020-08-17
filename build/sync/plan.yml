@@ -14,16 +14,17 @@ actions:
         params:
           create: true
   - paths:
-      - Makefile
-      - go.mod
       - .circleci/config.yml
       - .editorconfig
-      - webapp/babel.config.js
+      - Makefile
       - webapp/.eslintrc.json
+      - webapp/.gitignore
+      - webapp/babel.config.js
       - webapp/package.json
+      - webapp/src/manifest.test.js
       - webapp/tsconfig.json
       - webapp/webpack.config.js
-      - webapp/src/manifest.test.js
+
     actions:
       - type: overwrite_file
         params:
