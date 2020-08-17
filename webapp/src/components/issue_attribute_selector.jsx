@@ -11,7 +11,7 @@ import Setting from 'components/setting';
 export default class IssueAttributeSelector extends PureComponent {
     static propTypes = {
         isMulti: PropTypes.bool.isRequired,
-        repo: PropTypes.string.isRequired,
+        repoName: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         loadOptions: PropTypes.func.isRequired,
@@ -32,13 +32,13 @@ export default class IssueAttributeSelector extends PureComponent {
     }
 
     componentDidMount() {
-        if (this.props.repo) {
+        if (this.props.repoName) {
             this.loadOptions();
         }
     }
 
     componentDidUpdate(prevProps) {
-        if (this.props.repo && prevProps.repo !== this.props.repo) {
+        if (this.props.repoName && prevProps.repoName !== this.props.repoName) {
             this.loadOptions();
         }
     }
@@ -102,7 +102,7 @@ export default class IssueAttributeSelector extends PureComponent {
             selection = this.props.selection || {};
         }
 
-        const noOptionsMessage = this.props.repo ? 'No options' : 'Please select a repository first';
+        const noOptionsMessage = this.props.repoName ? 'No options' : 'Please select a repository first';
 
         return (
             <Setting {...this.props}>

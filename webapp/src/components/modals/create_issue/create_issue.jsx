@@ -113,21 +113,21 @@ export default class CreateIssueModal extends PureComponent {
         return (
             <>
                 <GithubLabelSelector
-                    repo={this.state.repo.name}
+                    repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
                 />
 
                 <GithubAssigneeSelector
-                    repo={this.state.repo.name}
+                    repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedAssignees={this.state.assignees}
                     onChange={this.handleAssigneesChange}
                 />
 
                 <GithubMilestoneSelector
-                    repo={this.state.repo.name}
+                    repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedMilestone={this.state.milestone}
                     onChange={this.handleMilestoneChange}

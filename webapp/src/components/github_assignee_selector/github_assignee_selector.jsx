@@ -8,7 +8,7 @@ import IssueAttributeSelector from 'components/issue_attribute_selector';
 
 export default class GithubAssigneeSelector extends PureComponent {
     static propTypes = {
-        repo: PropTypes.string.isRequired,
+        repoName: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
         selectedAssignees: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
@@ -18,11 +18,11 @@ export default class GithubAssigneeSelector extends PureComponent {
     };
 
     loadAssignees = async () => {
-        if (this.props.repo === '') {
+        if (this.props.repoName === '') {
             return [];
         }
 
-        const options = await this.props.actions.getAssigneeOptions(this.props.repo);
+        const options = await this.props.actions.getAssigneeOptions(this.props.repoName);
 
         if (options.error) {
             throw new Error('Failed to load assignees');
