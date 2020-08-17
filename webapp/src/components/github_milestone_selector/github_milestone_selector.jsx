@@ -38,15 +38,6 @@ export default class GithubMilestoneSelector extends PureComponent {
         }));
     };
 
-    onChange = (selection) => {
-        if (!selection || !selection.value) {
-            this.props.onChange(null);
-            return;
-        }
-
-        this.props.onChange(selection);
-    }
-
     render() {
         return (
             <div className='form-group margin-bottom x3'>
@@ -58,7 +49,6 @@ export default class GithubMilestoneSelector extends PureComponent {
                     isMulti={false}
                     selection={this.props.selectedMilestone}
                     loadOptions={this.loadMilestones}
-                    onChange={this.onChange}
                 />
             </div>
         );

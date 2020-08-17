@@ -71,7 +71,7 @@ export default class IssueAttributeSelector extends PureComponent {
         }
 
         if (!this.props.selection) {
-            this.props.onChange({});
+            this.props.onChange(null);
             return;
         }
 
@@ -82,7 +82,7 @@ export default class IssueAttributeSelector extends PureComponent {
             }
         }
 
-        this.props.onChange({});
+        this.props.onChange(null);
     }
 
     onChange = (selection) => {
@@ -91,7 +91,7 @@ export default class IssueAttributeSelector extends PureComponent {
             return;
         }
 
-        this.props.onChange(selection || {});
+        this.props.onChange(selection);
     };
 
     render() {
