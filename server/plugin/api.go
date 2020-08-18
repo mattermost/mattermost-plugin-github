@@ -963,7 +963,9 @@ func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get issue", StatusCode: http.StatusInternalServerError})
 		return
 	}
-	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	if result.Body != nil {
+		*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	}
 	p.writeJSON(w, result)
 }
 
@@ -1000,7 +1002,9 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get pull request", StatusCode: http.StatusInternalServerError})
 		return
 	}
-	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	if result.Body != nil {
+		*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	}
 	p.writeJSON(w, result)
 }
 
