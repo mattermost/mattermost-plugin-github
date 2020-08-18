@@ -110,7 +110,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					EncryptionKey:           "mockKey",
 					EnterpriseBaseURL:       "",
 					EnterpriseUploadURL:     "",
-					EnableCodePreview:       false,
+					EnableCodePreview:       "disable",
 				})
 			p.initializeAPI()
 			p.SetAPI(&plugintest.API{})

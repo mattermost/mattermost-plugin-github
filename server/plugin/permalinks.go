@@ -88,6 +88,8 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 // makeReplacements perform the given replacements on the msg and returns
 // the new msg. The replacements slice needs to be sorted by the index in ascending order.
 func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClient *github.Client) string {
+	config := p.getConfiguration()
+
 	// iterating the slice in reverse to preserve the replacement indices.
 	for i := len(replacements) - 1; i >= 0; i-- {
 		r := replacements[i]
@@ -97,15 +99,32 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 			continue
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), permalinkReqTimeout)
+		defer cancel()
+
+		// Check if repo is public
+		if config.EnableCodePreview != "privateAndPublic" {
+			repo, _, err := ghClient.Repositories.Get(ctx, r.permalinkInfo.user, r.permalinkInfo.repo)
+			if err != nil {
+				p.API.LogError("error while fetching repository information",
+					"error", err.Error(),
+					"repo", r.permalinkInfo.repo,
+					"user", r.permalinkInfo.user)
+				continue
+			}
+
+			if repo.GetPrivate() {
+				continue
+			}
+		}
+
 		// get the file contents
 		opts := github.RepositoryContentGetOptions{
 			Ref: r.permalinkInfo.commit,
 		}
 		// TODO: make all of these requests concurrently.
-		reqctx, cancel := context.WithTimeout(context.Background(), permalinkReqTimeout)
-		fileContent, _, _, err := ghClient.Repositories.GetContents(reqctx,
+		fileContent, _, _, err := ghClient.Repositories.GetContents(ctx,
 			r.permalinkInfo.user, r.permalinkInfo.repo, r.permalinkInfo.path, &opts)
-		defer cancel()
 		if err != nil {
 			p.API.LogError("error while fetching file contents", "error", err.Error(), "path", r.permalinkInfo.path)
 			continue
