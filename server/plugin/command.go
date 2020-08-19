@@ -361,12 +361,15 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
-	private := model.NewAutocompleteData("private", "", "If used, the github bot will ask for read access to your private repositories")
+	private := model.NewAutocompleteData("private", "(optional)", "If used, read access to your private repositories will be requested")
 	connect.AddCommand(private)
 	github.AddCommand(connect)
 
 	disconnect := model.NewAutocompleteData("disconnect", "", "Disconnect your Mattermost account from your GitHub account")
 	github.AddCommand(disconnect)
+
+	help := model.NewAutocompleteData("help", "", "Display Slash Command help text")
+	github.AddCommand(help)
 
 	todo := model.NewAutocompleteData("todo", "", "Get a list of unread messages and pull requests awaiting your review")
 	github.AddCommand(todo)
