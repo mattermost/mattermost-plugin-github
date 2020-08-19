@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -98,6 +99,7 @@ func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) 
 
 func (p *Plugin) initializeAPI() {
 	p.router = mux.NewRouter()
+	p.router.Use(p.withRecovery)
 
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
 	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
@@ -118,6 +120,9 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/createissuecomment", p.extractUserMiddleWare(p.createIssueComment, ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.extractUserMiddleWare(p.getMentions, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/unreads", p.extractUserMiddleWare(p.getUnreads, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/labels", p.extractUserMiddleWare(p.getLabels, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/milestones", p.extractUserMiddleWare(p.getMilestones, ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/assignees", p.extractUserMiddleWare(p.getAssignees, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.extractUserMiddleWare(p.getRepositories, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.extractUserMiddleWare(p.updateSettings, ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/user", p.extractUserMiddleWare(p.getGitHubUser, ResponseTypeJSON)).Methods(http.MethodPost)
@@ -126,6 +131,21 @@ func (p *Plugin) initializeAPI() {
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
+}
+
+func (p *Plugin) withRecovery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if x := recover(); x != nil {
+				p.API.LogError("Recovered from a panic",
+					"url", r.URL.String(),
+					"error", x,
+					"stack", string(debug.Stack()))
+			}
+		}()
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (p *Plugin) extractUserMiddleWare(handler HTTPHandlerFuncWithUser, responseType ResponseType) http.HandlerFunc {
@@ -520,9 +540,17 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 			continue
 		}
 
+		issueURL := n.GetSubject().GetURL()
+		issueNumIndex := strings.LastIndex(issueURL, "/")
+		issueNum := issueURL[issueNumIndex+1:]
+		subjectURL := n.GetSubject().GetURL()
+		if n.GetSubject().GetLatestCommentURL() != "" {
+			subjectURL = n.GetSubject().GetLatestCommentURL()
+		}
+
 		filteredNotifications = append(filteredNotifications, &filteredNotification{
 			Notification: *n,
-			HTMLUrl:      fixGithubNotificationSubjectURL(n.GetSubject().GetURL()),
+			HTMLUrl:      fixGithubNotificationSubjectURL(subjectURL, issueNum),
 		})
 	}
 
@@ -938,7 +966,9 @@ func (p *Plugin) getIssueByNumber(w http.ResponseWriter, r *http.Request, userID
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get issue", StatusCode: http.StatusInternalServerError})
 		return
 	}
-	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	if result.Body != nil {
+		*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	}
 	p.writeJSON(w, result)
 }
 
@@ -975,8 +1005,112 @@ func (p *Plugin) getPrByNumber(w http.ResponseWriter, r *http.Request, userID st
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get pull request", StatusCode: http.StatusInternalServerError})
 		return
 	}
-	*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	if result.Body != nil {
+		*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
+	}
 	p.writeJSON(w, result)
+}
+
+func (p *Plugin) getLabels(w http.ResponseWriter, r *http.Request, userID string) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	var allLabels []*github.Label
+	opt := github.ListOptions{PerPage: 50}
+
+	for {
+		labels, resp, err := githubClient.Issues.ListLabels(context.Background(), owner, repo, &opt)
+		if err != nil {
+			mlog.Error(err.Error())
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allLabels = append(allLabels, labels...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	p.writeJSON(w, allLabels)
+}
+
+func (p *Plugin) getAssignees(w http.ResponseWriter, r *http.Request, userID string) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	var allAssignees []*github.User
+	opt := github.ListOptions{PerPage: 50}
+
+	for {
+		assignees, resp, err := githubClient.Issues.ListAssignees(context.Background(), owner, repo, &opt)
+		if err != nil {
+			mlog.Error(err.Error())
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allAssignees = append(allAssignees, assignees...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	p.writeJSON(w, allAssignees)
+}
+
+func (p *Plugin) getMilestones(w http.ResponseWriter, r *http.Request, userID string) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnect(*info.Token)
+	var allMilestones []*github.Milestone
+	opt := github.ListOptions{PerPage: 50}
+
+	for {
+		milestones, resp, err := githubClient.Issues.ListMilestones(context.Background(), owner, repo, &github.MilestoneListOptions{ListOptions: opt})
+		if err != nil {
+			mlog.Error(err.Error())
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allMilestones = append(allMilestones, milestones...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	p.writeJSON(w, allMilestones)
 }
 
 func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID string) {
@@ -1026,14 +1160,16 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 
 	// Only send down fields to client that are needed
 	type RepositoryResponse struct {
-		Name     string `json:"name,omitempty"`
-		FullName string `json:"full_name,omitempty"`
+		Name        string          `json:"name,omitempty"`
+		FullName    string          `json:"full_name,omitempty"`
+		Permissions map[string]bool `json:"permissions,omitempty"`
 	}
 
 	resp := make([]RepositoryResponse, len(allRepos))
 	for i, r := range allRepos {
 		resp[i].Name = r.GetName()
 		resp[i].FullName = r.GetFullName()
+		resp[i].Permissions = r.GetPermissions()
 	}
 
 	p.writeJSON(w, resp)
@@ -1041,10 +1177,13 @@ func (p *Plugin) getRepositories(w http.ResponseWriter, r *http.Request, userID 
 
 func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID string) {
 	type IssueRequest struct {
-		Title  string `json:"title"`
-		Body   string `json:"body"`
-		Repo   string `json:"repo"`
-		PostID string `json:"post_id"`
+		Title     string   `json:"title"`
+		Body      string   `json:"body"`
+		Repo      string   `json:"repo"`
+		PostID    string   `json:"post_id"`
+		Labels    []string `json:"labels"`
+		Assignees []string `json:"assignees"`
+		Milestone int      `json:"milestone"`
 	}
 
 	// get data for the issue from the request body and fill IssueRequest object
@@ -1094,8 +1233,16 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	ghIssue := &github.IssueRequest{
-		Title: &issue.Title,
-		Body:  &issue.Body,
+		Title:     &issue.Title,
+		Body:      &issue.Body,
+		Labels:    &issue.Labels,
+		Assignees: &issue.Assignees,
+	}
+
+	// submitting the request with an invalid milestone ID results in a 422 error
+	// we make sure it's not zero here, because the webapp client might have left this field empty
+	if issue.Milestone > 0 {
+		ghIssue.Milestone = &issue.Milestone
 	}
 
 	permalink := p.getPermaLink(issue.PostID)
@@ -1120,12 +1267,14 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	githubClient := p.githubConnect(*info.Token)
 	result, resp, err := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
 	if err != nil {
+		mlog.Error(fmt.Sprintf("Failed to create issue: %v", err.Error()))
 		p.writeAPIError(w,
 			&APIErrorResponse{
 				ID: "",
 				Message: "failed to create issue: " + getFailReason(resp.StatusCode,
 					issue.Repo,
-					currentUser.Username),
+					currentUser.Username,
+				),
 				StatusCode: resp.StatusCode,
 			})
 		return
@@ -1179,4 +1328,18 @@ func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.writeJSON(w, info.Token)
+}
+
+// parseRepo parses the owner & repository name from the repo query parameter
+func parseRepo(repoParam string) (owner, repo string, err error) {
+	if repoParam == "" {
+		return "", "", errors.New("repository cannot be blank")
+	}
+
+	splitted := strings.Split(repoParam, "/")
+	if len(splitted) != 2 {
+		return "", "", errors.New("invalid repository")
+	}
+
+	return splitted[0], splitted[1], nil
 }
