@@ -7,7 +7,6 @@ import (
 	"unicode"
 
 	"github.com/google/go-github/v31/github"
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 )
@@ -176,7 +175,7 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	repo := parameters[0]
 
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
@@ -193,7 +192,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
 	}
 	return text
@@ -213,7 +212,7 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	message, err := renderTemplate("helpText", p.getConfiguration())
 	if err != nil {
-		p.API.LogWarn("failed to render help template", "error", err.Error())
+		p.API.LogWarn("Failed to render help template", "error", err.Error())
 		return "Encountered an error posting help text."
 	}
 
@@ -242,12 +241,18 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		if value {
 			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
 			if err != nil {
-				mlog.Error(err.Error())
+				p.API.LogWarn("Failed to store GitHub to userID mapping",
+					"userID", userInfo.UserID,
+					"GitHub username", userInfo.GitHubUsername,
+					"error", err.Error())
 			}
 		} else {
 			err := p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey)
 			if err != nil {
-				mlog.Error(err.Error())
+				p.API.LogWarn("Failed to delete GitHub to userID mapping",
+					"userID", userInfo.UserID,
+					"GitHub username", userInfo.GitHubUsername,
+					"error", err.Error())
 			}
 		}
 
@@ -258,7 +263,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 
 	err := p.storeGitHubUserInfo(userInfo)
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to store github user info", "error", err.Error())
 		return "Failed to store settings"
 	}
 
