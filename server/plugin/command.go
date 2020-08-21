@@ -126,7 +126,6 @@ func (p *Plugin) unmuteGithubUsers(_ *plugin.Context, args *model.CommandArgs, p
 }
 
 func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
