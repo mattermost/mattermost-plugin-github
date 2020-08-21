@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
@@ -66,16 +65,17 @@ func NewPlugin() *Plugin {
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
-		"subscribe":    p.handleSubscribe,
-		"unsubscribe":  p.handleUnsubscribe,
-		"disconnect":   p.handleDisconnect,
-		"todo":         p.handleTodo,
-		"mute-users":   p.muteGithubUser,
-		"unmute-users": p.unmuteGithubUsers,
-		"me":           p.handleMe,
-		"help":         p.handleHelp,
-		"":             p.handleHelp,
-		"settings":     p.handleSettings,
+		"subscriptions": p.handleSubscriptions,
+		"subscribe":     p.handleSubscribe,
+		"unsubscribe":   p.handleUnsubscribe,
+		"disconnect":    p.handleDisconnect,
+		"todo":          p.handleTodo,
+		"mute-users":    p.muteGithubUser,
+		"unmute-users":  p.unmuteGithubUsers,
+		"me":            p.handleMe,
+		"help":          p.handleHelp,
+		"":              p.handleHelp,
+		"settings":      p.handleSettings,
 	}
 
 	return p
@@ -86,7 +86,7 @@ func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 
 	client, err := GetGitHubClient(token, config)
 	if err != nil {
-		p.API.LogError("failed to create GitHub client", "error", err.Error())
+		p.API.LogError("Failed to create GitHub client", "error", err.Error())
 		return nil
 	}
 
@@ -127,11 +127,6 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	p.initializeAPI()
-
-	err := p.API.RegisterCommand(getCommand())
-	if err != nil {
-		return errors.Wrap(err, "failed to register command")
-	}
 
 	botID, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
@@ -176,7 +171,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 
 	shouldProcessMessage, err := p.Helpers.ShouldProcessMessage(post)
 	if err != nil {
-		p.API.LogError("error while checking if the message should be processed", "error", err.Error())
+		p.API.LogError("Error while checking if the message should be processed", "error", err.Error())
 		return nil, ""
 	}
 
@@ -188,7 +183,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	info, appErr := p.getGitHubUserInfo(post.UserId)
 	if appErr != nil {
 		if appErr.ID != apiErrorIDNotConnected {
-			p.API.LogError("error in getting user info", "error", appErr.Message)
+			p.API.LogError("Error in getting user info", "error", appErr.Message)
 		}
 		return nil, ""
 	}
@@ -280,7 +275,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 	unencryptedToken, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken)
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to decrypt access token", "error", err.Error())
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
 	}
 
@@ -412,7 +407,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		}
 
 		if n.GetRepository() == nil {
-			p.API.LogError("unable to get repository for notification in todo list. Skipping.")
+			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
 			continue
 		}
 
@@ -495,28 +490,31 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	githubClient := p.githubConnect(*info.Token)
 	config := p.getConfiguration()
 
-	issues, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	query := getReviewSearchQuery(username, config.GitHubOrg)
+	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to search for review", "query", query, "error", err.Error())
 		return false
 	}
 
-	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	query = getYourPrsSearchQuery(username, config.GitHubOrg)
+	yourPrs, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to search for PRs", "query", query, "error", "error", err.Error())
 		return false
 	}
 
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	query = getYourAssigneeSearchQuery(username, config.GitHubOrg)
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to search for assignments", "query", query, "error", "error", err.Error())
 		return false
 	}
 
 	relevantNotifications := false
 	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to list notifications", "error", err.Error())
 		return false
 	}
 
@@ -563,7 +561,7 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 
 	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
 	if err != nil {
-		mlog.Warn(err.Error())
+		p.API.LogWarn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
 		return false
 	}
 

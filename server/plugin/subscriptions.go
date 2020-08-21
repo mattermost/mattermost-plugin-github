@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v31/github"
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
@@ -128,7 +127,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to get repository or org for subscribe action", "error", err.Error())
 		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 

@@ -317,10 +317,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 	template.Must(masterTemplate.New("helpText").Parse("" +
 		"* `/github connect{{if .EnablePrivateRepo}} [private]{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
 		"{{if .EnablePrivateRepo}}" +
-		"  * `private` is optional. If used, the GitHub bot will ask for read access to your private repositories. " +
+		"  * `private` is optional. If used, read access to your private repositories will be requested." +
 		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
 		"{{end}}" +
 		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
+		"* `/github help` - Display Slash Command help text\n" +
 		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
 		"* `/github subscribe list` - Will list the current channel subscriptions\n" +
 		"* `/github subscribe owner[/repo] [features] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
