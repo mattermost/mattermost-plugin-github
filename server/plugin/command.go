@@ -85,6 +85,46 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 	return p.githubConnect(*userInfo.Token)
 }
 
+func (p *Plugin) muteGithubUser(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	mutedUsernameBytes, _ := p.API.KVGet(userInfo.UserID + "-muted-users")
+	mutedUsernames := string(mutedUsernameBytes)
+	if len(mutedUsernames) > 0 {
+		// , is a character not allowed in github usernames so we can split on them
+		mutedUsernames = mutedUsernames + "," + strings.Join(parameters[:], ",")
+	} else {
+		mutedUsernames = strings.Join(parameters[:], ",")
+	}
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsernames)); err != nil {
+		return "Error occurred saving list of muted users"
+	}
+	return mutedUsernames
+}
+
+// Returns the elements in a, that are not in b
+func arrayDifference(a, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []string
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
+
+func (p *Plugin) unmuteGithubUsers(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	mutedUsernameBytes, _ := p.API.KVGet(userInfo.UserID + "-muted-users")
+	mutedUsernames := strings.Split(string(mutedUsernameBytes), ",")
+	newMutedList := arrayDifference(mutedUsernames, parameters)
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
+		return "Error occurred saving list of muted users"
+	}
+	return "Your muted usernames: " + strings.Join(newMutedList, ", ")
+}
+
 func (p *Plugin) handleSubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}

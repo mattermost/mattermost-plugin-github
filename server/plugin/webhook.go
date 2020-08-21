@@ -603,10 +603,17 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
+
 		if _, err := p.API.CreatePost(post); err != nil {
 			mlog.Error(err.Error())
 		}
 	}
+}
+
+func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
+	mutedUsernameBytes, _ := p.API.KVGet(userID + "-muted-users")
+	mutedUsernames := string(mutedUsernameBytes)
+	return strings.Contains(mutedUsernames, sender)
 }
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
@@ -832,6 +839,11 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	message, err := renderTemplate(templateName, event)
 	if err != nil {
 		mlog.Error("failed to render template", mlog.Err(err))
+		return
+	}
+
+	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
+		mlog.Info("Commenter is muted, skipping notification")
 		return
 	}
 
