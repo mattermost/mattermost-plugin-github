@@ -90,9 +90,9 @@ func (p *Plugin) muteGithubUser(_ *plugin.Context, args *model.CommandArgs, para
 	mutedUsernames := string(mutedUsernameBytes)
 	if len(mutedUsernames) > 0 {
 		// , is a character not allowed in github usernames so we can split on them
-		mutedUsernames = mutedUsernames + "," + strings.Join(parameters[:], ",")
+		mutedUsernames = mutedUsernames + "," + strings.Join(parameters, ",")
 	} else {
-		mutedUsernames = strings.Join(parameters[:], ",")
+		mutedUsernames = strings.Join(parameters, ",")
 	}
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsernames)); err != nil {
 		return "Error occurred saving list of muted users"
@@ -120,7 +120,7 @@ func (p *Plugin) unmuteGithubUsers(_ *plugin.Context, args *model.CommandArgs, p
 	mutedUsernames := strings.Split(string(mutedUsernameBytes), ",")
 	newMutedList := arrayDifference(mutedUsernames, parameters)
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
-		return "Error occurred saving list of muted users"
+		return "Error occurred unmuting users"
 	}
 	return "Your muted usernames: " + strings.Join(newMutedList, ", ")
 }
