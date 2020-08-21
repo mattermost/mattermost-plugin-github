@@ -66,14 +66,15 @@ func NewPlugin() *Plugin {
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
-		"subscribe":   p.handleSubscribe,
-		"unsubscribe": p.handleUnsubscribe,
-		"disconnect":  p.handleDisconnect,
-		"todo":        p.handleTodo,
-		"me":          p.handleMe,
-		"help":        p.handleHelp,
-		"":            p.handleHelp,
-		"settings":    p.handleSettings,
+		"subscriptions": p.handleSubscriptions,
+		"subscribe":     p.handleSubscribe,
+		"unsubscribe":   p.handleUnsubscribe,
+		"disconnect":    p.handleDisconnect,
+		"todo":          p.handleTodo,
+		"me":            p.handleMe,
+		"help":          p.handleHelp,
+		"":              p.handleHelp,
+		"settings":      p.handleSettings,
 	}
 
 	return p
@@ -125,11 +126,6 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	p.initializeAPI()
-
-	err := p.API.RegisterCommand(getCommand())
-	if err != nil {
-		return errors.Wrap(err, "failed to register command")
-	}
 
 	botID, err := p.Helpers.EnsureBot(&model.Bot{
 		Username:    "github",
