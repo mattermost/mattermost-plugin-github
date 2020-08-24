@@ -66,7 +66,7 @@ func getCommand(config *Configuration) *model.Command {
 		DisplayName:      "GitHub",
 		Description:      "Integration with GitHub.",
 		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
+		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute-users, unmute-users, help",
 		AutoCompleteHint: "[command]",
 		AutocompleteData: getAutocompleteData(config),
 	}
@@ -448,6 +448,13 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
+
+	mute := model.NewAutocompleteData("mute-users", "[github username] [github username 2]", "Mute comment notifications from specific users on your authored issues and PRs")
+
+	github.AddCommand(mute)
+
+	unmute := model.NewAutocompleteData("unmute-users", "[github username] [github username 2]", "Un-mute comment notifications from specific users on your authored issues and PRs")
+	github.AddCommand(unmute)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
 	setting := []model.AutocompleteListItem{{
