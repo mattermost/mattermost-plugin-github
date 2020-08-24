@@ -88,7 +88,7 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 func (p *Plugin) muteGithubUser(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	mutedUsernameBytes, err := p.API.KVGet(userInfo.UserID + "-muted-users")
 	if err != nil {
-		return "Error occured saving list of muted users"
+		return "Error occurred saving list of muted users"
 	}
 	mutedUsernames := string(mutedUsernameBytes)
 	if len(mutedUsernames) > 0 {
