@@ -6,7 +6,6 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strings"
 
@@ -843,7 +842,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	}
 
 	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
-		log.Print("Commenter is muted, skipping notification")
+		p.API.LogDebug("Commenter is muted, skipping notification")
 		return
 	}
 

@@ -86,7 +86,10 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 }
 
 func (p *Plugin) muteGithubUser(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	mutedUsernameBytes, _ := p.API.KVGet(userInfo.UserID + "-muted-users")
+	mutedUsernameBytes, err := p.API.KVGet(userInfo.UserID + "-muted-users")
+	if err != nil {
+		return "Error occured saving list of muted users"
+	}
 	mutedUsernames := string(mutedUsernameBytes)
 	if len(mutedUsernames) > 0 {
 		// , is a character not allowed in github usernames so we can split on them
