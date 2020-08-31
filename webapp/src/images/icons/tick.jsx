@@ -4,6 +4,6 @@
 import React from 'react';
 import {CheckIcon} from '@primer/octicons-react';
 
-export default function TickIcon () {
-    return ( <CheckIcon size='small'/>);
-}
+export default () => (
+    <CheckIcon size='small'/>
+);

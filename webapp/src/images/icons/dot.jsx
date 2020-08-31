@@ -4,6 +4,6 @@
 import React from 'react';
 import {DotIcon} from '@primer/octicons-react';
 
-export default function SpotIcon() {
-    return ( <DotIcon size='small'/>);
-}
+export default () => (
+    <DotIcon size='small'/>
+);

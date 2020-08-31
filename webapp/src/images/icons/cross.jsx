@@ -4,6 +4,6 @@
 import React from 'react';
 import {XIcon} from '@primer/octicons-react';
 
-export default function CrossIcon() {
-    return ( <XIcon size='small'/>);
-}
+export default () => (
+    <XIcon size='small'/>
+);
