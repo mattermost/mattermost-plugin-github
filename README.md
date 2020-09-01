@@ -51,7 +51,7 @@ Once connected, you'll have access to the following features:
 
 ## Before You Start
 
-This guide assumes that you have a GitHub account and that you're a Mattermost System Admin.
+This guide assumes that you have a GitHub account, that you're a Mattermost System Admin, and you're running Mattermost v5.12 or higher.
 
 If you’re running Mattermost v5.11 or earlier, first download the latest release of this plugin from the [releases page of this GitHub repository](https://github.com/mattermost/mattermost-plugin-github/releases) and upload it to your Mattermost instance [following this documentation](https://docs.mattermost.com/administration/plugins.html#plugin-uploads).
 
