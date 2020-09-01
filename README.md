@@ -47,6 +47,7 @@ Once connected, you'll have access to the following features:
 * __Post actions__ - Create a GitHub issue from a post or attach a post message to an issue. Hover over a post to reveal the post actions menu and click **More Actions (...)**.
 * __Sidebar buttons__ - Stay up-to-date with how many reviews, unread messages, assignments, and open pull requests you have with buttons in the Mattermost sidebar.
 * __Slash commands__ - Interact with the GitHub plugin using the `/github` slash command.
+   * Begin by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
 
 ## Before You Start
 
