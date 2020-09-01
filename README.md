@@ -29,7 +29,7 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ## Audience
 
-This guide is intended for Mattermost System Admins setting up the GitHub plugin and Mattermost users who want information about the plugin functionality.
+This guide is intended for Mattermost System Admins setting up the GitHub plugin and Mattermost users who want information about the plugin functionality. For more information about contributing to this plugin, visit the [Development section](https://github.com/mattermost/mattermost-plugin-github#development).
 
 ## License
 
