@@ -33,7 +33,7 @@ This guide is intended for Mattermost System Admins setting up the GitHub plugin
 
 ## License
 
-This repository is licensed under the Apache 2.0 License, except for the [server/enterprise](server/enterprise) directory which is licensed under the [Mattermost Source Available License](LICENSE.enterprise). See [Mattermost Source Available License](https://docs.mattermost.com/overview/faq.html#mattermost-source-available-license) to learn more.
+This repository is licensed under the Apache 2.0 License.
 
 ## About the GitHub Plugin
 
