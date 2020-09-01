@@ -16,14 +16,13 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
  - [2. License](#2-license)
  - [3. About the GitHub Plugin](#3-about-the-github-plugin)
  - [4. Before You Start](#4-before-you-start)
- - [5. Check your Version](#5-check-your-version)
- - [6. Configuration](#6-configuration)
- - [7. Using the Plugin](#7-using-the-plugin)
- - [8. Onboarding Your Users](#8-onboarding-your-users)
- - [9. Slash Commands](#9-slash-commands)
- - [10. Configuration Notes in High Availability Mode](#4-configuration-notes-in-high-availability-mode)
+ - [5. Configuration](#6-configuration)
+ - [6. Using the Plugin](#7-using-the-plugin)
+ - [7. Onboarding Your Users](#8-onboarding-your-users)
+ - [8. Slash Commands](#9-slash-commands)
+ - [9. Configuration Notes in High Availability Mode](#4-configuration-notes-in-high-availability-mode)
+ - [10. Frequently Asked Questions](#6-frequently-asked-questions)
  - [11. Development](#5-development)
- - [12. Frequently Asked Questions](#6-frequently-asked-questions)
 
 ![GitHub plugin screenshot](https://user-images.githubusercontent.com/13119842/54380268-6adab180-4661-11e9-8470-a9c615c00041.png)
 
@@ -46,23 +45,16 @@ Once connected, you'll have access to the following features:
 * __Daily reminders__ - The first time you log in to Mattermost each day, get a post letting you know what issues and pull requests need your attention.
 * __Notifications__ - Get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub.
 * __Post actions__ - Create a GitHub issue from a post or attach a post message to an issue. Hover over a post to reveal the post actions menu and click **More Actions (...)**.
-* __Sidebar buttons__ - Stay up-to-date with how many reviews, unread messages, assignments, and open pull requests you have with buttons in the Mattermost sidebar
-* __Slash commands__ - Interact with the GitHub plugin using the `/github` slash command
+* __Sidebar buttons__ - Stay up-to-date with how many reviews, unread messages, assignments, and open pull requests you have with buttons in the Mattermost sidebar.
+* __Slash commands__ - Interact with the GitHub plugin using the `/github` slash command.
 
 ## Before You Start
 
-This guide assumes that you have a GitHub account, that you're a Mattermost System Admin, and you're running Mattermost v5.12 or higher.
+This guide assumes:
 
-If you’re running Mattermost v5.11 or earlier, first download the latest release of this plugin from the [releases page of this GitHub repository](https://github.com/mattermost/mattermost-plugin-github/releases) and upload it to your Mattermost instance [following this documentation](https://docs.mattermost.com/administration/plugins.html#plugin-uploads).
-
-## Check your version
-
-In Mattermost 5.12 and later, the GitHub plugin is pre-packaged and no steps are required for installation. You can go directly to [Configuration](#configuration).
-
-In Mattermost 5.11 and earlier, follow these steps:
-1. Go to https://github.com/mattermost/mattermost-plugin-github/releases to download the latest release file in zip or tar.gz format.
-2. Upload the file through **System Console > Plugins > Management**, or manually upload it to the Mattermost server under plugin directory. See [documentation](https://docs.mattermost.com/administration/plugins.html#set-up-guide) for more details.
-3. Once complete, follow the steps provided in the Configuration section.
+- You have a GitHub account.
+- You're a Mattermost System Admin.
+- You're running Mattermost v5.12 or higher.
 
 ## Configuration
 
@@ -98,7 +90,7 @@ You must create a webhook for each organization you want to receive notification
 7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`.
 7. Hit **Add Webhook** to save it.
 
-Repeat this process if you have multiple organizations.
+If you have multiple organizations, repeat the process starting from step 3 to create a webhook for each organization.
 
 ### Step 3: Configure the Plugin in Mattermost
 
@@ -113,7 +105,7 @@ or
 - If the user is an existing user account you want to preserve, change its username and restart the Mattermost server. Once restarted, the plugin will create a bot 
 account with the name `github`.
 
-**Note:** For versions 0.9 and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
+**Note:** For `v0.9.0` and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
 
 #### Generate a Key
   
@@ -130,15 +122,15 @@ You're all set!
 
 ## Using the Plugin
 
-Once configuration is complete, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. The command is only visible to you.
+Once configuration is complete, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. The command and its output isn't visible to other members of the channel.
 
 ## Onboarding Your Users
 
 When you’ve tested the plugin and confirmed it’s working, notify your team so they can connect their GitHub account to Mattermost and get started. Copy and paste the text below, edit it to suit your requirements, and send it out.
 
-**Hi team, 
+> Hi team, 
 
-We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. The command is only visible to you.. Then, take a look at the [slash commands](https://github.com/mattermost/mattermost-plugin-github#slash-commands) section for details about how to use the plugin.**
+> We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. The command is only visible to you.. Then, take a look at the [slash commands](https://github.com/mattermost/mattermost-plugin-github#slash-commands) section for details about how to use the plugin.
 
 ## Slash Commands
 
@@ -184,22 +176,6 @@ If you are running Mattermost v5.11 or earlier in [High Availability mode](https
 },
 ```
 
-## Development
-
-This plugin contains both a server and web app portion.
-
-- Use `make dist` to build distributions of the plugin that you can upload to a Mattermost server.
-- Use `make check-style` to check the style.
-- Use `make deploy` to deploy the plugin to your local server. 
-
-Before running `make deploy` you need to set a few environment variables:
-
-```
-export MM_SERVICESETTINGS_SITEURL=http://localhost:8065
-export MM_ADMIN_USERNAME=admin
-export MM_ADMIN_PASSWORD=password
-```
-
 ## Frequently Asked Questions
 
 ### How do I connect a repository instead of an organization?
@@ -221,3 +197,20 @@ Feel free to create a GitHub issue or [join the GitHub Plugin channel on our com
 ### How does the plugin save user data for each connected GitHub user?
 
 GitHub user tokens are AES encrypted with an At Rest Encryption Key configured in the plugin's settings page. Once encrypted, the tokens are saved in the `PluginKeyValueStore` table in your Mattermost database.
+
+
+## Development
+
+This plugin contains both a server and web app portion.
+
+- Use `make dist` to build distributions of the plugin that you can upload to a Mattermost server.
+- Use `make check-style` to check the style.
+- Use `make deploy` to deploy the plugin to your local server. 
+
+Before running `make deploy` you need to set a few environment variables:
+
+```
+export MM_SERVICESETTINGS_SITEURL=http://localhost:8065
+export MM_ADMIN_USERNAME=admin
+export MM_ADMIN_PASSWORD=password
+```
