@@ -31,6 +31,9 @@ var validFeatures = map[string]bool{
 	featurePullReviews:   true,
 }
 
+const list = "list"
+const deleteAll = "delete-all"
+
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
@@ -85,22 +88,82 @@ func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 	return p.githubConnect(*userInfo.Token)
 }
 
-func (p *Plugin) muteGithubUser(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	mutedUsernameBytes, err := p.API.KVGet(userInfo.UserID + "-muted-users")
 	if err != nil {
-		return "Error occurred saving list of muted users"
+		return nil
 	}
 	mutedUsernames := string(mutedUsernameBytes)
+	var mutedUsers []string
+	if len(mutedUsernames) == 0 {
+		return mutedUsers
+	}
+	mutedUsers = strings.Split(mutedUsernames, ",")
+	return mutedUsers
+}
+
+func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+	mutedUsernames := p.getMutedUsernames(userInfo)
+	return "Your muted usernames: " + strings.Join(mutedUsernames, ", ")
+}
+
+func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+	mutedUsernames := p.getMutedUsernames(userInfo)
+	var mutedUsers string
 	if len(mutedUsernames) > 0 {
 		// , is a character not allowed in github usernames so we can split on them
-		mutedUsernames = mutedUsernames + "," + strings.Join(parameters, ",")
+		mutedUsers = strings.Join(mutedUsernames, ",") + "," + username
 	} else {
-		mutedUsernames = strings.Join(parameters, ",")
+		mutedUsers = username
 	}
-	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsernames)); err != nil {
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return mutedUsernames
+	return "Your muted usernames: " + mutedUsers
+}
+
+func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+	mutedUsernames := p.getMutedUsernames(userInfo)
+	userToMute := []string{username}
+	newMutedList := arrayDifference(mutedUsernames, userToMute)
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
+		return "Error occurred unmuting users"
+	}
+	return "Your muted usernames: " + strings.Join(newMutedList, ", ")
+}
+
+func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte("")); err != nil {
+		return "Error occurred unmuting users"
+	}
+	return "Unmuted all users"
+}
+
+func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid mute command. Available commands are 'list', 'add' and 'delete'."
+	}
+
+	command := parameters[0]
+	var userToMute string
+	if len(parameters) == 1 && command != list && command != deleteAll {
+		return "Invalid mute command. " + command + " requires a username parameter"
+	} else if len(parameters) > 1 && command != list && command != deleteAll {
+		userToMute = parameters[1]
+	}
+
+	switch {
+	case command == list:
+		return p.handleMuteList(args, userInfo)
+	case command == "add":
+		return p.handleMuteAdd(args, userToMute, userInfo)
+	case command == "delete":
+		return p.handleUnmute(args, userToMute, userInfo)
+	case command == deleteAll:
+		return p.handleUnmuteAll(args, userInfo)
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
 }
 
 // Returns the elements in a, that are not in b
@@ -116,16 +179,6 @@ func arrayDifference(a, b []string) []string {
 		}
 	}
 	return diff
-}
-
-func (p *Plugin) unmuteGithubUsers(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	mutedUsernameBytes, _ := p.API.KVGet(userInfo.UserID + "-muted-users")
-	mutedUsernames := strings.Split(string(mutedUsernameBytes), ",")
-	newMutedList := arrayDifference(mutedUsernames, parameters)
-	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
-		return "Error occurred unmuting users"
-	}
-	return "Your muted usernames: " + strings.Join(newMutedList, ", ")
 }
 
 func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
