@@ -342,8 +342,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github settings [setting] [value]` - Update your user settings\n" +
 		"  * `setting` can be `notifications` or `reminders`\n" +
 		"  * `value` can be `on` or `off`\n" +
-		"* `/github mute-users [github username]` - Mute comment notifications from certain usernames\n" +
-		"* `/github unmute-users [github username]` - Unmute comment notifications from certain usernames\n"))
+		"* `/github mute list` - list your muted github usernames\n" +
+		"* `/github mute add [username]` - add a username to your muted list\n" +
+		"* `/github mute delete [username]` - remove a user from your muted list\n" +
+		"* `/github mute delete-all` - unmute all users\n"))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {

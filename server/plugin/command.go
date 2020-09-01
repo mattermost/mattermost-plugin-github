@@ -502,12 +502,17 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
 
-	mute := model.NewAutocompleteData("mute-users", "[github username] [github username 2]", "Mute comment notifications from specific users on your authored issues and PRs")
+	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: List, Add, Delete, Delete-all")
+
+	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided username")
+	muteAdd.AddTextArgument("Github username to mute", "[github username]", "")
+	mute.AddCommand(muteAdd)
+
+	muteDelete := model.NewAutocompleteData("delete", "[github username]", "Unmute notifications from the provided username")
+	muteDelete.AddTextArgument("Github username to unmute", "[github username]", "")
+	mute.AddCommand(muteDelete)
 
 	github.AddCommand(mute)
-
-	unmute := model.NewAutocompleteData("unmute-users", "[github username] [github username 2]", "Un-mute comment notifications from specific users on your authored issues and PRs")
-	github.AddCommand(unmute)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
 	setting := []model.AutocompleteListItem{{
