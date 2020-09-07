@@ -2,13 +2,17 @@ package plugin
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"unicode"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -60,16 +64,20 @@ func validateFeatures(features []string) (bool, []string) {
 	return valid, invalidFeatures
 }
 
-func getCommand(config *Configuration) *model.Command {
-	return &model.Command{
-		Trigger:          "github",
-		DisplayName:      "GitHub",
-		Description:      "Integration with GitHub.",
-		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
-		AutoCompleteHint: "[command]",
-		AutocompleteData: getAutocompleteData(config),
+func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
+	iconData, err := p.getAutocompleteIconData()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get icon data")
 	}
+
+	return &model.Command{
+		Trigger:              "github",
+		AutoComplete:         true,
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
+		AutoCompleteHint:     "[command]",
+		AutocompleteData:     getAutocompleteData(config),
+		AutocompleteIconData: iconData,
+	}, nil
 }
 
 func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
@@ -426,6 +434,20 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(settings)
 
 	return github
+}
+
+func (p *Plugin) getAutocompleteIconData() (string, error) {
+	bundlePath, err := p.API.GetBundlePath()
+	if err != nil {
+		return "", errors.Wrap(err, "couldn't get bundle path")
+	}
+
+	icon, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "icon.svg"))
+	if err != nil {
+		return "", errors.Wrap(err, "failed to open icon")
+	}
+
+	return fmt.Sprintf("data:image/svg+xml;base64,%s", base64.StdEncoding.EncodeToString(icon)), nil
 }
 
 // parseCommand parses the entire command input string and retrieves the command, action and parameters
