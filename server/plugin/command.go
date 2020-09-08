@@ -2,14 +2,12 @@ package plugin
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"strings"
 	"unicode"
 
 	"github.com/google/go-github/v31/github"
+	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
@@ -65,7 +63,7 @@ func validateFeatures(features []string) (bool, []string) {
 }
 
 func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
-	iconData, err := p.getAutocompleteIconData()
+	iconData, err := command.GetIconData(p.API, "assets/icon.svg")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get icon data")
 	}
@@ -434,20 +432,6 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(settings)
 
 	return github
-}
-
-func (p *Plugin) getAutocompleteIconData() (string, error) {
-	bundlePath, err := p.API.GetBundlePath()
-	if err != nil {
-		return "", errors.Wrap(err, "couldn't get bundle path")
-	}
-
-	icon, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "icon.svg"))
-	if err != nil {
-		return "", errors.Wrap(err, "failed to open icon")
-	}
-
-	return fmt.Sprintf("data:image/svg+xml;base64,%s", base64.StdEncoding.EncodeToString(icon)), nil
 }
 
 // parseCommand parses the entire command input string and retrieves the command, action and parameters
