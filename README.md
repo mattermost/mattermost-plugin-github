@@ -131,7 +131,7 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 
 > Hi team, 
 
-> We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. The command is only visible to you.. Then, take a look at the [slash commands](https://github.com/mattermost/mattermost-plugin-github#slash-commands) section for details about how to use the plugin.
+> We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the [slash commands](https://github.com/mattermost/mattermost-plugin-github#slash-commands) section for details about how to use the plugin.
 
 ## Slash Commands
 
