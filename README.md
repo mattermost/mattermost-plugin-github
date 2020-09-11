@@ -123,7 +123,7 @@ You're all set!
 
 ## Using the Plugin
 
-Once configuration is complete, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. The command and its output isn't visible to other members of the channel.
+Once configuration is complete, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub.
 
 ## Onboarding Your Users
 
