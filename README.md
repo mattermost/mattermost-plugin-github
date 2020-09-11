@@ -32,7 +32,7 @@ This guide is intended for Mattermost System Admins setting up the GitHub plugin
 
 ## License
 
-This repository is licensed under the Apache 2.0 License.
+This repository is licensed under the [Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0).
 
 ## About the GitHub Plugin
 
@@ -47,7 +47,7 @@ Once connected, you'll have access to the following features:
 * __Post actions__ - Create a GitHub issue from a post or attach a post message to an issue. Hover over a post to reveal the post actions menu and click **More Actions (...)**.
 * __Sidebar buttons__ - Stay up-to-date with how many reviews, unread messages, assignments, and open pull requests you have with buttons in the Mattermost sidebar.
 * __Slash commands__ - Interact with the GitHub plugin using the `/github` slash command.
-   * Begin by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
+* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text.
 
 ## Before You Start
 
@@ -135,6 +135,7 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 
 ## Slash Commands
 
+* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details. You can also create custom slash commands. Visit the [slash commands](https://docs.mattermost.com/developer/slash-commands.html) documentation for more information and a list of default slash commands.
 * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
@@ -147,35 +148,6 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review.
 * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders.
 * __And more!__ - Run `/github help` to see what else the slash command can do.
-
-### Configuration Notes in High Availability Mode
-
-If you are running Mattermost v5.11 or earlier in [High Availability mode](https://docs.mattermost.com/deployment/cluster.html), please review the following:
-
-1. To install the plugin, [use these documented steps](https://docs.mattermost.com/administration/plugins.html#plugin-uploads-in-high-availability-mode).
-2. Then, modify the `config.json` [using the standard doc steps](https://docs.mattermost.com/deployment/cluster.html#updating-configuration-changes-while-operating-continuously) to the following:
-
-```
-"PluginSettings": {
-    ...
-    "Plugins": {
-        "github": {
-            "encryptionkey": "<your encryption key, from step 5 above>",
-            "githuboauthclientid": "<your oauth client id, from step 2 above>",
-            "githuboauthclientsecret": "<your oauth client secret, from step 2 above>",
-            "githuborg": "<your github org>",
-            "webhooksecret": "<your webhook secret, from step 3 above>"
-        },
-    ...
-    "PluginStates": {
-        ...
-        "github": {
-            "Enable": true
-        },
-        ...
-    }
-},
-```
 
 ## Frequently Asked Questions
 
@@ -199,19 +171,6 @@ Feel free to create a GitHub issue or [join the GitHub Plugin channel on our com
 
 GitHub user tokens are AES encrypted with an At Rest Encryption Key configured in the plugin's settings page. Once encrypted, the tokens are saved in the `PluginKeyValueStore` table in your Mattermost database.
 
-
 ## Development
 
-This plugin contains both a server and web app portion.
-
-- Use `make dist` to build distributions of the plugin that you can upload to a Mattermost server.
-- Use `make check-style` to check the style.
-- Use `make deploy` to deploy the plugin to your local server. 
-
-Before running `make deploy` you need to set a few environment variables:
-
-```
-export MM_SERVICESETTINGS_SITEURL=http://localhost:8065
-export MM_ADMIN_USERNAME=admin
-export MM_ADMIN_PASSWORD=password
-```
+This plugin contains both a server and web app portion. Read our documentation about the [Developer Workflow](https://developers.mattermost.com/extend/plugins/developer-workflow/) and [Developer Setup](https://developers.mattermost.com/extend/plugins/developer-setup/) for more information about developing and extending plugins.
