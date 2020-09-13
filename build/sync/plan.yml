@@ -1,10 +1,10 @@
 checks:
   - type: repo_is_clean
     params:
-      repo: template
+      repo: source
   - type: repo_is_clean
     params:
-      repo: plugin
+      repo: target
 actions:
   - paths:
       - build
@@ -24,7 +24,6 @@ actions:
       - webapp/src/manifest.test.js
       - webapp/tsconfig.json
       - webapp/webpack.config.js
-
     actions:
       - type: overwrite_file
         params:

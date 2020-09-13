@@ -189,6 +189,7 @@ endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
 endif
+	cd ./build/sync && $(GO) test -v $(GO_TEST_FLAGS) ./...
 
 ## Creates a coverage report for the server code.
 .PHONY: coverage
