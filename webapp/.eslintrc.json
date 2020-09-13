@@ -1,5 +1,8 @@
 {
-  "extends": "eslint:recommended",
+  "extends": [
+      "eslint:recommended",
+      "plugin:react-hooks/recommended"
+  ],
   "parserOptions": {
     "ecmaVersion": 8,
     "sourceType": "module",
@@ -58,12 +61,6 @@
       "1tbs",
       {
         "allowSingleLine": false
-      }
-    ],
-    "camelcase": [
-      2,
-      {
-        "properties": "never"
       }
     ],
     "capitalized-comments": 0,
@@ -270,7 +267,7 @@
     "no-lonely-if": 2,
     "no-loop-func": 2,
     "no-magic-numbers": [
-      1,
+      0,
       {
         "ignore": [
           -1,
@@ -505,7 +502,7 @@
         "ignoreCase": false
       }
     ],
-    "react/jsx-no-literals": 1,
+    "react/jsx-no-literals": 2,
     "react/jsx-no-target-blank": 2,
     "react/jsx-no-undef": 2,
     "react/jsx-pascal-case": 2,
@@ -632,5 +629,41 @@
         "onlyEquality": false
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.tsx", "**/*.ts"],
+      "extends": "plugin:@typescript-eslint/recommended",
+      "rules": {
+        "@typescript-eslint/ban-ts-ignore": 0,
+        "@typescript-eslint/ban-types": 1,
+        "@typescript-eslint/ban-ts-comment": 0,
+        "@typescript-eslint/no-var-requires": 0,
+        "@typescript-eslint/prefer-interface": 0,
+        "@typescript-eslint/explicit-function-return-type": 0,
+        "@typescript-eslint/explicit-module-boundary-types": 0,
+        "@typescript-eslint/indent": [
+          2,
+          4,
+          {
+            "SwitchCase": 0
+          }
+        ],
+        "@typescript-eslint/no-use-before-define": [
+          2,
+          {
+            "classes": false,
+            "functions": false,
+            "variables": false
+          }
+        ],
+        "react/jsx-filename-extension": [
+          1,
+          {
+            "extensions": [".jsx", ".tsx"]
+          }
+        ]
+      }
+    }
+  ]
 }
