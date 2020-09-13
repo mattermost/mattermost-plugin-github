@@ -94,10 +94,24 @@ const manifest = JSON.parse(`
             {
                 "key": "EnableCodePreview",
                 "display_name": "Enable Code Previews",
-                "type": "bool",
-                "help_text": "(Optional) Allow the plugin to expand permalinks to github files with an actual preview of the linked file.",
+                "type": "dropdown",
+                "help_text": "Allow the plugin to expand permalinks to GitHub files with an actual preview of the linked file.",
                 "placeholder": "",
-                "default": null
+                "default": "public",
+                "options": [
+                    {
+                        "display_name": "Enable for public repositories",
+                        "value": "public"
+                    },
+                    {
+                        "display_name": "Enable for public and private repositories. This might leak confidential code into public channels.",
+                        "value": "privateAndPublic"
+                    },
+                    {
+                        "display_name": "Disable",
+                        "value": "disable"
+                    }
+                ]
             }
         ]
     }
