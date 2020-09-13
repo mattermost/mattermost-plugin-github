@@ -1,15 +1,57 @@
 package plugin
 
 import (
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 )
+
+type panicHandler struct {
+}
+
+func (ph panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	panic("bad handler")
+}
+
+func TestWithRecovery(t *testing.T) {
+	defer func() {
+		if x := recover(); x != nil {
+			require.Fail(t, "got panic")
+		}
+	}()
+
+	p := NewPlugin()
+	api := &plugintest.API{}
+	api.On("LogError",
+		"Recovered from a panic",
+		"url", "http://random",
+		"error", "bad handler",
+		"stack", mock.Anything)
+	p.SetAPI(api)
+
+	ph := panicHandler{}
+	handler := p.withRecovery(ph)
+
+	req := httptest.NewRequest(http.MethodGet, "http://random", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	resp := w.Result()
+	if resp.Body != nil {
+		defer resp.Body.Close()
+		_, err := io.Copy(ioutil.Discard, resp.Body)
+		require.NoError(t, err)
+	}
+}
 
 func TestPlugin_ServeHTTP(t *testing.T) {
 	httpTestJSON := testutils.HTTPTest{
@@ -68,7 +110,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					EncryptionKey:           "mockKey",
 					EnterpriseBaseURL:       "",
 					EnterpriseUploadURL:     "",
-					EnableCodePreview:       false,
+					EnableCodePreview:       "disable",
 				})
 			p.initializeAPI()
 			p.SetAPI(&plugintest.API{})

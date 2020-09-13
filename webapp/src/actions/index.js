@@ -157,6 +157,60 @@ export function getYourPrsDetails(prList) {
     };
 }
 
+export function getLabelOptions(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getLabels(repo);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function getAssigneeOptions(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getAssignees(repo);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function getMilestoneOptions(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getMilestones(repo);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
 export function getYourAssignments() {
     return async (dispatch, getState) => {
         let data;
