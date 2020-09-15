@@ -82,6 +82,7 @@ func (test *HTTPTest) CreateHTTPRequest(request Request) *http.Request {
 
 	req, err := http.NewRequest(request.Method, request.URL, body)
 	tassert.NoError(err, "Error while creating Request")
+
 	return req
 }
 
