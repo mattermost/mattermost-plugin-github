@@ -18,3 +18,7 @@ export function displayUsernameForUser(user, config) {
 
     return '';
 }
+
+export function getErrorMessage(str) {
+    return JSON.parse(str);
+}

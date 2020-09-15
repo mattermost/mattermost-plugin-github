@@ -9,6 +9,7 @@ import FormButton from 'components/form_button';
 import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
 import Input from 'components/input';
+import { isValidJSON, getErrorMessage } from '../../../utils/user_utils';
 
 const initialState = {
     submitting: false,
@@ -66,8 +67,11 @@ export default class CreateIssueModal extends PureComponent {
 
         this.props.create(issue).then((created) => {
             if (created.error) {
+                let errMessage = created.error.message;
+                errMessage = getErrorMessage(created.error.message).message;
+
                 this.setState({
-                    error: created.error.message,
+                    error: errMessage,
                     showErrors: true,
                     submitting: false});
                 return;
@@ -124,7 +128,7 @@ export default class CreateIssueModal extends PureComponent {
         if (error) {
             submitError = (
                 <p className='help-text error-text'>
-                    <span>{JSON.parse(error).message}</span>
+                    <span>{error}</span>
                 </p>
             );
         }
