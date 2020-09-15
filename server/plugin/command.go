@@ -108,6 +108,9 @@ func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInf
 	for _, user := range mutedUsernames {
 		mutedUsers = mutedUsers + fmt.Sprintf("- %v\n", user)
 	}
+	if len(mutedUsers) == 0 {
+		return "You have no muted users"
+	}
 	return "Your muted users:\n" + mutedUsers
 }
 
@@ -140,7 +143,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return username + " is now muted"
+	return fmt.Sprintf("`%v`", username) + " is now muted"
 }
 
 func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
@@ -150,7 +153,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
 		return "Error occurred unmuting users"
 	}
-	return username + " is no longer muted"
+	return fmt.Sprintf("`%v`", username) + " is no longer muted"
 }
 
 func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
