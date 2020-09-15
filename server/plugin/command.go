@@ -69,7 +69,7 @@ func getCommand(config *Configuration) *model.Command {
 		DisplayName:      "GitHub",
 		Description:      "Integration with GitHub.",
 		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute-users, unmute-users, help",
+		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help",
 		AutoCompleteHint: "[command]",
 		AutocompleteData: getAutocompleteData(config),
 	}
