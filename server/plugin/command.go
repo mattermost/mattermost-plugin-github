@@ -106,7 +106,7 @@ func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInf
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	var mutedUsers string
 	for _, user := range mutedUsernames {
-		mutedUsers = mutedUsers + fmt.Sprintf("- %v\n", user)
+		mutedUsers += fmt.Sprintf("- %v\n", user)
 	}
 	if len(mutedUsers) == 0 {
 		return "You have no muted users"
