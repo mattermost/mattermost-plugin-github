@@ -72,6 +72,7 @@
     max-height: 150px;
     line-height: 1.25;
     overflow: hidden;
+    word-break: break-all;
     font-size: 12px;
 }
 
@@ -116,8 +117,10 @@
     padding: 0 5px;
     font: .75em/2 SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
     color: var(--blue);
-    white-space: nowrap;
     background-color: var(--light-blue);
     border-radius: 3px;
     max-width: 140px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }

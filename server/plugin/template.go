@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bytes"
+	"net/url"
 	"regexp"
 	"strings"
 	"text/template"
@@ -81,6 +82,25 @@ func init() {
 		return ">" + strings.ReplaceAll(body, "\n", "\n>")
 	}
 
+	// Escape characters not allowed in URL path
+	funcMap["pathEscape"] = url.PathEscape
+
+	// Transform multiple variables to dictionary
+	funcMap["dict"] = func(values ...interface{}) (map[string]interface{}, error) {
+		if len(values)%2 != 0 {
+			return nil, errors.New("invalid dict call, exactly one value is required for every key")
+		}
+		dict := make(map[string]interface{}, len(values)/2)
+		for i := 0; i < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				return nil, errors.New("dict keys must be strings")
+			}
+			dict[key] = values[i+1]
+		}
+		return dict, nil
+	}
+
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
 
 	// The user template links to the corresponding GitHub user. If the GitHub user is a known
@@ -149,10 +169,24 @@ func init() {
 		`{{template "eventRepoIssueFullLink" .}} - {{.GetIssue.GetTitle}}`,
 	))
 
+	template.Must(masterTemplate.New("labels").Funcs(funcMap).Parse(`
+{{- if .Labels }}
+Labels: {{range $i, $el := .Labels -}}` + "{{- if $i}}, {{end}}[`{{ $el.Name }}`]({{ $.RepositoryURL }}/labels/{{ $el.Name | pathEscape }})" + `{{end -}}
+{{ end -}}
+`))
+
+	template.Must(masterTemplate.New("assignee").Funcs(funcMap).Parse(`
+{{- if .Assignees }}
+Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
+{{- end -}}
+`))
+
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
 #new-pull-request by {{template "user" .GetSender}}
+{{- template "labels" dict "Labels" .GetPullRequest.Labels "RepositoryURL" .GetRepo.GetHTMLURL  }}
+{{- template "assignee" .GetPullRequest }}
 
 {{.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
@@ -178,6 +212,8 @@ func init() {
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
 #new-issue by {{template "user" .GetSender}}
+{{- template "labels" dict "Labels" .GetIssue.Labels "RepositoryURL" .GetRepo.GetHTMLURL  }}
+{{- template "assignee" .GetIssue }}
 
 {{.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
 `))
@@ -190,6 +226,10 @@ func init() {
 #### {{.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .}}
 #issue-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}.
+`))
+
+	template.Must(masterTemplate.New("reopenedIssue").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} Issue {{template "issue" .GetIssue}} reopened by {{template "user" .GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
@@ -277,10 +317,11 @@ func init() {
 	template.Must(masterTemplate.New("helpText").Parse("" +
 		"* `/github connect{{if .EnablePrivateRepo}} [private]{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
 		"{{if .EnablePrivateRepo}}" +
-		"  * `private` is optional. If used, the GitHub bot will ask for read access to your private repositories. " +
+		"  * `private` is optional. If used, read access to your private repositories will be requested." +
 		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
 		"{{end}}" +
 		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
+		"* `/github help` - Display Slash Command help text\n" +
 		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
 		"* `/github subscribe list` - Will list the current channel subscriptions\n" +
 		"* `/github subscribe owner[/repo] [features] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
@@ -292,7 +333,8 @@ func init() {
 		"    * `deletes` - includes branch and tag deletions\n" +
 		"    * `issue_comments` - includes new issue comments\n" +
 		"    * `pull_reviews` - includes pull request reviews\n" +
-		"    * `label:<labelname>` - must include `pulls` or `issues` in feature list when using a label. Defaults to `pulls,issues,creates,deletes`\n" +
+		"    * `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
+		"    * Defaults to `pulls,issues,creates,deletes`\n" +
 		"  * `flags` currently supported:\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"* `/github unsubscribe owner/repo` - Unsubscribe the current channel from a repository\n" +

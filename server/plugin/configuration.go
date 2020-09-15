@@ -26,7 +26,7 @@ type Configuration struct {
 	EncryptionKey           string
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
-	EnableCodePreview       bool
+	EnableCodePreview       string
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -104,6 +104,11 @@ func (p *Plugin) OnConfigurationChange() error {
 	}
 
 	p.setConfiguration(configuration)
+
+	err := p.API.RegisterCommand(getCommand(configuration))
+	if err != nil {
+		return errors.Wrap(err, "failed to register command")
+	}
 
 	return nil
 }

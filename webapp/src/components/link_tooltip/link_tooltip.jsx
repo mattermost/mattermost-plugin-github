@@ -91,11 +91,9 @@ export const LinkTooltip = ({href, connected, theme}) => {
                     style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
                 >
                     <div className='header mb-1'>
-                        <a
-                            title={data.repo}
-                            href={href}
-                            style={{color: theme.centerChannelColor}}
-                        >{data.repo}</a>
+                        <span style={{color: theme.centerChannelColor}}>
+                            {data.repo}
+                        </span>
                         {' on '}
                         <span>{date}</span>
                     </div>
@@ -109,6 +107,8 @@ export const LinkTooltip = ({href, connected, theme}) => {
                         <div className='tooltip-info mt-1'>
                             <a
                                 href={href}
+                                target='_blank'
+                                rel='noopener noreferrer'
                                 style={{color: theme.centerChannelColor}}
                             >
                                 <h5 className='mr-1'>{data.title}</h5>
@@ -117,7 +117,6 @@ export const LinkTooltip = ({href, connected, theme}) => {
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown
                                     source={data.body}
-                                    disallowedTypes={['heading']}
                                     linkTarget='_blank'
                                 />
                             </div>
@@ -128,7 +127,6 @@ export const LinkTooltip = ({href, connected, theme}) => {
                                     <span
                                         title={data.base.ref}
                                         className='commit-ref'
-                                        style={{maxWidth: '140px'}}
                                     >{data.base.ref}
                                     </span>
                                     <span className='mx-1'>{'←'}</span>
