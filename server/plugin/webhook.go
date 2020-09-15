@@ -835,14 +835,14 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 		return
 	}
 
-	message, err := renderTemplate(templateName, event)
-	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
+		p.API.LogDebug("Commenter is muted, skipping notification")
 		return
 	}
 
-	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
-		p.API.LogDebug("Commenter is muted, skipping notification")
+	message, err := renderTemplate(templateName, event)
+	if err != nil {
+		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
 

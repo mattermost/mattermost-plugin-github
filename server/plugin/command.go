@@ -107,8 +107,25 @@ func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInf
 	return "Your muted usernames: " + strings.Join(mutedUsernames, ", ")
 }
 
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
 func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
+	if contains(mutedUsernames, username) {
+		return username + " is already muted"
+	}
+
+	if strings.Contains(username, ",") {
+		return "Invalid username provided"
+	}
+
 	var mutedUsers string
 	if len(mutedUsernames) > 0 {
 		// , is a character not allowed in github usernames so we can split on them
@@ -119,7 +136,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return "Your muted usernames: " + mutedUsers
+	return username + " is now muted"
 }
 
 func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
@@ -129,7 +146,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
 		return "Error occurred unmuting users"
 	}
-	return "Your muted usernames: " + strings.Join(newMutedList, ", ")
+	return username + " is no longer muted"
 }
 
 func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
@@ -145,20 +162,23 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	}
 
 	command := parameters[0]
-	var userToMute string
-	if len(parameters) == 1 && command != list && command != deleteAll {
-		return "Invalid mute command. " + command + " requires a username parameter"
-	} else if len(parameters) > 1 && command != list && command != deleteAll {
-		userToMute = parameters[1]
-	}
+	// if len(parameters) > 1 && command != list && command != deleteAll {
+	// 	userToMute = parameters[1]
+	// }
 
 	switch {
 	case command == list:
 		return p.handleMuteList(args, userInfo)
 	case command == "add":
-		return p.handleMuteAdd(args, userToMute, userInfo)
+		if len(parameters) != 2 {
+			return "Invalid number of parameters supplied to " + command
+		}
+		return p.handleMuteAdd(args, parameters[1], userInfo)
 	case command == "delete":
-		return p.handleUnmute(args, userToMute, userInfo)
+		if len(parameters) != 2 {
+			return "Invalid number of parameters supplied to " + command
+		}
+		return p.handleUnmute(args, parameters[1], userInfo)
 	case command == deleteAll:
 		return p.handleUnmuteAll(args, userInfo)
 	default:
@@ -513,6 +533,9 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	mute.AddCommand(muteDelete)
 
 	github.AddCommand(mute)
+
+	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted users")
+	mute.AddCommand(muteDeleteAll)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
 	setting := []model.AutocompleteListItem{{
