@@ -104,7 +104,11 @@ func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 
 func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
-	return "Your muted usernames: " + strings.Join(mutedUsernames, ", ")
+	var mutedUsers string
+	for _, user := range mutedUsernames {
+		mutedUsers = mutedUsers + fmt.Sprintf("- %v\n", user)
+	}
+	return "Your muted users:\n" + mutedUsers
 }
 
 func contains(s []string, e string) bool {
