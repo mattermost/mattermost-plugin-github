@@ -529,7 +529,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
 
-	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: List, Add, Delete, Delete-all")
+	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
 	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided username")
 	muteAdd.AddTextArgument("Github username to mute", "[github username]", "")
