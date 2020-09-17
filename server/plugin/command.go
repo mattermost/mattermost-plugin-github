@@ -169,9 +169,6 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	}
 
 	command := parameters[0]
-	// if len(parameters) > 1 && command != list && command != deleteAll {
-	// 	userToMute = parameters[1]
-	// }
 
 	switch {
 	case command == list:
@@ -543,6 +540,9 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted users")
 	mute.AddCommand(muteDeleteAll)
+
+	muteList := model.NewAutocompleteData("list", "", "List muted users")
+	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
 	setting := []model.AutocompleteListItem{{
