@@ -16,13 +16,12 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
  - [2. License](#2-license)
  - [3. About the GitHub Plugin](#3-about-the-github-plugin)
  - [4. Before You Start](#4-before-you-start)
- - [5. Configuration](#6-configuration)
- - [6. Using the Plugin](#7-using-the-plugin)
- - [7. Onboarding Your Users](#8-onboarding-your-users)
- - [8. Slash Commands](#9-slash-commands)
- - [9. Configuration Notes in High Availability Mode](#4-configuration-notes-in-high-availability-mode)
- - [10. Frequently Asked Questions](#6-frequently-asked-questions)
- - [11. Development](#5-development)
+ - [5. Configuration](#5-configuration)
+ - [6. Using the Plugin](#6-using-the-plugin)
+ - [7. Onboarding Your Users](#7-onboarding-your-users)
+ - [8. Slash Commands](#8-slash-commands)
+ - [9. Frequently Asked Questions](#9-frequently-asked-questions)
+ - [10. Development](#10-development)
 
 ![GitHub plugin screenshot](https://user-images.githubusercontent.com/13119842/54380268-6adab180-4661-11e9-8470-a9c615c00041.png)
 
@@ -46,8 +45,7 @@ Once connected, you'll have access to the following features:
 * __Notifications__ - Get a direct message in Mattermost when someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you on GitHub.
 * __Post actions__ - Create a GitHub issue from a post or attach a post message to an issue. Hover over a post to reveal the post actions menu and click **More Actions (...)**.
 * __Sidebar buttons__ - Stay up-to-date with how many reviews, unread messages, assignments, and open pull requests you have with buttons in the Mattermost sidebar.
-* __Slash commands__ - Interact with the GitHub plugin using the `/github` slash command.
-* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text.
+* __Slash commands__ - Interact with the GitHub plugin using the `/github` slash command. Read more about slash commands [here](#slash-commands).
 
 ## Before You Start
 
