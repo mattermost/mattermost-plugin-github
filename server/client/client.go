@@ -61,7 +61,7 @@ func (c *Client) GetGitHubClient(userID string) (*github.Client, error) {
 }
 
 func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
-	req, err := http.NewRequest(http.MethodGet, "/"+plugin.Manifest.ID+"/api/v1/config", http.NoBody)
+	req, err := http.NewRequest(http.MethodGet, "/"+plugin.Manifest.Id+"/api/v1/config", http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
 }
 
 func (c *Client) GetToken(userID string) (*oauth2.Token, error) {
-	req, err := http.NewRequest(http.MethodGet, "/"+plugin.Manifest.ID+"/api/v1/token", http.NoBody)
+	req, err := http.NewRequest(http.MethodGet, "/"+plugin.Manifest.Id+"/api/v1/token", http.NoBody)
 	if err != nil {
 		return nil, err
 	}

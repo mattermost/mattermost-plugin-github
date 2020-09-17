@@ -7,8 +7,10 @@ import (
 	"unicode"
 
 	"github.com/google/go-github/v31/github"
+	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -31,8 +33,10 @@ var validFeatures = map[string]bool{
 	featurePullReviews:   true,
 }
 
-const list = "list"
-const deleteAll = "delete-all"
+const (
+	list      = "list"
+	deleteAll = "delete-all"
+)
 
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
@@ -63,22 +67,27 @@ func validateFeatures(features []string) (bool, []string) {
 	return valid, invalidFeatures
 }
 
-func getCommand(config *Configuration) *model.Command {
-	return &model.Command{
-		Trigger:          "github",
-		DisplayName:      "GitHub",
-		Description:      "Integration with GitHub.",
-		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help",
-		AutoCompleteHint: "[command]",
-		AutocompleteData: getAutocompleteData(config),
+func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
+	iconData, err := command.GetIconData(p.API, "assets/icon-bg.svg")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get icon data")
 	}
+
+	return &model.Command{
+		Trigger:              "github",
+		AutoComplete:         true,
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help",
+		AutoCompleteHint:     "[command]",
+		AutocompleteData:     getAutocompleteData(config),
+		AutocompleteIconData: iconData,
+	}, nil
 }
 
 func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 	post := &model.Post{
 		UserId:    p.BotUserID,
 		ChannelId: args.ChannelId,
+		RootId:    args.RootId,
 		Message:   text,
 	}
 	_ = p.API.SendEphemeralPost(args.UserId, post)

@@ -105,7 +105,12 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	p.setConfiguration(configuration)
 
-	err := p.API.RegisterCommand(getCommand(configuration))
+	command, err := p.getCommand(configuration)
+	if err != nil {
+		return errors.Wrap(err, "failed to get command")
+	}
+
+	err = p.API.RegisterCommand(command)
 	if err != nil {
 		return errors.Wrap(err, "failed to register command")
 	}
