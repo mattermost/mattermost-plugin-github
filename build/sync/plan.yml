@@ -7,24 +7,38 @@ checks:
       repo: target
 actions:
   - paths:
-      - build
-      - webapp/tests
+      - build/pluginctl
+      - build/manifest
     actions:
       - type: overwrite_directory
         params:
           create: true
   - paths:
-      - .circleci/config.yml
-      - .editorconfig
       - Makefile
-      - webapp/.eslintrc.json
-      - webapp/.gitignore
-      - webapp/babel.config.js
-      - webapp/package.json
-      - webapp/src/manifest.test.js
-      - webapp/tsconfig.json
-      - webapp/webpack.config.js
     actions:
       - type: overwrite_file
         params:
           create: true
+  - paths:
+      - .editorconfig
+      - .gitattributes
+      - .gitignore
+      - build/.gitignore
+      - build/go.mod
+      - build/go.sum
+      - build/setup.mk
+      - server/.gitignore
+      #- webapp/.eslintrc.json
+      - webapp/.npmrc
+      - webapp/babel.config.js
+      #- webapp/package.json
+      - webapp/tsconfig.json
+      - webapp/webpack.config.js
+      - webapp/src/manifest.test.ts
+      - webapp/tests/setup.js
+    actions:
+      - type: overwrite_file
+        params:
+          create: true
+        conditions:
+          - type: file_unaltered
