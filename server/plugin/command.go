@@ -7,8 +7,10 @@ import (
 	"unicode"
 
 	"github.com/google/go-github/v31/github"
+	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -60,16 +62,20 @@ func validateFeatures(features []string) (bool, []string) {
 	return valid, invalidFeatures
 }
 
-func getCommand(config *Configuration) *model.Command {
-	return &model.Command{
-		Trigger:          "github",
-		DisplayName:      "GitHub",
-		Description:      "Integration with GitHub.",
-		AutoComplete:     true,
-		AutoCompleteDesc: "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
-		AutoCompleteHint: "[command]",
-		AutocompleteData: getAutocompleteData(config),
+func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
+	iconData, err := command.GetIconData(p.API, "assets/icon-bg.svg")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get icon data")
 	}
+
+	return &model.Command{
+		Trigger:              "github",
+		AutoComplete:         true,
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
+		AutoCompleteHint:     "[command]",
+		AutocompleteData:     getAutocompleteData(config),
+		AutocompleteIconData: iconData,
+	}, nil
 }
 
 func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
