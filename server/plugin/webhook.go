@@ -602,10 +602,17 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
+
 		if _, err := p.API.CreatePost(post); err != nil {
 			p.API.LogWarn("Error webhook post", "error", err.Error())
 		}
 	}
+}
+
+func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
+	mutedUsernameBytes, _ := p.API.KVGet(userID + "-muted-users")
+	mutedUsernames := string(mutedUsernameBytes)
+	return strings.Contains(mutedUsernames, sender)
 }
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
@@ -825,6 +832,11 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 		templateName = "commentAuthorIssueNotification"
 	default:
 		p.API.LogDebug("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+		return
+	}
+
+	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
+		p.API.LogDebug("Commenter is muted, skipping notification")
 		return
 	}
 

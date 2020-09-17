@@ -33,6 +33,11 @@ var validFeatures = map[string]bool{
 	featurePullReviews:   true,
 }
 
+const (
+	list      = "list"
+	deleteAll = "delete-all"
+)
+
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
@@ -71,7 +76,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, help",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -90,6 +95,123 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 
 func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
 	return p.githubConnect(*userInfo.Token)
+}
+
+func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
+	mutedUsernameBytes, err := p.API.KVGet(userInfo.UserID + "-muted-users")
+	if err != nil {
+		return nil
+	}
+	mutedUsernames := string(mutedUsernameBytes)
+	var mutedUsers []string
+	if len(mutedUsernames) == 0 {
+		return mutedUsers
+	}
+	mutedUsers = strings.Split(mutedUsernames, ",")
+	return mutedUsers
+}
+
+func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+	mutedUsernames := p.getMutedUsernames(userInfo)
+	var mutedUsers string
+	for _, user := range mutedUsernames {
+		mutedUsers += fmt.Sprintf("- %v\n", user)
+	}
+	if len(mutedUsers) == 0 {
+		return "You have no muted users"
+	}
+	return "Your muted users:\n" + mutedUsers
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+	mutedUsernames := p.getMutedUsernames(userInfo)
+	if contains(mutedUsernames, username) {
+		return username + " is already muted"
+	}
+
+	if strings.Contains(username, ",") {
+		return "Invalid username provided"
+	}
+
+	var mutedUsers string
+	if len(mutedUsernames) > 0 {
+		// , is a character not allowed in github usernames so we can split on them
+		mutedUsers = strings.Join(mutedUsernames, ",") + "," + username
+	} else {
+		mutedUsers = username
+	}
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
+		return "Error occurred saving list of muted users"
+	}
+	return fmt.Sprintf("`%v`", username) + " is now muted"
+}
+
+func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+	mutedUsernames := p.getMutedUsernames(userInfo)
+	userToMute := []string{username}
+	newMutedList := arrayDifference(mutedUsernames, userToMute)
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
+		return "Error occurred unmuting users"
+	}
+	return fmt.Sprintf("`%v`", username) + " is no longer muted"
+}
+
+func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte("")); err != nil {
+		return "Error occurred unmuting users"
+	}
+	return "Unmuted all users"
+}
+
+func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid mute command. Available commands are 'list', 'add' and 'delete'."
+	}
+
+	command := parameters[0]
+
+	switch {
+	case command == list:
+		return p.handleMuteList(args, userInfo)
+	case command == "add":
+		if len(parameters) != 2 {
+			return "Invalid number of parameters supplied to " + command
+		}
+		return p.handleMuteAdd(args, parameters[1], userInfo)
+	case command == "delete":
+		if len(parameters) != 2 {
+			return "Invalid number of parameters supplied to " + command
+		}
+		return p.handleUnmute(args, parameters[1], userInfo)
+	case command == deleteAll:
+		return p.handleUnmuteAll(args, userInfo)
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
+}
+
+// Returns the elements in a, that are not in b
+func arrayDifference(a, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []string
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
 }
 
 func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
@@ -412,6 +534,24 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
+
+	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
+
+	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided username")
+	muteAdd.AddTextArgument("Github username to mute", "[github username]", "")
+	mute.AddCommand(muteAdd)
+
+	muteDelete := model.NewAutocompleteData("delete", "[github username]", "Unmute notifications from the provided username")
+	muteDelete.AddTextArgument("Github username to unmute", "[github username]", "")
+	mute.AddCommand(muteDelete)
+
+	github.AddCommand(mute)
+
+	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted users")
+	mute.AddCommand(muteDeleteAll)
+
+	muteList := model.NewAutocompleteData("list", "", "List muted users")
+	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
 	setting := []model.AutocompleteListItem{{
