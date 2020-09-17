@@ -9,7 +9,7 @@ import FormButton from 'components/form_button';
 import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
 import Input from 'components/input';
-import { getErrorMessage } from '../../../utils/user_utils';
+import {getErrorMessage} from '../../../utils/user_utils';
 
 const initialState = {
     submitting: false,
