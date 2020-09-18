@@ -152,7 +152,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return fmt.Sprintf("`%v`", username) + " is now muted. You will not longer receive notifications for comments in your PRs and issues."
+	return fmt.Sprintf("`%v`", username) + " is now muted. You will no longer receive notifications for comments in your PRs and issues."
 }
 
 func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
