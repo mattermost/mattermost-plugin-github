@@ -70,6 +70,7 @@ func NewPlugin() *Plugin {
 		"unsubscribe":   p.handleUnsubscribe,
 		"disconnect":    p.handleDisconnect,
 		"todo":          p.handleTodo,
+		"mute":          p.handleMuteCommand,
 		"me":            p.handleMe,
 		"help":          p.handleHelp,
 		"":              p.handleHelp,

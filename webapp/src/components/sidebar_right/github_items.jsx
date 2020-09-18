@@ -93,13 +93,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<div style={{...style.icon, fill: '#2b9643'}}><TickIcon/></div>);
+                status = (<div style={{...style.icon, ...style.iconSucess}}><TickIcon/></div>);
                 break;
             case 'pending':
-                status = (<div style={{...style.icon, fill: '#c59e17'}}><DotIcon/></div>);
+                status = (<div style={{...style.icon, ...style.iconPending}}><DotIcon/></div>);
                 break;
             default:
-                status = (<div style={{...style.icon, fill: '#c11b28'}}><CrossIcon/></div>);
+                status = (<div style={{...style.icon, ...style.iconFailed}}><CrossIcon/></div>);
             }
         }
 
@@ -187,8 +187,20 @@ const getStyle = makeStyleFromTheme((theme) => {
             display: 'inline-flex',
             alignItems: 'center',
         },
+        iconSucess: {
+            fill: theme.onlineIndicator,
+        },
+        iconPending: {
+            fill: theme.awayIndicator,
+        },
+        iconFailed: {
+            fill: theme.dndIndicator,
+        },
+        iconChangesRequested: {
+            fill: theme.dndIndicator,
+        },
         conflictIcon: {
-            color: theme.errorTextColor,
+            color: theme.dndIndicator,
         },
         milestoneIcon: {
             top: 3,
@@ -196,6 +208,7 @@ const getStyle = makeStyleFromTheme((theme) => {
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
+            fill: theme.centerChannelColor,
         },
     };
 });
@@ -265,7 +278,7 @@ function getReviewText(item, style, secondLine) {
         } else {
             reviewName = 'reviews';
         }
-        reviews = (<span>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
+        reviews = (<span className='light'>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
     }
 
     if (changesRequested > 0) {
@@ -275,14 +288,13 @@ function getReviewText(item, style, secondLine) {
                 placement='bottom'
                 overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
             >
-                <div style={{...style.icon, fill: '#c11b28'}}><ChangesRequestedIcon/></div>
+                <div style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></div>
             </OverlayTrigger>
         );
     }
 
     return (
         <div
-            className='light'
             style={secondLine ? style.subtitleSecondLine : style.subtitle}
         >
             {reviews} {changes}
