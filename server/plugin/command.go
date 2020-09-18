@@ -508,7 +508,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	todo := model.NewAutocompleteData("todo", "", "Get a list of unread messages and pull requests awaiting your review")
 	github.AddCommand(todo)
 
-	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: List, Add, Delete")
+	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: list, add, delete")
 
 	subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
 	subscriptions.AddCommand(subscribeList)
@@ -537,20 +537,20 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
-	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided username")
-	muteAdd.AddTextArgument("Github username to mute", "[github username]", "")
+	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided GitHub user")
+	muteAdd.AddTextArgument("GitHub user to mute", "[username]", "")
 	mute.AddCommand(muteAdd)
 
-	muteDelete := model.NewAutocompleteData("delete", "[github username]", "Unmute notifications from the provided username")
-	muteDelete.AddTextArgument("Github username to unmute", "[github username]", "")
+	muteDelete := model.NewAutocompleteData("delete", "[github username]", "Unmute notifications from the provided GitHub user")
+	muteDelete.AddTextArgument("GitHub user to unmute", "[username]", "")
 	mute.AddCommand(muteDelete)
 
 	github.AddCommand(mute)
 
-	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted users")
+	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted GitHub users")
 	mute.AddCommand(muteDeleteAll)
 
-	muteList := model.NewAutocompleteData("list", "", "List muted users")
+	muteList := model.NewAutocompleteData("list", "", "List muted GitHub users")
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
