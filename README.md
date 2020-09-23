@@ -12,16 +12,16 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ## Table of Contents
 
- - [1. Audience](#1-audience)
- - [2. License](#2-license)
- - [3. About the GitHub Plugin](#3-about-the-github-plugin)
- - [4. Before You Start](#4-before-you-start)
- - [5. Configuration](#5-configuration)
- - [6. Using the Plugin](#6-using-the-plugin)
- - [7. Onboarding Your Users](#7-onboarding-your-users)
- - [8. Slash Commands](#8-slash-commands)
- - [9. Frequently Asked Questions](#9-frequently-asked-questions)
- - [10. Development](#10-development)
+ - [1. Audience](#-audience)
+ - [2. License](#-license)
+ - [3. About the GitHub Plugin](#-about-the-github-plugin)
+ - [4. Before You Start](#-before-you-start)
+ - [5. Configuration](#-configuration)
+ - [6. Using the Plugin](#-using-the-plugin)
+ - [7. Onboarding Your Users](#-onboarding-your-users)
+ - [8. Slash Commands](#-slash-commands)
+ - [9. Frequently Asked Questions](#-frequently-asked-questions)
+ - [10. Development](#-development)
 
 ![GitHub plugin screenshot](https://user-images.githubusercontent.com/13119842/54380268-6adab180-4661-11e9-8470-a9c615c00041.png)
 
