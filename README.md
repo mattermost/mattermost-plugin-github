@@ -12,32 +12,32 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ## Table of Contents
 
- - [Audience](#-audience)
- - [License](#-license)
- - [About the GitHub Plugin](#-about-the-github-plugin)
- - [Before You Start](#-before-you-start)
- - [Configuration](#-configuration)
- - [Using the Plugin](#-using-the-plugin)
- - [Onboarding Your Users](#-onboarding-your-users)
- - [Slash Commands](#-slash-commands)
- - [Frequently Asked Questions](#-frequently-asked-questions)
- - [Development](#-development)
+ - [Audience](#audience)
+ - [License](#license)
+ - [About the GitHub Plugin](#about-the-github-plugin)
+ - [Before You Start](#before-you-start)
+ - [Configuration](#configuration)
+ - [Using the Plugin](#using-the-plugin)
+ - [Onboarding Your Users](#onboarding-your-users)
+ - [Slash Commands](#slash-commands)
+ - [Frequently Asked Questions](#frequently-asked-questions)
+ - [Development](#development)
 
 ![GitHub plugin screenshot](assets/github_mattermost.png)
 
 ## Audience
 
-This guide is intended for Mattermost System Admins setting up the GitHub plugin and Mattermost users who want information about the plugin functionality. For more information about contributing to this plugin, visit the [Development section](https://github.com/mattermost/mattermost-plugin-github#development).
+This guide is intended for Mattermost System Admins setting up the GitHub plugin and Mattermost users who want information about the plugin functionality. For more information about contributing to this plugin, visit the [Development section](#development).
 
 ## License
 
-This repository is licensed under the [Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0).
+This repository is licensed under the [Apache 2.0 License](https://github.com/mattermost/mattermost-plugin-github/blob/master/LICENSE).
 
 ## About the GitHub Plugin
 
 The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost, to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration and include: 
 
-After your System Admin has [configured the GitHub plugin](#Configuration), run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
+After your System Admin has [configured the GitHub plugin](#configuration), run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
 
 Once connected, you'll have access to the following features:
 
@@ -129,11 +129,11 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 
 > Hi team, 
 
-> We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the [slash commands](https://github.com/mattermost/mattermost-plugin-github#slash-commands) section for details about how to use the plugin.
+> We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the [slash commands](#slash-commands) section for details about how to use the plugin.
 
 ## Slash Commands
 
-* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details. You can also create custom slash commands. Visit the [slash commands](https://docs.mattermost.com/developer/slash-commands.html) documentation for more information and a list of default slash commands.
+* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
 * __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
