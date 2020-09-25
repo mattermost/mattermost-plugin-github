@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import Octicon, {GitPullRequest, IssueOpened} from '@primer/octicons-react';
 
 import {formatTimeSince} from 'utils/date_utils';
 
@@ -34,9 +35,22 @@ function GithubItems(props) {
         let number = null;
 
         if (item.number) {
+            let iconType;
+
+            // item is a pull request
+            if (item.pull_request) {
+                iconType = GitPullRequest;
+            } else {
+                iconType = IssueOpened;
+            }
             number = (
                 <strong>
-                    <i className='fa fa-code-fork'/>{' #' + item.number}
+                    <Octicon
+                        icon={iconType}
+                        size='small'
+                        verticalAlign='text-bottom'
+                    />
+                    {' #' + item.number}
                 </strong>);
         }
 
@@ -58,7 +72,7 @@ function GithubItems(props) {
                             target='_blank'
                             rel='noopener noreferrer'
                         >
-                            <i className='fa fa-code-fork'/>{' #' + item.number}
+                            {number}
                         </a>
                     </strong>);
             }
