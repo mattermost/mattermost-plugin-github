@@ -45,12 +45,14 @@ function GithubItems(props) {
             }
             number = (
                 <strong>
-                    <Octicon
-                        icon={iconType}
-                        size='small'
-                        verticalAlign='text-bottom'
-                    />
-                    {' #' + item.number}
+                    <div style={{...style.icon}}>
+                        <Octicon
+                            icon={iconType}
+                            size='small'
+                            verticalAlign='text-bottom'
+                        />
+                    </div>
+                    {'#' + item.number}
                 </strong>);
         }
 
@@ -86,11 +88,11 @@ function GithubItems(props) {
                         style={
                             {
                                 ...style.milestoneIcon,
+                                ...style.icon,
                                 ...((item.created_at || userName) && {paddingLeft: 10}),
                             }
                         }
                     ><SignIcon/></div>
-                    {' '}
                     {item.milestone.title}
                 </span>);
         }
@@ -200,6 +202,7 @@ const getStyle = makeStyleFromTheme((theme) => {
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
+            marginRight: '6px',
         },
         iconSucess: {
             fill: theme.onlineIndicator,
