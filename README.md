@@ -23,7 +23,7 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
  - [Frequently Asked Questions](#frequently-asked-questions)
  - [Development](#development)
 
-![GitHub plugin screenshot](assets/github_mattermost.png)
+![GitHub plugin screenshot](images/github_mattermost.png)
 
 ## Audience
 
