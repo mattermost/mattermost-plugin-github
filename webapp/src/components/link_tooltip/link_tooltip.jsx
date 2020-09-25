@@ -13,6 +13,10 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
         const initData = async () => {
             if (href.includes('github.com/')) {
                 const [owner, repo, type, number] = href.split('github.com/')[1].split('/');
+                if (!owner | !repo | !type | !number) {
+                    return;
+                }
+
                 let res;
                 switch (type) {
                 case 'issues':
