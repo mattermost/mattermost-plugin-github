@@ -35,7 +35,7 @@ This repository is licensed under the [Apache 2.0 License](https://github.com/ma
 
 ## About the GitHub Plugin
 
-The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost, to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration and include: 
+The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration and include: 
 
 After your System Admin has [configured the GitHub plugin](#configuration), run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
 
