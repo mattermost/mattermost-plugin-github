@@ -4,8 +4,9 @@
     "description": "GitHub plugin for Mattermost.",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
     "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
+    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.0-rc1",
     "icon_path": "assets/icon.svg",
-    "version": "1.0.0",
+    "version": "2.0.0-rc1",
     "min_server_version": "5.25.0",
     "server": {
       "executables": {
@@ -18,7 +19,7 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost.  \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
+        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost.  \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
         "settings": [
             {
                 "key": "GitHubOAuthClientID",
@@ -71,8 +72,23 @@
             {
                 "key": "EnableCodePreview",
                 "display_name": "Enable Code Previews",
-                "type": "bool",
-                "help_text": "(Optional) Allow the plugin to expand permalinks to github files with an actual preview of the linked file."
+                "type": "dropdown",
+                "help_text": "Allow the plugin to expand permalinks to GitHub files with an actual preview of the linked file.",
+                "default": "public",
+                "options": [
+                    {
+                        "display_name": "Enable for public repositories",
+                        "value": "public"
+                    },
+                    {
+                        "display_name": "Enable for public and private repositories. This might leak confidential code into public channels.",
+                        "value": "privateAndPublic"
+                    },
+                    {
+                        "display_name": "Disable",
+                        "value": "disable"
+                    }
+                ]
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

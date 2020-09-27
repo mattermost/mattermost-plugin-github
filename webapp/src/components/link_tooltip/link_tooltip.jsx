@@ -7,12 +7,16 @@ import ReactMarkdown from 'react-markdown';
 import Client from 'client';
 import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 
-export const LinkTooltip = ({href, connected, theme}) => {
+export const LinkTooltip = ({href, connected, show, theme}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
-        const init = async () => {
+        const initData = async () => {
             if (href.includes('github.com/')) {
                 const [owner, repo, type, number] = href.split('github.com/')[1].split('/');
+                if (!owner | !repo | !type | !number) {
+                    return;
+                }
+
                 let res;
                 switch (type) {
                 case 'issues':
@@ -30,13 +34,14 @@ export const LinkTooltip = ({href, connected, theme}) => {
                 setData(res);
             }
         };
-        if (data) {
+
+        // show is not provided for Mattermost Server < 5.28
+        if (!connected || data || ((typeof (show) !== 'undefined' || show != null) && !show)) {
             return;
         }
-        if (connected) {
-            init();
-        }
-    }, []);
+
+        initData();
+    }, [connected, data, href, show]);
 
     const getIconElement = () => {
         let icon;
@@ -174,4 +179,5 @@ LinkTooltip.propTypes = {
     href: PropTypes.string.isRequired,
     connected: PropTypes.bool.isRequired,
     theme: PropTypes.object.isRequired,
+    show: PropTypes.bool,
 };

@@ -5,17 +5,23 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import FormButton from 'components/form_button';
+import GithubLabelSelector from 'components/github_label_selector';
+import GithubAssigneeSelector from 'components/github_assignee_selector';
+import GithubMilestoneSelector from 'components/github_milestone_selector';
 import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
+import FormButton from 'components/form_button';
 import Input from 'components/input';
 
 const initialState = {
     submitting: false,
     error: null,
-    repoValue: '',
+    repo: null,
     issueTitle: '',
     issueDescription: '',
+    labels: [],
+    assignees: [],
+    milestone: null,
     showErrors: false,
     issueTitleValid: true,
 };
@@ -42,7 +48,7 @@ export default class CreateIssueModal extends PureComponent {
     }
 
     // handle issue creation after form is populated
-    handleCreate = (e) => {
+    handleCreate = async (e) => {
         if (e && e.preventDefault) {
             e.preventDefault();
         }
@@ -58,22 +64,26 @@ export default class CreateIssueModal extends PureComponent {
         const issue = {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
-            repo: this.state.repoValue,
+            repo: this.state.repo && this.state.repo.name,
+            labels: this.state.labels,
+            assignees: this.state.assignees,
+            milestone: this.state.milestone && this.state.milestone.value,
             post_id: this.props.post.id,
         };
 
         this.setState({submitting: true});
 
-        this.props.create(issue).then((created) => {
-            if (created.error) {
-                this.setState({
-                    error: created.error.message,
-                    showErrors: true,
-                    submitting: false});
-                return;
-            }
-            this.handleClose(e);
-        });
+        const created = await this.props.create(issue);
+
+        if (created.error) {
+            this.setState({
+                error: created.error.message,
+                showErrors: true,
+                submitting: false,
+            });
+            return;
+        }
+        this.handleClose(e);
     };
 
     handleClose = (e) => {
@@ -83,23 +93,48 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoValueChange = (name) => {
-        this.setState({
-            repoValue: name,
-        });
-    };
+    handleRepoChange = (repo) => this.setState({repo});
 
-    handleIssueTitleChange = (newValue) => {
-        this.setState({
-            issueTitle: newValue,
-        });
-    };
+    handleLabelsChange = (labels) => this.setState({labels});
 
-    handleIssueDescriptionChange = (newValue) => {
-        this.setState({
-            issueDescription: newValue,
-        });
-    };
+    handleAssigneesChange = (assignees) => this.setState({assignees});
+
+    handleMilestoneChange = (milestone) => this.setState({milestone});
+
+    handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
+
+    handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
+
+    renderIssueAttributeSelectors = () => {
+        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
+            return null;
+        }
+
+        return (
+            <>
+                <GithubLabelSelector
+                    repoName={this.state.repo.name}
+                    theme={this.props.theme}
+                    selectedLabels={this.state.labels}
+                    onChange={this.handleLabelsChange}
+                />
+
+                <GithubAssigneeSelector
+                    repoName={this.state.repo.name}
+                    theme={this.props.theme}
+                    selectedAssignees={this.state.assignees}
+                    onChange={this.handleAssigneesChange}
+                />
+
+                <GithubMilestoneSelector
+                    repoName={this.state.repo.name}
+                    theme={this.props.theme}
+                    selectedMilestone={this.state.milestone}
+                    onChange={this.handleMilestoneChange}
+                />
+            </>
+        );
+    }
 
     render() {
         if (!this.props.visible) {
@@ -132,13 +167,14 @@ export default class CreateIssueModal extends PureComponent {
         const component = (
             <div>
                 <GithubRepoSelector
-                    onChange={this.handleRepoValueChange}
-                    value={this.state.repoValue}
+                    onChange={this.handleRepoChange}
+                    value={this.state.repo && this.state.repo.name}
                     required={true}
                     theme={theme}
                     addValidate={this.validator.addComponent}
                     removeValidate={this.validator.removeComponent}
                 />
+
                 <Input
                     id={'title'}
                     label='Title for the GitHub Issue'
@@ -150,6 +186,9 @@ export default class CreateIssueModal extends PureComponent {
                     onChange={this.handleIssueTitleChange}
                 />
                 {issueTitleValidationError}
+
+                {this.renderIssueAttributeSelectors()}
+
                 <Input
                     label='Description for the GitHub Issue'
                     type='textarea'
