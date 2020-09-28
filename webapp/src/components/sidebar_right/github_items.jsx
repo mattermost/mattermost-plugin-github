@@ -45,13 +45,13 @@ function GithubItems(props) {
             }
             number = (
                 <strong>
-                    <div style={{...style.icon}}>
+                    <span style={{...style.icon}}>
                         <Octicon
                             icon={iconType}
                             size='small'
                             verticalAlign='text-bottom'
                         />
-                    </div>
+                    </span>
                     {'#' + item.number}
                 </strong>);
         }
@@ -83,16 +83,16 @@ function GithubItems(props) {
         let milestone = '';
         if (item.milestone) {
             milestone = (
-                <span>
-                    <div
-                        style={
-                            {
-                                ...style.milestoneIcon,
-                                ...style.icon,
-                                ...((item.created_at || userName) && {paddingLeft: 10}),
-                            }
+                <span
+                    style={
+                        {
+                            ...style.milestoneIcon,
+                            ...style.icon,
+                            ...((item.created_at || userName) && {paddingLeft: 10}),
                         }
-                    ><SignIcon/></div>
+                    }
+                >
+                    <SignIcon/>
                     {item.milestone.title}
                 </span>);
         }
@@ -109,13 +109,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<div style={{...style.icon, ...style.iconSucess}}><TickIcon/></div>);
+                status = (<span style={{...style.icon, ...style.iconSucess}}><TickIcon/></span>);
                 break;
             case 'pending':
-                status = (<div style={{...style.icon, ...style.iconPending}}><DotIcon/></div>);
+                status = (<span style={{...style.icon, ...style.iconPending}}><DotIcon/></span>);
                 break;
             default:
-                status = (<div style={{...style.icon, ...style.iconFailed}}><CrossIcon/></div>);
+                status = (<span style={{...style.icon, ...style.iconFailed}}><CrossIcon/></span>);
             }
         }
 
@@ -305,7 +305,7 @@ function getReviewText(item, style, secondLine) {
                 placement='bottom'
                 overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
             >
-                <div style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></div>
+                <span style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></span>
             </OverlayTrigger>
         );
     }
