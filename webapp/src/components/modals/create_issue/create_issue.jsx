@@ -67,8 +67,7 @@ export default class CreateIssueModal extends PureComponent {
 
         this.props.create(issue).then((created) => {
             if (created.error) {
-                let errMessage = created.error.message;
-                errMessage = getErrorMessage(created.error.message).message;
+                const errMessage = getErrorMessage(created.error.message);
 
                 this.setState({
                     error: errMessage,
