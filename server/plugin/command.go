@@ -21,6 +21,7 @@ const (
 	featureDeletes       = "deletes"
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
+	featureSubscribe     = "subscribe"
 )
 
 var validFeatures = map[string]bool{
@@ -31,6 +32,7 @@ var validFeatures = map[string]bool{
 	featureDeletes:       true,
 	featureIssueComments: true,
 	featurePullReviews:   true,
+	featureSubscribe:     true,
 }
 
 const (
@@ -44,21 +46,26 @@ func validateFeatures(features []string) (bool, []string) {
 	valid := true
 	invalidFeatures := []string{}
 	hasLabel := false
+	isRepo := false
 	for _, f := range features {
 		if _, ok := validFeatures[f]; ok {
 			continue
 		}
-		if strings.HasPrefix(f, "label") {
+		if strings.Contains(f, "label") {
 			hasLabel = true
+			continue
+		}
+		if strings.Contains(f, "/") {
+			isRepo = true
 			continue
 		}
 		invalidFeatures = append(invalidFeatures, f)
 		valid = false
 	}
-	if valid && hasLabel {
+	if valid && ( hasLabel || isRepo ) {
 		// must have "pulls" or "issues" in features when using a label
 		for _, f := range features {
-			if f == featurePulls || f == featureIssues {
+			if f == featurePulls || f == featureIssues || f == featureSubscribe{
 				return valid, invalidFeatures
 			}
 		}

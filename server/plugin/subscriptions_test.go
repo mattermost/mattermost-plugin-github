@@ -73,26 +73,6 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "basic test with upper and lower",
-			args: args{channelID: "1"},
-			plugin: pluginWithMockedSubs([]*Subscription{
-				{
-					ChannelID:  "1",
-					Repository: "aSD",
-				},
-				{
-					ChannelID:  "1",
-					Repository: "123",
-				},
-				{
-					ChannelID:  "1",
-					Repository: "",
-				},
-			}),
-			want:    wantedSubscriptions([]string{"", "123", "asd"}, "1"),
-			wantErr: false,
-		},
-		{
 			name:    "test empty",
 			args:    args{channelID: "1"},
 			plugin:  pluginWithMockedSubs([]*Subscription{}),
