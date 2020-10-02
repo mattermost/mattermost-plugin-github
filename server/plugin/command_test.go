@@ -124,6 +124,15 @@ func TestParseCommand(t *testing.T) {
 			},
 		},
 		{
+			name:  "simple one-word label lower",
+			input: `/github subscribe dhaussermann/hello-world issues,label:"Help"`,
+			want: output{
+				"/github",
+				"subscribe",
+				[]string{"dhaussermann/hello-world", `issues,label:"Help"`},
+			},
+		},
+		{
 			name:  "two-word label",
 			input: `/github subscribe DHaussermann/hello-world issues,label:"Help Wanted"`,
 			want: output{
