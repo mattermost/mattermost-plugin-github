@@ -9,6 +9,7 @@ import FormButton from 'components/form_button';
 import Input from 'components/input';
 
 import GithubIssueSelector from 'components/github_issue_selector';
+import {getErrorMessage} from '../../../utils/user_utils';
 
 const initialState = {
     submitting: false,
