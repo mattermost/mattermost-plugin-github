@@ -65,7 +65,7 @@
   },
   "dependencies": {
     "@primer/octicons-react": "^10.1.0",
-    "core-js": "3.1.4",
+    "core-js": "3.6.5",
     "debounce-promise": "3.1.2",
     "mattermost-redux": "5.26.2",
     "node-fetch": "2.6.1",
