@@ -7,6 +7,7 @@ const manifest = JSON.parse(`
     "description": "GitHub plugin for Mattermost.",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
     "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
+    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.0",
     "icon_path": "assets/icon.svg",
     "version": "2.0.0",
     "min_server_version": "5.25.0",
@@ -22,9 +23,7 @@ const manifest = JSON.parse(`
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost.  \
- \
- Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
+        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost.  \\n \\n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github).",
         "settings": [
             {

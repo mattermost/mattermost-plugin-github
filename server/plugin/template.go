@@ -323,8 +323,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
 		"* `/github help` - Display Slash Command help text\n" +
 		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
-		"* `/github subscribe list` - Will list the current channel subscriptions\n" +
-		"* `/github subscribe owner[/repo] [features] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
+		"* `/github subscriptions list` - Will list the current channel subscriptions\n" +
+		"* `/github subscriptions add owner[/repo] [features] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
 		"  * `features` is a comma-delimited list of one or more the following:\n" +
 		"    * `issues` - includes new and closed issues\n" +
 		"    * `pulls` - includes new and closed pull requests\n" +
@@ -337,11 +337,16 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    * Defaults to `pulls,issues,creates,deletes`\n" +
 		"  * `flags` currently supported:\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
-		"* `/github unsubscribe owner/repo` - Unsubscribe the current channel from a repository\n" +
+		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
 		"* `/github me` - Display the connected GitHub account\n" +
 		"* `/github settings [setting] [value]` - Update your user settings\n" +
 		"  * `setting` can be `notifications` or `reminders`\n" +
-		"  * `value` can be `on` or `off`\n"))
+		"  * `value` can be `on` or `off`\n" +
+		"* `/github mute` - Managed muted GitHub users. You will not receive notifications for comments in your PRs and issues from those users.\n" +
+		"  * `/github mute list` - list your muted GitHub users\n" +
+		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
+		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
+		"  * `/github mute delete-all` - unmute all GitHub users\n"))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
