@@ -19,7 +19,7 @@ const manifestStr = `
   "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
   "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.0-rc1",
   "icon_path": "assets/icon.svg",
-  "version": "2.0.0-rc1",
+  "version": "2.0.0-rc2",
   "min_server_version": "5.25.0",
   "server": {
     "executables": {
