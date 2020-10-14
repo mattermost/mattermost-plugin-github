@@ -9,6 +9,9 @@ require (
 	github.com/mattermost/mattermost-plugin-api v0.0.12-0.20200908143138-66edf222f7ea
 	github.com/mattermost/mattermost-server/v5 v5.27.0
 	github.com/pkg/errors v0.9.1
+	github.com/shurcooL/githubv4 v0.0.0-20200928013246-d292edc3691b
+	github.com/shurcooL/graphql v0.0.0-20200928012149-18c5c3165e3a // indirect
 	github.com/stretchr/testify v1.6.1
+	golang.org/x/net v0.0.0-20201002202402-0a1ea396d57c // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 )
