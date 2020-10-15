@@ -134,11 +134,11 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 ## Slash Commands
 
 * __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
-* __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
+* __Subscribe to a respository__ - Use `/github subscriptions add` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
    ```
-   /github subscribe mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
+   /github subscriptions add mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
    ```
   - The following flags are supported:
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
@@ -158,7 +158,7 @@ Set up your GitHub webhook from the repository instead of the organization. Noti
 Suppose you want to send notifications to a Mattermost channel when `Severity/Critical` label is applied to any issue in the `mattermost/mattermost-plugin-github` repository. Then, use this command to subscribe to these notifications:
 
 ```
-/github subscribe mattermost/mattermost-plugin-github issues,label:"Severity/Critical"
+/github subscriptions add mattermost/mattermost-plugin-github issues,label:"Severity/Critical"
 ```
 
 ### How do I share feedback on this plugin?
