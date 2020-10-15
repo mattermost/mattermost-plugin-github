@@ -466,7 +466,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			qparams = "?private=true"
 		}
 
-		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *siteURL, qparams)
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/%s/oauth/connect%s)", *siteURL, Manifest.Id, qparams)
 		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}
