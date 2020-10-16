@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	featureIssueCreations = "Issue_creations"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePushes        = "pushes"
@@ -24,6 +25,7 @@ const (
 )
 
 var validFeatures = map[string]bool{
+	featureIssueCreations:true,
 	featureIssues:        true,
 	featurePulls:         true,
 	featurePushes:        true,
