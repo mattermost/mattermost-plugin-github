@@ -390,6 +390,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
+		if sub.IssueCreation() && action != "opened" {
+			continue;
+		}
+
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
