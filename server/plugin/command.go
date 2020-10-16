@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	featureIssueCreations = "Issue_creations"
+	featureIssueCreation = "issue_creation"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePushes        = "pushes"
