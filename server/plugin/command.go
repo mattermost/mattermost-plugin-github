@@ -25,7 +25,7 @@ const (
 )
 
 var validFeatures = map[string]bool{
-	featureIssueCreations:true,
+	featureIssueCreation :true,
 	featureIssues:        true,
 	featurePulls:         true,
 	featurePushes:        true,
