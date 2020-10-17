@@ -346,7 +346,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	issue := event.GetIssue()
 	action := event.GetAction()
 
-	if issue.GetCreatedAt().Unix()-time.Now().Unix() <= 3 && action == "labeled" {
+	if time.Now().Unix()-issue.GetCreatedAt().Unix() <= 3 && action == "labeled" {
 		return
 	}
 
