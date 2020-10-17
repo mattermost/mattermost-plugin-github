@@ -444,7 +444,7 @@ func TestObject_SetNode(t *testing.T) {
 	want := &Object{
 		name: "Search",
 		node: n,
-		tag: make(tag, 1),
+		tag:  make(tag, 1),
 	}
 
 	got, _ := NewObject(SetName("Search"))
@@ -474,9 +474,9 @@ func TestObject_SetNodeList(t *testing.T) {
 	n.AddScalar(s2)
 
 	want := &Object{
-		name: "Search",
+		name:     "Search",
 		nodeList: n,
-		tag: make(tag, 1),
+		tag:      make(tag, 1),
 	}
 
 	got, _ := NewObject(SetName("Search"))

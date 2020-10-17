@@ -107,9 +107,9 @@ func TestUnion_SetNodeList(t *testing.T) {
 	}
 
 	want := &Union{
-		name: "PullRequest",
+		name:     "PullRequest",
 		nodeList: n,
-		tag:  tag{TagKeyUnion: "... on PullRequest"},
+		tag:      tag{TagKeyUnion: "... on PullRequest"},
 	}
 
 	if !reflect.DeepEqual(got, want) {
