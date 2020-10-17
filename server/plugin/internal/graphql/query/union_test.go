@@ -23,3 +23,57 @@ func TestNewUnion(t *testing.T) {
 		t.Errorf("NewUnion() got = %+v, want %+v", got, want)
 	}
 }
+
+func TestUnion_SetNode(t *testing.T) {
+	s, _ := NewScalar("Body", "String")
+	n := NewNode()
+	n.AddScalar(s)
+
+	want := &Union{
+		name: "PullRequest",
+		node: n,
+		tag:  tag{TagKeyUnion: "... on PullRequest"},
+	}
+
+	got, _ := NewUnion("PullRequest")
+	got.SetNode(n)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddObject() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestUnion_AddObject(t *testing.T) {
+	o, _ := NewObject(SetName("Search"), SetFirst(100))
+	want := &Union{
+		name:    "PullRequest",
+		objects: []Object{*o},
+		tag:     tag{TagKeyUnion: "... on PullRequest"},
+	}
+
+	got, _ := NewUnion("PullRequest")
+	got.AddObject(o)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddObject() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestUnion_AddScalar(t *testing.T) {
+	s, _ := NewScalar("Body", "String")
+	s2, _ := NewScalar("Title", "String")
+
+	want := &Union{
+		name:    "PullRequest",
+		scalars: []Scalar{s, s2},
+		tag:     tag{TagKeyUnion: "... on PullRequest"},
+	}
+
+	got, _ := NewUnion("PullRequest")
+	got.AddScalar(s)
+	got.AddScalar(s2)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddScalar() = %+v\nwant: %+v", got, want)
+	}
+}
