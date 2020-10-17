@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
@@ -342,13 +343,18 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	repo := event.GetRepo()
+	issue := event.GetIssue()
+	action := event.GetAction()
+
+	if issue.GetCreatedAt().Unix()-time.Now().Unix() <= 3 && action == "labeled" {
+		return
+	}
 
 	subscribedChannels := p.GetSubscribedChannelsForRepository(repo)
 	if len(subscribedChannels) == 0 {
 		return
 	}
 
-	action := event.GetAction()
 	issueTemplate := ""
 	switch action {
 	case "opened":
@@ -378,7 +384,6 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		Message: renderedMessage,
 	}
 
-	issue := event.GetIssue()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(issue.Labels))
 	for i, v := range issue.Labels {
