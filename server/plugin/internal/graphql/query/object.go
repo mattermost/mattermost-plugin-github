@@ -11,7 +11,9 @@ type (
 	Object struct {
 		name    string
 		scalars []Scalar
-		nodes   []Node
+		objects []Object
+		node    *Node
+		unions  []Union
 		tag     tag
 	}
 
@@ -21,18 +23,18 @@ type (
 )
 
 func NewObject(opts ...Option) (*Object, error) {
-	c := &Object{
+	obj := &Object{
 		tag: make(tag, 1),
 	}
 
 	for _, opt := range opts {
-		err := opt(c)
+		err := opt(obj)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return c, nil
+	return obj, nil
 }
 
 func SetName(val string) Option {
@@ -135,12 +137,28 @@ func SetSearchType(val string) Option {
 	}
 }
 
-func (c *Object) tagExists(key string) bool {
-	for k, _ := range c.tag {
+func (o *Object) tagExists(key string) bool {
+	for k, _ := range o.tag {
 		if k == key {
 			return true
 		}
 	}
 
 	return false
+}
+
+func (o *Object) AddScalar(scalar Scalar) {
+	o.scalars = append(o.scalars, scalar)
+}
+
+func (o *Object) AddObject(obj *Object) {
+	o.objects = append(o.objects, *obj)
+}
+
+func (o *Object) SetNode(n *Node) {
+	o.node = n
+}
+
+func (o *Object) AddUnion(u *Union) {
+	o.unions = append(o.unions, *u)
 }

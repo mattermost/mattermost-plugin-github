@@ -364,3 +364,105 @@ func TestObject_tagExists(t *testing.T) {
 		})
 	}
 }
+
+func TestObject_AddScalar(t *testing.T) {
+	s, _ := NewScalar("Body", "String")
+	s2, _ := NewScalar("Title", "String")
+
+	want := &Object{
+		name:    "Search",
+		scalars: []Scalar{s, s2},
+		tag:     make(tag, 1),
+	}
+
+	got, _ := NewObject(SetName("Search"))
+	got.AddScalar(s)
+	got.AddScalar(s2)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddScalar() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestObject_AddObject(t *testing.T) {
+	rr := &Object{
+		name: "ReviewRequests",
+		scalars: []Scalar{
+			{
+				name: "TotalCount",
+				kind: "Int",
+			},
+		},
+		tag: tag{
+			"first": 10,
+		},
+	}
+	repo := &Object{
+		name: "Repository",
+		scalars: []Scalar{
+			{
+				name: "Name",
+				kind: "String",
+			},
+		},
+		tag: make(tag, 1),
+	}
+
+	want := &Object{
+		name:    "Search",
+		objects: []Object{*rr, *repo},
+		tag: tag{
+			"first": 100,
+			"type":  githubv4.SearchTypeIssue,
+		},
+	}
+
+	got, _ := NewObject(SetName("Search"), SetFirst(100), SetSearchType("issue"))
+	got.AddObject(rr)
+	got.AddObject(repo)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddObject() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestObject_SetNode(t *testing.T) {
+	s, _ := NewScalar("Body", "String")
+	s2, _ := NewScalar("Title", "String")
+
+	n := Node{
+		scalars: []Scalar{s, s2},
+	}
+
+	want := &Object{
+		name: "Search",
+		node: &Node{
+			scalars: []Scalar{s, s2},
+		},
+		tag: make(tag, 1),
+	}
+
+	got, _ := NewObject(SetName("Search"))
+	got.SetNode(&n)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SetNode() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestObject_AddUnion(t *testing.T) {
+	u, _ := NewUnion("PullRequest")
+
+	got, _ := NewObject(SetName("Search"))
+	got.AddUnion(u)
+
+	want := &Object{
+		name:   "Search",
+		unions: []Union{*u},
+		tag:    make(tag, 1),
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddUnion() = %+v\nwant: %+v", got, want)
+	}
+}
