@@ -25,9 +25,22 @@ func TestNewUnion(t *testing.T) {
 }
 
 func TestUnion_SetNode(t *testing.T) {
+	got, _ := NewUnion("PullRequest")
+
+	// Check wrong type (node/node list) error
+	if err := got.SetNode(NewNodeList()); err == nil {
+		t.Errorf("SetNode() expected error, got nil")
+		return
+	}
+
 	s, _ := NewScalar("Body", "String")
 	n := NewNode()
 	n.AddScalar(s)
+
+	if err := got.SetNode(n); err != nil {
+		t.Errorf("SetNode() err = %v", err)
+		return
+	}
 
 	want := &Union{
 		name: "PullRequest",
@@ -35,11 +48,8 @@ func TestUnion_SetNode(t *testing.T) {
 		tag:  tag{TagKeyUnion: "... on PullRequest"},
 	}
 
-	got, _ := NewUnion("PullRequest")
-	got.SetNode(n)
-
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("AddObject() = %+v\nwant: %+v", got, want)
+		t.Errorf("SetNode() = %+v\nwant: %+v", got, want)
 	}
 }
 
@@ -75,5 +85,34 @@ func TestUnion_AddScalar(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("AddScalar() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestUnion_SetNodeList(t *testing.T) {
+	got, _ := NewUnion("PullRequest")
+
+	// Check wrong type (node/node list) error
+	if err := got.SetNodeList(NewNode()); err == nil {
+		t.Errorf("SetNodeList() expected error, got nil")
+		return
+	}
+
+	s, _ := NewScalar("Body", "String")
+	n := NewNodeList()
+	n.AddScalar(s)
+
+	if err := got.SetNodeList(n); err != nil {
+		t.Errorf("SetNodeList() err = %v", err)
+		return
+	}
+
+	want := &Union{
+		name: "PullRequest",
+		nodeList: n,
+		tag:  tag{TagKeyUnion: "... on PullRequest"},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SetNodeList() = %+v\nwant: %+v", got, want)
 	}
 }
