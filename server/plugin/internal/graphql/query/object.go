@@ -15,11 +15,6 @@ type (
 		tag     tag
 	}
 
-	Node struct {
-		scalars []Scalar
-		objects []Object
-	}
-
 	Option func(item *Object) error
 
 	tag map[string]interface{}
@@ -27,7 +22,7 @@ type (
 
 func NewObject(opts ...Option) (*Object, error) {
 	c := &Object{
-		tag: make(tag),
+		tag: make(tag, 1),
 	}
 
 	for _, opt := range opts {
