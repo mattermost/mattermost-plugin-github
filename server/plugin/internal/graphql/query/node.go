@@ -8,6 +8,14 @@ type Node struct {
 
 func NewNode() *Node {
 	return &Node{
-		name: "nodes",
+		name: "Nodes",
 	}
+}
+
+func (n *Node) AddScalar(scalar Scalar) {
+	n.scalars = append(n.scalars, scalar)
+}
+
+func (n *Node) AddObject(obj *Object) {
+	n.objects = append(n.objects, *obj)
 }
