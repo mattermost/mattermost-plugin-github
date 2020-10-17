@@ -9,12 +9,12 @@ import (
 
 type (
 	Object struct {
-		name    string
-		scalars []Scalar
-		objects []Object
-		node    *Node
-		unions  []Union
-		tag     tag
+		name     string
+		scalars  []Scalar
+		objects  []Object
+		node     *Node
+		nodeList *Node
+		tag      tag
 	}
 
 	Option func(item *Object) error
@@ -155,10 +155,20 @@ func (o *Object) AddObject(obj *Object) {
 	o.objects = append(o.objects, *obj)
 }
 
-func (o *Object) SetNode(n *Node) {
+func (o *Object) SetNode(n *Node) error {
+	if n.name == TypeNodeList {
+		return fmt.Errorf("cannot set node list to node")
+	}
+
 	o.node = n
+	return nil
 }
 
-func (o *Object) AddUnion(u *Union) {
-	o.unions = append(o.unions, *u)
+func (o *Object) SetNodeList(n *Node) error {
+	if n.name == TypeNode {
+		return fmt.Errorf("cannot set node to node list")
+	}
+
+	o.nodeList = n
+	return nil
 }

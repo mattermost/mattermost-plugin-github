@@ -427,42 +427,65 @@ func TestObject_AddObject(t *testing.T) {
 }
 
 func TestObject_SetNode(t *testing.T) {
+	// Check wrong type (node/node list) error
+	o, _ := NewObject(SetName("Search"))
+	if err := o.SetNode(NewNodeList()); err == nil {
+		t.Errorf("SetNode() expected error, got nil")
+		return
+	}
+
 	s, _ := NewScalar("Body", "String")
 	s2, _ := NewScalar("Title", "String")
 
-	n := Node{
-		scalars: []Scalar{s, s2},
-	}
+	n := NewNode()
+	n.AddScalar(s)
+	n.AddScalar(s2)
 
 	want := &Object{
 		name: "Search",
-		node: &Node{
-			scalars: []Scalar{s, s2},
-		},
+		node: n,
 		tag: make(tag, 1),
 	}
 
 	got, _ := NewObject(SetName("Search"))
-	got.SetNode(&n)
+	if err := got.SetNode(n); err != nil {
+		t.Errorf("SetNode() err = %v", err)
+		return
+	}
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("SetNode() = %+v\nwant: %+v", got, want)
 	}
 }
 
-func TestObject_AddUnion(t *testing.T) {
-	u, _ := NewUnion("PullRequest")
+func TestObject_SetNodeList(t *testing.T) {
+	// Check wrong type (node/node list) error
+	o, _ := NewObject(SetName("Search"))
+	if err := o.SetNodeList(NewNode()); err == nil {
+		t.Errorf("SetNodeList() expected error, got nil")
+		return
+	}
 
-	got, _ := NewObject(SetName("Search"))
-	got.AddUnion(u)
+	s, _ := NewScalar("Body", "String")
+	s2, _ := NewScalar("Title", "String")
+
+	n := NewNodeList()
+	n.AddScalar(s)
+	n.AddScalar(s2)
 
 	want := &Object{
-		name:   "Search",
-		unions: []Union{*u},
-		tag:    make(tag, 1),
+		name: "Search",
+		nodeList: n,
+		tag: make(tag, 1),
+	}
+
+	got, _ := NewObject(SetName("Search"))
+	if err := got.SetNodeList(n); err != nil {
+		t.Errorf("SetNodeList() err = %v", err)
+		return
 	}
 
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("AddUnion() = %+v\nwant: %+v", got, want)
+		t.Errorf("SetNodeList() = %+v\nwant: %+v", got, want)
 	}
 }
