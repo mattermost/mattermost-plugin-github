@@ -7,23 +7,23 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-func TestNewCompoundItem_SetName(t *testing.T) {
+func TestNewObject_SetName(t *testing.T) {
 	tests := []struct {
 		name    string
 		opt     Option
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
 			name:    "valid",
 			opt:     SetName("PullRequest"),
-			want:    &CompoundItem{name: "PullRequest", tag: make(tag, 1)},
+			want:    &Object{name: "PullRequest", tag: make(tag, 1)},
 			wantErr: false,
 		},
 		{
 			name:    "valid/initial starts with lower case",
 			opt:     SetName("pullRequest"),
-			want:    &CompoundItem{name: "PullRequest", tag: make(tag, 1)},
+			want:    &Object{name: "PullRequest", tag: make(tag, 1)},
 			wantErr: false,
 		},
 		{
@@ -53,30 +53,30 @@ func TestNewCompoundItem_SetName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.opt)
+			got, err := NewObject(tt.opt)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestNewCompoundItem_SetFirst(t *testing.T) {
+func TestNewObject_SetFirst(t *testing.T) {
 
 	tests := []struct {
 		name    string
 		opts    []Option
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
 			opts: []Option{SetFirst(10)},
-			want: &CompoundItem{
+			want: &Object{
 				tag: tag{
 					"first": 10,
 				},
@@ -101,29 +101,29 @@ func TestNewCompoundItem_SetFirst(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.opts...)
+			got, err := NewObject(tt.opts...)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestNewCompoundItem_SetLast(t *testing.T) {
+func TestNewObject_SetLast(t *testing.T) {
 	tests := []struct {
 		name    string
 		opts    []Option
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
 			opts: []Option{SetLast(10)},
-			want: &CompoundItem{
+			want: &Object{
 				tag: tag{
 					"last": 10,
 				},
@@ -148,29 +148,29 @@ func TestNewCompoundItem_SetLast(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.opts...)
+			got, err := NewObject(tt.opts...)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestNewCompoundItem_SetBefore(t *testing.T) {
+func TestNewObject_SetBefore(t *testing.T) {
 	tests := []struct {
 		name    string
 		opt     Option
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
 			opt:  SetBefore("test"),
-			want: &CompoundItem{
+			want: &Object{
 				tag: tag{"before": "test"},
 			},
 			wantErr: false,
@@ -184,29 +184,29 @@ func TestNewCompoundItem_SetBefore(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.opt)
+			got, err := NewObject(tt.opt)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestNewCompoundItem_SetAfter(t *testing.T) {
+func TestNewObject_SetAfter(t *testing.T) {
 	tests := []struct {
 		name    string
 		opt     Option
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
 			opt:  SetAfter("test"),
-			want: &CompoundItem{
+			want: &Object{
 				tag: tag{"after": "test"},
 			},
 			wantErr: false,
@@ -220,29 +220,29 @@ func TestNewCompoundItem_SetAfter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.opt)
+			got, err := NewObject(tt.opt)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestNewCompoundItem_SetSearchType(t *testing.T) {
+func TestNewObject_SetSearchType(t *testing.T) {
 	tests := []struct {
 		name    string
 		opt     Option
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
 			opt:  SetSearchType("issue"),
-			want: &CompoundItem{
+			want: &Object{
 				tag: tag{
 					"type": githubv4.SearchTypeIssue,
 				},
@@ -252,7 +252,7 @@ func TestNewCompoundItem_SetSearchType(t *testing.T) {
 		{
 			name: "valid/white space",
 			opt:  SetSearchType(" issue"),
-			want: &CompoundItem{
+			want: &Object{
 				tag: tag{
 					"type": githubv4.SearchTypeIssue,
 				},
@@ -268,25 +268,25 @@ func TestNewCompoundItem_SetSearchType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.opt)
+			got, err := NewObject(tt.opt)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %v, want %v", got, tt.want)
+				t.Errorf("NewObject() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
-func TestNewCompoundItem_multipleOptions(t *testing.T) {
+func TestNewObject_multipleOptions(t *testing.T) {
 	type args struct {
 		opts []Option
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *CompoundItem
+		want    *Object
 		wantErr bool
 	}{
 		{
@@ -299,7 +299,7 @@ func TestNewCompoundItem_multipleOptions(t *testing.T) {
 					SetQuery("author:test is:pr is:OPEN archived:false"),
 				},
 			},
-			want: &CompoundItem{
+			want: &Object{
 				name: "PullRequest",
 				tag: tag{
 					"first": 10,
@@ -312,19 +312,19 @@ func TestNewCompoundItem_multipleOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewCompoundItem(tt.args.opts...)
+			got, err := NewObject(tt.args.opts...)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewCompoundItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewCompoundItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestCompoundItem_tagExists(t *testing.T) {
+func TestObject_tagExists(t *testing.T) {
 	tests := []struct {
 		name string
 		tag  tag
@@ -354,7 +354,7 @@ func TestCompoundItem_tagExists(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &CompoundItem{
+			c := &Object{
 				name: "test",
 				tag:  tt.tag,
 			}

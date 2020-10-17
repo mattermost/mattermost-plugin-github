@@ -5,17 +5,17 @@ import (
 	"strings"
 )
 
-type ScalarItem struct {
+type Scalar struct {
 	name string
 	kind string
 }
 
-func NewScalarItem(name, kind string) (ScalarItem, error) {
+func NewScalar(name, kind string) (Scalar, error) {
 	if err := validKey(name); err != nil {
-		return ScalarItem{}, fmt.Errorf("error setting 'key': %s", err.Error())
+		return Scalar{}, fmt.Errorf("error setting 'key': %s", err.Error())
 	}
 	if err := validKey(kind); err != nil {
-		return ScalarItem{}, fmt.Errorf("error setting 'kind': %s", err.Error())
+		return Scalar{}, fmt.Errorf("error setting 'kind': %s", err.Error())
 	}
 
 	name = strings.TrimSpace(strings.Title(name))
@@ -28,5 +28,5 @@ func NewScalarItem(name, kind string) (ScalarItem, error) {
 		kind = "ID"
 	}
 
-	return ScalarItem{name: name, kind: kind}, nil
+	return Scalar{name: name, kind: kind}, nil
 }

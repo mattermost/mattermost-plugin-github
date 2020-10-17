@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestNewScalarItem(t *testing.T) {
+func TestNewScalar(t *testing.T) {
 	type args struct {
 		name string
 		kind string
@@ -13,7 +13,7 @@ func TestNewScalarItem(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    ScalarItem
+		want    Scalar
 		wantErr bool
 	}{
 		{
@@ -22,7 +22,7 @@ func TestNewScalarItem(t *testing.T) {
 				name: "id",
 				kind: "ID",
 			},
-			want: ScalarItem{
+			want: Scalar{
 				name: "ID",
 				kind: "ID",
 			},
@@ -34,7 +34,7 @@ func TestNewScalarItem(t *testing.T) {
 				name: " ",
 				kind: "String",
 			},
-			want:    ScalarItem{},
+			want:    Scalar{},
 			wantErr: true,
 		},
 		{
@@ -43,7 +43,7 @@ func TestNewScalarItem(t *testing.T) {
 				name: "test10-test",
 				kind: "String",
 			},
-			want:    ScalarItem{},
+			want:    Scalar{},
 			wantErr: true,
 		},
 		{
@@ -52,20 +52,20 @@ func TestNewScalarItem(t *testing.T) {
 				name: "body",
 				kind: "",
 			},
-			want:    ScalarItem{},
+			want:    Scalar{},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewScalarItem(tt.args.name, tt.args.kind)
+			got, err := NewScalar(tt.args.name, tt.args.kind)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewScalarItem() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewScalar() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewScalarItem() got = %+v, want %+v", got, tt.want)
+				t.Errorf("NewScalar() got = %+v, want %+v", got, tt.want)
 			}
 		})
 	}

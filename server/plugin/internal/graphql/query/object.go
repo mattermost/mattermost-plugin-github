@@ -8,25 +8,25 @@ import (
 )
 
 type (
-	CompoundItem struct {
-		name  string
-		items []ScalarItem
-		nodes []Node
-		tag   tag
+	Object struct {
+		name    string
+		scalars []Scalar
+		nodes   []Node
+		tag     tag
 	}
 
 	Node struct {
-		items         []ScalarItem
-		compoundItems []CompoundItem
+		scalars []Scalar
+		objects []Object
 	}
 
-	Option func(item *CompoundItem) error
+	Option func(item *Object) error
 
 	tag map[string]interface{}
 )
 
-func NewCompoundItem(opts ...Option) (*CompoundItem, error) {
-	c := &CompoundItem{
+func NewObject(opts ...Option) (*Object, error) {
+	c := &Object{
 		tag: make(tag),
 	}
 
@@ -41,7 +41,7 @@ func NewCompoundItem(opts ...Option) (*CompoundItem, error) {
 }
 
 func SetName(val string) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		if err := validKey(val); err != nil {
 			return err
 		}
@@ -51,7 +51,7 @@ func SetName(val string) Option {
 }
 
 func SetFirst(val int) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		if err := greaterThan(val, 0); err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func SetFirst(val int) Option {
 }
 
 func SetLast(val int) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		if err := greaterThan(val, 0); err != nil {
 			return err
 		}
@@ -81,7 +81,7 @@ func SetLast(val int) Option {
 }
 
 func SetBefore(val string) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		if err := strNotEmpty(val); err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func SetBefore(val string) Option {
 }
 
 func SetAfter(val string) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		if err := strNotEmpty(val); err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ func SetAfter(val string) Option {
 }
 
 func SetQuery(val string) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		if err := strNotEmpty(val); err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func SetQuery(val string) Option {
 }
 
 func SetSearchType(val string) Option {
-	return func(item *CompoundItem) error {
+	return func(item *Object) error {
 		val = strings.ToUpper(strings.TrimSpace(val))
 		var searchType githubv4.SearchType
 
@@ -140,7 +140,7 @@ func SetSearchType(val string) Option {
 	}
 }
 
-func (c *CompoundItem) tagExists(key string) bool {
+func (c *Object) tagExists(key string) bool {
 	for k, _ := range c.tag {
 		if k == key {
 			return true
