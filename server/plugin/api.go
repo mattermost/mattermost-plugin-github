@@ -832,6 +832,10 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	result, rawResponse, err := githubClient.Issues.CreateComment(context.Background(), req.Owner, req.Repo, req.Number, comment)
 	if err != nil {
+		if rawResponse == nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(500, req.Repo, currentUsername), StatusCode: 500})
+			return
+		}
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUsername), StatusCode: rawResponse.StatusCode})
 		return
 	}
