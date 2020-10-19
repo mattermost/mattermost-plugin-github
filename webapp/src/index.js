@@ -15,6 +15,7 @@ import {getConnected, setShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
 
 import {id as pluginId} from './manifest';
+import Hooks from './hooks/hooks';
 
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
@@ -42,6 +43,9 @@ class PluginClass {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
         registry.registerReconnectHandler(handleReconnect(store));
+
+        const hooks = new Hooks(store);
+        registry.registerSlashCommandWillBePostedHook(hooks.slashCommandWillBePostedHook);
 
         activityFunc = () => {
             const now = new Date().getTime();
