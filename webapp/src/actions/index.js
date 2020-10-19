@@ -348,6 +348,16 @@ export function openCreateIssueModal(postId) {
     };
 }
 
+export function openCreateIssueModalWithoutPost(description, channelId) {
+    return async (dispatch) => dispatch({
+        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST,
+        data: {
+            description,
+            channelId,
+        },
+    });
+}
+
 export function closeCreateIssueModal() {
     return {
         type: ActionTypes.CLOSE_CREATE_ISSUE_MODAL,

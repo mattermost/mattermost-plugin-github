@@ -78,7 +78,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -576,6 +576,14 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	}}
 	settings.AddStaticListArgument("", true, value)
 	github.AddCommand(settings)
+
+	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
+
+	issueCreate := model.NewAutocompleteData("create", "[description]", "Open a dialog to create a new issue in Github, using the description if provided")
+	issueCreate.AddTextArgument("Description for the Github issue", "[description]", "")
+	issue.AddCommand(issueCreate)
+
+	github.AddCommand(issue)
 
 	return github
 }

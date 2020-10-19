@@ -171,6 +171,7 @@ function rhsState(state = null, action) {
 const isCreateIssueModalVisible = (state = false, action) => {
     switch (action.type) {
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
         return true;
     case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
         return false;
@@ -190,12 +191,18 @@ const attachCommentToIssueModalVisible = (state = false, action) => {
     }
 };
 
-const createIssueModalForPostId = (state = '', action) => {
+const createIssueModal = (state = '', action) => {
     switch (action.type) {
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
-        return action.data.postId;
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
+        return {
+            ...state,
+            postId: action.data.postId,
+            description: action.data.description,
+            channelId: action.data.channelId,
+        };
     case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
-        return '';
+        return {};
     default:
         return state;
     }
@@ -231,7 +238,7 @@ export default combineReducers({
     rhsPluginAction,
     rhsState,
     isCreateIssueModalVisible,
-    createIssueModalForPostId,
+    createIssueModal,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
 });
