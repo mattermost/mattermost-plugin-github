@@ -38,7 +38,7 @@ const manifestStr = `
     "settings": [
       {
         "key": "EnableLeftSidebar",
-        "display_name": "Enable Left Sidebar",
+        "display_name": "Display Notification Counters in Left Sidebar",
         "type": "bool",
         "help_text": "When false, the left sidebar github buttons will not be visible.",
         "placeholder": "",
