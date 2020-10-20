@@ -56,6 +56,10 @@ type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID
 // ResponseType indicates type of response returned by api
 type ResponseType string
 
+type Settings struct {
+	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
+}
+
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
@@ -557,16 +561,6 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 	}
 
 	p.writeJSON(w, filteredNotifications)
-}
-
-func (p *Plugin)  getSettings(w http.ResponseWriter, _ *http.Request) {
-    resp := struct {
-		LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
-	}{
-		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
-	}
-
-	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID string) {
@@ -1357,4 +1351,12 @@ func parseRepo(repoParam string) (owner, repo string, err error) {
 	}
 
 	return splitted[0], splitted[1], nil
+}
+
+func (p *Plugin) getSettings(w http.ResponseWriter, _ *http.Request) {
+	resp := Settings{
+		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
+	}
+
+	p.writeJSON(w, resp)
 }
