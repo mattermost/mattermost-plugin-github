@@ -40,7 +40,7 @@ const manifestStr = `
         "key": "EnableLeftSidebar",
         "display_name": "Enable Left Sidebar",
         "type": "bool",
-        "help_text": "When false, the left github sidebar buttons will not be visible.",
+        "help_text": "When false, the left sidebar github buttons will not be visible.",
         "placeholder": "",
         "default": true
       },
