@@ -30,7 +30,7 @@ const manifest = JSON.parse(`
                 "key": "EnableLeftSidebar",
                 "display_name": "Enable Left Sidebar",
                 "type": "bool",
-                "help_text": "When false, the left sidebar github buttons will not be visible.",
+                "help_text": "When false, the counters showing the user how many open/assigned issues they have in Github will not be shown in the Left Hand Sidebar on desktop browsers",
                 "placeholder": "",
                 "default": true
             },
