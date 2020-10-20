@@ -28,7 +28,7 @@ const manifest = JSON.parse(`
         "settings": [
             {
                 "key": "EnableLeftSidebar",
-                "display_name": "Enable Left Sidebar",
+                "display_name": "Display Notification Counters in Left Sidebar",
                 "type": "bool",
                 "help_text": "When false, the counters showing the user how many open/assigned issues they have in Github will not be shown in the Left Hand Sidebar on desktop browsers",
                 "placeholder": "",
