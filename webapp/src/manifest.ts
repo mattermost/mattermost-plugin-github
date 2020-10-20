@@ -27,6 +27,14 @@ const manifest = JSON.parse(`
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github).",
         "settings": [
             {
+                "key": "EnableLeftSidebar",
+                "display_name": "Enable Left Sidebar",
+                "type": "bool",
+                "help_text": "When false, the left github sidebar buttons will not be visible.",
+                "placeholder": "",
+                "default": true
+            },
+            {
                 "key": "GitHubOAuthClientID",
                 "display_name": "GitHub OAuth Client ID",
                 "type": "text",

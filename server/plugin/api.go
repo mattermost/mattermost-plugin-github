@@ -130,6 +130,7 @@ func (p *Plugin) initializeAPI() {
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/settings", p.getSettings).Methods(http.MethodGet)
 }
 
 func (p *Plugin) withRecovery(next http.Handler) http.Handler {
@@ -556,6 +557,16 @@ func (p *Plugin) getUnreads(w http.ResponseWriter, r *http.Request, userID strin
 	}
 
 	p.writeJSON(w, filteredNotifications)
+}
+
+func (p *Plugin)  getSettings(w http.ResponseWriter, _ *http.Request) {
+    resp := struct {
+		LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
+	}{
+		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
+	}
+
+	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getReviews(w http.ResponseWriter, r *http.Request, userID string) {
