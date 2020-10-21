@@ -386,7 +386,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	for _, sub := range subscribedChannels {
-		if !sub.Issues() && !sub.IssueCreations(){
+		if !sub.Issues() && !sub.IssueCreations() {
 			continue
 		}
 
