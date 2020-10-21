@@ -291,9 +291,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		} else if len(optionList) == 1 {
 			features = optionList[0]
 			fs := strings.Split(features, ",")
-			if SliceContainsString(fs, "issues") && SliceContainsString(fs, "issue_creations") {
-				msg := "Feature list cannot contain both issue and issue_creations"
-				return msg
+			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+				return "Feature list cannot contain both issue and issue_creations"
 			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
