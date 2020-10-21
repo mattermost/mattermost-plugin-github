@@ -45,7 +45,7 @@ const (
 func validateFeatures(features []string) (bool, []string) {
 	valid := true
 	invalidFeatures := []string{}
-	hasLabel := false	
+	hasLabel := false
 	for _, f := range features {
 		if _, ok := validFeatures[f]; ok {
 			continue
@@ -634,9 +634,9 @@ func parseCommand(input string) (command, action string, parameters []string) {
 
 func Contains(a []string, x string) bool {
 	for _, n := range a {
-			if x == n {
-					return true
-			}
+		if x == n {
+			return true
+		}
 	}
 	return false
 }
