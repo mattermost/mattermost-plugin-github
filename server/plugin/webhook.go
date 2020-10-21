@@ -347,7 +347,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	action := event.GetAction()
 
 	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
-	timeDiff := issue.GetCreatedAt().Sub(time.Now())
+	timeDiff := time.Until(issue.GetCreatedAt()) * -1
 	if action == "labeled" && timeDiff.Seconds() < 4.00 {
 		return
 	}
