@@ -632,7 +632,7 @@ func parseCommand(input string) (command, action string, parameters []string) {
 	return command, action, parameters
 }
 
-func Contains(a []string, x string) bool {
+func SliceContainsString(a []string, x string) bool {
 	for _, n := range a {
 		if x == n {
 			return true
