@@ -45,7 +45,7 @@ const (
 func validateFeatures(features []string) (bool, []string) {
 	valid := true
 	invalidFeatures := []string{}
-	hasLabel := false
+	hasLabel := false	
 	for _, f := range features {
 		if _, ok := validFeatures[f]; ok {
 			continue
@@ -272,7 +272,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	features := "pulls,issues,creates,deletes"
+	features := "pulls,issues,creates,deletes,issue_creations"
 	flags := SubscriptionFlags{}
 
 	if len(parameters) > 1 {
@@ -291,6 +291,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		} else if len(optionList) == 1 {
 			features = optionList[0]
 			fs := strings.Split(features, ",")
+			if Contains(fs, "issues") && Contains(fs, "issue_creations") {
+				msg := "Feature list cannot contain both issue and issue_creations"
+				return msg
+			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
 				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
@@ -626,4 +630,13 @@ func parseCommand(input string) (command, action string, parameters []string) {
 	}
 
 	return command, action, parameters
+}
+
+func Contains(a []string, x string) bool {
+	for _, n := range a {
+			if x == n {
+					return true
+			}
+	}
+	return false
 }
