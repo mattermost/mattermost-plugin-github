@@ -55,7 +55,7 @@ func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features, featurePulls)
 }
 
-func (s *Subscription) IssueCreation() bool {
+func (s *Subscription) IssueCreations() bool {
 	return strings.Contains(s.Features, "issue_creations")
 }
 

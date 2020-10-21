@@ -386,11 +386,11 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	for _, sub := range subscribedChannels {
-		if !sub.Issues() {
+		if !sub.Issues() && !sub.IssueCreations(){
 			continue
 		}
 
-		if sub.IssueCreation() && action != "opened" {
+		if sub.IssueCreations() && !sub.Issues() && action != "opened" {
 			continue
 		}
 
