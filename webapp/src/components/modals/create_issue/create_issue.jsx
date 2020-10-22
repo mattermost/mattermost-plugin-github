@@ -31,7 +31,7 @@ export default class CreateIssueModal extends PureComponent {
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
         post: PropTypes.object,
-        description: PropTypes.string,
+        title: PropTypes.string,
         channelId: PropTypes.string,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
@@ -46,8 +46,8 @@ export default class CreateIssueModal extends PureComponent {
     componentDidUpdate(prevProps) {
         if (this.props.post && !prevProps.post) {
             this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
-        } else if (this.props.channelId && (this.props.channelId !== prevProps.channelId || this.props.description !== prevProps.description)) {
-            this.setState({issueDescription: this.props.description}); // eslint-disable-line react/no-did-update-set-state
+        } else if (this.props.channelId && (this.props.channelId !== prevProps.channelId || this.props.title !== prevProps.title)) {
+            this.setState({issueTitle: this.props.title}); // eslint-disable-line react/no-did-update-set-state
         }
     }
 

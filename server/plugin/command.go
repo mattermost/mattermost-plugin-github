@@ -436,6 +436,23 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	return "Settings updated."
 }
 
+func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid issue command. Available command is 'create'."
+	}
+
+	command := parameters[0]
+	parameters = parameters[1:]
+
+	switch {
+	case command == "create":
+		p.openIssueCreateModal(args.UserId, args.ChannelId, strings.Join(parameters, " "))
+		return ""
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
+}
+
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
@@ -488,7 +505,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if f, ok := p.CommandHandlers[action]; ok {
 		message := f(c, args, parameters, info)
-		p.postCommandResponse(args, message)
+		if len(message) > 0 {
+			p.postCommandResponse(args, message)
+		}
 		return &model.CommandResponse{}, nil
 	}
 
@@ -579,8 +598,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
 
-	issueCreate := model.NewAutocompleteData("create", "[description]", "Open a dialog to create a new issue in Github, using the description if provided")
-	issueCreate.AddTextArgument("Description for the Github issue", "[description]", "")
+	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
+	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
