@@ -198,7 +198,7 @@ const createIssueModal = (state = '', action) => {
         return {
             ...state,
             postId: action.data.postId,
-            description: action.data.description,
+            title: action.data.title,
             channelId: action.data.channelId,
         };
     case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
