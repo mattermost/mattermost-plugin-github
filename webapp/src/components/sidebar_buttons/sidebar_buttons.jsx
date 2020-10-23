@@ -226,7 +226,7 @@ const getStyle = makeStyleFromTheme((theme) => {
             marginBottom: '5px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-around',
+            justifyContent: 'space-between',
             padding: '0 10px',
         },
         containerTeam: {
