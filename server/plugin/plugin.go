@@ -567,6 +567,13 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 	return isMember
 }
 
+func (p *Plugin) isOrganizationLocked() bool {
+	config := p.getConfiguration()
+	configOrg := strings.TrimSpace(config.GitHubOrg)
+
+	return configOrg != ""
+}
+
 func (p *Plugin) sendRefreshEvent(userID string) {
 	p.API.PublishWebSocketEvent(
 		wsEventRefresh,
