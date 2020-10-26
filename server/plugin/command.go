@@ -272,7 +272,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	features := "pulls,issues,creates,deletes,issue_creations"
+	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
 	if len(parameters) > 1 {
