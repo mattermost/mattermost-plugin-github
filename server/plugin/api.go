@@ -1276,6 +1276,10 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	result, resp, err := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
 	if err != nil {
 		p.API.LogWarn("Failed to create issue", "error", err.Error())
+		if resp != nil && resp.Response.StatusCode == http.StatusGone {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+			return
+		}
 		p.writeAPIError(w,
 			&APIErrorResponse{
 				ID: "",
@@ -1285,11 +1289,6 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 				),
 				StatusCode: resp.StatusCode,
 			})
-		return
-	}
-
-	if resp.Response.StatusCode == http.StatusGone {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
 		return
 	}
 
