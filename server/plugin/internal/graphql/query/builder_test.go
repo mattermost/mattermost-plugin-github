@@ -631,7 +631,7 @@ func TestBuilder_Build(t *testing.T) {
 		t.Errorf("Build() error = %v", err)
 		return
 	}
-	if !reflect.DeepEqual(got, want) {
+	if !reflect.DeepEqual(got, &want) {
 		t.Errorf("Build()\n got = %T\nwant = %T", got, want)
 	}
 }

@@ -24,7 +24,7 @@ func (b Builder) Build() (interface{}, error) {
 		return nil, fmt.Errorf("error building query: %v", err)
 	}
 
-	return reflect.New(reflect.StructOf(queryFields)).Elem().Interface(), nil
+	return reflect.New(reflect.StructOf(queryFields)).Interface(), nil
 }
 
 func buildScalarQuery(scalars []Scalar) ([]reflect.StructField, error) {
