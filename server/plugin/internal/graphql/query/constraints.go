@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// greaterThan checks if the given value is greater than the limit, returns an error if not
 func greaterThan(val, lim int) error {
 	if val <= lim {
 		return fmt.Errorf("value cannot be less than %d", lim)
@@ -14,6 +15,7 @@ func greaterThan(val, lim int) error {
 	return nil
 }
 
+// strNotEmpty checks if given string is empty, returns an error if it is
 func strNotEmpty(val string) error {
 	if strings.TrimSpace(val) == "" {
 		return fmt.Errorf("value cannot be empty")
@@ -22,6 +24,7 @@ func strNotEmpty(val string) error {
 	return nil
 }
 
+// validKey checks if val is not empty and has only non-alpha characters, returns an error if any of the checks fail.
 func validKey(val string) error {
 	if strNotEmpty(val) != nil {
 		return fmt.Errorf("key cannot be empty")

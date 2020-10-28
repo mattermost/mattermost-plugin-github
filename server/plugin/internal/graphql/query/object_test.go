@@ -66,7 +66,6 @@ func TestNewObject_SetName(t *testing.T) {
 }
 
 func TestNewObject_SetFirst(t *testing.T) {
-
 	tests := []struct {
 		name    string
 		opts    []Option
@@ -304,7 +303,7 @@ func TestNewObject_multipleOptions(t *testing.T) {
 				tag: tag{
 					"first": 10,
 					"type":  githubv4.SearchTypeIssue,
-					"query": "\"author:test is:pr is:OPEN archived:false\"",
+					"query": "author:test is:pr is:OPEN archived:false",
 				},
 			},
 			wantErr: false,
@@ -487,5 +486,21 @@ func TestObject_SetNodeList(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("SetNodeList() = %+v\nwant: %+v", got, want)
+	}
+}
+
+func TestObject_AddUnion(t *testing.T) {
+	got, _ := NewObject(SetName("Search"))
+	u, _ := NewUnion("PullRequest")
+	got.AddUnion(u)
+
+	want := &Object{
+		name:   "Search",
+		unions: []Union{*u},
+		tag:    make(tag, 1),
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("AddUnion() = %T\nwant: %T", got, want)
 	}
 }
