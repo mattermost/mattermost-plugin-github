@@ -162,6 +162,11 @@ func (o *Object) AddScalar(scalar Scalar) {
 	o.scalars = append(o.scalars, scalar)
 }
 
+// AddScalarGroup appends the given Scalar slice to its children
+func (o *Object) AddScalarGroup(scalars []Scalar) {
+	o.scalars = append(o.scalars, scalars...)
+}
+
 // AddObject appends the given Object variable to its children
 func (o *Object) AddObject(obj *Object) {
 	o.objects = append(o.objects, *obj)

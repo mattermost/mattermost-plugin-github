@@ -25,6 +25,11 @@ func (u *Union) AddScalar(scalar Scalar) {
 	u.scalars = append(u.scalars, scalar)
 }
 
+// AddScalarGroup appends the given Scalar slice to its children
+func (u *Union) AddScalarGroup(scalars []Scalar) {
+	u.scalars = append(u.scalars, scalars...)
+}
+
 // AddObject appends the given Object variable to its children
 func (u *Union) AddObject(obj *Object) {
 	u.objects = append(u.objects, *obj)

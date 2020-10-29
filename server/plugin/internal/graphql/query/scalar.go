@@ -38,3 +38,18 @@ func NewScalar(name, kind string) (Scalar, error) {
 
 	return Scalar{name: name, kind: kind}, nil
 }
+
+// NewScalarGroup generates multiple Scalar item at once and returns them in a slice.
+// Keys of parameter sg: name of the Scalar item
+// Values of parameter sg: type of the Scalar item
+func NewScalarGroup(sg map[string]string) ([]Scalar, error) {
+	var res []Scalar
+	for k, v := range sg {
+		s, err := NewScalar(k, v)
+		if err != nil {
+			return nil, fmt.Errorf("error creating [%s: %s]: %v", k, v, err)
+		}
+		res = append(res, s)
+	}
+	return res, nil
+}

@@ -42,6 +42,11 @@ func (n *Node) AddScalar(scalar Scalar) {
 	n.scalars = append(n.scalars, scalar)
 }
 
+// AddScalarGroup appends the given Scalar slice to its children
+func (n *Node) AddScalarGroup(scalars []Scalar) {
+	n.scalars = append(n.scalars, scalars...)
+}
+
 // AddObject appends the given Object variable to its children
 func (n *Node) AddObject(obj *Object) {
 	n.objects = append(n.objects, *obj)

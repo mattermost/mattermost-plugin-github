@@ -70,3 +70,54 @@ func TestNewScalar(t *testing.T) {
 		})
 	}
 }
+
+func TestNewScalarGroup(t *testing.T) {
+	sg := map[string]string{
+		"ID":     "id",
+		"Body":   "String",
+		"Number": "Int",
+	}
+
+	got, err := NewScalarGroup(sg)
+	if err != nil {
+		t.Errorf("NewScalarGroup() error = %v", err)
+		return
+	}
+
+	want := []Scalar{
+		{
+			name: "ID",
+			kind: "ID",
+		},
+		{
+			name: "Body",
+			kind: "String",
+		},
+		{
+			name: "Number",
+			kind: "Int",
+		},
+	}
+
+	if len(got) != len(want) {
+		t.Errorf("NewScalarGroup() got = %v, want %v", got, want)
+		return
+	}
+
+	var found bool
+	for _, w := range want {
+		for _, g := range got {
+			if reflect.DeepEqual(w, g) {
+				found = true
+				break
+			}
+		}
+
+		if found == false {
+			t.Errorf("NewScalarGroup() got = %v, want %v", got, want)
+			break
+		} else {
+			found = false
+		}
+	}
+}
