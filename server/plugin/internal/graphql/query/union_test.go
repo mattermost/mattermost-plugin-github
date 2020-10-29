@@ -23,7 +23,7 @@ func TestNewUnion(t *testing.T) {
 }
 
 func TestUnion_AddObject(t *testing.T) {
-	o, _ := NewObject(SetName("Search"), SetFirst(100))
+	o, _ := NewObject("Search", SetFirst(100))
 	want := &Union{
 		name:    "PullRequest",
 		objects: []Object{*o},

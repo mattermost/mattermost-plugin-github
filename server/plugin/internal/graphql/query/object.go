@@ -28,9 +28,16 @@ type (
 )
 
 // NewObject creates and returns a pointer to an Object
-func NewObject(opts ...Option) (*Object, error) {
+// When query is "search(last) {...}", then name should be "Search"
+// When query is "... on PullRequest {...}", then name should be "PullRequest"
+func NewObject(name string, opts ...Option) (*Object, error) {
+	if err := validKey(name); err != nil {
+		return nil, err
+	}
+
 	obj := &Object{
-		tag: make(tag, 1),
+		name: strings.Title(strings.TrimSpace(name)),
+		tag:  make(tag, 1),
 	}
 
 	for _, opt := range opts {
@@ -41,19 +48,6 @@ func NewObject(opts ...Option) (*Object, error) {
 	}
 
 	return obj, nil
-}
-
-// SetName sets the query name. Examples:
-// When query is "search(last) {...}", then SetName("Search") should be called
-// When query is "... on PullRequest {...}", then SetName("PullRequest") should be called
-func SetName(val string) Option {
-	return func(item *Object) error {
-		if err := validKey(val); err != nil {
-			return err
-		}
-		item.name = strings.Title(strings.TrimSpace(val))
-		return nil
-	}
 }
 
 // SetFirst adds the "first" tag to the tag list

@@ -7,75 +7,27 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-func TestNewObject_SetName(t *testing.T) {
-	tests := []struct {
-		name    string
-		opt     Option
-		want    *Object
-		wantErr bool
-	}{
-		{
-			name:    "valid",
-			opt:     SetName("PullRequest"),
-			want:    &Object{name: "PullRequest", tag: make(tag, 1)},
-			wantErr: false,
-		},
-		{
-			name:    "valid/initial starts with lower case",
-			opt:     SetName("pullRequest"),
-			want:    &Object{name: "PullRequest", tag: make(tag, 1)},
-			wantErr: false,
-		},
-		{
-			name:    "invalid/empty",
-			opt:     SetName("  "),
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name:    "invalid/contains symbols",
-			opt:     SetName("pull-request_test"),
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name:    "invalid/contains digits",
-			opt:     SetName("pullrequest10"),
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name:    "invalid/contains space",
-			opt:     SetName("pull request"),
-			want:    nil,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.opt)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewObject() got = %+v, want %+v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestNewObject_SetFirst(t *testing.T) {
+	type args struct {
+		name string
+		opts []Option
+	}
+
 	tests := []struct {
 		name    string
-		opts    []Option
+		args    args
 		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
-			opts: []Option{SetFirst(10)},
+			args: args{
+				name: "Test",
+				opts: []Option{SetFirst(10)},
+			},
+
 			want: &Object{
+				name: "Test",
 				tag: tag{
 					"first": 10,
 				},
@@ -83,16 +35,23 @@ func TestNewObject_SetFirst(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "invalid/value",
-			opts:    []Option{SetFirst(-1)},
+			name: "invalid/value",
+			args: args{
+				name: "Test",
+				opts: []Option{SetFirst(-1)},
+			},
+
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "invalid/contains last",
-			opts: []Option{
-				SetLast(10),
-				SetFirst(10),
+			args: args{
+				name: "Test",
+				opts: []Option{
+					SetLast(10),
+					SetFirst(10),
+				},
 			},
 			want:    nil,
 			wantErr: true,
@@ -100,7 +59,7 @@ func TestNewObject_SetFirst(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.opts...)
+			got, err := NewObject(tt.args.name, tt.args.opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -113,16 +72,25 @@ func TestNewObject_SetFirst(t *testing.T) {
 }
 
 func TestNewObject_SetLast(t *testing.T) {
+	type args struct {
+		name string
+		opts []Option
+	}
+
 	tests := []struct {
 		name    string
-		opts    []Option
+		args    args
 		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
-			opts: []Option{SetLast(10)},
+			args: args{
+				name: "Test",
+				opts: []Option{SetLast(10)},
+			},
 			want: &Object{
+				name: "Test",
 				tag: tag{
 					"last": 10,
 				},
@@ -130,16 +98,23 @@ func TestNewObject_SetLast(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "invalid/value",
-			opts:    []Option{SetLast(-1)},
+			name: "invalid/value",
+			args: args{
+				name: "Test",
+				opts: []Option{SetLast(-1)},
+			},
 			want:    nil,
 			wantErr: true,
 		},
 		{
 			name: "invalid/contains first",
-			opts: []Option{
-				SetFirst(10),
-				SetLast(10),
+			args: args{
+				name: "Test",
+				opts: []Option{
+
+					SetFirst(10),
+					SetLast(10),
+				},
 			},
 			want:    nil,
 			wantErr: true,
@@ -147,7 +122,7 @@ func TestNewObject_SetLast(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.opts...)
+			got, err := NewObject(tt.args.name, tt.args.opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -160,30 +135,42 @@ func TestNewObject_SetLast(t *testing.T) {
 }
 
 func TestNewObject_SetBefore(t *testing.T) {
+	type args struct {
+		name string
+		opt  Option
+	}
+
 	tests := []struct {
 		name    string
-		opt     Option
+		args    args
 		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
-			opt:  SetBefore("test"),
+			args: args{
+				name: "Test",
+				opt:  SetBefore("test"),
+			},
 			want: &Object{
-				tag: tag{"before": "test"},
+				name: "Test",
+				tag:  tag{"before": "test"},
 			},
 			wantErr: false,
 		},
 		{
-			name:    "invalid",
-			opt:     SetBefore("  "),
+			name: "invalid",
+			args: args{
+				name: "Test",
+				opt:  SetBefore("  "),
+			},
 			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.opt)
+			got, err := NewObject(tt.args.name, tt.args.opt)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -196,30 +183,42 @@ func TestNewObject_SetBefore(t *testing.T) {
 }
 
 func TestNewObject_SetAfter(t *testing.T) {
+	type args struct {
+		name string
+		opt  Option
+	}
+
 	tests := []struct {
 		name    string
-		opt     Option
+		args    args
 		want    *Object
 		wantErr bool
 	}{
 		{
 			name: "valid",
-			opt:  SetAfter("test"),
+			args: args{
+				name: "Search",
+				opt:  SetAfter("test"),
+			},
 			want: &Object{
-				tag: tag{"after": "test"},
+				name: "Search",
+				tag:  tag{"after": "test"},
 			},
 			wantErr: false,
 		},
 		{
-			name:    "invalid",
-			opt:     SetAfter("  "),
+			name: "invalid",
+			args: args{
+				name: "Search",
+				opt:  SetAfter("  "),
+			},
 			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.opt)
+			got, err := NewObject(tt.args.name, tt.args.opt)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -232,55 +231,9 @@ func TestNewObject_SetAfter(t *testing.T) {
 }
 
 func TestNewObject_SetSearchType(t *testing.T) {
-	tests := []struct {
-		name    string
-		opt     Option
-		want    *Object
-		wantErr bool
-	}{
-		{
-			name: "valid",
-			opt:  SetSearchType("issue"),
-			want: &Object{
-				tag: tag{
-					"type": githubv4.SearchTypeIssue,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name: "valid/white space",
-			opt:  SetSearchType(" issue"),
-			want: &Object{
-				tag: tag{
-					"type": githubv4.SearchTypeIssue,
-				},
-			},
-			wantErr: false,
-		},
-		{
-			name:    "invalid",
-			opt:     SetSearchType("test"),
-			want:    nil,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.opt)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewObject() got = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-func TestNewObject_multipleOptions(t *testing.T) {
 	type args struct {
-		opts []Option
+		name string
+		opt  Option
 	}
 	tests := []struct {
 		name    string
@@ -291,8 +244,100 @@ func TestNewObject_multipleOptions(t *testing.T) {
 		{
 			name: "valid",
 			args: args{
+				name: "Test",
+				opt:  SetSearchType("issue"),
+			},
+			want: &Object{
+				name: "Test",
+				tag: tag{
+					"type": githubv4.SearchTypeIssue,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid/white space",
+			args: args{
+				name: "Test",
+				opt:  SetSearchType(" issue"),
+			},
+			want: &Object{
+				name: "Test",
+				tag: tag{
+					"type": githubv4.SearchTypeIssue,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid",
+			args: args{
+				name: "Test",
+				opt:  SetSearchType("test"),
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewObject(tt.args.name, tt.args.opt)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewObject() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+func TestNewObject(t *testing.T) {
+	type args struct {
+		name string
+		opts []Option
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *Object
+		wantErr bool
+	}{
+		{
+			name:    "valid/name starts with lower case",
+			args:    args{name: "pullRequest"},
+			want:    &Object{name: "PullRequest", tag: make(tag, 1)},
+			wantErr: false,
+		},
+		{
+			name:    "invalid/empty name",
+			args:    args{name: "  "},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "invalid/name contains symbols",
+			args:    args{name: "pull-request_test"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "invalid/name contains digits",
+			args:    args{name: "pullrequest10"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "invalid/name contains space",
+			args:    args{name: "pull request"},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "valid",
+			args: args{
+				name: "PullRequest",
 				opts: []Option{
-					SetName("PullRequest"),
 					SetFirst(10),
 					SetSearchType("issue"),
 					SetQuery("author:test is:pr is:OPEN archived:false"),
@@ -311,7 +356,7 @@ func TestNewObject_multipleOptions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewObject(tt.args.opts...)
+			got, err := NewObject(tt.args.name, tt.args.opts...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewObject() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -374,7 +419,7 @@ func TestObject_AddScalar(t *testing.T) {
 		tag:     make(tag, 1),
 	}
 
-	got, _ := NewObject(SetName("Search"))
+	got, _ := NewObject("Search")
 	got.AddScalar(s)
 	got.AddScalar(s2)
 
@@ -416,7 +461,7 @@ func TestObject_AddObject(t *testing.T) {
 		},
 	}
 
-	got, _ := NewObject(SetName("Search"), SetFirst(100), SetSearchType("issue"))
+	got, _ := NewObject("Search", SetFirst(100), SetSearchType("issue"))
 	got.AddObject(rr)
 	got.AddObject(repo)
 
@@ -427,7 +472,7 @@ func TestObject_AddObject(t *testing.T) {
 
 func TestObject_SetNode(t *testing.T) {
 	// Check wrong type (node/node list) error
-	o, _ := NewObject(SetName("Search"))
+	o, _ := NewObject("Search")
 	if err := o.SetNode(NewNodeList()); err == nil {
 		t.Errorf("SetNode() expected error, got nil")
 		return
@@ -446,7 +491,7 @@ func TestObject_SetNode(t *testing.T) {
 		tag:  make(tag, 1),
 	}
 
-	got, _ := NewObject(SetName("Search"))
+	got, _ := NewObject("Search")
 	if err := got.SetNode(n); err != nil {
 		t.Errorf("SetNode() err = %v", err)
 		return
@@ -459,7 +504,7 @@ func TestObject_SetNode(t *testing.T) {
 
 func TestObject_SetNodeList(t *testing.T) {
 	// Check wrong type (node/node list) error
-	o, _ := NewObject(SetName("Search"))
+	o, _ := NewObject("Search")
 	if err := o.SetNodeList(NewNode()); err == nil {
 		t.Errorf("SetNodeList() expected error, got nil")
 		return
@@ -478,7 +523,7 @@ func TestObject_SetNodeList(t *testing.T) {
 		tag:      make(tag, 1),
 	}
 
-	got, _ := NewObject(SetName("Search"))
+	got, _ := NewObject("Search")
 	if err := got.SetNodeList(n); err != nil {
 		t.Errorf("SetNodeList() err = %v", err)
 		return
@@ -490,7 +535,7 @@ func TestObject_SetNodeList(t *testing.T) {
 }
 
 func TestObject_AddUnion(t *testing.T) {
-	got, _ := NewObject(SetName("Search"))
+	got, _ := NewObject("Search")
 	u, _ := NewUnion("PullRequest")
 	got.AddUnion(u)
 

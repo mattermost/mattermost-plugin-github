@@ -10,7 +10,7 @@ type Union Object
 // Creation of Union is not any different than an Object's so this constructor creates an object and
 // asserts Union type to it.
 func NewUnion(name string) (*Union, error) {
-	o, err := NewObject(SetName(name))
+	o, err := NewObject(name)
 	if err != nil {
 		return nil, fmt.Errorf("error creating new Union type: %v", err)
 	}

@@ -62,7 +62,7 @@ func TestNode_AddScalar(t *testing.T) {
 }
 
 func TestNode_AddObject(t *testing.T) {
-	o, _ := NewObject(SetName("Search"))
+	o, _ := NewObject("Search")
 	s, _ := NewScalar("Body", "String")
 	o.AddScalar(s)
 
