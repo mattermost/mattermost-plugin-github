@@ -27,9 +27,11 @@ type (
 	tag map[string]interface{}
 )
 
-// NewObject creates and returns a pointer to an Object
-// When query is "search(last) {...}", then name should be "Search"
-// When query is "... on PullRequest {...}", then name should be "PullRequest"
+// NewObject creates and returns a pointer to an Object.
+//
+// Examples:
+//	NewObject("Repository") crates [repository {....}]
+//	NewObject("Search", SetFirst(10)) creates [search(first: 10) {...}]
 func NewObject(name string, opts ...Option) (*Object, error) {
 	if err := validKey(name); err != nil {
 		return nil, err
@@ -143,6 +145,18 @@ func SetSearchType(val string) Option {
 		}
 
 		item.tag["type"] = searchType
+		return nil
+	}
+}
+
+// SetOrg adds the "org" tag to the tag list for querying enterprise accounts
+func SetOrg(val string) Option {
+	return func(item *Object) error {
+		if err := strNotEmpty(val); err != nil {
+			return fmt.Errorf("SetOrg() error: %v", err)
+		}
+
+		item.tag["org"] = val
 		return nil
 	}
 }

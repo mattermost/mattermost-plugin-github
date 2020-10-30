@@ -14,10 +14,10 @@ type Scalar struct {
 }
 
 // NewScalar creates and returns a Scalar
-// Values below are checked and converted to uppercase:
-//	- ID
-//	- URL
-//	- URI
+// Examples:
+//	NewScalar("State", "PullRequestState") creates [state: PullRequestState!]
+//	NewScalar("URL", "URI") creates [url: URI!]
+//	NewScalar("Title", "String") creates [title: String!]
 func NewScalar(name, kind string) (Scalar, error) {
 	if err := validKey(name); err != nil {
 		return Scalar{}, fmt.Errorf("error setting 'key': %s", err.Error())
@@ -40,8 +40,14 @@ func NewScalar(name, kind string) (Scalar, error) {
 }
 
 // NewScalarGroup generates multiple Scalar item at once and returns them in a slice.
-// Keys of parameter sg: name of the Scalar item
-// Values of parameter sg: type of the Scalar item
+// Keys of parameter "sg" should be name of the Scalar item
+// Values of parameter "sg" should be type of the Scalar item
+//
+// Example:
+// 	NewScalarGroup(map[string]string{
+//		"Title": "String",
+//		"IssueCount": "Int",
+//	})
 func NewScalarGroup(sg map[string]string) ([]Scalar, error) {
 	var res []Scalar
 	for k, v := range sg {

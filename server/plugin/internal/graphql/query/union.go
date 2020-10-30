@@ -6,9 +6,10 @@ import "fmt"
 // For more information about GraphQL union type see: https://graphql.org/learn/schema/#union-types
 type Union Object
 
-// NewUnion creates and returns pointer to a Union
-// Creation of Union is not any different than an Object's so this constructor creates an object and
-// asserts Union type to it.
+// NewUnion creates and returns pointer to a Union.
+// Creation of Union is not any different than an Object's so this constructor creates an object and converts it to Union.
+// Example:
+// NewUnion("PullRequest") crates [... on PullRequest{...}]
 func NewUnion(name string) (*Union, error) {
 	o, err := NewObject(name)
 	if err != nil {

@@ -549,3 +549,17 @@ func TestObject_AddUnion(t *testing.T) {
 		t.Errorf("AddUnion() = %T\nwant: %T", got, want)
 	}
 }
+
+func TestNewObject_SetOrg(t *testing.T) {
+	got, _ := NewObject("Test", SetOrg("github"))
+	want := &Object{
+		name: "Test",
+		tag: tag{
+			"org": "github",
+		},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("SetOrg() = %v, want %v", got, want)
+	}
+}
