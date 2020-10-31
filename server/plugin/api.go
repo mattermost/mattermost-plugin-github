@@ -133,8 +133,8 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/pr", p.extractUserMiddleWare(p.getPrByNumber, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.getSettings).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
 }
 
 func (p *Plugin) withRecovery(next http.Handler) http.Handler {

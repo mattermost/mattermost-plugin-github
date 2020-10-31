@@ -22,12 +22,12 @@ type Configuration struct {
 	GitHubOAuthClientID     string
 	GitHubOAuthClientSecret string
 	WebhookSecret           string
+	EnableLeftSidebar       bool
 	EnablePrivateRepo       bool
 	EncryptionKey           string
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
 	EnableCodePreview       string
-	EnableLeftSidebar       bool
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
