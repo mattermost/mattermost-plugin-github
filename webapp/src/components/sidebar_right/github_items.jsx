@@ -188,16 +188,16 @@ const getStyle = makeStyleFromTheme((theme) => {
             alignItems: 'center',
         },
         iconSucess: {
-            fill: theme.onlineIndicator,
+            color: theme.onlineIndicator,
         },
         iconPending: {
-            fill: theme.awayIndicator,
+            color: theme.awayIndicator,
         },
         iconFailed: {
-            fill: theme.dndIndicator,
+            color: theme.dndIndicator,
         },
         iconChangesRequested: {
-            fill: theme.dndIndicator,
+            color: theme.dndIndicator,
         },
         conflictIcon: {
             color: theme.dndIndicator,
@@ -208,7 +208,7 @@ const getStyle = makeStyleFromTheme((theme) => {
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
-            fill: theme.centerChannelColor,
+            color: theme.centerChannelColor,
         },
     };
 });
