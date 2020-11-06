@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/shurcooL/githubv4"
 )
 
 func Test_convertToMap(t *testing.T) {
@@ -171,5 +173,89 @@ func Test_convertToMap(t *testing.T) {
 				t.Errorf("convertToResponse()\n got = %v\nwant = %v", got, tt.wantResult)
 			}
 		})
+	}
+}
+
+func TestResponse_GetString(t *testing.T) {
+	r := Response{"test": "test value"}
+	want := "test value"
+	if got := r.GetString("test"); got != want {
+		t.Errorf("GetString() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": githubv4.PullRequestStateMerged}
+	want = "MERGED"
+	if got := r.GetString("test"); got != want {
+		t.Errorf("GetString() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": 123}
+	want = ""
+	if got := r.GetString("test"); got != want {
+		t.Errorf("GetString() = %v, want %v", got, want)
+	}
+}
+
+func TestResponse_GetInt64(t *testing.T) {
+	var want int64
+	r := Response{"test": "test value"}
+	want = 0
+	if got := r.GetInt64("test"); got != want {
+		t.Errorf("GetInt64() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": 123}
+	want = 123
+	if got := r.GetInt64("test"); got != want {
+		t.Errorf("GetInt64() = %v, want %v", got, want)
+	}
+}
+
+func TestResponse_GetBool(t *testing.T) {
+	r := Response{"test": true}
+	want := true
+	if got := r.GetBool("test"); got != want {
+		t.Errorf("GetBool() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": 123}
+	want = false
+	if got := r.GetBool("test"); got != want {
+		t.Errorf("GetBool() = %v, want %v", got, want)
+	}
+}
+
+func TestResponse_GetFloat64(t *testing.T) {
+	var want float64
+	r := Response{"test": 2.1234}
+	want = 2.1234
+	if got := r.GetFloat64("test"); got != want {
+		t.Errorf("GetFloat64() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": *githubv4.NewFloat(1.2345)}
+	want = 1.2345
+	if got := r.GetFloat64("test"); got != want {
+		t.Errorf("GetFloat64() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": 123}
+	want = 0
+	if got := r.GetFloat64("test"); got != want {
+		t.Errorf("GetFloat64() = %v, want %v", got, want)
+	}
+}
+
+func TestResponse_GetResponseObject(t *testing.T) {
+	r := Response{"test": Response{"tst2": 1}}
+	want := Response{"tst2": 1}
+	if got := r.GetResponseObject("test"); !reflect.DeepEqual(got, want) {
+		t.Errorf("GetResponseObject() = %v, want %v", got, want)
+	}
+
+	r = Response{"test": 123}
+	want = nil
+	if got := r.GetResponseObject("test"); !reflect.DeepEqual(got, want) {
+		t.Errorf("GetResponseObject() = %v, want %v", got, want)
 	}
 }

@@ -28,8 +28,84 @@ func (r Response) Get(key string) (interface{}, error) {
 	return res, nil
 }
 
+// GetString returns the value corresponding to given key. If not found, empty string is returned.
+func (r Response) GetString(key string) string {
+	v, err := r.Get(key)
+	if err != nil {
+		return ""
+	}
+
+	if reflect.TypeOf(v).Kind() != reflect.String {
+		return ""
+	}
+
+	return reflect.ValueOf(v).String()
+}
+
+// GetInt64 returns the value corresponding to given key. If not found, zero value is returned.
+func (r Response) GetInt64(key string) int64 {
+	v, err := r.Get(key)
+	if err != nil {
+		return 0
+	}
+
+	for _, k := range []reflect.Kind{
+		reflect.Int,
+		reflect.Int32,
+		reflect.Int64,
+	} {
+		if reflect.TypeOf(v).Kind() == k {
+			return reflect.ValueOf(v).Int()
+		}
+	}
+
+	return 0
+}
+
+// GetBool returns the value corresponding to given key. If not found, false is returned.
+func (r Response) GetBool(key string) bool {
+	v, err := r.Get(key)
+	if err != nil {
+		return false
+	}
+
+	if reflect.TypeOf(v).Kind() != reflect.Bool {
+		return false
+	}
+
+	return reflect.ValueOf(v).Bool()
+}
+
+// GetFloat64 returns the value corresponding to given key. If not found, 0 is returned.
+func (r Response) GetFloat64(key string) float64 {
+	v, err := r.Get(key)
+	if err != nil {
+		return 0
+	}
+
+	if reflect.TypeOf(v).Kind() != reflect.Float64 {
+		return 0
+	}
+
+	return reflect.ValueOf(v).Float()
+}
+
+// GetResponseObject returns the value corresponding to given key. If not found, nil is returned.
+func (r Response) GetResponseObject(key string) Response {
+	v, err := r.Get(key)
+	if err != nil {
+		return nil
+	}
+
+	if reflect.TypeOf(v) != reflect.TypeOf(Response{}) {
+		return nil
+	}
+
+	return v.(Response)
+}
+
 // IsChildTypeResult checks if the type of the child is Response.
-// This is useful to prevent errors before converting values with interface{} type to Response.
+// This is useful to prevent errors before converting values from interface{} type to Response.
 func (r Response) IsChildTypeResult(key string) bool {
 	res, err := r.Get(key)
 
@@ -82,13 +158,19 @@ func convertToResponse(v interface{}) (Response, error) {
 		case reflect.Struct:
 			if val.Type() == reflect.TypeOf(time.Time{}) {
 				result[key] = val.Interface().(time.Time).Format("2006-01-02, 15:04:05")
-			} else {
-				res, err := convertToResponse(val.Interface())
-				if err != nil {
-					return nil, err
-				}
-				result[key] = res
+				continue
 			}
+
+			if val.Type() == reflect.TypeOf((*githubv4.URI)(nil)).Elem() {
+				result[key] = val.Interface().(githubv4.URI).String()
+				continue
+			}
+
+			res, err := convertToResponse(val.Interface())
+			if err != nil {
+				return nil, err
+			}
+			result[key] = res
 		case reflect.Slice:
 			var nestedChildren []Response
 			child := reflect.ValueOf(val.Interface())

@@ -153,7 +153,7 @@ func SetSearchType(val string) Option {
 func SetOrg(val string) Option {
 	return func(item *Object) error {
 		if err := strNotEmpty(val); err != nil {
-			return fmt.Errorf("SetOrg() error: %v", err)
+			return fmt.Errorf("setOrg() failed: %v", err)
 		}
 
 		item.tag["org"] = val
