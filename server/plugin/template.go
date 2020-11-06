@@ -332,6 +332,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    * `creates` - includes branch and tag creations\n" +
 		"    * `deletes` - includes branch and tag deletions\n" +
 		"    * `issue_comments` - includes new issue comments\n" +
+		"    * `issue_creations` - includes new issues only \n" +
 		"    * `pull_reviews` - includes pull request reviews\n" +
 		"    * `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
 		"    * Defaults to `pulls,issues,creates,deletes`\n" +
