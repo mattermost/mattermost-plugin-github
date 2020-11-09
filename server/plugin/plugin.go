@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
@@ -80,6 +81,11 @@ func NewPlugin() *Plugin {
 	}
 
 	return p
+}
+
+func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
+	conf := p.getConfiguration()
+	return graphql.NewClient(*info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
