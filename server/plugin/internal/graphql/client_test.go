@@ -194,7 +194,7 @@ func TestClient_ExecuteQuery(t *testing.T) {
 		return
 	}
 
-	client := NewClient(oauth2.Token{AccessToken: userToken}, "", "")
+	client := NewClient(oauth2.Token{AccessToken: userToken}, "srgyrn", "", "")
 	result, err := client.ExecuteQuery(mainQuery)
 	if err != nil {
 		t.Errorf("error creating query: %v", err)

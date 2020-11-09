@@ -13,18 +13,20 @@ import (
 
 // Client encapsulates the third party package that communicates with Github GraphQL API
 type Client struct {
-	client *githubv4.Client
-	org    string
+	client   *githubv4.Client
+	org      string
+	username string
 }
 
 // NewClient creates and returns Client. Third party package that queries GraphQL is initialized here.
-func NewClient(token oauth2.Token, orgName, enterpriseBaseURL string) *Client {
+func NewClient(token oauth2.Token, username, orgName, enterpriseBaseURL string) *Client {
 	ts := oauth2.StaticTokenSource(&token)
 	httpClient := oauth2.NewClient(context.Background(), ts)
 
 	if enterpriseBaseURL == "" || orgName == "" {
 		return &Client{
-			client: githubv4.NewClient(httpClient),
+			client:   githubv4.NewClient(httpClient),
+			username: username,
 		}
 	}
 
@@ -32,8 +34,9 @@ func NewClient(token oauth2.Token, orgName, enterpriseBaseURL string) *Client {
 	baseURL.Path = path.Join(baseURL.Path, "api", "graphql")
 
 	return &Client{
-		client: githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
-		org:    orgName,
+		client:   githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
+		username: username,
+		org:      orgName,
 	}
 }
 
@@ -65,4 +68,9 @@ func (c *Client) ExecuteQuery(q *query.Object) (Response, error) {
 	}
 
 	return res, nil
+}
+
+// Username returns Github username
+func (c *Client) Username() string {
+	return c.username
 }
