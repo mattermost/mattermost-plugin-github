@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/go-github/v31/github"
@@ -17,6 +16,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/search"
 )
 
 const (
@@ -609,104 +610,16 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 		return
 	}
 
-	githubClient := p.githubConnect(*info.Token)
+	graphQLClient := p.graphQLConnect(info)
 
-	var prList []*PRDetails
-	if err := json.NewDecoder(r.Body).Decode(&prList); err != nil {
-		p.API.LogWarn("Error decoding PRDetails JSON body", "error", err.Error())
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+	prDetailResponse, graphErr := search.GetPRDetail(graphQLClient)
+	if graphErr != nil {
+		p.API.LogWarn("Failed to fetch PR details", "error", graphErr.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Failed to fetch PR details.", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
-	prDetails := make([]*PRDetails, len(prList))
-	ctx := context.Background()
-	var wg sync.WaitGroup
-	for i, pr := range prList {
-		i := i
-		pr := pr
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			prDetail := p.fetchPRDetails(ctx, githubClient, pr.URL, pr.Number)
-			prDetails[i] = prDetail
-		}()
-	}
-
-	wg.Wait()
-
-	p.writeJSON(w, prDetails)
-}
-
-func (p *Plugin) fetchPRDetails(ctx context.Context, client *github.Client, prURL string, prNumber int) *PRDetails {
-	var status string
-	var mergeable bool
-	// Initialize to a non-nil slice to simplify JSON handling semantics
-	requestedReviewers := []*string{}
-	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
-
-	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
-
-	var wg sync.WaitGroup
-
-	// Fetch reviews
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fetchedReviews, err := fetchReviews(ctx, client, repoOwner, repoName, prNumber)
-		if err != nil {
-			p.API.LogWarn("Failed to fetch reviews for PR details", "error", err.Error())
-			return
-		}
-		reviewsList = fetchedReviews
-	}()
-
-	// Fetch reviewers and status
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		prInfo, _, err := client.PullRequests.Get(ctx, repoOwner, repoName, prNumber)
-		if err != nil {
-			p.API.LogWarn("Failed to fetch PR for PR details", "error", err.Error())
-			return
-		}
-
-		mergeable = prInfo.GetMergeable()
-
-		for _, v := range prInfo.RequestedReviewers {
-			requestedReviewers = append(requestedReviewers, v.Login)
-		}
-		statuses, _, err := client.Repositories.GetCombinedStatus(ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
-		if err != nil {
-			p.API.LogWarn("Failed to fetch combined status", "error", err.Error())
-			return
-		}
-		status = *statuses.State
-	}()
-
-	wg.Wait()
-	return &PRDetails{
-		URL:                prURL,
-		Number:             prNumber,
-		Status:             status,
-		Mergeable:          mergeable,
-		RequestedReviewers: requestedReviewers,
-		Reviews:            reviewsList,
-	}
-}
-
-func fetchReviews(ctx context.Context, client *github.Client, repoOwner string, repoName string, number int) ([]*github.PullRequestReview, error) {
-	reviewsList, _, err := client.PullRequests.ListReviews(ctx, repoOwner, repoName, number, nil)
-
-	if err != nil {
-		return []*github.PullRequestReview{}, errors.Wrap(err, "could not list reviews")
-	}
-
-	return reviewsList, nil
-}
-
-func getRepoOwnerAndNameFromURL(url string) (string, string) {
-	splitted := strings.Split(url, "/")
-	return splitted[len(splitted)-2], splitted[len(splitted)-1]
+	p.writeJSON(w, prDetailResponse)
 }
 
 func (p *Plugin) searchIssues(w http.ResponseWriter, r *http.Request, userID string) {
