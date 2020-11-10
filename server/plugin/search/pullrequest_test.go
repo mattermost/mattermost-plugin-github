@@ -5,8 +5,9 @@ import (
 	"log"
 	"testing"
 
-	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql"
 )
 
 var accessToken string
@@ -18,7 +19,7 @@ func init() {
 }
 
 func TestGetPRDetail(t *testing.T) {
-	if accessToken == "" || username == ""{
+	if accessToken == "" || username == "" {
 		t.Skipf("user access token or username not provided, skipping test")
 	}
 

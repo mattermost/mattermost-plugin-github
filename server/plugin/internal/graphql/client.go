@@ -6,9 +6,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql/query"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql/query"
 )
 
 // Client encapsulates the third party package that communicates with Github GraphQL API

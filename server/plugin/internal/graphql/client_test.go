@@ -4,8 +4,9 @@ import (
 	"flag"
 	"testing"
 
-	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql/query"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql/query"
 )
 
 var userToken string
