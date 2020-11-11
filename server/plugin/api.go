@@ -614,7 +614,7 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 
 	prDetailResponse, graphErr := search.GetPRDetail(graphQLClient)
 	if graphErr != nil {
-		p.API.LogWarn("Failed to fetch PR details", "error", graphErr.Error())
+		p.API.LogError("Failed to fetch PR details", "error", graphErr.Error())
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Failed to fetch PR details.", StatusCode: http.StatusInternalServerError})
 		return
 	}
