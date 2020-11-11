@@ -15,7 +15,6 @@ func getPrsSearchQuery(username string) (*query.Object, error) {
 		"AvatarURL":  "URI",
 		"URL":        "URI",
 		"Name":       "String",
-		"Email":      "String",
 		"DatabaseID": "Int",
 	})
 	if err != nil {

@@ -51,7 +51,6 @@ func GetPRDetail(graphQLClient *graphql.Client) ([]model.PullRequest, error) {
 					AvatarURL: author.GetString("AvatarURL"),
 					HTMLURL:   author.GetString("URL"),
 					Name:      author.GetString("Name"),
-					Email:     author.GetString("Email"),
 				}
 
 				review := model.PullRequestReview{
