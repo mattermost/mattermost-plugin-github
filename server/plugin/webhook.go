@@ -279,7 +279,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -332,9 +332,9 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 		}
 
 		post.ChannelId = channel.Id
-		_, err = p.API.CreatePost(post)
-		if err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+
+		if _, err = p.API.CreatePost(post); err != nil {
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 
 		p.sendRefreshEvent(userID)
@@ -422,7 +422,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -464,7 +464,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -505,7 +505,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -548,7 +548,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -611,7 +611,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		post.ChannelId = sub.ChannelID
 
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -685,7 +685,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -739,7 +739,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 		post.ChannelId = sub.ChannelID
 		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "error", err.Error())
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -797,8 +797,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		}
 
 		post.ChannelId = channel.Id
-		_, err = p.API.CreatePost(post)
-		if err != nil {
+		if _, err = p.API.CreatePost(post); err != nil {
 			p.API.LogWarn("Error creating mention post", "error", err.Error())
 		}
 
