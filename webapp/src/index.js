@@ -14,6 +14,8 @@ import Reducer from './reducers';
 import {getConnected, setShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
 
+import {id as pluginId} from './manifest';
+
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
 const activityTimeout = 60 * 60 * 1000; // 1 hour
@@ -36,9 +38,9 @@ class PluginClass {
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
-        registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
-        registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));
-        registry.registerWebSocketEventHandler('custom_github_refresh', handleRefresh(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
         registry.registerReconnectHandler(handleReconnect(store));
 
         activityFunc = () => {
@@ -57,4 +59,4 @@ class PluginClass {
     }
 }
 
-global.window.registerPlugin('github', new PluginClass());
+global.window.registerPlugin(pluginId, new PluginClass());

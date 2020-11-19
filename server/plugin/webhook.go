@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
@@ -342,13 +343,20 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	repo := event.GetRepo()
+	issue := event.GetIssue()
+	action := event.GetAction()
+
+	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
+	timeDiff := time.Until(issue.GetCreatedAt()) * -1
+	if action == "labeled" && timeDiff.Seconds() < 4.00 {
+		return
+	}
 
 	subscribedChannels := p.GetSubscribedChannelsForRepository(repo)
 	if len(subscribedChannels) == 0 {
 		return
 	}
 
-	action := event.GetAction()
 	issueTemplate := ""
 	switch action {
 	case "opened":
@@ -378,7 +386,6 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		Message: renderedMessage,
 	}
 
-	issue := event.GetIssue()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(issue.Labels))
 	for i, v := range issue.Labels {
@@ -386,7 +393,11 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	for _, sub := range subscribedChannels {
-		if !sub.Issues() {
+		if !sub.Issues() && !sub.IssueCreations() {
+			continue
+		}
+
+		if sub.IssueCreations() && action != "opened" {
 			continue
 		}
 

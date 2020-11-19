@@ -832,7 +832,11 @@ func (p *Plugin) createIssueComment(w http.ResponseWriter, r *http.Request, user
 
 	result, rawResponse, err := githubClient.Issues.CreateComment(context.Background(), req.Owner, req.Repo, req.Number, comment)
 	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(rawResponse.StatusCode, req.Repo, currentUsername), StatusCode: rawResponse.StatusCode})
+		statusCode := 500
+		if rawResponse != nil {
+			statusCode = rawResponse.StatusCode
+		}
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(statusCode, req.Repo, currentUsername), StatusCode: statusCode})
 		return
 	}
 
@@ -1272,6 +1276,10 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	result, resp, err := githubClient.Issues.Create(context.Background(), owner, repoName, ghIssue)
 	if err != nil {
 		p.API.LogWarn("Failed to create issue", "error", err.Error())
+		if resp != nil && resp.Response.StatusCode == http.StatusGone {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+			return
+		}
 		p.writeAPIError(w,
 			&APIErrorResponse{
 				ID: "",
@@ -1281,11 +1289,6 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 				),
 				StatusCode: resp.StatusCode,
 			})
-		return
-	}
-
-	if resp.Response.StatusCode == http.StatusGone {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
 		return
 	}
 

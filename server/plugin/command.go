@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	featureIssueCreation = "issue_creations"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePushes        = "pushes"
@@ -24,6 +25,7 @@ const (
 )
 
 var validFeatures = map[string]bool{
+	featureIssueCreation: true,
 	featureIssues:        true,
 	featurePulls:         true,
 	featurePushes:        true,
@@ -289,6 +291,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		} else if len(optionList) == 1 {
 			features = optionList[0]
 			fs := strings.Split(features, ",")
+			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+				return "Feature list cannot contain both issue and issue_creations"
+			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
 				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
@@ -466,7 +471,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			qparams = "?private=true"
 		}
 
-		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/github/oauth/connect%s)", *siteURL, qparams)
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/%s/oauth/connect%s)", *siteURL, Manifest.Id, qparams)
 		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}
@@ -515,7 +520,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
 		flags := []model.AutocompleteListItem{{
 			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
@@ -624,4 +629,13 @@ func parseCommand(input string) (command, action string, parameters []string) {
 	}
 
 	return command, action, parameters
+}
+
+func SliceContainsString(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }
