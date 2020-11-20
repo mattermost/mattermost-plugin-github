@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import Octicon, {GitPullRequest, IssueOpened} from '@primer/octicons-react';
+import {GitPullRequestIcon, IssueOpenedIcon} from '@primer/octicons-react';
 
 import {formatTimeSince} from 'utils/date_utils';
 
@@ -35,22 +35,22 @@ function GithubItems(props) {
         let number = null;
 
         if (item.number) {
-            let iconType;
+            const iconProps = {
+                size: 'small',
+                verticalAlign: 'text-bottom',
+            };
 
-            // item is a pull request
+            let icon;
             if (item.pull_request) {
-                iconType = GitPullRequest;
+                // item is a pull request
+                icon = <GitPullRequestIcon {...iconProps}/>;
             } else {
-                iconType = IssueOpened;
+                icon = <IssueOpenedIcon {...iconProps}/>;
             }
             number = (
                 <strong>
                     <span style={{...style.icon}}>
-                        <Octicon
-                            icon={iconType}
-                            size='small'
-                            verticalAlign='text-bottom'
-                        />
+                        {icon}
                     </span>
                     {'#' + item.number}
                 </strong>);
