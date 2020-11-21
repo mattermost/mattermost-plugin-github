@@ -505,7 +505,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if f, ok := p.CommandHandlers[action]; ok {
 		message := f(c, args, parameters, info)
-		if len(message) > 0 {
+		if message != "" {
 			p.postCommandResponse(args, message)
 		}
 		return &model.CommandResponse{}, nil

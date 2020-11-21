@@ -1299,11 +1299,13 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	postID := ""
+	rootID := issue.PostID
 	channelID := issue.ChannelID
 	message := fmt.Sprintf("Created GitHub issue [#%v](%v)", result.GetNumber(), result.GetHTMLURL())
 	if post != nil {
-		postID = post.Id
+		if post.RootId != "" {
+			rootID = post.RootId
+		}
 		channelID = post.ChannelId
 		message += fmt.Sprintf(" from a [message](%s)", permalink)
 	}
@@ -1311,13 +1313,18 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	reply := &model.Post{
 		Message:   message,
 		ChannelId: channelID,
-		RootId:    postID,
-		ParentId:  postID,
+		RootId:    rootID,
+		ParentId:  rootID,
 		UserId:    userID,
 	}
 
-	_, appErr = p.API.CreatePost(reply)
+	if post != nil {
+		_, appErr = p.API.CreatePost(reply)
+	} else {
+		p.API.SendEphemeralPost(userID, reply)
+	}
 	if appErr != nil {
+		p.API.LogWarn("failed to create notification post", "error", appErr.Error())
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post, postID: " + issue.PostID + ", channelID: " + channelID, StatusCode: http.StatusInternalServerError})
 		return
 	}
