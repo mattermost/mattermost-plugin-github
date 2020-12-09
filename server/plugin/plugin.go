@@ -357,7 +357,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
-		p.API.LogWarn("Failed to create DM post", "userID", userID, "error", err.Error())
+		p.API.LogWarn("Failed to create DM post", "userID", userID, "post", post, "error", err.Error())
 		return
 	}
 }
