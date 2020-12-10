@@ -26,9 +26,10 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	wsEventConnect    = "connect"
-	wsEventDisconnect = "disconnect"
-	wsEventRefresh    = "refresh"
+	wsEventConnect     = "connect"
+	wsEventDisconnect  = "disconnect"
+	wsEventRefresh     = "refresh"
+	wsEventCreateIssue = "createIssue"
 
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
@@ -75,6 +76,7 @@ func NewPlugin() *Plugin {
 		"help":          p.handleHelp,
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
+		"issue":         p.handleIssue,
 	}
 
 	return p
@@ -336,6 +338,17 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	p.API.PublishWebSocketEvent(
 		wsEventDisconnect,
 		nil,
+		&model.WebsocketBroadcast{UserId: userID},
+	)
+}
+
+func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
+	p.API.PublishWebSocketEvent(
+		wsEventCreateIssue,
+		map[string]interface{}{
+			"title":      title,
+			"channel_id": channelID,
+		},
 		&model.WebsocketBroadcast{UserId: userID},
 	)
 }

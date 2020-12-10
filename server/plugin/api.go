@@ -1189,6 +1189,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		Body      string   `json:"body"`
 		Repo      string   `json:"repo"`
 		PostID    string   `json:"post_id"`
+		ChannelID string   `json:"channel_id"`
 		Labels    []string `json:"labels"`
 		Assignees []string `json:"assignees"`
 		Milestone int      `json:"milestone"`
@@ -1212,8 +1213,8 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	if issue.PostID == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a postID", StatusCode: http.StatusBadRequest})
+	if issue.PostID == "" && issue.ChannelID == "" {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide either a postID or a channelID", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -1224,20 +1225,30 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		return
 	}
 
-	post, appErr := p.API.GetPost(issue.PostID)
-	if appErr != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID, StatusCode: http.StatusInternalServerError})
-		return
-	}
-	if post == nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID + ": not found", StatusCode: http.StatusNotFound})
-		return
-	}
+	mmMessage := ""
+	var post *model.Post
+	permalink := ""
+	if issue.PostID != "" {
+		var appErr *model.AppError
+		post, appErr = p.API.GetPost(issue.PostID)
+		if appErr != nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID, StatusCode: http.StatusInternalServerError})
+			return
+		}
+		if post == nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID + ": not found", StatusCode: http.StatusNotFound})
+			return
+		}
 
-	username, err := p.getUsername(post.UserId)
-	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
-		return
+		username, err := p.getUsername(post.UserId)
+		if err != nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
+			return
+		}
+
+		permalink = p.getPermaLink(issue.PostID)
+
+		mmMessage = fmt.Sprintf("_Issue created from a [Mattermost message](%v) *by %s*._", permalink, username)
 	}
 
 	ghIssue := &github.IssueRequest{
@@ -1253,11 +1264,7 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 		ghIssue.Milestone = &issue.Milestone
 	}
 
-	permalink := p.getPermaLink(issue.PostID)
-
-	mmMessage := fmt.Sprintf("_Issue created from a [Mattermost message](%v) *by %s*._", permalink, username)
-
-	if ghIssue.GetBody() != "" {
+	if ghIssue.GetBody() != "" && mmMessage != "" {
 		mmMessage = "\n\n" + mmMessage
 	}
 	*ghIssue.Body = ghIssue.GetBody() + mmMessage
@@ -1293,22 +1300,32 @@ func (p *Plugin) createIssue(w http.ResponseWriter, r *http.Request, userID stri
 	}
 
 	rootID := issue.PostID
-	if post.RootId != "" {
-		rootID = post.RootId
+	channelID := issue.ChannelID
+	message := fmt.Sprintf("Created GitHub issue [#%v](%v)", result.GetNumber(), result.GetHTMLURL())
+	if post != nil {
+		if post.RootId != "" {
+			rootID = post.RootId
+		}
+		channelID = post.ChannelId
+		message += fmt.Sprintf(" from a [message](%s)", permalink)
 	}
 
-	message := fmt.Sprintf("Created GitHub issue [#%v](%v) from a [message](%s)", result.GetNumber(), result.GetHTMLURL(), permalink)
 	reply := &model.Post{
 		Message:   message,
-		ChannelId: post.ChannelId,
+		ChannelId: channelID,
 		RootId:    rootID,
 		ParentId:  rootID,
 		UserId:    userID,
 	}
 
-	_, appErr = p.API.CreatePost(reply)
+	if post != nil {
+		_, appErr = p.API.CreatePost(reply)
+	} else {
+		p.API.SendEphemeralPost(userID, reply)
+	}
 	if appErr != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + issue.PostID, StatusCode: http.StatusInternalServerError})
+		p.API.LogWarn("failed to create notification post", "error", appErr.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post, postID: " + issue.PostID + ", channelID: " + channelID, StatusCode: http.StatusInternalServerError})
 		return
 	}
 

@@ -3,7 +3,14 @@
 
 import ActionTypes from '../action_types';
 import Constants from '../constants';
-import {getConnected, getReviews, getUnreads, getYourAssignments, getYourPrs} from '../actions';
+import {
+    getConnected,
+    getReviews,
+    getUnreads,
+    getYourAssignments,
+    getYourPrs,
+    openCreateIssueModalWithoutPost,
+} from '../actions';
 
 import {id as pluginId} from '../manifest';
 
@@ -54,5 +61,14 @@ export function handleRefresh(store) {
             getYourPrs()(store.dispatch, store.getState);
             getYourAssignments()(store.dispatch, store.getState);
         }
+    };
+}
+
+export function handleOpenCreateIssueModal(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+        store.dispatch(openCreateIssueModalWithoutPost(msg.data.title, msg.data.channel_id));
     };
 }
