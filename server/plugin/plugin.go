@@ -26,9 +26,10 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	wsEventConnect    = "connect"
-	wsEventDisconnect = "disconnect"
-	wsEventRefresh    = "refresh"
+	wsEventConnect     = "connect"
+	wsEventDisconnect  = "disconnect"
+	wsEventRefresh     = "refresh"
+	wsEventCreateIssue = "createIssue"
 
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
@@ -75,6 +76,7 @@ func NewPlugin() *Plugin {
 		"help":          p.handleHelp,
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
+		"issue":         p.handleIssue,
 	}
 
 	return p
@@ -340,6 +342,17 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	)
 }
 
+func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
+	p.API.PublishWebSocketEvent(
+		wsEventCreateIssue,
+		map[string]interface{}{
+			"title":      title,
+			"channel_id": channelID,
+		},
+		&model.WebsocketBroadcast{UserId: userID},
+	)
+}
+
 // CreateBotDMPost posts a direct message using the bot account.
 // Any error are not returned and instead logged.
 func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
@@ -357,7 +370,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
-		p.API.LogWarn("Failed to create DM post", "userID", userID, "error", err.Error())
+		p.API.LogWarn("Failed to create DM post", "userID", userID, "post", post, "error", err.Error())
 		return
 	}
 }
@@ -565,6 +578,13 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 	}
 
 	return isMember
+}
+
+func (p *Plugin) isOrganizationLocked() bool {
+	config := p.getConfiguration()
+	configOrg := strings.TrimSpace(config.GitHubOrg)
+
+	return configOrg != ""
 }
 
 func (p *Plugin) sendRefreshEvent(userID string) {

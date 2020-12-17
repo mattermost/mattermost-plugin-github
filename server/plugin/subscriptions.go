@@ -55,6 +55,10 @@ func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features, featurePulls)
 }
 
+func (s *Subscription) IssueCreations() bool {
+	return strings.Contains(s.Features, "issue_creations")
+}
+
 func (s *Subscription) Issues() bool {
 	return strings.Contains(s.Features, featureIssues)
 }
@@ -103,6 +107,10 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 	if err := p.checkOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
+	}
+
+	if flags.ExcludeOrgMembers && !p.isOrganizationLocked() {
+		return errors.Errorf("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
 	}
 
 	var err error

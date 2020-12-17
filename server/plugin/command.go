@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	featureIssueCreation = "issue_creations"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePushes        = "pushes"
@@ -24,6 +25,7 @@ const (
 )
 
 var validFeatures = map[string]bool{
+	featureIssueCreation: true,
 	featureIssues:        true,
 	featurePulls:         true,
 	featurePushes:        true,
@@ -76,7 +78,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -289,6 +291,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		} else if len(optionList) == 1 {
 			features = optionList[0]
 			fs := strings.Split(features, ",")
+			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+				return "Feature list cannot contain both issue and issue_creations"
+			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
 				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
@@ -431,6 +436,23 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	return "Settings updated."
 }
 
+func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid issue command. Available command is 'create'."
+	}
+
+	command := parameters[0]
+	parameters = parameters[1:]
+
+	switch {
+	case command == "create":
+		p.openIssueCreateModal(args.UserId, args.ChannelId, strings.Join(parameters, " "))
+		return ""
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
+}
+
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
@@ -483,7 +505,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if f, ok := p.CommandHandlers[action]; ok {
 		message := f(c, args, parameters, info)
-		p.postCommandResponse(args, message)
+		if message != "" {
+			p.postCommandResponse(args, message)
+		}
 		return &model.CommandResponse{}, nil
 	}
 
@@ -515,7 +539,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
 		flags := []model.AutocompleteListItem{{
 			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
@@ -572,6 +596,14 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	settings.AddStaticListArgument("", true, value)
 	github.AddCommand(settings)
 
+	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
+
+	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
+	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
+	issue.AddCommand(issueCreate)
+
+	github.AddCommand(issue)
+
 	return github
 }
 
@@ -624,4 +656,13 @@ func parseCommand(input string) (command, action string, parameters []string) {
 	}
 
 	return command, action, parameters
+}
+
+func SliceContainsString(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
 }
