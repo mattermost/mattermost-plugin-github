@@ -99,7 +99,7 @@ If you have multiple organizations, repeat the process starting from step 3 to c
 
 ### Step 3: Configure the Plugin in Mattermost
 
-As a system admin, if you have an existing Mattermost user account with the name `github`, the plugin will post using the `github` account but without a `BOT` tag.
+As a System Admin, if you have an existing Mattermost user account with the name `github`, the plugin will post using the `github` account but without a `BOT` tag.
 
 To prevent this, either:
 
