@@ -16,8 +16,6 @@ import (
 	"github.com/mattermost/mattermost-server/v5/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
-
-	"github.com/mattermost/mattermost-plugin-github/server/plugin/search"
 )
 
 const (
@@ -612,7 +610,7 @@ func (p *Plugin) getPrsDetails(w http.ResponseWriter, r *http.Request, userID st
 
 	graphQLClient := p.graphQLConnect(info)
 
-	prDetailResponse, graphErr := search.GetPRDetail(graphQLClient)
+	prDetailResponse, graphErr :=graphQLClient.PullRequests.Get()
 	if graphErr != nil {
 		p.API.LogError("Failed to fetch PR details", "error", graphErr.Error())
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Failed to fetch PR details.", StatusCode: http.StatusInternalServerError})
