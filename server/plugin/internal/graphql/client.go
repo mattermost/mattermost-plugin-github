@@ -12,6 +12,12 @@ import (
 
 type service struct {
 	client *Client
+
+	// test helps testing by faking behavior or response of integrated services
+	test struct {
+		isTest             bool
+		clientResponseMock interface{}
+	}
 }
 
 // Client encapsulates the third party package that communicates with Github GraphQL API
