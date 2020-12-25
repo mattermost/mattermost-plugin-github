@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/shurcooL/githubv4"
 
@@ -17,7 +18,7 @@ func (p *PullRequestService) Get() ([]model.PullRequest, error) {
 		"prSearchQueryArg": githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", p.client.username, githubv4.PullRequestStateOpen)),
 	}
 	if p.client.org != "" {
-		params["prSearchQueryArg"] = githubv4.String(fmt.Sprintf("org: %s %s", p.client.org, params["prSearchQueryArg"]))
+		params["prSearchQueryArg"] = githubv4.String(fmt.Sprintf("org:%s %s", p.client.org, params["prSearchQueryArg"]))
 	}
 
 	var query prSearchQuery
@@ -29,32 +30,44 @@ func (p *PullRequestService) Get() ([]model.PullRequest, error) {
 		return res, err
 	}
 
+	var wg sync.WaitGroup
+
 	for _, resp := range query.Search.Nodes {
 		var requestedReviewers []string
 		var reviews []model.PullRequestReview
 
-		for _, rr := range resp.PullRequest.ReviewRequests.Nodes {
-			requestedReviewers = append(requestedReviewers, string(rr.RequestedReviewer.User.Login))
-		}
+		wg.Add(2)
 
-		for _, rw := range resp.PullRequest.Reviews.Nodes {
-			review := model.PullRequestReview{
-				ID:     int64(rw.DatabaseID),
-				NodeID: fmt.Sprintf("%v", rw.ID),
-				User: &model.User{
-					ID:        int64(rw.Author.User.DatabaseID),
-					Login:     string(rw.Author.User.Login),
-					NodeID:    fmt.Sprintf("%v", rw.Author.User.ID),
-					AvatarURL: rw.Author.User.AvatarURL.String(),
-					HTMLURL:   rw.Author.User.URL.String(),
-					Name:      string(rw.Author.User.Name),
-				},
-				Body:  string(rw.Body),
-				State: string(rw.State),
-				URL:   rw.URL.String(),
+		go func() {
+			defer wg.Done()
+			for _, rr := range resp.PullRequest.ReviewRequests.Nodes {
+				requestedReviewers = append(requestedReviewers, string(rr.RequestedReviewer.User.Login))
 			}
-			reviews = append(reviews, review)
-		}
+		}()
+
+		go func() {
+			defer wg.Done()
+			for _, rw := range resp.PullRequest.Reviews.Nodes {
+				review := model.PullRequestReview{
+					ID:     int64(rw.DatabaseID),
+					NodeID: fmt.Sprintf("%v", rw.ID),
+					User: &model.User{
+						ID:        int64(rw.Author.User.DatabaseID),
+						Login:     string(rw.Author.User.Login),
+						NodeID:    fmt.Sprintf("%v", rw.Author.User.ID),
+						AvatarURL: rw.Author.User.AvatarURL.String(),
+						HTMLURL:   rw.Author.User.URL.String(),
+						Name:      string(rw.Author.User.Name),
+					},
+					Body:  string(rw.Body),
+					State: string(rw.State),
+					URL:   rw.URL.String(),
+				}
+				reviews = append(reviews, review)
+			}
+		}()
+
+		wg.Wait()
 
 		pr := model.PullRequest{
 			URL:                resp.PullRequest.URL.String(),
