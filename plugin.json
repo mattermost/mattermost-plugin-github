@@ -77,7 +77,7 @@
                 "default": "public",
                 "options": [
                     {
-                        "display_name": "Enable for public repositories:",
+                        "display_name": "Enable for public repositories",
                         "value": "public"
                     },
                     {
