@@ -85,7 +85,7 @@
                         "value": "privateAndPublic"
                     },
                     {
-                        "display_name": "Disable:",
+                        "display_name": "Disable",
                         "value": "disable"
                     }
                 ]
