@@ -81,7 +81,7 @@
                         "value": "public"
                     },
                     {
-                        "display_name": "Enable for public and private repositories. This might leak confidential code into public channels:",
+                        "display_name": "Enable for public and private repositories. This might leak confidential code into public channels",
                         "value": "privateAndPublic"
                     },
                     {
