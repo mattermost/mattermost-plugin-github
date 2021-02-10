@@ -1,11 +1,14 @@
 package graphql
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 
 	"github.com/shurcooL/githubv4"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql/model"
@@ -20,189 +23,14 @@ func TestPullRequestService_Get(t *testing.T) {
 	client := NewClient(tok, username, "", "")
 	res, err := client.PullRequests.Get()
 
-	if err != nil {
-		t.Fatalf("PullRequests.Get() err: %v", err)
+	if assert.NoError(t, err, "PullRequests.Get()") {
+		t.Logf("PullRequests.Get(): %v", res)
 	}
-
-	t.Logf("PullRequests.Get(): %v", res)
 }
 
 func TestPullRequestService_Get_response(t *testing.T) {
 	url1, _ := url.Parse("https://mattermost.com")
 	url2, _ := url.Parse("http://github.com/mattermost/mattermost-plugin-github")
-	userJaneDoe := userQuery{
-		Login:      *githubv4.NewString("first_author"),
-		Name:       *githubv4.NewString("jane doe"),
-		AvatarURL:  githubv4.URI{URL: url1},
-		URL:        githubv4.URI{URL: url1},
-		DatabaseID: *githubv4.NewInt(123),
-		ID:         *githubv4.NewID(123123),
-	}
-
-	searchQuery := prSearchQuery{
-		Search: struct {
-			IssueCount githubv4.Int
-			Nodes      []prSearchNodes
-		}{
-			IssueCount: *githubv4.NewInt(2),
-			Nodes: []prSearchNodes{
-				{
-					PullRequest: struct {
-						ID             githubv4.ID
-						Body           githubv4.String
-						Mergeable      githubv4.MergeableState
-						Number         githubv4.Int
-						Repository     repositoryQuery
-						Reviews        reviewsQuery `graphql:"reviews(first: 10)"`
-						ReviewDecision githubv4.PullRequestReviewDecision
-						ReviewRequests reviewRequestsQuery `graphql:"reviewRequests(first: 10)"`
-						State          githubv4.PullRequestState
-						Title          githubv4.String
-						URL            githubv4.URI
-					}{
-						ID:        *githubv4.NewID(1),
-						Body:      *githubv4.NewString("Commit details of the first PR."),
-						Mergeable: githubv4.MergeableStateMergeable,
-						Number:    *githubv4.NewInt(101),
-						Repository: repositoryQuery{
-							Name:          "mattermost-plugin-github v1",
-							NameWithOwner: "mattermost",
-						},
-						Reviews: reviewsQuery{
-							TotalCount: 1,
-							Nodes: []struct {
-								ID         githubv4.ID
-								DatabaseID githubv4.Int
-								State      githubv4.PullRequestReviewState
-								Body       githubv4.String
-								URL        githubv4.URI
-								Author     struct {
-									User userQuery `graphql:"... on User"`
-								}
-							}{
-								{
-									ID:         *githubv4.NewID(1234),
-									DatabaseID: *githubv4.NewInt(123),
-									State:      githubv4.PullRequestReviewStateApproved,
-									Body:       *githubv4.NewString("first pr review body"),
-									URL:        githubv4.URI{URL: url1},
-									Author: struct {
-										User userQuery `graphql:"... on User"`
-									}{
-										User: userJaneDoe,
-									},
-								},
-							},
-						},
-						ReviewDecision: githubv4.PullRequestReviewDecisionReviewRequired,
-						ReviewRequests: reviewRequestsQuery{
-							TotalCount: 1,
-							Nodes: []struct {
-								RequestedReviewer struct {
-									User userQuery `graphql:"... on User"`
-								}
-							}{
-								{
-									RequestedReviewer: struct {
-										User userQuery `graphql:"... on User"`
-									}{
-										User: userJaneDoe,
-									},
-								},
-							},
-						},
-						State: githubv4.PullRequestStateOpen,
-						Title: *githubv4.NewString("First Pull Request"),
-						URL:   githubv4.URI{URL: url1},
-					},
-				},
-				{
-					PullRequest: struct {
-						ID             githubv4.ID
-						Body           githubv4.String
-						Mergeable      githubv4.MergeableState
-						Number         githubv4.Int
-						Repository     repositoryQuery
-						Reviews        reviewsQuery `graphql:"reviews(first: 10)"`
-						ReviewDecision githubv4.PullRequestReviewDecision
-						ReviewRequests reviewRequestsQuery `graphql:"reviewRequests(first: 10)"`
-						State          githubv4.PullRequestState
-						Title          githubv4.String
-						URL            githubv4.URI
-					}{
-						ID:        *githubv4.NewID(2),
-						Body:      *githubv4.NewString("Commit details of the second PR."),
-						Mergeable: githubv4.MergeableStateUnknown,
-						Number:    *githubv4.NewInt(102),
-						Repository: repositoryQuery{
-							Name:          "mattermost-plugin-github v1",
-							NameWithOwner: "mattermost",
-						},
-						Reviews: reviewsQuery{
-							TotalCount: 1,
-							Nodes: []struct {
-								ID         githubv4.ID
-								DatabaseID githubv4.Int
-								State      githubv4.PullRequestReviewState
-								Body       githubv4.String
-								URL        githubv4.URI
-								Author     struct {
-									User userQuery `graphql:"... on User"`
-								}
-							}{
-								{
-									ID:         *githubv4.NewID(987),
-									DatabaseID: *githubv4.NewInt(987),
-									State:      githubv4.PullRequestReviewStateChangesRequested,
-									Body:       *githubv4.NewString("second pr review body here"),
-									URL:        githubv4.URI{URL: url2},
-									Author: struct {
-										User userQuery `graphql:"... on User"`
-									}{
-										User: userJaneDoe,
-									},
-								},
-							},
-						},
-						ReviewDecision: githubv4.PullRequestReviewDecisionReviewRequired,
-						ReviewRequests: reviewRequestsQuery{
-							TotalCount: 2,
-							Nodes: []struct {
-								RequestedReviewer struct {
-									User userQuery `graphql:"... on User"`
-								}
-							}{
-								{
-									RequestedReviewer: struct {
-										User userQuery `graphql:"... on User"`
-									}{
-										User: userJaneDoe,
-									},
-								},
-								{
-									RequestedReviewer: struct {
-										User userQuery `graphql:"... on User"`
-									}{
-										User: userQuery{
-											Login:      *githubv4.NewString("second_author"),
-											Name:       "John Doe",
-											AvatarURL:  githubv4.URI{URL: url2},
-											URL:        githubv4.URI{URL: url2},
-											DatabaseID: *githubv4.NewInt(456),
-											ID:         *githubv4.NewID(456456),
-										},
-									},
-								},
-							},
-						},
-						State: githubv4.PullRequestStateOpen,
-						Title: *githubv4.NewString("Second Pull Request"),
-						URL:   githubv4.URI{URL: url2},
-					},
-				},
-			}},
-	}
-
 	want := []model.PullRequest{
 		{
 			URL:                url1.String(),
@@ -258,17 +86,138 @@ func TestPullRequestService_Get_response(t *testing.T) {
 		},
 	}
 
-	prService := PullRequestService{client: &Client{}}
-	prService.test.isTest = true
-	prService.test.clientResponseMock = searchQuery
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{
+			"data": {
+				"search": {
+					"issueCount": 2,
+					"nodes": [
+						{
+							"id": "1",
+							"body": "Commit details of the first PR.",
+							"mergeable": "MERGEABLE",
+							"number": 101,
+							"repository": {
+								"name": "mattermost-plugin-github v1",
+								"nameWithOwner": "mattermost"
+							},
+							"reviews": {
+								"totalCount": 1,
+								"nodes": [
+									{
+										"id": "1234",
+										"databaseId": 123,
+										"url": "https://mattermost.com",
+										"state": "APPROVED",
+										"body": "first pr review body",
+										"author": {
+											"id": "123123",
+											"avatarUrl": "https://mattermost.com",
+											"login": "first_author",
+											"name": "jane doe",
+											"databaseId": 123,
+											"url": "https://mattermost.com"
+										}
+									}
+								]
+							},
+							"reviewDecision": "REVIEW_REQUIRED",
+							"reviewRequests": {
+								"totalCount": 1,
+								"nodes": [
+									{
+										"requestedReviewer": {
+											"id": "123123",
+											"avatarUrl": "https://mattermost.com",
+											"login": "first_author",
+											"name": "jane doe",
+											"databaseId": 123,
+											"url": "https://mattermost.com"
+										}
+									}
+								]
+							},
+							"state": "OPEN",
+							"title": "First Pull Request",
+							"url": "https://mattermost.com"
+						},
+						{
+							"id": "2",
+							"body": "Commit details of the second PR.",
+							"mergeable": "UNKNOWN",
+							"number": 102,
+							"repository": {
+								"name": "mattermost-plugin-github v1",
+								"nameWithOwner": "mattermost"
+							},
+							"reviews": {
+								"totalCount": 1,
+								"nodes": [
+									{
+										"id": "987",
+										"databaseId": 987,
+										"url": "http://github.com/mattermost/mattermost-plugin-github",
+										"state": "CHANGES_REQUESTED",
+										"body": "second pr review body here",
+										"author": {
+											"id": "123123",
+											"avatarUrl": "https://mattermost.com",
+											"login": "first_author",
+											"name": "jane doe",
+											"databaseId": 123,
+											"url": "https://mattermost.com"
+										}
+									}
+								]
+							},
+							"reviewDecision": "REVIEW_REQUIRED",
+							"reviewRequests": {
+								"totalCount": 2,
+								"nodes": [
+									{
+										"requestedReviewer": {
+											"id": "123123",
+											"avatarUrl": "https://mattermost.com",
+											"login": "first_author",
+											"name": "jane doe",
+											"databaseId": 123,
+											"url": "https://mattermost.com"
+										}
+									},
+									{
+										"requestedReviewer": {
+											"id": "456456",
+											"avatarUrl": "http://github.com/mattermost/mattermost-plugin-github",
+											"login": "second_author",
+											"name": "John Doe",
+											"databaseId": 456123,
+											"url": "http://github.com/mattermost/mattermost-plugin-github"
+										}
+									}
+								]
+							},
+							"state": "OPEN",
+							"title": "Second Pull Request",
+							"url": "http://github.com/mattermost/mattermost-plugin-github"
+						}
+					]
+				}
+			}
+		}`)
+	})
+
+	mockServer := httptest.NewServer(mux)
+	defer mockServer.Close()
+
+	client := Client{client: githubv4.NewEnterpriseClient(mockServer.URL, mockServer.Client())}
+	prService := PullRequestService{client: &client}
 
 	got, err := prService.Get()
-	if err != nil {
-		t.Errorf("convertPrResponse() error = %v", err)
+	if !assert.NoError(t, err, "convertPrResponse()") {
 		return
 	}
 
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("convertPrResponse() got = %v\n\nwant %v", got, want)
-	}
+	assert.Equal(t, want, got)
 }

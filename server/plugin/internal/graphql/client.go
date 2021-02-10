@@ -2,22 +2,16 @@ package graphql
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"path"
 
+	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 )
 
 type service struct {
 	client *Client
-
-	// test helps testing by faking behavior or response of integrated services
-	test struct {
-		isTest             bool
-		clientResponseMock interface{}
-	}
 }
 
 // Client encapsulates the third party package that communicates with Github GraphQL API
@@ -62,7 +56,7 @@ func NewClient(token oauth2.Token, username, orgName, enterpriseBaseURL string) 
 // executeQuery takes a query struct and sends it to GitHub GraphQL API via helper package.
 func (c *Client) executeQuery(qry interface{}, params map[string]interface{}) error {
 	if err := c.client.Query(context.Background(), qry, params); err != nil {
-		return fmt.Errorf("query execution error: %v", err)
+		return errors.Wrap(err, "query execution error")
 	}
 	return nil
 }

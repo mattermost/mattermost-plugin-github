@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/shurcooL/githubv4"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )
 
@@ -31,11 +32,9 @@ func TestClient(t *testing.T) {
 	}
 
 	err := client.executeQuery(&query, nil)
-	if err != nil {
-		t.Fatalf("executeQuery() err: %v", err)
+	if !assert.NoError(t, err, "executeQuery() failed") {
+		return
 	}
 
-	if query.Viewer.Login == "" {
-		t.Errorf("struct field Login is empty, expected value")
-	}
+	assert.NotEmpty(t, query.Viewer.Login, "struct field Login is empty")
 }
