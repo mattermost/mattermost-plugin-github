@@ -1161,8 +1161,6 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 }
 
 func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	userID := c.UserID
-
 	type IssueRequest struct {
 		Title     string   `json:"title"`
 		Body      string   `json:"body"`
@@ -1241,7 +1239,7 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 	*ghIssue.Body = ghIssue.GetBody() + mmMessage
 
-	currentUser, appErr := p.API.GetUser(userID)
+	currentUser, appErr := p.API.GetUser(c.UserID)
 	if appErr != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
 		return
@@ -1288,13 +1286,13 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		ChannelId: channelID,
 		RootId:    rootID,
 		ParentId:  rootID,
-		UserId:    userID,
+		UserId:    c.UserID,
 	}
 
 	if post != nil {
 		_, appErr = p.API.CreatePost(reply)
 	} else {
-		p.API.SendEphemeralPost(userID, reply)
+		p.API.SendEphemeralPost(c.UserID, reply)
 	}
 	if appErr != nil {
 		p.API.LogWarn("failed to create notification post", "error", appErr.Error())
