@@ -72,6 +72,10 @@ type HTTPHandlerFuncWithUserContext func(c *UserContext, w http.ResponseWriter, 
 // ResponseType indicates type of response returned by api
 type ResponseType string
 
+type Settings struct {
+	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
+}
+
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
@@ -126,8 +130,9 @@ func (p *Plugin) initializeAPI() {
 
 	apiRouter.HandleFunc("/connected", p.attachContext(p.getConnected)).Methods(http.MethodGet)
 
-	apiRouter.HandleFunc("/user", p.checkAuth(p.attachContext(p.getGitHubUser), ResponseTypeJSON)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/settings", p.checkAuth(p.getSettings, ResponseTypePlain)).Methods(http.MethodGet)
 
+	apiRouter.HandleFunc("/user", p.checkAuth(p.attachContext(p.getGitHubUser), ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/todo", p.checkAuth(p.attachUserContext(p.postToDo), ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/reviews", p.checkAuth(p.attachUserContext(p.getReviews), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/yourprs", p.checkAuth(p.attachUserContext(p.getYourPrs), ResponseTypePlain)).Methods(http.MethodGet)
@@ -550,6 +555,14 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 				p.API.LogWarn("Unable to set private repo key value", "error", err.Error())
 			}
 		}
+	}
+
+	p.writeJSON(w, resp)
+}
+
+func (p *Plugin) getSettings(w http.ResponseWriter, _ *http.Request) {
+	resp := Settings{
+		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
 	}
 
 	p.writeJSON(w, resp)

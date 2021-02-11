@@ -11,7 +11,7 @@ import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
-import {getConnected, setShowRHSAction} from './actions';
+import {getConnected, setShowRHSAction, getSettings} from './actions';
 import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 
 import {id as pluginId} from './manifest';
@@ -24,10 +24,13 @@ class PluginClass {
     async initialize(registry, store) {
         registry.registerReducer(Reducer);
 
+        const {data: settings} = await getSettings(store.getState);
         await getConnected(true)(store.dispatch, store.getState);
 
-        registry.registerLeftSidebarHeaderComponent(SidebarHeader);
-        registry.registerBottomTeamSidebarComponent(TeamSidebar);
+        if (settings && settings.left_sidebar_enabled) {
+            registry.registerLeftSidebarHeaderComponent(SidebarHeader);
+            registry.registerBottomTeamSidebarComponent(TeamSidebar);
+        }
         registry.registerPopoverUserAttributesComponent(UserAttribute);
         registry.registerRootComponent(CreateIssueModal);
         registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
