@@ -37,6 +37,14 @@ const manifestStr = `
     "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github).",
     "settings": [
       {
+        "key": "EnableLeftSidebar",
+        "display_name": "Display Notification Counters in Left Sidebar",
+        "type": "bool",
+        "help_text": "When false, the counters showing the user how many open/assigned issues they have in Github will not be shown in the Left Hand Sidebar on desktop browsers.",
+        "placeholder": "",
+        "default": true
+      },
+      {
         "key": "GitHubOAuthClientID",
         "display_name": "GitHub OAuth Client ID:",
         "type": "text",
