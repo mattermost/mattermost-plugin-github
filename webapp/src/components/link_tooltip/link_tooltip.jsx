@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import './tooltip.css';
-import Octicon, {GitMerge, GitPullRequest, IssueClosed, IssueOpened} from '@primer/octicons-react';
+import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon} from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 
 import Client from 'client';
@@ -44,46 +44,43 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
     }, [connected, data, href, show]);
 
     const getIconElement = () => {
+        const iconProps = {
+            size: 'small',
+            verticalAlign: 'text-bottom',
+        };
+
         let icon;
         let color;
-        let iconType;
         switch (data.type) {
         case 'pull':
+            icon = <GitPullRequestIcon {...iconProps}/>;
+
             color = '#28a745';
-            iconType = GitPullRequest;
             if (data.state === 'closed') {
                 if (data.merged) {
                     color = '#6f42c1';
-                    iconType = GitMerge;
+                    icon = <GitMergeIcon {...iconProps}/>;
                 } else {
                     color = '#cb2431';
                 }
             }
-            icon = (
-                <span style={{color}}>
-                    <Octicon
-                        icon={iconType}
-                        size='small'
-                        verticalAlign='middle'
-                    />
-                </span>
-            );
+
             break;
         case 'issues':
             color = data.state === 'open' ? '#28a745' : '#cb2431';
-            iconType = data.state === 'open' ? IssueOpened : IssueClosed;
-            icon = (
-                <span style={{color}}>
-                    <Octicon
-                        icon={iconType}
-                        size='small'
-                        verticalAlign='middle'
-                    />
-                </span>
-            );
+
+            if (data.state === 'open') {
+                icon = <IssueOpenedIcon {...iconProps}/>;
+            } else {
+                icon = <IssueClosedIcon {...iconProps}/>;
+            }
             break;
         }
-        return icon;
+        return (
+            <span style={{color}}>
+                {icon}
+            </span>
+        );
     };
 
     if (data) {

@@ -55,6 +55,10 @@ type HTTPHandlerFuncWithUser func(w http.ResponseWriter, r *http.Request, userID
 // ResponseType indicates type of response returned by api
 type ResponseType string
 
+type Settings struct {
+	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
+}
+
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
@@ -108,6 +112,7 @@ func (p *Plugin) initializeAPI() {
 	oauthRouter.HandleFunc("/complete", p.extractUserMiddleWare(p.completeConnectUserToGitHub, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/connected", p.getConnected).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/settings", p.getSettings).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/todo", p.extractUserMiddleWare(p.postToDo, ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/reviews", p.extractUserMiddleWare(p.getReviews, ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/yourprs", p.extractUserMiddleWare(p.getYourPrs, ResponseTypePlain)).Methods(http.MethodGet)
@@ -1277,4 +1282,12 @@ func parseRepo(repoParam string) (owner, repo string, err error) {
 	}
 
 	return splitted[0], splitted[1], nil
+}
+
+func (p *Plugin) getSettings(w http.ResponseWriter, _ *http.Request) {
+	resp := Settings{
+		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
+	}
+
+	p.writeJSON(w, resp)
 }
