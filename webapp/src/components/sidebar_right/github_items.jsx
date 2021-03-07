@@ -24,9 +24,11 @@ function GithubItems(props) {
         const repoName = item.repository_url ? item.repository_url.replace(/.+\/repos\//, '') : item.repository.full_name;
 
         let userName = null;
+        let userProfile = null;
 
         if (item.user) {
             userName = item.user.login;
+            userProfile = `https://github.com/${userName}`;
         } else if (item.owner) {
             userName = item.owner.login;
         }
@@ -158,7 +160,7 @@ function GithubItems(props) {
                     style={style.subtitle}
                 >
                     {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
-                    {userName && ' by ' + userName}
+                    {userName && <a href={userProfile}>' by ' {userName}</a>}
                     {(item.created_at || userName) && '.'}
                     {milestone}
                     {item.reason ? (<React.Fragment>
