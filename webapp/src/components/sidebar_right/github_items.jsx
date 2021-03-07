@@ -160,7 +160,7 @@ function GithubItems(props) {
                     style={style.subtitle}
                 >
                     {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
-                    {userName && <a href={userProfile}>' by ' {userName}</a>}
+                    {userName && <a href={userProfile}> by {userName}</a>}
                     {(item.created_at || userName) && '.'}
                     {milestone}
                     {item.reason ? (<React.Fragment>
