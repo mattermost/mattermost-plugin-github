@@ -348,6 +348,16 @@ export function openCreateIssueModal(postId) {
     };
 }
 
+export function openCreateIssueModalWithoutPost(title, channelId) {
+    return {
+        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST,
+        data: {
+            title,
+            channelId,
+        },
+    };
+}
+
 export function closeCreateIssueModal() {
     return {
         type: ActionTypes.CLOSE_CREATE_ISSUE_MODAL,
@@ -407,4 +417,14 @@ export function attachCommentToIssue(payload) {
         });
         return {data};
     };
+}
+
+export async function getSettings() {
+    let data;
+    try {
+        data = await Client.getSettings();
+    } catch (error) {
+        return {error};
+    }
+    return {data};
 }

@@ -11,8 +11,10 @@ import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
-import {getConnected, setShowRHSAction} from './actions';
-import {handleConnect, handleDisconnect, handleReconnect, handleRefresh} from './websocket';
+import {getConnected, setShowRHSAction, getSettings} from './actions';
+import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
+
+import {id as pluginId} from './manifest';
 
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
@@ -22,10 +24,13 @@ class PluginClass {
     async initialize(registry, store) {
         registry.registerReducer(Reducer);
 
+        const {data: settings} = await getSettings(store.getState);
         await getConnected(true)(store.dispatch, store.getState);
 
-        registry.registerLeftSidebarHeaderComponent(SidebarHeader);
-        registry.registerBottomTeamSidebarComponent(TeamSidebar);
+        if (settings && settings.left_sidebar_enabled) {
+            registry.registerLeftSidebarHeaderComponent(SidebarHeader);
+            registry.registerBottomTeamSidebarComponent(TeamSidebar);
+        }
         registry.registerPopoverUserAttributesComponent(UserAttribute);
         registry.registerRootComponent(CreateIssueModal);
         registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
@@ -36,9 +41,10 @@ class PluginClass {
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
-        registry.registerWebSocketEventHandler('custom_github_connect', handleConnect(store));
-        registry.registerWebSocketEventHandler('custom_github_disconnect', handleDisconnect(store));
-        registry.registerWebSocketEventHandler('custom_github_refresh', handleRefresh(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateIssueModal(store));
         registry.registerReconnectHandler(handleReconnect(store));
 
         activityFunc = () => {
@@ -57,4 +63,4 @@ class PluginClass {
     }
 }
 
-global.window.registerPlugin('github', new PluginClass());
+global.window.registerPlugin(pluginId, new PluginClass());

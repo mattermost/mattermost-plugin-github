@@ -22,6 +22,7 @@ type Configuration struct {
 	GitHubOAuthClientID     string
 	GitHubOAuthClientSecret string
 	WebhookSecret           string
+	EnableLeftSidebar       bool
 	EnablePrivateRepo       bool
 	EncryptionKey           string
 	EnterpriseBaseURL       string

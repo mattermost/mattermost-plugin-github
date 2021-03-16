@@ -27,7 +27,7 @@ A GitHub plugin for Mattermost. Supports GitHub SaaS and Enterprise versions.
 
 ## Audience
 
-This guide is intended for Mattermost System Admins setting up the GitHub plugin and Mattermost users who want information about the plugin functionality. For more information about contributing to this plugin, visit the [Development section](#development).
+This guide is intended for Mattermost System Admins setting up the GitHub plugin, Mattermost users who want information about the plugin functionality, and Mattermost users who want to connect their GitHub account to Mattermost. For more information about contributing to this plugin, visit the [Development section](#development).
 
 ## License
 
@@ -35,9 +35,9 @@ This repository is licensed under the [Apache 2.0 License](https://github.com/ma
 
 ## About the GitHub Plugin
 
-The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration and include: 
+The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration. 
 
-After your System Admin has [configured the GitHub plugin](#configuration), run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
+After a System Admin has configured the GitHub plugin, run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
 
 Once connected, you'll have access to the following features:
 
@@ -57,25 +57,31 @@ This guide assumes:
 
 ## Configuration
 
-Configuration is started in GitHub and completed in Mattermost. 
+GitHub plugin configuration starts by registering an OAuth app in GitHub and ends in Mattermost. 
 
 **Note:** If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL.
 
 ### Step 1: Register an OAuth Application in GitHub
 
+You must first register the Mattermost GitHub Plugin as an authorized OAuth app regardless of whether you're setting up the GitHub plugin as a system admin or a Mattermost user.
+
 1. Go to https://github.com/settings/applications/new to register an OAuth app.
 2. Set the following values:
-   - **Application Name:** `Mattermost GitHub Plugin - <your company name>`
+   - **Application name:** `Mattermost GitHub Plugin - <your company name>`
    - **Homepage URL:** `https://github.com/mattermost/mattermost-plugin-github`
-   - **Authorization callback URL:** `https://your-mattermost-url.com/plugins/github/oauth/complete`, replacing `https://your-mattermost-url.com` with your Mattermost URL.
+   - **Authorization callback URL:** `https://your-mattermost-url.com/plugins/github/oauth/complete`, replacing `https://your-mattermost-url.com` with your Mattermost URL. This value needs to match the Mattermost server URL that you or your users users log in to. 
 3. Submit.
-4. Copy the **Client ID** and **Client Secret** in the resulting screen.
-5. Go to **System Console > Plugins > GitHub** and enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.
-6. Hit **Save**.
+4. Click **Generate a new client secret** and provide your GitHub password to continue.
+5. Copy the **Client ID** and **Client Secret** in the resulting screen.
+6. Once you have successfully registered the Mattermost GitHub Plugin as an authorized OAuth app, switch to Mattermost and run `/github connect` in a Mattermost channel. You should receive a DM from the GitHub plugin about the features you have available.
+
+A System Admin performs the remaining steps:
+7. Go to **System Console > Plugins > GitHub** and enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.
+8. Hit **Save**.
 
 ### Step 2: Create a Webhook in GitHub
 
-You must create a webhook for each organization you want to receive notifications for or subscribe to.
+As a system admin, you must create a webhook for each organization you want to receive notifications for or subscribe to.
 
 1. In **System Console > Plugins > GitHub**, generate a new value for **Webhook Secret**. Copy it, as you will use it in a later step.
 2. Hit **Save** to save the secret.
@@ -93,7 +99,7 @@ If you have multiple organizations, repeat the process starting from step 3 to c
 
 ### Step 3: Configure the Plugin in Mattermost
 
-If you have an existing Mattermost user account with the name `github`, the plugin will post using the `github` account but without a `BOT` tag.
+As a System Admin, if you have an existing Mattermost user account with the name `github`, the plugin will post using the `github` account but without a `BOT` tag.
 
 To prevent this, either:
 
@@ -134,11 +140,11 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 ## Slash Commands
 
 * __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
-* __Subscribe to a respository__ - Use `/github subscribe` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
+* __Subscribe to a respository__ - Use `/github subscriptions add` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
    ```
-   /github subscribe mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
+   /github subscriptions add mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
    ```
   - The following flags are supported:
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
@@ -158,7 +164,7 @@ Set up your GitHub webhook from the repository instead of the organization. Noti
 Suppose you want to send notifications to a Mattermost channel when `Severity/Critical` label is applied to any issue in the `mattermost/mattermost-plugin-github` repository. Then, use this command to subscribe to these notifications:
 
 ```
-/github subscribe mattermost/mattermost-plugin-github issues,label:"Severity/Critical"
+/github subscriptions add mattermost/mattermost-plugin-github issues,label:"Severity/Critical"
 ```
 
 ### How do I share feedback on this plugin?
