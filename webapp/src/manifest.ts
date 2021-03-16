@@ -23,12 +23,12 @@ const manifest = JSON.parse(`
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "The GitHub plugin for Mattermost allows users to Subscribe to notifications, stay up-to-date with reviews, see the status of your pull requests at a glance, and other common GitHub actions - directly from Mattermost.  \\n \\n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration)",
+        "header": "The GitHub plugin for Mattermost allows users to subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common GitHub actions - directly from Mattermost. \\n \\n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration).",
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github).",
         "settings": [
             {
                 "key": "GitHubOAuthClientID",
-                "display_name": "GitHub OAuth Client ID",
+                "display_name": "GitHub OAuth Client ID:",
                 "type": "text",
                 "help_text": "The client ID for the OAuth app registered with GitHub.",
                 "placeholder": "",
@@ -36,7 +36,7 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "GitHubOAuthClientSecret",
-                "display_name": "GitHub OAuth Client Secret",
+                "display_name": "GitHub OAuth Client Secret:",
                 "type": "text",
                 "help_text": "The client secret for the OAuth app registered with GitHub.",
                 "placeholder": "",
@@ -44,7 +44,7 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "WebhookSecret",
-                "display_name": "Webhook Secret",
+                "display_name": "Webhook Secret:",
                 "type": "generated",
                 "help_text": "The webhook secret set in GitHub.",
                 "placeholder": "",
@@ -52,7 +52,7 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "EncryptionKey",
-                "display_name": "At Rest Encryption Key",
+                "display_name": "At Rest Encryption Key:",
                 "type": "generated",
                 "help_text": "The AES encryption key used to encrypt stored access tokens.",
                 "placeholder": "",
@@ -60,7 +60,7 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "GithubOrg",
-                "display_name": "GitHub Organization",
+                "display_name": "GitHub Organization:",
                 "type": "text",
                 "help_text": "(Optional) Set to lock the plugin to a single GitHub organization.",
                 "placeholder": "",
@@ -68,7 +68,7 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "EnterpriseBaseURL",
-                "display_name": "Enterprise Base URL",
+                "display_name": "Enterprise Base URL:",
                 "type": "text",
                 "help_text": "(Optional) The base URL for using the plugin with a GitHub Enterprise installation. Example: https://github.example.com",
                 "placeholder": "",
@@ -76,15 +76,23 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "EnterpriseUploadURL",
-                "display_name": "Enterprise Upload URL",
+                "display_name": "Enterprise Upload URL:",
                 "type": "text",
                 "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation. This is often the same as your Base URL.",
                 "placeholder": "",
                 "default": null
             },
             {
+                "key": "EnableLeftSidebar",
+                "display_name": "Display Notification Counters in Left Sidebar",
+                "type": "bool",
+                "help_text": "When false, the counters showing the user how many open/assigned issues they have in Github will not be shown in the Left Hand Sidebar on desktop browsers.",
+                "placeholder": "",
+                "default": true
+            },
+            {
                 "key": "EnablePrivateRepo",
-                "display_name": "Enable Private Repositories",
+                "display_name": "Enable Private Repositories:",
                 "type": "bool",
                 "help_text": "(Optional) Allow the plugin to work with private repositories. When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.",
                 "placeholder": "",
@@ -92,7 +100,7 @@ const manifest = JSON.parse(`
             },
             {
                 "key": "EnableCodePreview",
-                "display_name": "Enable Code Previews",
+                "display_name": "Enable Code Previews:",
                 "type": "dropdown",
                 "help_text": "Allow the plugin to expand permalinks to GitHub files with an actual preview of the linked file.",
                 "placeholder": "",
@@ -103,7 +111,7 @@ const manifest = JSON.parse(`
                         "value": "public"
                     },
                     {
-                        "display_name": "Enable for public and private repositories. This might leak confidential code into public channels.",
+                        "display_name": "Enable for public and private repositories. This might leak confidential code into public channels",
                         "value": "privateAndPublic"
                     },
                     {
