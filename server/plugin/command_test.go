@@ -72,16 +72,6 @@ func TestValidateFeatures(t *testing.T) {
 			args: []string{"pulls", "push", "create", `label:"ruby"`},
 			want: output{false, []string{"push", "create"}},
 		},
-		{
-			name: "subscribe valid with lower org",
-			args: []string{"subscribe", "dhaussermann/hello-world", `issues,label:"help"`},
-			want: output{true, []string{}},
-		},
-		{
-			name: "subscribe valid with org",
-			args: []string{"subscribe", "DHaussermann/hello-world", `issues,label:"help"`},
-			want: output{true, []string{}},
-		},
 	}
 
 	for _, tt := range tests {
