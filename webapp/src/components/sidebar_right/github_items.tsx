@@ -91,7 +91,6 @@ interface GithubItemsProps {
 function GithubItems(props: GithubItemsProps) {
     const style = getStyle(props.theme);
 
-    //console.log('props.items:' + props.items);
     return props.items.length > 0 ? props.items.map((item) => {
         let repoName = '';
         if (item.repository_url) {
@@ -130,11 +129,11 @@ function GithubItems(props: GithubItemsProps) {
                 </strong>);
         }
 
-        let titelText = '';
+        let titleText = '';
         if (item.title) {
-            titelText = item.title;
+            titleText = item.title;
         } else if (item.subject?.title) {
-            titelText = item.subject.title;
+            titleText = item.subject.title;
         }
 
         let title:JSX.Element | null = null;
@@ -146,7 +145,7 @@ function GithubItems(props: GithubItemsProps) {
                     rel='noopener noreferrer'
                     style={style.itemTitle}
                 >
-                    {titelText}
+                    {titleText}
                 </a>);
             if (item.number) {
                 number = (
@@ -161,7 +160,7 @@ function GithubItems(props: GithubItemsProps) {
                     </strong>);
             }
         } else {
-            title = <>{titelText}</>;
+            title = <>{titleText}</>;
         }
 
         let milestone:JSX.Element | null = null;
