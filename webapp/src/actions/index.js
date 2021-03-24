@@ -157,6 +157,60 @@ export function getYourPrsDetails(prList) {
     };
 }
 
+export function getLabelOptions(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getLabels(repo);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function getAssigneeOptions(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getAssignees(repo);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function getMilestoneOptions(repo) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getMilestones(repo);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
 export function getYourAssignments() {
     return async (dispatch, getState) => {
         let data;
@@ -294,6 +348,16 @@ export function openCreateIssueModal(postId) {
     };
 }
 
+export function openCreateIssueModalWithoutPost(title, channelId) {
+    return {
+        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST,
+        data: {
+            title,
+            channelId,
+        },
+    };
+}
+
 export function closeCreateIssueModal() {
     return {
         type: ActionTypes.CLOSE_CREATE_ISSUE_MODAL,
@@ -353,4 +417,14 @@ export function attachCommentToIssue(payload) {
         });
         return {data};
     };
+}
+
+export async function getSettings() {
+    let data;
+    try {
+        data = await Client.getSettings();
+    } catch (error) {
+        return {error};
+    }
+    return {data};
 }

@@ -4,13 +4,15 @@
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
+import {id as pluginId} from '../manifest';
+
 export default class Client {
     constructor() {
-        this.url = '/plugins/github/api/v1';
+        this.url = `/plugins/${pluginId}/api/v1`;
     }
 
     getConnected = async (reminder = false) => {
-        return this.doGet(`${this.url}/connected?reminder=` + reminder);
+        return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
 
     getReviews = async () => {
@@ -45,6 +47,18 @@ export default class Client {
         return this.doGet(`${this.url}/repositories`);
     }
 
+    getLabels = async (repo) => {
+        return this.doGet(`${this.url}/labels?repo=${repo}`);
+    }
+
+    getAssignees = async (repo) => {
+        return this.doGet(`${this.url}/assignees?repo=${repo}`);
+    }
+
+    getMilestones = async (repo) => {
+        return this.doGet(`${this.url}/milestones?repo=${repo}`);
+    }
+
     createIssue = async (payload) => {
         return this.doPost(`${this.url}/createissue`, payload);
     }
@@ -63,6 +77,10 @@ export default class Client {
 
     getPullRequest = async (owner, repo, prNumber) => {
         return this.doGet(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
+    }
+
+    getSettings = async () => {
+        return this.doGet(`${this.url}/settings`);
     }
 
     doGet = async (url, body, headers = {}) => {

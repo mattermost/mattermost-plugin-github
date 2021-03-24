@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {GitPullRequestIcon, IssueOpenedIcon} from '@primer/octicons-react';
 
 import {formatTimeSince} from 'utils/date_utils';
 
@@ -34,9 +35,24 @@ function GithubItems(props) {
         let number = null;
 
         if (item.number) {
+            const iconProps = {
+                size: 'small',
+                verticalAlign: 'text-bottom',
+            };
+
+            let icon;
+            if (item.pull_request) {
+                // item is a pull request
+                icon = <GitPullRequestIcon {...iconProps}/>;
+            } else {
+                icon = <IssueOpenedIcon {...iconProps}/>;
+            }
             number = (
                 <strong>
-                    <i className='fa fa-code-fork'/>{' #' + item.number}
+                    <span style={{...style.icon}}>
+                        {icon}
+                    </span>
+                    {'#' + item.number}
                 </strong>);
         }
 
@@ -58,7 +74,7 @@ function GithubItems(props) {
                             target='_blank'
                             rel='noopener noreferrer'
                         >
-                            <i className='fa fa-code-fork'/>{' #' + item.number}
+                            {number}
                         </a>
                     </strong>);
             }
@@ -67,16 +83,16 @@ function GithubItems(props) {
         let milestone = '';
         if (item.milestone) {
             milestone = (
-                <span>
-                    <div
-                        style={
-                            {
-                                ...style.milestoneIcon,
-                                ...((item.created_at || userName) && {paddingLeft: 10}),
-                            }
+                <span
+                    style={
+                        {
+                            ...style.milestoneIcon,
+                            ...style.icon,
+                            ...((item.created_at || userName) && {paddingLeft: 10}),
                         }
-                    ><SignIcon/></div>
-                    {' '}
+                    }
+                >
+                    <SignIcon/>
                     {item.milestone.title}
                 </span>);
         }
@@ -93,13 +109,13 @@ function GithubItems(props) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<div style={{...style.icon, fill: '#2b9643'}}><TickIcon/></div>);
+                status = (<span style={{...style.icon, ...style.iconSucess}}><TickIcon/></span>);
                 break;
             case 'pending':
-                status = (<div style={{...style.icon, fill: '#c59e17'}}><DotIcon/></div>);
+                status = (<span style={{...style.icon, ...style.iconPending}}><DotIcon/></span>);
                 break;
             default:
-                status = (<div style={{...style.icon, fill: '#c11b28'}}><CrossIcon/></div>);
+                status = (<span style={{...style.icon, ...style.iconFailed}}><CrossIcon/></span>);
             }
         }
 
@@ -186,9 +202,22 @@ const getStyle = makeStyleFromTheme((theme) => {
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
+            marginRight: '6px',
+        },
+        iconSucess: {
+            color: theme.onlineIndicator,
+        },
+        iconPending: {
+            color: theme.awayIndicator,
+        },
+        iconFailed: {
+            color: theme.dndIndicator,
+        },
+        iconChangesRequested: {
+            color: theme.dndIndicator,
         },
         conflictIcon: {
-            color: theme.errorTextColor,
+            color: theme.dndIndicator,
         },
         milestoneIcon: {
             top: 3,
@@ -196,6 +225,7 @@ const getStyle = makeStyleFromTheme((theme) => {
             height: 18,
             display: 'inline-flex',
             alignItems: 'center',
+            color: theme.centerChannelColor,
         },
     };
 });
@@ -265,7 +295,7 @@ function getReviewText(item, style, secondLine) {
         } else {
             reviewName = 'reviews';
         }
-        reviews = (<span>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
+        reviews = (<span className='light'>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
     }
 
     if (changesRequested > 0) {
@@ -275,14 +305,13 @@ function getReviewText(item, style, secondLine) {
                 placement='bottom'
                 overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
             >
-                <div style={{...style.icon, fill: '#c11b28'}}><ChangesRequestedIcon/></div>
+                <span style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></span>
             </OverlayTrigger>
         );
     }
 
     return (
         <div
-            className='light'
             style={secondLine ? style.subtitleSecondLine : style.subtitle}
         >
             {reviews} {changes}

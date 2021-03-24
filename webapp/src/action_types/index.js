@@ -18,6 +18,7 @@ export default {
     UPDATE_RHS_STATE: pluginId + '_update_rhs_state',
     CLOSE_CREATE_ISSUE_MODAL: pluginId + '_close_create_modal',
     OPEN_CREATE_ISSUE_MODAL: pluginId + '_open_create_modal',
+    OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST: pluginId + '_open_create_modal_without_post',
     CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL: pluginId + '_close_attach_modal',
     OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL: pluginId + '_open_attach_modal',
     RECEIVED_ATTACH_COMMENT_RESULT: pluginId + '_received_attach_comment',

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v31/github"
-	"github.com/mattermost/mattermost-server/v5/mlog"
 	"github.com/pkg/errors"
 )
 
@@ -54,6 +53,10 @@ type Subscriptions struct {
 
 func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features, featurePulls)
+}
+
+func (s *Subscription) IssueCreations() bool {
+	return strings.Contains(s.Features, "issue_creations")
 }
 
 func (s *Subscription) Issues() bool {
@@ -106,6 +109,10 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		return errors.Wrap(err, "organization not supported")
 	}
 
+	if flags.ExcludeOrgMembers && !p.isOrganizationLocked() {
+		return errors.Errorf("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
+	}
+
 	var err error
 
 	if repo == "" {
@@ -128,7 +135,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if err != nil {
-		mlog.Error(err.Error())
+		p.API.LogWarn("Failed to get repository or org for subscribe action", "error", err.Error())
 		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
