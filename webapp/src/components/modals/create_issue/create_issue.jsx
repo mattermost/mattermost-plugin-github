@@ -82,7 +82,6 @@ export default class CreateIssueModal extends PureComponent {
 
         this.setState({submitting: true});
 
-<<<<<<< HEAD
         this.props.create(issue).then((created) => {
             if (created.error) {
                 const errMessage = getErrorMessage(created.error.message);
@@ -95,19 +94,6 @@ export default class CreateIssueModal extends PureComponent {
             }
             this.handleClose(e);
         });
-=======
-        const created = await this.props.create(issue);
-
-        if (created.error) {
-            this.setState({
-                error: created.error.message,
-                showErrors: true,
-                submitting: false,
-            });
-            return;
-        }
-        this.handleClose(e);
->>>>>>> upstream/master
     };
 
     handleClose = (e) => {
