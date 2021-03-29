@@ -74,7 +74,7 @@ interface Item {
     reviews?: Review[];
 
     // Assignments
-    pullRequest?: undefined;
+    pullRequest?: unknown;
 
     // Notifications
     subject?: {
@@ -106,7 +106,7 @@ function GithubItems(props: GithubItemsProps) {
             userName = item.owner.login;
         }
 
-        let number:JSX.Element | null = null;
+        let number: JSX.Element | null = null;
         if (item.number) {
             const iconProps: IconProps = {
                 size: 'small',
@@ -136,7 +136,7 @@ function GithubItems(props: GithubItemsProps) {
             titleText = item.subject.title;
         }
 
-        let title:JSX.Element | null = null;
+        let title: JSX.Element = {titleText};
         if (item.html_url) {
             title = (
                 <a
@@ -159,11 +159,9 @@ function GithubItems(props: GithubItemsProps) {
                         </a>
                     </strong>);
             }
-        } else {
-            title = <>{titleText}</>;
         }
 
-        let milestone:JSX.Element | null = null;
+        let milestone: JSX.Element | null = null;
         if (item.milestone) {
             milestone = (
                 <span
@@ -183,7 +181,7 @@ function GithubItems(props: GithubItemsProps) {
         const reviews = getReviewText(item, style, (item.created_at != null || userName != null || milestone != null));
 
         // Status images pasted directly from GitHub. Change to our own version when styles are decided.
-        let status:JSX.Element | null = null;
+        let status: JSX.Element | null = null;
         if (item.status) {
             switch (item.status) {
             case 'success':
@@ -197,7 +195,7 @@ function GithubItems(props: GithubItemsProps) {
             }
         }
 
-        let hasConflict:JSX.Element | null = null;
+        let hasConflict: JSX.Element | null = null;
         if (item.mergeable != null && !item.mergeable) {
             hasConflict = (
                 <OverlayTrigger
@@ -217,7 +215,7 @@ function GithubItems(props: GithubItemsProps) {
             );
         }
 
-        let labels:JSX.Element[] | null = null;
+        let labels: JSX.Element[] | null = null;
         if (item.labels) {
             labels = getGithubLabels(item.labels);
         }
@@ -308,7 +306,7 @@ const getStyle = makeStyleFromTheme((theme) => {
     };
 });
 
-function getGithubLabels(labels:Label[]) {
+function getGithubLabels(labels: Label[]) {
     return labels.map((label) => {
         return (
             <Badge
@@ -319,17 +317,17 @@ function getGithubLabels(labels:Label[]) {
     });
 }
 
-function getReviewText(item:Item, style:any, secondLine:boolean) {
+function getReviewText(item: Item, style: any, secondLine: boolean) {
     if (!item.reviews || !item.requestedReviewers) {
         return null;
     }
 
-    let reviews:JSX.Element | null = null;
-    let changes:JSX.Element | null = null;
+    let reviews: JSX.Element | null = null;
+    let changes: JSX.Element | null = null;
 
-    const finishedReviewers:string[] = [];
+    const finishedReviewers: string[] = [];
 
-    const reverse = (accum:Review[], cur:Review) => {
+    const reverse = (accum: Review[], cur: Review) => {
         accum.unshift(cur);
         return accum;
     };
@@ -355,14 +353,14 @@ function getReviewText(item:Item, style:any, secondLine:boolean) {
         return true;
     });
 
-    const approved = lastReviews.reduce((accum:number, cur:Review) => {
+    const approved = lastReviews.reduce((accum: number, cur: Review) => {
         if (cur.state === 'APPROVED') {
             return accum + 1;
         }
         return accum;
     }, 0);
 
-    const changesRequested = lastReviews.reduce((accum:number, cur:Review) => {
+    const changesRequested = lastReviews.reduce((accum: number, cur: Review) => {
         if (cur.state === 'CHANGES_REQUESTED') {
             return accum + 1;
         }
@@ -400,7 +398,7 @@ function getReviewText(item:Item, style:any, secondLine:boolean) {
         </div>);
 }
 
-const itemStyle:CSS.Properties = {
+const itemStyle: CSS.Properties = {
     margin: '4px 5px 0 0',
     padding: '3px 8px',
     display: 'inline-flex',
