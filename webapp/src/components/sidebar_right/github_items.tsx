@@ -136,7 +136,7 @@ function GithubItems(props: GithubItemsProps) {
             titleText = item.subject.title;
         }
 
-        let title: JSX.Element = {titleText};
+        let title: JSX.Element = <>{titleText}</>;
         if (item.html_url) {
             title = (
                 <a
