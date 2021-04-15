@@ -215,8 +215,9 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 		ClientSecret: config.GitHubOAuthClientSecret,
 		Scopes:       []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)},
 		Endpoint: oauth2.Endpoint{
-			AuthURL:  authURL.String(),
-			TokenURL: tokenURL.String(),
+			AuthURL:   authURL.String(),
+			TokenURL:  tokenURL.String(),
+			AuthStyle: oauth2.AuthStyleInHeader,
 		},
 	}
 }
