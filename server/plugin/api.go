@@ -187,7 +187,7 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	r.Header.Add("Mattermost-Plugin-ID", c.SourcePluginId)
+	r.Header.Set("Mattermost-Plugin-ID", c.SourcePluginId)
 	w.Header().Set("Content-Type", "application/json")
 
 	p.router.ServeHTTP(w, r)
