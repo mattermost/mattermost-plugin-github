@@ -88,7 +88,7 @@ export default class CreateIssueModal extends PureComponent {
             this.setState({
                 error: errMessage,
                 showErrors: true,
-                submitting: false
+                submitting: false,
             });
             return;
         }
