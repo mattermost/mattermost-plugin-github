@@ -73,7 +73,8 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app 
 3. Submit.
 4. Click **Generate a new client secret** and provide your GitHub password to continue.
 5. Copy the **Client ID** and **Client Secret** in the resulting screen.
-6. Once you have successfully registered the Mattermost GitHub Plugin as an authorized OAuth app, switch to Mattermost and run `/github connect` in a Mattermost channel. You should receive a DM from the GitHub plugin about the features you have available.
+6. Click on both **Generate** buttons in `Webhook Secret` and `At Rest Encryption Key`.
+7. Once you've successfully registered the Mattermost GitHub Plugin as an authorized OAuth app, switch to Mattermost and run `/github connect` in a Mattermost channel. You should receive a Direct Message from the GitHub plugin about the features available to you.
 
 A System Admin performs the remaining steps:
 7. Go to **System Console > Plugins > GitHub** and enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.
