@@ -13,6 +13,8 @@ import Validator from 'components/validator';
 import FormButton from 'components/form_button';
 import Input from 'components/input';
 
+const MAX_TITLE_LENGTH = 256;
+
 const initialState = {
     submitting: false,
     error: null,
@@ -47,7 +49,8 @@ export default class CreateIssueModal extends PureComponent {
         if (this.props.post && !prevProps.post) {
             this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
         } else if (this.props.channelId && (this.props.channelId !== prevProps.channelId || this.props.title !== prevProps.title)) {
-            this.setState({issueTitle: this.props.title}); // eslint-disable-line react/no-did-update-set-state
+            const title = this.props.title.substring(0, MAX_TITLE_LENGTH);
+            this.setState({issueTitle: title}); // eslint-disable-line react/no-did-update-set-state
         }
     }
 
