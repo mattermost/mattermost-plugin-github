@@ -192,7 +192,7 @@ export default class CreateIssueModal extends PureComponent {
                     type='input'
                     required={true}
                     disabled={false}
-                    maxLength={256}
+                    maxLength={MAX_TITLE_LENGTH}
                     value={this.state.issueTitle}
                     onChange={this.handleIssueTitleChange}
                 />
