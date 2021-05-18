@@ -372,7 +372,7 @@
       }
     ],
     "no-use-before-define": [
-      2,
+      0,
       {
         "classes": false,
         "functions": false,
@@ -633,7 +633,10 @@
   "overrides": [
     {
       "files": ["**/*.tsx", "**/*.ts"],
-      "extends": "plugin:@typescript-eslint/recommended",
+      "extends": [
+          "plugin:@typescript-eslint/recommended",
+          "plugin:import/typescript"
+      ],
       "rules": {
         "@typescript-eslint/ban-ts-ignore": 0,
         "@typescript-eslint/ban-types": 1,
