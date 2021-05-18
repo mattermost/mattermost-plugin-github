@@ -9,6 +9,7 @@ import FormButton from 'components/form_button';
 import Input from 'components/input';
 
 import GithubIssueSelector from 'components/github_issue_selector';
+import {getErrorMessage} from 'utils/user_utils';
 
 const initialState = {
     submitting: false,
@@ -58,12 +59,7 @@ export default class AttachIssueModal extends PureComponent {
 
         this.props.create(issue).then((created) => {
             if (created.error) {
-                let errMessage = created.error.message;
-                if (created.error.response &&
-                    created.error.response.body &&
-                    created.error.response.body.message) {
-                    errMessage = created.error.response.body.message;
-                }
+                const errMessage = getErrorMessage(created.error.message);
                 this.setState({error: errMessage, submitting: false});
                 return;
             }

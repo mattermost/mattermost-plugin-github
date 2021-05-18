@@ -12,6 +12,7 @@ import GithubRepoSelector from 'components/github_repo_selector';
 import Validator from 'components/validator';
 import FormButton from 'components/form_button';
 import Input from 'components/input';
+import {getErrorMessage} from 'utils/user_utils';
 
 const MAX_TITLE_LENGTH = 256;
 
@@ -85,10 +86,10 @@ export default class CreateIssueModal extends PureComponent {
         this.setState({submitting: true});
 
         const created = await this.props.create(issue);
-
         if (created.error) {
+            const errMessage = getErrorMessage(created.error.message);
             this.setState({
-                error: created.error.message,
+                error: errMessage,
                 showErrors: true,
                 submitting: false,
             });
