@@ -99,6 +99,14 @@ const manifest = JSON.parse(`
                 "default": null
             },
             {
+                "key": "SetPrivateAsDefault",
+                "display_name": "Set Private Repositories as default:",
+                "type": "bool",
+                "help_text": "(Optional) The plugin sets private repositories to default. When enabled, /github connect command will select private repositories.",
+                "placeholder": "",
+                "default": null
+            },
+            {
                 "key": "EnableCodePreview",
                 "display_name": "Enable Code Previews:",
                 "type": "dropdown",

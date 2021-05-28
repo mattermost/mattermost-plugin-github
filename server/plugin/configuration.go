@@ -24,6 +24,7 @@ type Configuration struct {
 	WebhookSecret           string
 	EnableLeftSidebar       bool
 	EnablePrivateRepo       bool
+	SetPrivateAsDefault     bool
 	EncryptionKey           string
 	EnterpriseBaseURL       string
 	EnterpriseUploadURL     string
