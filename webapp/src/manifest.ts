@@ -99,10 +99,10 @@ const manifest = JSON.parse(`
                 "default": null
             },
             {
-                "key": "SetPrivateAsDefault",
-                "display_name": "Set Private Repositories as default:",
+                "key": "ConnectToPrivateByDefault",
+                "display_name": "Connect to private Repositories by default:",
                 "type": "bool",
-                "help_text": "(Optional) The plugin sets private repositories to default. When enabled, /github connect command will select private repositories.",
+                "help_text": "(Optional) When enabled, /github connect command will let users connect to their github account and gain access to private repositories without explicitly mentioning private.",
                 "placeholder": "",
                 "default": null
             },

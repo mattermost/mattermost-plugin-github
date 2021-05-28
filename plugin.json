@@ -77,10 +77,10 @@
                 "help_text": "(Optional) Allow the plugin to work with private repositories. When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled."
             },
             {
-                "key": "SetPrivateAsDefault",
-                "display_name": "Set Private Repositories as default:",
+                "key": "ConnectToPrivateByDefault",
+                "display_name": "Connect to private Repositories by default:",
                 "type": "bool",
-                "help_text": "(Optional) The plugin sets private repositories to default. When enabled, /github connect command will select private repositories."
+                "help_text": "(Optional) When enabled, /github connect command will let users connect to their github account and gain access to private repositories without explicitly mentioning private."
             },
             {
                 "key": "EnableCodePreview",
