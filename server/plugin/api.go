@@ -481,10 +481,11 @@ func (p *Plugin) getConnected(w http.ResponseWriter, r *http.Request) {
 
 		// Inform the user once that private repositories enabled
 		if val == nil {
+			message := "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by %s"
 			if config.ConnectToPrivateByDefault {
-				p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect`.", "")
+				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect`."), "")
 			} else {
-				p.CreateBotDMPost(info.UserID, "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by `/github connect private`.", "")
+				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect private`."), "")
 			}
 			err := p.API.KVSet(privateRepoStoreKey, []byte("1"))
 			if err != nil {
