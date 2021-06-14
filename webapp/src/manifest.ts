@@ -99,6 +99,14 @@ const manifest = JSON.parse(`
                 "default": null
             },
             {
+                "key": "ConnectToPrivateByDefault",
+                "display_name": "Connect to private Repositories by default:",
+                "type": "bool",
+                "help_text": "(Optional) When enabled, /github connect command will let users connect to their github account and gain access to private repositories without explicitly mentioning private.",
+                "placeholder": "",
+                "default": null
+            },
+            {
                 "key": "EnableCodePreview",
                 "display_name": "Enable Code Previews:",
                 "type": "dropdown",
