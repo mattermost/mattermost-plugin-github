@@ -469,8 +469,13 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			return &model.CommandResponse{}, nil
 		}
 
-		privateAllowed := false
+		privateAllowed := p.getConfiguration().ConnectToPrivateByDefault
 		if len(parameters) > 0 {
+			if privateAllowed {
+				p.postCommandResponse(args, fmt.Sprintf("Unknown command `%v`. Do you meant `/github connect`?", args.Command))
+				return &model.CommandResponse{}, nil
+			}
+
 			if len(parameters) != 1 || parameters[0] != "private" {
 				p.postCommandResponse(args, fmt.Sprintf("Unknown command `%v`. Do you meant `/github connect private`?", args.Command))
 				return &model.CommandResponse{}, nil
@@ -519,8 +524,14 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
-	private := model.NewAutocompleteData("private", "(optional)", "If used, read access to your private repositories will be requested")
-	connect.AddCommand(private)
+	if config.EnablePrivateRepo {
+		if config.ConnectToPrivateByDefault {
+			connect = model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account. Read access to your private repositories will be requested")
+		} else {
+			private := model.NewAutocompleteData("private", "(optional)", "If used, read access to your private repositories will be requested")
+			connect.AddCommand(private)
+		}
+	}
 	github.AddCommand(connect)
 
 	disconnect := model.NewAutocompleteData("disconnect", "", "Disconnect your Mattermost account from your GitHub account")

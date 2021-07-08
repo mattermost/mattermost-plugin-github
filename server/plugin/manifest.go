@@ -17,9 +17,9 @@ const manifestStr = `
   "description": "GitHub plugin for Mattermost.",
   "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
   "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
-  "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.0",
+  "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.1",
   "icon_path": "assets/icon.svg",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "min_server_version": "5.25.0",
   "server": {
     "executables": {
@@ -105,6 +105,14 @@ const manifestStr = `
         "display_name": "Enable Private Repositories:",
         "type": "bool",
         "help_text": "(Optional) Allow the plugin to work with private repositories. When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.",
+        "placeholder": "",
+        "default": null
+      },
+      {
+        "key": "ConnectToPrivateByDefault",
+        "display_name": "Connect to private Repositories by default:",
+        "type": "bool",
+        "help_text": "(Optional) When enabled, /github connect command will let users connect to their github account and gain access to private repositories without explicitly mentioning private.",
         "placeholder": "",
         "default": null
       },
