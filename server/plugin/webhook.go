@@ -92,6 +92,10 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
@@ -99,12 +103,20 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssuesEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postIssueEvent(event)
 			p.handleIssueNotification(event)
 		}
 	case *github.IssueCommentEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
@@ -112,27 +124,47 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
 		}
 	case *github.PushEvent:
 		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postPushEvent(event)
 		}
 	case *github.CreateEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postCreateEvent(event)
 		}
 	case *github.DeleteEvent:
 		repo = event.GetRepo()
+		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
+		if err != nil || shouldNotNotify {
+			return
+		}
 		handler = func() {
 			p.postDeleteEvent(event)
 		}
@@ -198,7 +230,6 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
-
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
 		return

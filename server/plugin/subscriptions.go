@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	SubscriptionsKey     = "subscriptions"
-	excludeOrgMemberFlag = "exclude-org-member"
+	SubscriptionsKey = "subscriptions"
+	// SubscriptionsTunerOffNotification = "subscriptions-turned-off-notifications"
+	excludeOrgMemberFlag          = "exclude-org-member"
+	SubscribedRepoNotificationOff = "subscribed-turned-off-notifications"
 )
 
 type SubscriptionFlags struct {
@@ -146,11 +148,9 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
 	}
-
 	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
 		return errors.Wrap(err, "could not add subscription")
 	}
-
 	return nil
 }
 
@@ -158,10 +158,21 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	if org == "" {
 		return errors.New("invalid organization")
 	}
-
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
+func (p *Plugin) CheckIsNotificationOff(repoName string) (bool, error) {
+	subscription, err := p.GetNotificationTurnedOffRepo()
+	if err != nil {
+		return false, err
+	}
+	p.API.LogWarn("subscription for notification off ", "subscription", subscription)
+	if len(subscription) == 0 {
+		return false, nil
+	}
+	isDer, _ := ItemExists(subscription, repoName)
+	return isDer, nil
+}
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
@@ -213,7 +224,36 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 	}
 
 	subs.Repositories[repo] = repoSubs
+	// if isTurnOffNotification {
+	// 	subsNotificationOff, err := p.GetSubscriptionsNotificationOff()
+	// 	if err != nil {
+	// 		return errors.Wrap(err, "could not get subscriptions")
+	// 	}
 
+	// 	repoSubs := subsNotificationOff.Repositories[repo]
+	// 	if repoSubs == nil {
+	// 		repoSubs = []*Subscription{sub}
+	// 	} else {
+	// 		exists := false
+	// 		for index, s := range repoSubs {
+	// 			if s.ChannelID == sub.ChannelID {
+	// 				repoSubs[index] = sub
+	// 				exists = true
+	// 				break
+	// 			}
+	// 		}
+
+	// 		if !exists {
+	// 			repoSubs = append(repoSubs, sub)
+	// 		}
+	// 	}
+
+	// 	subsNotificationOff.Repositories[repo] = repoSubs
+	// 	err = p.StoreSubscriptionsTurnedOffNotifications(subs)
+	// 	if err != nil {
+	// 		return errors.Wrap(err, "could not turn off notification for this subscribed repo")
+	// 	}
+	// }
 	err = p.StoreSubscriptions(subs)
 	if err != nil {
 		return errors.Wrap(err, "could not store subscriptions")
@@ -242,6 +282,24 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	return subscriptions, nil
 }
 
+// func (p *Plugin) GetSubscriptionsNotificationOff() (*Subscriptions, error) {
+// 	var subscriptions *Subscriptions
+
+// 	value, appErr := p.API.KVGet(SubscriptionsTunerOffNotification)
+// 	if appErr != nil {
+// 		return nil, errors.Wrap(appErr, "could not get subscriptions from KVStore")
+// 	}
+
+// 	if value == nil {
+// 		return &Subscriptions{Repositories: map[string][]*Subscription{}}, nil
+// 	}
+
+// 	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+// 	if err != nil {
+// 		return nil, errors.Wrap(err, "could not properly decode subscriptions key")
+// 	}
+// 	return subscriptions, nil
+// }
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -255,6 +313,84 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	return nil
 }
 
+// func (p *Plugin) StoreSubscriptionsTurnedOffNotifications(s *Subscriptions) error {
+// 	b, err := json.Marshal(s)
+// 	if err != nil {
+// 		return errors.Wrap(err, "error while converting subscriptions map to json")
+// 	}
+
+// 	if appErr := p.API.KVSet(SubscriptionsTunerOffNotification, b); appErr != nil {
+// 		return errors.Wrap(appErr, "could not store subscriptions in KV store")
+// 	}
+
+// 	return nil
+// }
+func (p *Plugin) GetNotificationTurnedOffRepo() ([]string, error) {
+	var subscriptions []string
+	value, appErr := p.API.KVGet(SubscribedRepoNotificationOff)
+	if appErr != nil {
+		return nil, errors.Wrap(appErr, "could not get subscriptions from KVStore")
+	}
+	if value == nil {
+		return []string{}, nil
+	}
+	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not properly decode subscriptions key")
+	}
+	return subscriptions, nil
+}
+
+func (p *Plugin) StoreNotificationTurnedOffRepo(s string) error {
+	var repoNames, err = p.GetNotificationTurnedOffRepo()
+	// var repoNames []string
+	// var err error
+	if err != nil {
+		p.API.LogWarn(" StoreNotificationTurnedOffRepo ", "err 1 ", err)
+		return errors.Wrap(err, "error while getting previous value of key")
+	}
+	isDer, _ := ItemExists(repoNames, s)
+	if len(repoNames) > 0 && !isDer {
+		repoNames = append(repoNames, s)
+	} else if len(repoNames) == 0 {
+		repoNames = append(repoNames, s)
+	}
+	b, err := json.Marshal(repoNames)
+	if err != nil {
+		p.API.LogWarn(" StoreNotificationTurnedOffRepo ", "err 2 ", err)
+		return errors.Wrap(err, "error while converting subscriptions map to json")
+	}
+
+	if appErr := p.API.KVSet(SubscribedRepoNotificationOff, b); appErr != nil {
+		p.API.LogWarn(" StoreNotificationTurnedOffRepo ", "err 3 ", err)
+		return errors.Wrap(appErr, "could not store subscriptions in KV store")
+	}
+
+	return nil
+}
+func (p *Plugin) EnableNotificationTurnedOffRepo(s string) error {
+	var repoNames, err = p.GetNotificationTurnedOffRepo()
+	if err != nil {
+		return errors.Wrap(err, "error while getting previous value of key")
+	}
+	if len(repoNames) > 0 {
+		isDer, index := ItemExists(repoNames, s)
+		if isDer {
+			repoNames = append(repoNames[:index], repoNames[index+1:]...)
+			b, err := json.Marshal(repoNames)
+			if err != nil {
+				return errors.Wrap(err, "error while converting subscriptions map to json")
+			}
+
+			if appErr := p.API.KVSet(SubscribedRepoNotificationOff, b); appErr != nil {
+				return errors.Wrap(appErr, "could not store subscriptions in KV store")
+			}
+		}
+
+	}
+
+	return nil
+}
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
 	org := strings.Split(name, "/")[0]

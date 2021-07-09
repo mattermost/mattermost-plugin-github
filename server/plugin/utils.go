@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode"
@@ -331,4 +332,23 @@ func getToDoDisplayText(baseURL, title, url, notifType string) string {
 	}
 
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
+}
+
+//ItemExists check if the element exist in the passed array
+func ItemExists(arrayType interface{}, item interface{}) (bool, int) {
+	arr := reflect.ValueOf(arrayType)
+
+	if arr.Kind() != reflect.Array && arr.Kind() != reflect.Slice {
+		fmt.Println(arr.Kind())
+		panic("Invalid data-type")
+
+	}
+
+	for i := 0; i < arr.Len(); i++ {
+		if arr.Index(i).Interface() == item {
+			return true, i
+		}
+	}
+
+	return false, -1
 }
