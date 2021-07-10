@@ -280,7 +280,6 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	features := "pulls,issues,creates,deletes"
-	// notificationsOff := "notifications : disabled "
 	flags := SubscriptionFlags{}
 	var isExcludeRepo bool
 	var excludeRepo string
@@ -332,9 +331,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
-				// if err := p.Subscribe(ctx, githubClient, args.UserId, notificationOffRepoOwner, NotificationOffRepo, args.ChannelId, notificationsOff, flags, true); err != nil {
-				// 	return err.Error()
-				// }
 				if err := p.StoreNotificationTurnedOffRepo(val); err != nil {
 					return err.Error()
 				}
