@@ -483,6 +483,8 @@ func (p *Plugin) getGitHubUser(c *Context, w http.ResponseWriter, r *http.Reques
 }
 
 func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request) {
+
+	p.API.LogWarn("get connected called ", "getconnected ", "getconnected")
 	config := p.getConfiguration()
 
 	type ConnectedResponse struct {
