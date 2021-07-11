@@ -408,6 +408,7 @@ func (p *Plugin) GetDailySummaryText(userName string) (string, error) {
 	p.API.LogWarn("GetDailySummaryText", "summary text ", string(summaryByte))
 	return string(summaryByte), nil
 }
+
 func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
 	if err != nil {
