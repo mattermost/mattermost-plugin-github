@@ -77,6 +77,7 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
+		"webhook":       p.handlewebhook,
 	}
 
 	return p
