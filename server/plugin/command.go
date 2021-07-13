@@ -286,15 +286,17 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if len(parameters) > 1 {
 		var optionList []string
 		for _, element := range parameters[1:] {
-			if parseFlag(element) == "exclude" {
+			switch {
+			case parseFlag(element) == "exclude":
 				isExcludeRepo = true
-			} else if isFlag(element) {
+			case isFlag(element):
 				flags.AddFlag(parseFlag(element))
-			} else if isExcludeRepo && excludeRepo == "" {
+			case isExcludeRepo && excludeRepo == "":
 				excludeRepo = element
-			} else {
+			default:
 				optionList = append(optionList, element)
 			}
+
 		}
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"
@@ -341,7 +343,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				excludeMsg += NotificationOffRepo
 			}
 			subOrgMsg += "\n\n" + fmt.Sprintf("But Notifications are disabled for %s", excludeMsg)
-
 		}
 		return subOrgMsg
 	}
@@ -585,7 +586,6 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
-
 		exclude := []model.AutocompleteListItem{
 			{
 				HelpText: "notification for these repo will be turned off",
@@ -595,7 +595,6 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 		}
 		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude", true, exclude)
 		subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-
 		flags := []model.AutocompleteListItem{
 			{
 				HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
