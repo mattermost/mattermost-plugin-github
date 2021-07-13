@@ -498,7 +498,6 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		EnterpriseBaseURL: config.EnterpriseBaseURL,
 		Organization:      config.GitHubOrg,
 	}
-
 	if c.UserID == "" {
 		p.writeJSON(w, resp)
 		return
