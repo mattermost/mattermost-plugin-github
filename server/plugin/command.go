@@ -394,12 +394,20 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	if setting != settingNotifications && setting != settingReminders {
 		return "Unknown setting."
 	}
-
 	strValue := parameters[1]
 	value := false
 	if strValue == settingOn {
 		value = true
+	} else if strValue == settingOnChange {
+		if setting != "reminders" {
+			return "Invalid value. Accepted values are: \"on\" or \"off\"."
+		}
+		value = true
+		userInfo.Settings.OnChange = true
 	} else if strValue != settingOff {
+		if setting == "reminders" {
+			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
+		}
 		return "Invalid value. Accepted values are: \"on\" or \"off\"."
 	}
 
@@ -425,6 +433,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		userInfo.Settings.Notifications = value
 	} else if setting == settingReminders {
 		userInfo.Settings.DailyReminder = value
+
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)
@@ -589,26 +598,31 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
-	setting := []model.AutocompleteListItem{{
-		HelpText: "Turn notifications on/off",
-		Item:     "notifications",
-	}, {
-		HelpText: "Turn reminders on/off",
-		Item:     "reminders",
-	}}
-	settings.AddStaticListArgument("Setting to update", true, setting)
-	value := []model.AutocompleteListItem{{
+	settingNotifications := model.NewAutocompleteData("notifications", "", "Turn notifications on/off")
+	settingValue := []model.AutocompleteListItem{{
 		HelpText: "Turn setting on",
 		Item:     "on",
 	}, {
 		HelpText: "Turn setting off",
 		Item:     "off",
 	}}
-	settings.AddStaticListArgument("", true, value)
+	settingNotifications.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(settingNotifications)
+	remainderNotifications := model.NewAutocompleteData("reminders", "", "Turn notifications on/off")
+	settingValue = []model.AutocompleteListItem{{
+		HelpText: "Turn setting on",
+		Item:     "on",
+	}, {
+		HelpText: "Turn setting off",
+		Item:     "off",
+	}, {
+		HelpText: "Turn setting On - But only get reminders if any change occur",
+		Item:     "on-change",
+	}}
+	remainderNotifications.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(remainderNotifications)
 	github.AddCommand(settings)
-
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
-
 	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
 	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
 	issue.AddCommand(issueCreate)
