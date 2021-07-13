@@ -432,7 +432,6 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 		}
 		p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
 	}
-	return
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
