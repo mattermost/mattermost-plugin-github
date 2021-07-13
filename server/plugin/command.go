@@ -477,8 +477,8 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		if owner == "" || repo == "" {
 			return "Currently supported to add webhook to a specific [owner/repo] ."
 		}
-		siteUrl := *p.API.GetConfig().ServiceSettings.SiteURL + inboundWebhookURL
-		p.API.LogWarn("siteUrl", "siteUrl", siteUrl)
+		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + inboundWebhookURL
+		p.API.LogWarn("siteUrl", "siteUrl", siteURL)
 		var hook github.Hook
 		p.API.LogWarn("hook", "parameters", parameters)
 		var config = make(map[string]interface{})
@@ -500,7 +500,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 				}
 			}
 		} else {
-			config["url"] = siteUrl
+			config["url"] = siteURL
 			config["insecure_ssl"] = false
 			config["content_type"] = "application/json"
 			hook.Events = []string{"*"}
