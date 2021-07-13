@@ -38,7 +38,9 @@ var validFeatures = map[string]bool{
 
 const (
 	list      = "list"
+	add       = "add"
 	deleteAll = "delete-all"
+	newLine   = "\n"
 )
 const (
 	inboundWebhookURL = "/plugins/github/webhook"
@@ -188,7 +190,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	switch {
 	case command == list:
 		return p.handleMuteList(args, userInfo)
-	case command == "add":
+	case command == add:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
@@ -224,7 +226,7 @@ func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, par
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
-	case len(parameters) == 1 && parameters[0] == "list":
+	case len(parameters) == 1 && parameters[0] == list:
 		return p.handleSubscriptionsList(c, args, parameters[1:], userInfo)
 	default:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
@@ -240,9 +242,9 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	parameters = parameters[1:]
 
 	switch {
-	case command == "list":
+	case command == list:
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	case command == "add":
+	case command == add:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
 	case command == "delete":
 		return p.handleUnsubscribe(c, args, parameters, userInfo)
@@ -269,7 +271,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
-		txt += "\n"
+		txt += newLine
 	}
 
 	return txt
@@ -465,9 +467,9 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	parameters = parameters[1:]
 	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
-	baseUrl := p.getBaseURL()
+	baseURL := p.getBaseURL()
 	switch command {
-	case "add":
+	case add:
 		if len(parameters) < 1 {
 			return "Unknown action, please use `/github help` to see all actions available."
 		}
@@ -484,15 +486,16 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		if len(parameters) > 2 {
 			for _, val := range strings.Split(parameters[2], ",") {
 				KVPair := strings.Split(val, "=")
-				if KVPair[0] == "insecure_ssl" {
+				switch {
+				case KVPair[0] == "insecure_ssl":
 					insecureSSL, err := strconv.ParseBool(KVPair[1])
 					if err != nil {
 						return "config filed insecure_ssl can only have on of the following true or false "
 					}
 					config[KVPair[0]] = insecureSSL
-				} else if KVPair[0] == "options" {
+				case KVPair[0] == "options":
 					hook.Events = strings.Split(KVPair[1], "&")
-				} else {
+				default:
 					config[KVPair[0]] = KVPair[1]
 				}
 			}
@@ -501,7 +504,6 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			config["insecure_ssl"] = false
 			config["content_type"] = "application/json"
 			hook.Events = []string{"*"}
-
 		}
 		hook.Config = config
 		githubHook, _, err := githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
@@ -512,14 +514,14 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		if err != nil {
 			return err.Error()
 		}
-		baseUrl1 := baseUrl + owner + "/" + repo + "/settings/hooks/"
+		hookURL := baseURL + owner + "/" + repo + "/settings/hooks/"
 		txt := "Webhook Created Successfully \n"
 		hookID := strconv.Itoa(int(*githubHook.ID))
-		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, baseUrl1+hookID, strings.Join(hookDetails.Events, " , "))
-		txt += "\n"
+		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
+		txt += newLine
 		return txt
 
-	case "list":
+	case list:
 
 		if len(parameters) != 1 {
 			return "Unknown action, please use `/github help` to see all actions available."
@@ -544,7 +546,6 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 					repos = append(repos, *project.Name)
 				}
 			}
-
 		}
 		var hookList = make(map[string][]*github.Hook)
 		for i := 0; i < len(repos); i++ {
@@ -566,7 +567,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 				}
 			}
 		}
-		var txt = ""
+		var txt string
 		if len(hookList) == 0 {
 			txt = "Currently there are no webhook in this repository"
 		} else {
@@ -580,9 +581,9 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 					return err.Error()
 				}
 				hookID := strconv.Itoa(int(*val.ID))
-				baseUrl1 := baseUrl + owner + "/" + repoName + "/settings/hooks/"
-				txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, baseUrl1+hookID, strings.Join(hookDetails.Events, " , "))
-				txt += "\n"
+				hookURL := baseURL + owner + "/" + repoName + "/settings/hooks/"
+				txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
+				txt += newLine
 			}
 		}
 
@@ -683,10 +684,10 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: list, add, delete")
 
-	subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
+	subscribeList := model.NewAutocompleteData(list, "", "List the current channel subscriptions")
 	subscriptions.AddCommand(subscribeList)
 
-	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
+	subscriptionsAdd := model.NewAutocompleteData(add, "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
@@ -710,7 +711,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
-	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided GitHub user")
+	muteAdd := model.NewAutocompleteData(add, "[github username]", "Mute notifications from the provided GitHub user")
 	muteAdd.AddTextArgument("GitHub user to mute", "[username]", "")
 	mute.AddCommand(muteAdd)
 
@@ -723,7 +724,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted GitHub users")
 	mute.AddCommand(muteDeleteAll)
 
-	muteList := model.NewAutocompleteData("list", "", "List muted GitHub users")
+	muteList := model.NewAutocompleteData(list, "", "List muted GitHub users")
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
@@ -754,11 +755,11 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(issue)
 
 	webhook := model.NewAutocompleteData("webhook", "[command]", "Available commands: add , list")
-	webhookList := model.NewAutocompleteData("list", "[owner/repo]", "Get all the list of webhook in the [owoner/repo] . ")
+	webhookList := model.NewAutocompleteData(list, "[owner/repo]", "Get all the list of webhook in the [owoner/repo] . ")
 	webhookList.AddTextArgument("webhook you want from Owner/repo", "[owner/repo]", "")
 
 	webhook.AddCommand(webhookList)
-	webhookAdd := model.NewAutocompleteData("add", "[owner/repo] [-config] [config-value]", "Add a webhook to desired owner[/repo] with optional --config")
+	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] [-config] [config-value]", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Where you want to create webhook Owner[/repo]", "owner[/repo]", "")
 
 	webhookConfigOptions := []model.AutocompleteListItem{{

@@ -392,7 +392,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `registry_package` - Registry packages - Registry package published or updated in a repository. \n" +
 		"    	* `release` - Releases - Release created, edited, published, unpublished, or deleted. \n" +
 		"    	* `repository` - Repositories - Repository created, deleted, archived, unarchived, publicized, privatized, edited, renamed, or transferred. \n" +
-		"    	* `repository_import` - Repository imports - Repository import succeeded, failed, or cancelled. \n" +
+		"    	* `repository_import` - Repository imports - Repository import succeeded, failed, or canceled. \n" +
 		"    	* `repository_vulnerability_alert` - Repository vulnerability alerts - Security alert created, resolved, or dismissed on a repository. \n" +
 		"    	* `secret_scanning_alert` - Secret scanning alerts - Secrets scanning alert created, resolved, or reopened \n" +
 		"    	* `star` - Stars - A star is created or deleted from a repository. \n" +
