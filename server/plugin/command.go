@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -38,6 +39,9 @@ var validFeatures = map[string]bool{
 const (
 	list      = "list"
 	deleteAll = "delete-all"
+)
+const (
+	inboundWebhookURL = "/plugins/github/webhook"
 )
 
 // validateFeatures returns false when 1 or more given features
@@ -78,7 +82,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue , webhook",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -453,6 +457,140 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
+func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid webhook command. Available command are 'add' and 'list ."
+	}
+	command := parameters[0]
+	parameters = parameters[1:]
+	ctx := context.Background()
+	githubClient := p.getGithubClient(userInfo)
+	baseUrl := p.getBaseURL()
+	switch command {
+	case "add":
+		if len(parameters) < 1 {
+			return "Unknown action, please use `/github help` to see all actions available."
+		}
+		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+		if owner == "" || repo == "" {
+			return "Currently supported to add webhook to a specific [owner/repo] ."
+		}
+		siteUrl := *p.API.GetConfig().ServiceSettings.SiteURL + inboundWebhookURL
+		p.API.LogWarn("siteUrl", "siteUrl", siteUrl)
+		var hook github.Hook
+		p.API.LogWarn("hook", "parameters", parameters)
+		var config = make(map[string]interface{})
+
+		if len(parameters) > 2 {
+			for _, val := range strings.Split(parameters[2], ",") {
+				KVPair := strings.Split(val, "=")
+				if KVPair[0] == "insecure_ssl" {
+					insecureSSL, err := strconv.ParseBool(KVPair[1])
+					if err != nil {
+						return "config filed insecure_ssl can only have on of the following true or false "
+					}
+					config[KVPair[0]] = insecureSSL
+				} else if KVPair[0] == "options" {
+					hook.Events = strings.Split(KVPair[1], "&")
+				} else {
+					config[KVPair[0]] = KVPair[1]
+				}
+			}
+		} else {
+			config["url"] = siteUrl
+			config["insecure_ssl"] = false
+			config["content_type"] = "application/json"
+			hook.Events = []string{"*"}
+
+		}
+		hook.Config = config
+		githubHook, _, err := githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
+		if err != nil {
+			return err.Error()
+		}
+		hookDetails, _, err := githubClient.Repositories.GetHook(ctx, owner, repo, *githubHook.ID)
+		if err != nil {
+			return err.Error()
+		}
+		baseUrl1 := baseUrl + owner + "/" + repo + "/settings/hooks/"
+		txt := "Webhook Created Successfully \n"
+		hookID := strconv.Itoa(int(*githubHook.ID))
+		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, baseUrl1+hookID, strings.Join(hookDetails.Events, " , "))
+		txt += "\n"
+		return txt
+
+	case "list":
+
+		if len(parameters) != 1 {
+			return "Unknown action, please use `/github help` to see all actions available."
+		}
+
+		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+		var Page int
+		var ShouldCallNext = true
+		var repos []string
+		repos = append(repos, repo)
+		if repo == "" {
+			for ShouldCallNext {
+				Page++
+				projects, projectResponse, err := githubClient.Repositories.List(ctx, owner, &github.RepositoryListOptions{ListOptions: github.ListOptions{Page: Page}})
+				if err != nil {
+					return err.Error()
+				}
+				if projectResponse.NextPage == 0 {
+					ShouldCallNext = false
+				}
+				for _, project := range projects {
+					repos = append(repos, *project.Name)
+				}
+			}
+
+		}
+		var hookList = make(map[string][]*github.Hook)
+		for i := 0; i < len(repos); i++ {
+			ShouldCallNext = true
+			Page = 0
+			if repos[i] != "" {
+				for ShouldCallNext {
+					Page++
+					githubHooks, githubResponse, err := githubClient.Repositories.ListHooks(ctx, owner, repos[i], &github.ListOptions{PerPage: Page})
+					if err != nil {
+						return err.Error()
+					}
+					if len(githubHooks) > 0 {
+						hookList[repos[i]] = githubHooks
+					}
+					if githubResponse.NextPage == 0 {
+						ShouldCallNext = false
+					}
+				}
+			}
+		}
+		var txt = ""
+		if len(hookList) == 0 {
+			txt = "Currently there are no webhook in this repository"
+		} else {
+			txt = "### Webhook in this Repositories\n"
+		}
+
+		for repoName, repoHooks := range hookList {
+			for _, val := range repoHooks {
+				hookDetails, _, err := githubClient.Repositories.GetHook(ctx, owner, repoName, *val.ID)
+				if err != nil {
+					return err.Error()
+				}
+				hookID := strconv.Itoa(int(*val.ID))
+				baseUrl1 := baseUrl + owner + "/" + repoName + "/settings/hooks/"
+				txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, baseUrl1+hookID, strings.Join(hookDetails.Events, " , "))
+				txt += "\n"
+			}
+		}
+
+		return txt
+	}
+	return "invalid action only add and list command are supported"
+}
+
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
@@ -614,6 +752,25 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
+
+	webhook := model.NewAutocompleteData("webhook", "[command]", "Available commands: add , list")
+	webhookList := model.NewAutocompleteData("list", "[owner/repo]", "Get all the list of webhook in the [owoner/repo] . ")
+	webhookList.AddTextArgument("webhook you want from Owner/repo", "[owner/repo]", "")
+
+	webhook.AddCommand(webhookList)
+	webhookAdd := model.NewAutocompleteData("add", "[owner/repo] [-config] [config-value]", "Add a webhook to desired owner[/repo] with optional --config")
+	webhookAdd.AddTextArgument("Where you want to create webhook Owner[/repo]", "owner[/repo]", "")
+
+	webhookConfigOptions := []model.AutocompleteListItem{{
+		HelpText: "url:,token:,insecure_ssl:,content_type:,token:,options:create&delete",
+		Hint:     "(Optional ) check the /github help to fetch the available options and default value for these config",
+		Item:     "--config",
+	}}
+	webhookAdd.AddStaticListArgument("webhook PayLoad URL", true, webhookConfigOptions)
+	webhookAdd.AddTextArgument("add value to [config]", "[config]", "")
+	webhook.AddCommand(webhookAdd)
+
+	github.AddCommand(webhook)
 
 	return github
 }
