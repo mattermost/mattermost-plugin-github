@@ -396,15 +396,16 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	}
 	strValue := parameters[1]
 	value := false
-	if strValue == settingOn {
+	switch {
+	case strValue == settingOn:
 		value = true
-	} else if strValue == settingOnChange {
+	case strValue == settingOnChange:
 		if setting != "reminders" {
 			return "Invalid value. Accepted values are: \"on\" or \"off\"."
 		}
 		value = true
 		userInfo.Settings.OnChange = true
-	} else if strValue != settingOff {
+	case strValue != settingOff:
 		if setting == "reminders" {
 			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
 		}
@@ -433,7 +434,6 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		userInfo.Settings.Notifications = value
 	} else if setting == settingReminders {
 		userInfo.Settings.DailyReminder = value
-
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)

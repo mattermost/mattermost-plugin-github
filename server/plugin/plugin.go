@@ -426,11 +426,12 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 			return
 		}
 		_, err = p.StoreDailySummaryText(info.GitHubUsername, text)
-		p.API.LogWarn("  Trigger Daily Summary as the summary is Change ", "NO Summary ", false)
+		if err != nil {
+			p.API.LogWarn("unable to store the reference of daily summary", "userID", info.UserID, "error", err.Error())
+			return
+		}
 		p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
-		return
 	}
-
 	return
 }
 
