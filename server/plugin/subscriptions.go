@@ -321,7 +321,6 @@ func (p *Plugin) EnableNotificationTurnedOffRepo(s string) error {
 				return errors.Wrap(appErr, "could not store subscriptions in KV store")
 			}
 		}
-
 	}
 
 	return nil

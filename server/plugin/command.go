@@ -296,7 +296,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			default:
 				optionList = append(optionList, element)
 			}
-
 		}
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"

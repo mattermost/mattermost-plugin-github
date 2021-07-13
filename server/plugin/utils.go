@@ -341,14 +341,11 @@ func ItemExists(arrayType interface{}, item interface{}) (bool, int) {
 	if arr.Kind() != reflect.Array && arr.Kind() != reflect.Slice {
 		fmt.Println(arr.Kind())
 		panic("Invalid data-type")
-
 	}
-
 	for i := 0; i < arr.Len(); i++ {
 		if arr.Index(i).Interface() == item {
 			return true, i
 		}
 	}
-
 	return false, -1
 }
