@@ -8,7 +8,7 @@ import {id as pluginId} from '../manifest';
 
 export default class Client {
     setServerRoute(url) {
-        this.url = url+`/plugins/${pluginId}/api/v1`;
+        this.url = url + `/plugins/${pluginId}/api/v1`;
     }
     getConnected = async (reminder = false) => {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
