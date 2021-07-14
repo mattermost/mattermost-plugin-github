@@ -13,11 +13,10 @@ import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
-import {getConnected, setShowRHSAction, getSettings} from './actions';
-import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
-
 import Client from './client';
 
+import {getConnected, setShowRHSAction, getSettings} from './actions';
+import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 import {id as pluginId} from './manifest';
 
 let activityFunc;
