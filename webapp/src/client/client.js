@@ -7,10 +7,13 @@ import {ClientError} from 'mattermost-redux/client/client4';
 import {id as pluginId} from '../manifest';
 
 export default class Client {
-    constructor() {
-        this.url = `/plugins/${pluginId}/api/v1`;
+    // constructor() {
+    //     this.url = `/plugins/${pluginId}/api/v1`;
+    // }
+    setServerRoute(url) {
+        this.url = url+`/plugins/${pluginId}/api/v1`;
+        // this.url = url + '/plugins/' + id;
     }
-
     getConnected = async (reminder = false) => {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
@@ -90,7 +93,7 @@ export default class Client {
             method: 'get',
             headers,
         };
-
+        console.log("url ====================" , url)
         const response = await fetch(url, Client4.getOptions(options));
 
         if (response.ok) {

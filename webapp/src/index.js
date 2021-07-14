@@ -13,6 +13,8 @@ import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
 import {getConnected, setShowRHSAction, getSettings} from './actions';
 import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
+import Client from './client';
 
 import {id as pluginId} from './manifest';
 
@@ -37,16 +39,16 @@ class PluginClass {
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
         registry.registerLinkTooltipComponent(LinkTooltip);
-
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
-
+        
         registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateIssueModal(store));
         registry.registerReconnectHandler(handleReconnect(store));
-
+        Client.setServerRoute(getServerRoute(store.getState()));
+        
         activityFunc = () => {
             const now = new Date().getTime();
             if (now - lastActivityTime > activityTimeout) {
@@ -64,3 +66,17 @@ class PluginClass {
 }
 
 global.window.registerPlugin(pluginId, new PluginClass());
+const getServerRoute = (state) => {
+    const config = getConfig(state);
+
+    let basePath = '';
+    if (config && config.SiteURL) {
+        basePath = new URL(config.SiteURL).pathname;
+
+        if (basePath && basePath[basePath.length - 1] === '/') {
+            basePath = basePath.substr(0, basePath.length - 1);
+        }
+    }
+
+    return basePath;
+};
