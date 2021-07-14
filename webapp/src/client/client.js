@@ -90,7 +90,7 @@ export default class Client {
             method: 'get',
             headers,
         };
-        
+
         const response = await fetch(url, Client4.getOptions(options));
 
         if (response.ok) {
