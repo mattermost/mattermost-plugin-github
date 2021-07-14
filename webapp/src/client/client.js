@@ -10,6 +10,7 @@ export default class Client {
     setServerRoute(url) {
         this.url = url + `/plugins/${pluginId}/api/v1`;
     }
+
     getConnected = async (reminder = false) => {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
@@ -89,6 +90,7 @@ export default class Client {
             method: 'get',
             headers,
         };
+        
         const response = await fetch(url, Client4.getOptions(options));
 
         if (response.ok) {
