@@ -484,6 +484,7 @@ func (p *Plugin) getGitHubUser(c *Context, w http.ResponseWriter, r *http.Reques
 
 func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
+
 	type ConnectedResponse struct {
 		Connected         bool          `json:"connected"`
 		GitHubUsername    string        `json:"github_username"`
@@ -498,6 +499,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		EnterpriseBaseURL: config.EnterpriseBaseURL,
 		Organization:      config.GitHubOrg,
 	}
+
 	if c.UserID == "" {
 		p.writeJSON(w, resp)
 		return

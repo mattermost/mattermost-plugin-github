@@ -361,6 +361,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 		p.API.LogWarn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
 	}
+
 	return text
 }
 
@@ -391,29 +392,35 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	}
 
 	setting := parameters[0]
-	if setting != settingNotifications && setting != settingReminders {
-		return "Unknown setting."
-	}
-	strValue := parameters[1]
-	value := false
-	switch {
-	case strValue == settingOn:
-		value = true
-	case strValue == settingOnChange:
-		if setting != "reminders" {
+	settingValue := parameters[1]
+
+	switch setting {
+	case settingNotifications:
+		if settingValue == settingOn {
+			userInfo.Settings.Notifications = true
+		} else if settingValue == settingOff {
+			userInfo.Settings.Notifications = false
+		} else {
 			return "Invalid value. Accepted values are: \"on\" or \"off\"."
 		}
-		value = true
-		userInfo.Settings.OnChange = true
-	case strValue != settingOff:
-		if setting == "reminders" {
+	case settingReminders:
+		switch {
+		case settingValue == settingOn:
+			userInfo.Settings.DailyReminder = true
+		case settingValue == settingOff:
+			userInfo.Settings.DailyReminder = false
+		case settingValue == settingOnChange:
+			userInfo.Settings.DailyReminder = true
+			userInfo.Settings.DailyReminderOnChange = true
+		default:
 			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
 		}
-		return "Invalid value. Accepted values are: \"on\" or \"off\"."
+	default:
+		return "Unknown setting."
 	}
 
 	if setting == settingNotifications {
-		if value {
+		if userInfo.Settings.Notifications {
 			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
 			if err != nil {
 				p.API.LogWarn("Failed to store GitHub to userID mapping",
@@ -431,9 +438,6 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 			}
 		}
 
-		userInfo.Settings.Notifications = value
-	} else if setting == settingReminders {
-		userInfo.Settings.DailyReminder = value
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)
@@ -598,31 +602,36 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
+
 	settingNotifications := model.NewAutocompleteData("notifications", "", "Turn notifications on/off")
 	settingValue := []model.AutocompleteListItem{{
-		HelpText: "Turn setting on",
+		HelpText: "Turn notifications on",
 		Item:     "on",
 	}, {
-		HelpText: "Turn setting off",
+		HelpText: "Turn notifications off",
 		Item:     "off",
 	}}
 	settingNotifications.AddStaticListArgument("", true, settingValue)
 	settings.AddCommand(settingNotifications)
+
 	remainderNotifications := model.NewAutocompleteData("reminders", "", "Turn notifications on/off")
 	settingValue = []model.AutocompleteListItem{{
-		HelpText: "Turn setting on",
+		HelpText: "Turn reminders on",
 		Item:     "on",
 	}, {
-		HelpText: "Turn setting off",
+		HelpText: "Turn reminders off",
 		Item:     "off",
 	}, {
-		HelpText: "Turn setting On - But only get reminders if any change occur",
+		HelpText: "Turn reminders On - But only get reminders if any change occur",
 		Item:     "on-change",
 	}}
 	remainderNotifications.AddStaticListArgument("", true, settingValue)
 	settings.AddCommand(remainderNotifications)
+
 	github.AddCommand(settings)
+
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
+
 	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
 	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
 	issue.AddCommand(issueCreate)
