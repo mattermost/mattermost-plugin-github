@@ -353,7 +353,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute delete-all` - unmute all GitHub users\n" +
 		"* `/github Webhook` - Managed to List Webhook of [owner/repo] and add webhook to owoner[/repo].\n" +
 		"  * `/github Webhook list` - list your Webhook of a GitHub repository\n" +
-		"  * `/github webhook add [config] \n" +
+		"  * `/github webhook add [config] `\n" +
 		"  * `config` is a comma-delimited list of 'url:,token:,insecure_ssl:,content_type:'\n" +
 		"    * `url` - Optional - Callback Url , if not passed considered as default `SITE_URL` + `/plugins/github/webhook` \n" +
 		"    * `token` - Optional - webhook secret\n" +

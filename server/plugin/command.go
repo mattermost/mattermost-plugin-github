@@ -461,7 +461,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
-		return "Invalid webhook command. Available command are 'add' and 'list ."
+		return "Invalid webhook command. Available command are `add` and `list` ."
 	}
 	command := parameters[0]
 	parameters = parameters[1:]
@@ -471,16 +471,15 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	switch command {
 	case add:
 		if len(parameters) < 1 {
-			return "Unknown action, please use `/github help` to see all actions available."
+			return "Unknown action, Currently supported to add and List webhook "
 		}
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 		if owner == "" || repo == "" {
 			return "Currently supported to add webhook to a specific [owner/repo] ."
 		}
+
 		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + inboundWebhookURL
-		p.API.LogWarn("siteUrl", "siteUrl", siteURL)
 		var hook github.Hook
-		p.API.LogWarn("hook", "parameters", parameters)
 		var config = make(map[string]interface{})
 
 		if len(parameters) > 2 {
@@ -755,12 +754,12 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(issue)
 
 	webhook := model.NewAutocompleteData("webhook", "[command]", "Available commands: add , list")
-	webhookList := model.NewAutocompleteData(list, "[owner/repo]", "Get all the list of webhook in the [owoner/repo] . ")
-	webhookList.AddTextArgument("webhook you want from Owner/repo", "[owner/repo]", "")
+	webhookList := model.NewAutocompleteData(list, "[owner/repo]", "List webhooks or an organization or repository.")
+	webhookList.AddTextArgument("Owner/repo to list webhooks from", "[owner/repo]", "")
 
 	webhook.AddCommand(webhookList)
 	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] [-config] [config-value]", "Add a webhook to desired owner[/repo] with optional --config")
-	webhookAdd.AddTextArgument("Where you want to create webhook Owner[/repo]", "owner[/repo]", "")
+	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
 
 	webhookConfigOptions := []model.AutocompleteListItem{{
 		HelpText: "url:,token:,insecure_ssl:,content_type:,token:,options:create&delete",
