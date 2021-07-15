@@ -396,11 +396,12 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 
 	switch setting {
 	case settingNotifications:
-		if settingValue == settingOn {
+		switch {
+		case settingValue == settingOn:
 			userInfo.Settings.Notifications = true
-		} else if settingValue == settingOff {
+		case settingValue == settingOff:
 			userInfo.Settings.Notifications = false
-		} else {
+		default:
 			return "Invalid value. Accepted values are: \"on\" or \"off\"."
 		}
 	case settingReminders:
@@ -437,7 +438,6 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 					"error", err.Error())
 			}
 		}
-
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)

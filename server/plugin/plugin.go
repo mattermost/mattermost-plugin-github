@@ -380,7 +380,6 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 }
 
 func (p *Plugin) CheckIfDuplicateDailySummary(userName, text string) (bool, error) {
-
 	previousSummary, err := p.GetDailySummaryText(userName)
 	if err != nil {
 		return false, err
@@ -433,7 +432,6 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo) {
 		}
 	}
 	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
-
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
