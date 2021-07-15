@@ -166,11 +166,11 @@ func (p *Plugin) CheckIsNotificationOff(repoName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	p.API.LogWarn("subscription for notification off ", "subscription", subscription)
 	if len(subscription) == 0 {
 		return false, nil
 	}
 	isDer, _ := ItemExists(subscription, repoName)
+
 	return isDer, nil
 }
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
