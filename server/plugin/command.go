@@ -458,6 +458,13 @@ type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, paramete
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	command, action, parameters := parseCommand(args.Command)
 
+	config := p.getConfiguration()
+	if err := config.IsValid(); err != nil {
+		// return errors.Wrap(err, "invalid config")
+		p.postCommandResponse(args, "Encountered an error while executing command :  "+err.Error())
+		return &model.CommandResponse{}, nil
+	}
+
 	if command != "/github" {
 		return &model.CommandResponse{}, nil
 	}
