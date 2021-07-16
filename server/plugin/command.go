@@ -456,14 +456,16 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	command, action, parameters := parseCommand(args.Command)
-
 	config := p.getConfiguration()
+
 	if err := config.IsValid(); err != nil {
-		// return errors.Wrap(err, "invalid config")
-		p.postCommandResponse(args, "Encountered an error while executing command :  "+err.Error())
+		githubPluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
+		text := fmt.Sprintf(" Before using this plugin, you will need to configure it by filling out the settings in the system console [%s](%s). You can learn more about the setup process [%s](%s) .", "here", githubPluginURL, "here", "https://github.com/mattermost/mattermost-plugin-github#step-3-configure-the-plugin-in-mattermost")
+		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
+
+	command, action, parameters := parseCommand(args.Command)
 
 	if command != "/github" {
 		return &model.CommandResponse{}, nil
