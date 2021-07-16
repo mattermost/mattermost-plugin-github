@@ -78,5 +78,6 @@ const getServerRoute = (state) => {
             basePath = basePath.substr(0, basePath.length - 1);
         }
     }
+
     return basePath;
 };
