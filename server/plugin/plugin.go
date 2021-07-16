@@ -117,7 +117,6 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 }
 
 func (p *Plugin) OnActivate() error {
-
 	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
 		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
 	}
