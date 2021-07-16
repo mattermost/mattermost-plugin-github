@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	SubscriptionsKey = "subscriptions"
-	// SubscriptionsTunerOffNotification = "subscriptions-turned-off-notifications"
+	SubscriptionsKey              = "subscriptions"
 	excludeOrgMemberFlag          = "exclude-org-member"
 	SubscribedRepoNotificationOff = "subscribed-turned-off-notifications"
 )
@@ -162,14 +161,14 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 }
 
 func (p *Plugin) CheckIsNotificationOff(repoName string) (bool, error) {
-	subscription, err := p.GetNotificationTurnedOffRepo()
+	repos, err := p.GetExcludedNotificationRepos()
 	if err != nil {
 		return false, err
 	}
-	if len(subscription) == 0 {
+	if len(repos) == 0 {
 		return false, nil
 	}
-	isDer, _ := ItemExists(subscription, repoName)
+	isDer, _ := ItemExists(repos, repoName)
 
 	return isDer, nil
 }
@@ -265,7 +264,7 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	return nil
 }
 
-func (p *Plugin) GetNotificationTurnedOffRepo() ([]string, error) {
+func (p *Plugin) GetExcludedNotificationRepos() ([]string, error) {
 	var subscriptions []string
 	value, appErr := p.API.KVGet(SubscribedRepoNotificationOff)
 	if appErr != nil {
@@ -281,8 +280,8 @@ func (p *Plugin) GetNotificationTurnedOffRepo() ([]string, error) {
 	return subscriptions, nil
 }
 
-func (p *Plugin) StoreNotificationTurnedOffRepo(s string) error {
-	var repoNames, err = p.GetNotificationTurnedOffRepo()
+func (p *Plugin) StoreExcludedNotificationRepo(s string) error {
+	var repoNames, err = p.GetExcludedNotificationRepos()
 	if err != nil {
 		return errors.Wrap(err, "error while getting previous value of key")
 	}
@@ -304,13 +303,13 @@ func (p *Plugin) StoreNotificationTurnedOffRepo(s string) error {
 	return nil
 }
 func (p *Plugin) EnableNotificationTurnedOffRepo(s string) error {
-	var repoNames, err = p.GetNotificationTurnedOffRepo()
+	var repoNames, err = p.GetExcludedNotificationRepos()
 	if err != nil {
 		return errors.Wrap(err, "error while getting previous value of key")
 	}
 	if len(repoNames) > 0 {
-		isDer, index := ItemExists(repoNames, s)
-		if isDer {
+		exists, index := ItemExists(repoNames, s)
+		if exists {
 			repoNames = append(repoNames[:index], repoNames[index+1:]...)
 			b, err := json.Marshal(repoNames)
 			if err != nil {

@@ -267,11 +267,11 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		}
 		txt += "\n"
 	}
-	subscription, err := p.GetNotificationTurnedOffRepo()
+	excludeRepos, err := p.GetExcludedNotificationRepos()
 	if err != nil {
 		return err.Error()
 	}
-	for _, repo := range subscription {
+	for _, repo := range excludeRepos {
 		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(repo, "/"), "notification : disabled")
 		txt += "\n"
 	}
@@ -335,7 +335,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
-				if err := p.StoreNotificationTurnedOffRepo(val); err != nil {
+				if err := p.StoreExcludedNotificationRepo(val); err != nil {
 					return err.Error()
 				}
 				if excludeMsg != "" {
@@ -591,7 +591,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	if config.GitHubOrg != "" {
 		exclude := []model.AutocompleteListItem{
 			{
-				HelpText: "notification for these repo will be turned off",
+				HelpText: "notifications for these repos will be turned off",
 				Hint:     "(optional)",
 				Item:     "--exclude",
 			},
@@ -600,7 +600,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 		subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 		flags := []model.AutocompleteListItem{
 			{
-				HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
+				HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has no effect)",
 				Hint:     "(optional)",
 				Item:     "--exclude-org-member",
 			},
