@@ -267,6 +267,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		}
 		txt += "\n"
 	}
+
 	excludeRepos, err := p.GetExcludedNotificationRepos()
 	if err != nil {
 		return err.Error()
@@ -282,23 +283,20 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
-	var isExcludeRepo bool
 	var excludeRepo string
 	if len(parameters) > 1 {
 		var optionList []string
+
 		for _, element := range parameters[1:] {
 			switch {
-			case parseFlag(element) == "exclude":
-				isExcludeRepo = true
 			case isFlag(element):
 				flags.AddFlag(parseFlag(element))
-			case isExcludeRepo && excludeRepo == "":
+			case flags.ExcludeOrgRepos && excludeRepo == "":
 				excludeRepo = element
 			default:
 				optionList = append(optionList, element)
 			}
 		}
-
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"
 		} else if len(optionList) == 1 {
@@ -326,11 +324,12 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
 		}
+
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization %s.", owner)
-		if isExcludeRepo {
+		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
-				val := strings.Trim(value, " ")
+				val := strings.TrimSpace(value)
 				notificationOffRepoOwner, NotificationOffRepo := parseOwnerAndRepo(val, p.getBaseURL())
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
@@ -348,9 +347,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		}
 		return subOrgMsg
 	}
-	if isExcludeRepo {
+	if flags.ExcludeOrgRepos {
 		return "--exclude feature currently support on organization level."
 	}
+
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 		return err.Error()
 	}
@@ -373,8 +373,9 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	}
 
 	repo := parameters[0]
+
 	if err := p.EnableNotificationTurnedOffRepo(repo); err != nil {
-		p.API.LogWarn("Failed to unsubscribe whileremoving repo from disable notification list", "repo", repo, "error", err.Error())
+		p.API.LogWarn("Failed to unsubscribe while removing repo from disable notification list", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to remove from notify disabled list. Please try again."
 	}
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {

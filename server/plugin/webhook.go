@@ -286,6 +286,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
+
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
 		return

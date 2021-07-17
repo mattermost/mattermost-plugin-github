@@ -15,17 +15,21 @@ import (
 const (
 	SubscriptionsKey              = "subscriptions"
 	excludeOrgMemberFlag          = "exclude-org-member"
+	excludeOrgReposFlag           = "exclude"
 	SubscribedRepoNotificationOff = "subscribed-turned-off-notifications"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
+	ExcludeOrgRepos   bool
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
 	switch flag { // nolint:gocritic // It's expected that more flags get added.
 	case excludeOrgMemberFlag:
 		s.ExcludeOrgMembers = true
+	case excludeOrgReposFlag:
+		s.ExcludeOrgRepos = true
 	}
 }
 
@@ -147,9 +151,11 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
 	}
+
 	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
 		return errors.Wrap(err, "could not add subscription")
 	}
+
 	return nil
 }
 
@@ -157,6 +163,7 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	if org == "" {
 		return errors.New("invalid organization")
 	}
+
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
@@ -223,6 +230,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 	}
 
 	subs.Repositories[repo] = repoSubs
+
 	err = p.StoreSubscriptions(subs)
 	if err != nil {
 		return errors.Wrap(err, "could not store subscriptions")
