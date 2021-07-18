@@ -474,7 +474,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			return "Unknown action, Currently supported to add and List webhook "
 		}
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-		if owner == "" || repo == "" {
+		if owner == "" {
 			return "Currently supported to add webhook to a specific [owner/repo] ."
 		}
 
@@ -505,21 +505,30 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			hook.Events = []string{"*"}
 		}
 		hook.Config = config
-		githubHook, _, err := githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
+
+		githubHook, githubHookResponse, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
+		p.API.LogWarn("githubHook logs ", "githubHook", githubHook, "githubHookResponse ", githubHookResponse)
+		p.API.LogWarn("githubHook logs ", "err", err)
 		if err != nil {
 			return err.Error()
 		}
-		hookDetails, _, err := githubClient.Repositories.GetHook(ctx, owner, repo, *githubHook.ID)
+
+		hookDetails, _, err := p.GetHook(ctx, githubClient, owner, repo, *githubHook.ID)
 		if err != nil {
 			return err.Error()
 		}
-		hookURL := baseURL + owner + "/" + repo + "/settings/hooks/"
+
+		hookURL := baseURL + owner
+		if repo != "" {
+			hookURL += "/" + repo
+		}
+		hookURL += "/settings/hooks/"
 		txt := "Webhook Created Successfully \n"
 		hookID := strconv.Itoa(int(*githubHook.ID))
 		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
 		txt += newLine
-		return txt
 
+		return txt
 	case list:
 
 		if len(parameters) != 1 {
@@ -529,66 +538,126 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 		var Page int
 		var ShouldCallNext = true
-		var repos []string
-		repos = append(repos, repo)
+		var githubHooks []*github.Hook
+		var githubResponse *github.Response
+		var err error
 		if repo == "" {
 			for ShouldCallNext {
 				Page++
-				projects, projectResponse, err := githubClient.Repositories.List(ctx, owner, &github.RepositoryListOptions{ListOptions: github.ListOptions{Page: Page}})
+				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, &github.ListOptions{PerPage: Page})
+				p.API.LogWarn("creating hook organ", "githubHooks", githubHooks, "githubResponse", githubResponse)
 				if err != nil {
 					return err.Error()
 				}
-				if projectResponse.NextPage == 0 {
+				// if len(githubHooks) > 0 {
+				// 	hookList["-"] = githubHooks
+				// }
+				if githubResponse.NextPage == 0 {
 					ShouldCallNext = false
 				}
-				for _, project := range projects {
-					repos = append(repos, *project.Name)
+			}
+		} else {
+			for ShouldCallNext {
+				Page++
+				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: Page})
+				p.API.LogWarn("creating hook repo", "githubHooks", githubHooks, "githubResponse", githubResponse)
+
+				if err != nil {
+					return err.Error()
+				}
+				// if len(githubHooks) > 0 {
+				// 	hookList[repo] = githubHooks
+				// }
+				if githubResponse.NextPage == 0 {
+					ShouldCallNext = false
 				}
 			}
 		}
-		var hookList = make(map[string][]*github.Hook)
-		for i := 0; i < len(repos); i++ {
-			ShouldCallNext = true
-			Page = 0
-			if repos[i] != "" {
-				for ShouldCallNext {
-					Page++
-					githubHooks, githubResponse, err := githubClient.Repositories.ListHooks(ctx, owner, repos[i], &github.ListOptions{PerPage: Page})
-					if err != nil {
-						return err.Error()
-					}
-					if len(githubHooks) > 0 {
-						hookList[repos[i]] = githubHooks
-					}
-					if githubResponse.NextPage == 0 {
-						ShouldCallNext = false
-					}
-				}
-			}
-		}
+		// var repos []string
+		// repos = append(repos, repo)
+		// if repo == "" {
+		// 	for ShouldCallNext {
+		// 		Page++
+		// 		projects, projectResponse, err := githubClient.Repositories.List(ctx, owner, &github.RepositoryListOptions{ListOptions: github.ListOptions{Page: Page}})
+		// 		if err != nil {
+		// 			return err.Error()
+		// 		}
+		// 		if projectResponse.NextPage == 0 {
+		// 			ShouldCallNext = false
+		// 		}
+		// 		for _, project := range projects {
+		// 			repos = append(repos, *project.Name)
+		// 		}
+		// 	}
+		// }
+		// var hookList = make(map[string][]*github.Hook)
+		// for i := 0; i < len(repos); i++ {
+		// 	ShouldCallNext = true
+		// 	Page = 0
+		// 	if repos[i] != "" {
+		// 		for ShouldCallNext {
+		// 			Page++
+		// 			githubHooks, githubResponse, err := githubClient.Repositories.ListHooks(ctx, owner, repos[i], &github.ListOptions{PerPage: Page})
+		// 			if err != nil {
+		// 				return err.Error()
+		// 			}
+		// 			if len(githubHooks) > 0 {
+		// 				hookList[repos[i]] = githubHooks
+		// 			}
+		// 			if githubResponse.NextPage == 0 {
+		// 				ShouldCallNext = false
+		// 			}
+		// 		}
+		// 	}
+		// }
 		var txt string
-		if len(hookList) == 0 {
-			txt = "Currently there are no webhook in this repository"
+		if len(githubHooks) == 0 {
+			txt = "Currently there are no webhook in this [Owner/Repo]"
 		} else {
 			txt = "### Webhook in this Repositories\n"
 		}
 
-		for repoName, repoHooks := range hookList {
-			for _, val := range repoHooks {
-				hookDetails, _, err := githubClient.Repositories.GetHook(ctx, owner, repoName, *val.ID)
-				if err != nil {
-					return err.Error()
-				}
-				hookID := strconv.Itoa(int(*val.ID))
-				hookURL := baseURL + owner + "/" + repoName + "/settings/hooks/"
-				txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
-				txt += newLine
+		// for repoName, repoHooks := range hookList {
+		// 	for _, val := range repoHooks {
+		// 		hookDetails, _, err := githubClient.Repositories.GetHook(ctx, owner, repoName, *val.ID)
+		// 		if err != nil {
+		// 			return err.Error()
+		// 		}
+		for _, hook := range githubHooks {
+			hookID := strconv.Itoa(int(*hook.ID))
+			hookURL := baseURL + owner
+			if repo != "" {
+				hookURL += "/" + repo
 			}
+			hookURL += "/settings/hooks/"
+			txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
+			txt += newLine
 		}
+
+		// 	}
+		// }
 
 		return txt
 	}
 	return "invalid action only add and list command are supported"
+}
+func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner, repo string, hookID int64) (*github.Hook, *github.Response, error) {
+	if repo != "" {
+		return githubClient.Repositories.GetHook(ctx, owner, repo, hookID)
+	}
+	return githubClient.Organizations.GetHook(ctx, owner, hookID)
+}
+func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, owner, repo string, hook github.Hook) (*github.Hook, *github.Response, error) {
+	p.API.LogWarn("log ", "githubClient", githubClient, "owner", owner)
+
+	if repo != "" {
+
+		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
+	}
+	temp, _, err := githubClient.Organizations.Get(ctx, owner)
+	p.API.LogWarn("log ", "temp", temp, "err", err)
+
+	return githubClient.Organizations.CreateHook(ctx, owner, &hook)
 }
 
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
@@ -758,16 +827,21 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhookList.AddTextArgument("Owner/repo to list webhooks from", "[owner/repo]", "")
 
 	webhook.AddCommand(webhookList)
-	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] [-config] [config-value]", "Add a webhook to desired owner[/repo] with optional --config")
+	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url token content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
+	webhookAdd.AddTextArgument("Call Back URL", "", "")
+	webhookAdd.AddTextArgument("token", "", "")
+	webhookAdd.AddTextArgument("content_type", "", "")
+	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 
-	webhookConfigOptions := []model.AutocompleteListItem{{
-		HelpText: "url:,token:,insecure_ssl:,content_type:,token:,options:create&delete",
-		Hint:     "(Optional ) check the /github help to fetch the available options and default value for these config",
-		Item:     "--config",
+	insecureSSLValue := []model.AutocompleteListItem{{
+		HelpText: "Turn on insecure_ssl",
+		Item:     "true",
+	}, {
+		HelpText: "Turn off insecure_ssl",
+		Item:     "false",
 	}}
-	webhookAdd.AddStaticListArgument("webhook PayLoad URL", true, webhookConfigOptions)
-	webhookAdd.AddTextArgument("add value to [config]", "[config]", "")
+	webhookAdd.AddStaticListArgument("", false, insecureSSLValue)
 	webhook.AddCommand(webhookAdd)
 
 	github.AddCommand(webhook)
