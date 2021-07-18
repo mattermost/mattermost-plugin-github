@@ -506,9 +506,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		}
 		hook.Config = config
 
-		githubHook, githubHookResponse, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
-		p.API.LogWarn("githubHook logs ", "githubHook", githubHook, "githubHookResponse ", githubHookResponse)
-		p.API.LogWarn("githubHook logs ", "err", err)
+		githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 		if err != nil {
 			return err.Error()
 		}
@@ -545,13 +543,9 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			for ShouldCallNext {
 				Page++
 				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, &github.ListOptions{PerPage: Page})
-				p.API.LogWarn("creating hook organ", "githubHooks", githubHooks, "githubResponse", githubResponse)
 				if err != nil {
 					return err.Error()
 				}
-				// if len(githubHooks) > 0 {
-				// 	hookList["-"] = githubHooks
-				// }
 				if githubResponse.NextPage == 0 {
 					ShouldCallNext = false
 				}
@@ -560,56 +554,16 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			for ShouldCallNext {
 				Page++
 				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: Page})
-				p.API.LogWarn("creating hook repo", "githubHooks", githubHooks, "githubResponse", githubResponse)
 
 				if err != nil {
 					return err.Error()
 				}
-				// if len(githubHooks) > 0 {
-				// 	hookList[repo] = githubHooks
-				// }
 				if githubResponse.NextPage == 0 {
 					ShouldCallNext = false
 				}
 			}
 		}
-		// var repos []string
-		// repos = append(repos, repo)
-		// if repo == "" {
-		// 	for ShouldCallNext {
-		// 		Page++
-		// 		projects, projectResponse, err := githubClient.Repositories.List(ctx, owner, &github.RepositoryListOptions{ListOptions: github.ListOptions{Page: Page}})
-		// 		if err != nil {
-		// 			return err.Error()
-		// 		}
-		// 		if projectResponse.NextPage == 0 {
-		// 			ShouldCallNext = false
-		// 		}
-		// 		for _, project := range projects {
-		// 			repos = append(repos, *project.Name)
-		// 		}
-		// 	}
-		// }
-		// var hookList = make(map[string][]*github.Hook)
-		// for i := 0; i < len(repos); i++ {
-		// 	ShouldCallNext = true
-		// 	Page = 0
-		// 	if repos[i] != "" {
-		// 		for ShouldCallNext {
-		// 			Page++
-		// 			githubHooks, githubResponse, err := githubClient.Repositories.ListHooks(ctx, owner, repos[i], &github.ListOptions{PerPage: Page})
-		// 			if err != nil {
-		// 				return err.Error()
-		// 			}
-		// 			if len(githubHooks) > 0 {
-		// 				hookList[repos[i]] = githubHooks
-		// 			}
-		// 			if githubResponse.NextPage == 0 {
-		// 				ShouldCallNext = false
-		// 			}
-		// 		}
-		// 	}
-		// }
+
 		var txt string
 		if len(githubHooks) == 0 {
 			txt = "Currently there are no webhook in this [Owner/Repo]"
@@ -617,12 +571,6 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			txt = "### Webhook in this Repositories\n"
 		}
 
-		// for repoName, repoHooks := range hookList {
-		// 	for _, val := range repoHooks {
-		// 		hookDetails, _, err := githubClient.Repositories.GetHook(ctx, owner, repoName, *val.ID)
-		// 		if err != nil {
-		// 			return err.Error()
-		// 		}
 		for _, hook := range githubHooks {
 			hookID := strconv.Itoa(int(*hook.ID))
 			hookURL := baseURL + owner
@@ -633,9 +581,6 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 			txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
 			txt += newLine
 		}
-
-		// 	}
-		// }
 
 		return txt
 	}
