@@ -95,7 +95,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
 		if err != nil || shouldNotNotify {
 			if err != nil {
-				p.API.LogWarn("ailed to check the disabled notification repo list.", "error", err.Error())
+				p.API.LogWarn("Failed to check the disabled notification repo list.", "error", err.Error())
 
 				return
 			}
