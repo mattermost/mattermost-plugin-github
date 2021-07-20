@@ -170,6 +170,7 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 func (p *Plugin) IsNotificationOff(repoName string) bool {
 	repos, err := p.GetExcludedNotificationRepos()
 	if err != nil {
+		p.API.LogWarn("Failed to check the disabled notification repo list.", "error", err.Error())
 		return false
 	}
 	if len(repos) == 0 {
