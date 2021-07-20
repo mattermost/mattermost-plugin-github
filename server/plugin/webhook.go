@@ -92,15 +92,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the disabled notification repo list.", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -110,15 +102,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssuesEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -127,15 +111,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssueCommentEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -145,15 +121,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -162,15 +130,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewCommentEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -178,15 +138,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PushEvent:
 		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -194,15 +146,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.CreateEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {
@@ -210,15 +154,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.DeleteEvent:
 		repo = event.GetRepo()
-		var shouldNotNotify, err = p.CheckIsNotificationOff(*repo.FullName)
-		if err != nil || shouldNotNotify {
-			if err != nil {
-				p.API.LogWarn("Failed to check the check disabled notification repo list ", "error", err.Error())
-
-				return
-			}
-			p.API.LogWarn("Notification repo list or notification for this repo is turned off ", "shouldNotNotify", shouldNotNotify)
-
+		if p.IsNotificationOff(*repo.FullName) {
 			return
 		}
 		handler = func() {

@@ -167,17 +167,17 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
-func (p *Plugin) CheckIsNotificationOff(repoName string) (bool, error) {
+func (p *Plugin) IsNotificationOff(repoName string) bool {
 	repos, err := p.GetExcludedNotificationRepos()
 	if err != nil {
-		return false, err
+		return false
 	}
 	if len(repos) == 0 {
-		return false, nil
+		return false
 	}
-	isDer, _ := ItemExists(repos, repoName)
+	exist, _ := ItemExists(repos, repoName)
 
-	return isDer, nil
+	return exist
 }
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
