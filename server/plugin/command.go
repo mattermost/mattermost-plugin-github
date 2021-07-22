@@ -455,12 +455,34 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
+func (p *Plugin) authorizedSysAdmin(userID string) (bool, error) {
+	user, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		return false, appErr
+	}
+	if !strings.Contains(user.Roles, "system_admin") {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
-		githubPluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
-		text := fmt.Sprintf(" Before using this plugin, you will need to configure it by filling out the settings in the system console [%s](%s). You can learn more about the setup process [%s](%s) .", "here", githubPluginURL, "here", "https://github.com/mattermost/mattermost-plugin-github#step-3-configure-the-plugin-in-mattermost")
+
+		isSysAdmin, err := p.authorizedSysAdmin(args.UserId)
+		var text string
+		switch {
+		case err != nil:
+			text = "Unable to fetch user details."
+		case isSysAdmin:
+			githubPluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
+			text = fmt.Sprintf("Before using this plugin, you will need to configure it by filling out the settings in the system console [here](%s). You can learn more about the setup process [here](%s) .", githubPluginURL, "https://github.com/mattermost/mattermost-plugin-github#step-3-configure-the-plugin-in-mattermost")
+		default:
+			text = "Please contact your system administrator to configure the GitHub plugin."
+		}
+
 		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
