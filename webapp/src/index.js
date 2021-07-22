@@ -1,7 +1,5 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
-
 import AttachCommentToIssuePostMenuAction from 'components/post_menu_actions/attach_comment_to_issue';
 import AttachCommentToIssueModal from 'components/modals/attach_comment_to_issue';
 
@@ -16,7 +14,7 @@ import Reducer from './reducers';
 import Client from './client';
 import {getConnected, setShowRHSAction, getSettings} from './actions';
 import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
-
+import {getServerRoute} from './selectors';
 import {id as pluginId} from './manifest';
 
 let activityFunc;
