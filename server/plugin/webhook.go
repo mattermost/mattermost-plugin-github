@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
@@ -215,7 +216,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	for i, v := range pr.Labels {
 		labels[i] = v.GetName()
 	}
-
 	newPRMessage, err := renderTemplate("newPR", event)
 	if err != nil {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
@@ -227,6 +227,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
+	p.API.LogWarn("newPRMessage", "newPRMessage", newPRMessage)
 
 	post := &model.Post{
 		UserId: p.BotUserID,
@@ -270,7 +271,18 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			post.Message = newPRMessage
+			firstIndex := strings.Index(newPRMessage, "<details>")
+			lastIndex := strings.LastIndex(newPRMessage, "</details>")
+			newMessage := strings.Replace(newPRMessage, newPRMessage[firstIndex:lastIndex+len("</details>")], "details collapsed", -1)
+			converter := md.NewConverter("", true, nil)
+
+			markdown, err := converter.ConvertString(newMessage)
+			if err != nil {
+				p.API.LogWarn("Failed to create markdown text of html", "error", err.Error())
+				return
+			}
+			post.Message = markdown
+
 		}
 
 		if action == "closed" {
