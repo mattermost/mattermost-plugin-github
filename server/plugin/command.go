@@ -470,7 +470,6 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
-
 		isSysAdmin, err := p.authorizedSysAdmin(args.UserId)
 		var text string
 		switch {
