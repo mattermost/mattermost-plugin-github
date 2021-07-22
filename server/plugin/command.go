@@ -596,7 +596,6 @@ func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, ow
 	p.API.LogWarn("log ", "githubClient", githubClient, "owner", owner)
 
 	if repo != "" {
-
 		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
 	}
 	temp, _, err := githubClient.Organizations.Get(ctx, owner)
