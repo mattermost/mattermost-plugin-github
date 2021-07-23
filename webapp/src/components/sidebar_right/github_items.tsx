@@ -114,14 +114,17 @@ function GithubItems(props: GithubItemsProps) {
             };
 
             let icon;
+            let title;
             if (item.pullRequest) {
                 // item is a pull request
                 icon = <GitPullRequestIcon {...iconProps}/>;
+                title = 'Pull Request';
             } else {
                 icon = <IssueOpenedIcon {...iconProps}/>;
+                title = 'Issue';
             }
             number = (
-                <strong>
+                <strong title={title} >
                     <span style={{...style.icon}}>
                         {icon}
                     </span>
@@ -185,13 +188,28 @@ function GithubItems(props: GithubItemsProps) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<span style={{...style.icon, ...style.iconSucess}}><TickIcon/></span>);
+                status = (
+                    <span
+                        title={'Success'}
+                        style={{...style.icon, ...style.iconSucess}}
+                    ><TickIcon/></span>
+                );
                 break;
             case 'pending':
-                status = (<span style={{...style.icon, ...style.iconPending}}><DotIcon/></span>);
+                status = (
+                    <span
+                        title={'Pending'}
+                        style={{...style.icon, ...style.iconPending}}
+                    ><DotIcon/></span>
+                );
                 break;
             default:
-                status = (<span style={{...style.icon, ...style.iconFailed}}><CrossIcon/></span>);
+                status = (
+                    <span
+                        title={'Failed'}
+                        style={{...style.icon, ...style.iconFailed}}
+                    ><CrossIcon/></span>
+                );
             }
         }
 
