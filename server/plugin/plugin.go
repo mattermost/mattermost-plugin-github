@@ -408,21 +408,21 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	return string(summaryByte), nil
 }
 
-func (p *Plugin) PostToDo(info *GitHubUserInfo, UserID string) error {
+func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
 	if err != nil {
 		return err
 	}
 
 	if info.Settings.DailyReminderOnChange {
-		isSameSummary, err := p.CheckIfDuplicateDailySummary(UserID, text)
+		isSameSummary, err := p.CheckIfDuplicateDailySummary(userID, text)
 		if err != nil {
 			return err
 		}
 		if isSameSummary {
 			return nil
 		}
-		err = p.StoreDailySummaryText(UserID, text)
+		err = p.StoreDailySummaryText(userID, text)
 		if err != nil {
 			return err
 		}
