@@ -529,7 +529,9 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		lt := time.Unix(lastPostAt/1000, 0).In(timezone)
 		if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
 			if p.HasUnreads(info) {
-				p.PostToDo(info)
+				if err := p.PostToDo(info, c.UserID); err != nil {
+					p.API.LogWarn("Failed in PostToDo", "userID", info.UserID, "error", err.Error())
+				}
 				info.LastToDoPostAt = now
 				if err := p.storeGitHubUserInfo(info); err != nil {
 					p.API.LogWarn("Failed to store github info for new user", "userID", c.UserID, "error", err.Error())

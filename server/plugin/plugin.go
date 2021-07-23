@@ -379,8 +379,8 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	}
 }
 
-func (p *Plugin) CheckIfDuplicateDailySummary(userName, text string) (bool, error) {
-	previousSummary, err := p.GetDailySummaryText(userName)
+func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error) {
+	previousSummary, err := p.GetDailySummaryText(userID)
 	if err != nil {
 		return false, err
 	}
@@ -391,16 +391,16 @@ func (p *Plugin) CheckIfDuplicateDailySummary(userName, text string) (bool, erro
 	return false, nil
 }
 
-func (p *Plugin) StoreDailySummaryText(userName, summaryText string) error {
-	if err := p.API.KVSet(userName+dailySummary, []byte(summaryText)); err != nil {
+func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
+	if err := p.API.KVSet(userID+dailySummary, []byte(summaryText)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Plugin) GetDailySummaryText(userName string) (string, error) {
-	summaryByte, err := p.API.KVGet(userName + dailySummary)
+func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
+	summaryByte, err := p.API.KVGet(userID + dailySummary)
 	if err != nil {
 		return "", err
 	}
@@ -408,30 +408,27 @@ func (p *Plugin) GetDailySummaryText(userName string) (string, error) {
 	return string(summaryByte), nil
 }
 
-func (p *Plugin) PostToDo(info *GitHubUserInfo) {
+func (p *Plugin) PostToDo(info *GitHubUserInfo, UserID string) error {
 	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
 	if err != nil {
-		p.API.LogWarn("Failed to get todo text", "userID", info.UserID, "error", err.Error())
-		return
+		return err
 	}
 
 	if info.Settings.DailyReminderOnChange {
-		isSameSummary, err := p.CheckIfDuplicateDailySummary(info.GitHubUsername, text)
+		isSameSummary, err := p.CheckIfDuplicateDailySummary(UserID, text)
 		if err != nil {
-			p.API.LogWarn("Failed to check the summary on change ", "userID", info.UserID, "error", err.Error())
-			return
+			return err
 		}
 		if isSameSummary {
-			p.API.LogWarn(" Wont Trigger Daily Summary as the summary is Change ", "NO Summary ", true)
-			return
+			return nil
 		}
-		err = p.StoreDailySummaryText(info.GitHubUsername, text)
+		err = p.StoreDailySummaryText(UserID, text)
 		if err != nil {
-			p.API.LogWarn("unable to store the reference of daily summary", "userID", info.UserID, "error", err.Error())
-			return
+			return err
 		}
 	}
 	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
+	return nil
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {

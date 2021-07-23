@@ -396,21 +396,21 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 
 	switch setting {
 	case settingNotifications:
-		switch {
-		case settingValue == settingOn:
+		switch settingValue {
+		case settingOn:
 			userInfo.Settings.Notifications = true
-		case settingValue == settingOff:
+		case settingOff:
 			userInfo.Settings.Notifications = false
 		default:
 			return "Invalid value. Accepted values are: \"on\" or \"off\"."
 		}
 	case settingReminders:
-		switch {
-		case settingValue == settingOn:
+		switch settingValue {
+		case settingOn:
 			userInfo.Settings.DailyReminder = true
-		case settingValue == settingOff:
+		case settingOff:
 			userInfo.Settings.DailyReminder = false
-		case settingValue == settingOnChange:
+		case settingOnChange:
 			userInfo.Settings.DailyReminder = true
 			userInfo.Settings.DailyReminderOnChange = true
 		default:
@@ -622,8 +622,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 		HelpText: "Turn reminders off",
 		Item:     "off",
 	}, {
-		HelpText: "Turn reminders On - But only get reminders if any change occur",
-		Item:     "on-change",
+		HelpText: "Turn reminders on, but only get reminders if any changes have occurred since the previous day's reminder",
+		Item:     settingOnChange,
 	}}
 	remainderNotifications.AddStaticListArgument("", true, settingValue)
 	settings.AddCommand(remainderNotifications)
