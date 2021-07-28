@@ -275,7 +275,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			lastIndex := strings.LastIndex(newPRMessage, "</details>")
 			newMessage := strings.Replace(newPRMessage, newPRMessage[firstIndex:lastIndex+len("</details>")], "details collapsed", -1)
 			converter := md.NewConverter("", true, nil)
-
 			markdown, err := converter.ConvertString(newMessage)
 			if err != nil {
 				p.API.LogWarn("Failed to create markdown text of html", "error", err.Error())
