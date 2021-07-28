@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.3.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.1.0
+	github.com/PuerkitoBio/goquery v1.5.1 // indirect
 	github.com/google/go-github/v31 v31.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mattermost/mattermost-plugin-api v0.0.12-0.20200917103517-788aef584648
