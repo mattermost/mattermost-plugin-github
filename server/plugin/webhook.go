@@ -273,7 +273,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == "opened" {
 			firstIndex := strings.Index(newPRMessage, "<details>")
 			lastIndex := strings.LastIndex(newPRMessage, "</details>")
-			newMessage := strings.Replace(newPRMessage, newPRMessage[firstIndex:lastIndex+len("</details>")], "details collapsed", -1)
+			newMessage := strings.ReplaceAll(newPRMessage, newPRMessage[firstIndex:lastIndex+len("</details>")], "details collapsed", -1)
 			converter := md.NewConverter("", true, nil)
 			markdown, err := converter.ConvertString(newMessage)
 			if err != nil {
@@ -281,7 +281,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 				return
 			}
 			post.Message = markdown
-
 		}
 
 		if action == "closed" {
