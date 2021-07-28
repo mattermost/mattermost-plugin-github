@@ -216,6 +216,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	for i, v := range pr.Labels {
 		labels[i] = v.GetName()
 	}
+
 	newPRMessage, err := renderTemplate("newPR", event)
 	if err != nil {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
@@ -227,7 +228,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
-	p.API.LogWarn("newPRMessage", "newPRMessage", newPRMessage)
 
 	post := &model.Post{
 		UserId: p.BotUserID,
