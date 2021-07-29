@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	md "github.com/JohannesKaufmann/html-to-markdown"
+	"github.com/microcosm-cc/bluemonday"
+
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
@@ -271,16 +272,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			firstIndex := strings.Index(newPRMessage, "<details>")
-			lastIndex := strings.LastIndex(newPRMessage, "</details>")
-			newMessage := strings.ReplaceAll(newPRMessage, newPRMessage[firstIndex:lastIndex+len("</details>")], "details collapsed")
-			converter := md.NewConverter("", true, nil)
-			markdown, err := converter.ConvertString(newMessage)
-			if err != nil {
-				p.API.LogWarn("Failed to create markdown text of html", "error", err.Error())
-				return
-			}
-			post.Message = markdown
+			policy := bluemonday.StrictPolicy()
+			policy.SkipElementsContent("details")
+			newPRMessage = strings.ReplaceAll(newPRMessage, "<details>", "details collapsed.<details>")
+			newPRMessage = policy.Sanitize(newPRMessage)
+			post.Message = newPRMessage
 		}
 
 		if action == "closed" {
