@@ -313,14 +313,21 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.getGithubClient(userInfo)
-
+	var page int
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+
+	webhookURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
+
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
 		}
-
-		return fmt.Sprintf("Successfully subscribed to organization %s.", owner)
+		msg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
+		githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
+		if len(githubHooks) == 0 {
+			msg += fmt.Sprintf("can configure the webhook to receive notification [here](%s).", webhookURL)
+		}
+		return msg
 	}
 
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
@@ -335,7 +342,11 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	} else if ghRepo != nil && ghRepo.GetPrivate() {
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
+	githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
+	if len(githubHooks) == 0 {
+		msg += fmt.Sprintf("can configure the webhook to receive notification [here](%s).", webhookURL)
 
+	}
 	return msg
 }
 
