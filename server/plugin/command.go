@@ -345,7 +345,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 	if len(githubHooks) == 0 {
 		msg += fmt.Sprintf("can configure the webhook to receive notification [here](%s).", webhookURL)
-
 	}
 	return msg
 }
