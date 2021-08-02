@@ -37,6 +37,14 @@ const manifestStr = `
     "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github).",
     "settings": [
       {
+        "key": "UsePreregisteredApplication",
+        "display_name": "Use Preregistered OAuth Application:",
+        "type": "bool",
+        "help_text": "When true, instructs plugin to use preregistered GitHub OAuth application - application registration steps can be skipped. Requires Chimera Proxy URL to be configured for the server.",
+        "placeholder": "",
+        "default": false
+      },
+      {
         "key": "GitHubOAuthClientID",
         "display_name": "GitHub OAuth Client ID:",
         "type": "text",
