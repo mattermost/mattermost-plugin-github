@@ -274,7 +274,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == "opened" {
 			policy := bluemonday.StrictPolicy()
 			policy.SkipElementsContent("details")
-			newPRMessage = strings.ReplaceAll(newPRMessage, "<details>", "details collapsed.<details>")
+			newPRMessage = strings.ReplaceAll(newPRMessage, "<details>", "`(details collapsed)`<details>")
 			newPRMessage = policy.Sanitize(newPRMessage)
 			post.Message = newPRMessage
 		}
