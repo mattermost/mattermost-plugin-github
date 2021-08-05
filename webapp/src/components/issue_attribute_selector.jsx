@@ -110,6 +110,7 @@ export default class IssueAttributeSelector extends PureComponent {
                     {...this.props}
                     isClearable={true}
                     placeholder={'Select...'}
+                    isDisabled={this.props.repoName === ''}
                     noOptionsMessage={() => noOptionsMessage}
                     closeMenuOnSelect={!this.props.isMulti}
                     hideSelectedOptions={this.props.isMulti}
