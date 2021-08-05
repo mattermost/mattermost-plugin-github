@@ -324,8 +324,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
 		}
-
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization %s.", owner)
+		orgLink := p.getBaseURL() + owner
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s).", owner, orgLink)
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
@@ -338,12 +338,12 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 					return err.Error()
 				}
 				if excludeMsg != "" {
-					excludeMsg += " and " + NotificationOffRepo
+					excludeMsg += fmt.Sprintf(" and [%s](%s)", NotificationOffRepo, orgLink+"/"+NotificationOffRepo)
 					continue
 				}
-				excludeMsg += NotificationOffRepo
+				excludeMsg += fmt.Sprintf("[%s](%s)", NotificationOffRepo, orgLink+"/"+NotificationOffRepo)
 			}
-			subOrgMsg += "\n\n" + fmt.Sprintf("But Notifications are disabled for %s", excludeMsg)
+			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
 		return subOrgMsg
 	}
