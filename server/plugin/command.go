@@ -408,8 +408,10 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		switch settingValue {
 		case settingOn:
 			userInfo.Settings.DailyReminder = true
+			userInfo.Settings.DailyReminderOnChange = false
 		case settingOff:
 			userInfo.Settings.DailyReminder = false
+			userInfo.Settings.DailyReminderOnChange = false
 		case settingOnChange:
 			userInfo.Settings.DailyReminder = true
 			userInfo.Settings.DailyReminderOnChange = true
