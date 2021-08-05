@@ -417,7 +417,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
 		}
 	default:
-		return "Unknown setting."
+		return "Unknown setting " + setting
 	}
 
 	if setting == settingNotifications {

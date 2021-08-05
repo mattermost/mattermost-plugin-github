@@ -530,7 +530,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
 			if p.HasUnreads(info) {
 				if err := p.PostToDo(info, c.UserID); err != nil {
-					p.API.LogWarn("Failed in PostToDo", "userID", info.UserID, "error", err.Error())
+					p.API.LogWarn("Failed to create GitHub todo message", "user_id", info.UserID, "error", err.Error())
 				}
 				info.LastToDoPostAt = now
 				if err := p.storeGitHubUserInfo(info); err != nil {
