@@ -36,8 +36,10 @@ const (
 	settingReminders     = "reminders"
 	settingOn            = "on"
 	settingOff           = "off"
+	settingOnChange      = "on-change"
 
 	notificationReasonSubscribed = "subscribed"
+	dailySummary                 = "_dailySummary"
 )
 
 type Plugin struct {
@@ -234,9 +236,10 @@ type GitHubUserInfo struct {
 }
 
 type UserSettings struct {
-	SidebarButtons string `json:"sidebar_buttons"`
-	DailyReminder  bool   `json:"daily_reminder"`
-	Notifications  bool   `json:"notifications"`
+	SidebarButtons        string `json:"sidebar_buttons"`
+	DailyReminder         bool   `json:"daily_reminder"`
+	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
+	Notifications         bool   `json:"notifications"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
@@ -376,14 +379,56 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	}
 }
 
-func (p *Plugin) PostToDo(info *GitHubUserInfo) {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error) {
+	previousSummary, err := p.GetDailySummaryText(userID)
 	if err != nil {
-		p.API.LogWarn("Failed to get todo text", "userID", info.UserID, "error", err.Error())
-		return
+		return false, err
+	}
+	if previousSummary == text {
+		return true, nil
 	}
 
+	return false, nil
+}
+
+func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
+	if err := p.API.KVSet(userID+dailySummary, []byte(summaryText)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
+	summaryByte, err := p.API.KVGet(userID + dailySummary)
+	if err != nil {
+		return "", err
+	}
+
+	return string(summaryByte), nil
+}
+
+func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
+	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+	if err != nil {
+		return err
+	}
+
+	if info.Settings.DailyReminderOnChange {
+		isSameSummary, err := p.CheckIfDuplicateDailySummary(userID, text)
+		if err != nil {
+			return err
+		}
+		if isSameSummary {
+			return nil
+		}
+		err = p.StoreDailySummaryText(userID, text)
+		if err != nil {
+			return err
+		}
+	}
 	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
+	return nil
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
