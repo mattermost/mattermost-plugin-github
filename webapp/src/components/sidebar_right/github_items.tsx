@@ -192,7 +192,9 @@ function GithubItems(props: GithubItemsProps) {
                     <span
                         title={'Success'}
                         style={{...style.icon, ...style.iconSucess}}
-                    ><TickIcon/></span>
+                    >
+                        <TickIcon/>
+                    </span>
                 );
                 break;
             case 'pending':
