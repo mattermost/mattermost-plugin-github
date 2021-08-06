@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/Masterminds/sprig/v3 v3.1.0
-	github.com/google/go-github/v31 v31.0.0
+	github.com/google/go-github/v37 v37.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mattermost/mattermost-plugin-api v0.0.12-0.20200917103517-788aef584648
 	github.com/mattermost/mattermost-server/v5 v5.28.0
