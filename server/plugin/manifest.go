@@ -40,7 +40,7 @@ const manifestStr = `
         "key": "UsePreregisteredApplication",
         "display_name": "Use Preregistered OAuth Application:",
         "type": "bool",
-        "help_text": "When true, instructs plugin to use preregistered GitHub OAuth application - application registration steps can be skipped. Requires Chimera Proxy URL to be configured for the server.",
+        "help_text": "When true, instructs plugin to use preregistered GitHub OAuth application - application registration steps can be skipped. Requires Chimera Proxy URL to be configured for the server. Cannot be used with GitHub enterprise.",
         "placeholder": "",
         "default": false
       },

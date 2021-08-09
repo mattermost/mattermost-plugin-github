@@ -50,6 +50,10 @@ func (c *Configuration) IsValid() error {
 		}
 	}
 
+	if c.UsePreregisteredApplication && c.EnterpriseBaseURL != "" {
+		return errors.New("cannot use pre-registered application with GitHub enterprise")
+	}
+
 	if c.EncryptionKey == "" {
 		return errors.New("must have an encryption key")
 	}
