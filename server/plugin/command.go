@@ -455,7 +455,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
-func (p *Plugin) authorizedSysAdmin(userID string) (bool, error) {
+func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return false, appErr
@@ -470,7 +470,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
-		isSysAdmin, err := p.authorizedSysAdmin(args.UserId)
+		isSysAdmin, err := p.isAuthorizedSysAdmin(args.UserId)
 		var text string
 		switch {
 		case err != nil:
