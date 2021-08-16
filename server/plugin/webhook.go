@@ -386,10 +386,14 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
+	policy := bluemonday.StrictPolicy()
+	policy.SkipElementsContent("details")
+	newRenderedMessage := strings.ReplaceAll(renderedMessage, "<details>", "`(details collapsed)`<details>")
+	newRenderedMessage = policy.Sanitize(newRenderedMessage)
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Type:    "custom_git_issue",
-		Message: renderedMessage,
+		Message: newRenderedMessage,
 	}
 
 	eventLabel := event.GetLabel().GetName()
