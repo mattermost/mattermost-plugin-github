@@ -361,6 +361,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 		p.API.LogWarn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
 	}
+
 	return text
 }
 
@@ -391,20 +392,38 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	}
 
 	setting := parameters[0]
-	if setting != settingNotifications && setting != settingReminders {
-		return "Unknown setting."
-	}
+	settingValue := parameters[1]
 
-	strValue := parameters[1]
-	value := false
-	if strValue == settingOn {
-		value = true
-	} else if strValue != settingOff {
-		return "Invalid value. Accepted values are: \"on\" or \"off\"."
+	switch setting {
+	case settingNotifications:
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.Notifications = true
+		case settingOff:
+			userInfo.Settings.Notifications = false
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\"."
+		}
+	case settingReminders:
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.DailyReminder = true
+			userInfo.Settings.DailyReminderOnChange = false
+		case settingOff:
+			userInfo.Settings.DailyReminder = false
+			userInfo.Settings.DailyReminderOnChange = false
+		case settingOnChange:
+			userInfo.Settings.DailyReminder = true
+			userInfo.Settings.DailyReminderOnChange = true
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
+		}
+	default:
+		return "Unknown setting " + setting
 	}
 
 	if setting == settingNotifications {
-		if value {
+		if userInfo.Settings.Notifications {
 			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
 			if err != nil {
 				p.API.LogWarn("Failed to store GitHub to userID mapping",
@@ -421,10 +440,6 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 					"error", err.Error())
 			}
 		}
-
-		userInfo.Settings.Notifications = value
-	} else if setting == settingReminders {
-		userInfo.Settings.DailyReminder = value
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)
@@ -455,7 +470,38 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
+func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
+	user, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		return false, appErr
+	}
+	if !strings.Contains(user.Roles, "system_admin") {
+		return false, nil
+	}
+	return true, nil
+}
+
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+	config := p.getConfiguration()
+
+	if err := config.IsValid(); err != nil {
+		isSysAdmin, err := p.isAuthorizedSysAdmin(args.UserId)
+		var text string
+		switch {
+		case err != nil:
+			text = "Error checking user's permissions"
+			p.API.LogWarn(text, "err", err.Error())
+		case isSysAdmin:
+			githubPluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
+			text = fmt.Sprintf("Before using this plugin, you will need to configure it by filling out the settings in the system console [here](%s). You can learn more about the setup process [here](%s).", githubPluginURL, "https://github.com/mattermost/mattermost-plugin-github#step-3-configure-the-plugin-in-mattermost")
+		default:
+			text = "Please contact your system administrator to configure the GitHub plugin."
+		}
+
+		p.postCommandResponse(args, text)
+		return &model.CommandResponse{}, nil
+	}
+
 	command, action, parameters := parseCommand(args.Command)
 
 	if command != "/github" {
@@ -589,22 +635,32 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
-	setting := []model.AutocompleteListItem{{
-		HelpText: "Turn notifications on/off",
-		Item:     "notifications",
-	}, {
-		HelpText: "Turn reminders on/off",
-		Item:     "reminders",
-	}}
-	settings.AddStaticListArgument("Setting to update", true, setting)
-	value := []model.AutocompleteListItem{{
-		HelpText: "Turn setting on",
+
+	settingNotifications := model.NewAutocompleteData("notifications", "", "Turn notifications on/off")
+	settingValue := []model.AutocompleteListItem{{
+		HelpText: "Turn notifications on",
 		Item:     "on",
 	}, {
-		HelpText: "Turn setting off",
+		HelpText: "Turn notifications off",
 		Item:     "off",
 	}}
-	settings.AddStaticListArgument("", true, value)
+	settingNotifications.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(settingNotifications)
+
+	remainderNotifications := model.NewAutocompleteData("reminders", "", "Turn notifications on/off")
+	settingValue = []model.AutocompleteListItem{{
+		HelpText: "Turn reminders on",
+		Item:     "on",
+	}, {
+		HelpText: "Turn reminders off",
+		Item:     "off",
+	}, {
+		HelpText: "Turn reminders on, but only get reminders if any changes have occurred since the previous day's reminder",
+		Item:     settingOnChange,
+	}}
+	remainderNotifications.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(remainderNotifications)
+
 	github.AddCommand(settings)
 
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
