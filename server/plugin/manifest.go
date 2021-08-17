@@ -20,7 +20,7 @@ const manifestStr = `
   "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.1",
   "icon_path": "assets/icon.svg",
   "version": "2.0.1",
-  "min_server_version": "5.25.0",
+  "min_server_version": "5.38.0",
   "server": {
     "executables": {
       "linux-amd64": "server/dist/plugin-linux-amd64",
