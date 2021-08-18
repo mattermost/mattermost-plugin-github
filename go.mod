@@ -11,6 +11,5 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.15
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.6.1
-	golang.org/x/net v0.0.0-20210726213435-c6fcb2dbf985 // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 )

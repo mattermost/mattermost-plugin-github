@@ -16,6 +16,8 @@ import (
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
+var policy = bluemonday.StrictPolicy()
+
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
 	const signaturePrefix = "sha1="
 	const signatureLength = 45
@@ -272,7 +274,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			policy := bluemonday.StrictPolicy()
 			policy.SkipElementsContent("details")
 			newPRMessage = strings.ReplaceAll(newPRMessage, "<details>", "`(details collapsed)`<details>")
 			newPRMessage = policy.Sanitize(newPRMessage)
@@ -386,7 +387,6 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
-	policy := bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
 	newRenderedMessage := strings.ReplaceAll(renderedMessage, "<details>", "`(details collapsed)`<details>")
 	newRenderedMessage = policy.Sanitize(newRenderedMessage)
