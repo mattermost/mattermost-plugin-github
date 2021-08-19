@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
