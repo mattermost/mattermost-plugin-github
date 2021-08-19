@@ -84,18 +84,16 @@ func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
 
 	config := &plugin.Configuration{}
 	err = json.Unmarshal(respBody, config)
-	config.GitHubOrg = TrimSpace(config.GitHubOrg)
-	config.GitHubOAuthClientID = TrimSpace(config.GitHubOAuthClientID)
-	config.GitHubOAuthClientSecret = TrimSpace(config.GitHubOAuthClientSecret)
+	config.GitHubOrg = strings.TrimSpace(config.GitHubOrg)
+	config.GitHubOAuthClientID = strings.TrimSpace(config.GitHubOAuthClientID)
+	config.GitHubOAuthClientSecret = strings.TrimSpace(config.GitHubOAuthClientSecret)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode GitHub config")
 	}
 
 	return config, nil
 }
-func TrimSpace(value string) string {
-	return strings.TrimSpace(value)
-}
+
 func (c *Client) GetToken(userID string) (*oauth2.Token, error) {
 	req, err := http.NewRequest(http.MethodGet, "/"+plugin.Manifest.Id+"/api/v1/token", http.NoBody)
 	if err != nil {
