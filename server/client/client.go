@@ -93,7 +93,7 @@ func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
 
 	return config, nil
 }
-func TrimSpace(value string){
+func TrimSpace(value string) string {
 	return strings.TrimSpace(value)
 }
 func (c *Client) GetToken(userID string) (*oauth2.Token, error) {
