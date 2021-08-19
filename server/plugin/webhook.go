@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,8 +16,6 @@ import (
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
-
-var policy = bluemonday.StrictPolicy()
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
 	const signaturePrefix = "sha1="
@@ -274,10 +273,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			policy.SkipElementsContent("details")
-			newPRMessage = strings.ReplaceAll(newPRMessage, "<details>", "`(details collapsed)`<details>")
-			newPRMessage = policy.Sanitize(newPRMessage)
-			post.Message = newPRMessage
+			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
 		if action == "closed" {
@@ -290,7 +286,24 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
+func (p *Plugin) sanitizeDescription(description string) string {
+	var policy = bluemonday.StrictPolicy()
+	policy.SkipElementsContent("details")
+	if strings.Contains(description, "<details>") {
+		description = strings.Replace(description, "\n", "", -1)
+		matchall := regexp.MustCompile(`<details.*?>.*?</details>`).FindAllStringSubmatch(description, -1)
+		for _, details := range matchall {
+			submatchall := regexp.MustCompile(`<summary.*?>(.*)</summary>`).FindAllStringSubmatch(details[0], -1)
+			for _, element := range submatchall {
+				description = strings.Replace(description, details[0], element[0], -1)
+			}
+		}
 
+	}
+	description = strings.Replace(description, "<summary>", "\n<summary>`", -1)
+	description = strings.Replace(description, "</summary>", "`<summary>\n", -1)
+	return policy.Sanitize(description)
+}
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != "opened" {
@@ -387,13 +400,12 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
-	policy.SkipElementsContent("details")
-	newRenderedMessage := strings.ReplaceAll(renderedMessage, "<details>", "`(details collapsed)`<details>")
-	newRenderedMessage = policy.Sanitize(newRenderedMessage)
+	renderedMessage = p.sanitizeDescription(renderedMessage)
+
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Type:    "custom_git_issue",
-		Message: newRenderedMessage,
+		Message: renderedMessage,
 	}
 
 	eventLabel := event.GetLabel().GetName()
