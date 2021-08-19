@@ -272,6 +272,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
+			p.API.LogWarn("logs", "PR", p.sanitizeDescription(newPRMessage))
 			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
@@ -288,7 +289,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
-	return policy.Sanitize(description)
+	return strings.TrimSpace(policy.Sanitize(description))
 }
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
