@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -65,8 +66,13 @@ func (p *Plugin) getConfiguration() *Configuration {
 	if p.configuration == nil {
 		return &Configuration{}
 	}
-
+	p.configuration.GitHubOrg = TrimSpace(p.configuration.GitHubOrg)
+	p.configuration.GitHubOAuthClientID = TrimSpace(p.configuration.GitHubOAuthClientID)
+	p.configuration.GitHubOAuthClientSecret = TrimSpace(p.configuration.GitHubOAuthClientSecret)
 	return p.configuration
+}
+func TrimSpace(value string) string {
+	return strings.TrimSpace(value)
 }
 
 // setConfiguration replaces the active configuration under lock.
