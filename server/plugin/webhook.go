@@ -289,19 +289,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
-	if strings.Contains(description, "<details>") {
-		description = strings.Replace(description, "\n", "", -1)
-		matchall := regexp.MustCompile(`<details.*?>.*?</details>`).FindAllStringSubmatch(description, -1)
-		for _, details := range matchall {
-			submatchall := regexp.MustCompile(`<summary.*?>(.*)</summary>`).FindAllStringSubmatch(details[0], -1)
-			for _, element := range submatchall {
-				description = strings.Replace(description, details[0], element[0], -1)
-			}
-		}
-
-	}
-	description = strings.Replace(description, "<summary>", "\n<summary>`", -1)
-	description = strings.Replace(description, "</summary>", "`<summary>\n", -1)
 	return policy.Sanitize(description)
 }
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
