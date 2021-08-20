@@ -79,7 +79,6 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
-		"test":          p.handleTest,
 	}
 
 	return p
@@ -172,6 +171,12 @@ func (p *Plugin) OnActivate() error {
 
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
+	go func() {
+		err := p.forceResetAllMM34646()
+		if err != nil {
+			p.API.LogDebug("failed to reset user tokens", "error", err.Error())
+		}
+	}()
 	return nil
 }
 
@@ -248,8 +253,8 @@ type GitHubUserInfo struct {
 	Settings            *UserSettings
 	AllowedPrivateRepos bool
 
-	// ForceResetTokenMM34646 is set for a user whose token has been reset for MM-34646.
-	ForceResetTokenMM34646 bool
+	// MM34646ResetTokenDone is set for a user whose token has been reset for MM-34646.
+	MM34646ResetTokenDone bool
 }
 
 type UserSettings struct {

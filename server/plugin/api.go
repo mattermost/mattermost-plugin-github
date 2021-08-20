@@ -366,7 +366,8 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			DailyReminder:  true,
 			Notifications:  true,
 		},
-		AllowedPrivateRepos: state.PrivateAllowed,
+		AllowedPrivateRepos:   state.PrivateAllowed,
+		MM34646ResetTokenDone: true,
 	}
 
 	if err = p.storeGitHubUserInfo(userInfo); err != nil {

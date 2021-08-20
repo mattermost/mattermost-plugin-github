@@ -446,25 +446,6 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	return "Settings updated."
 }
 
-func (p *Plugin) handleTest(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	info, apiErr := p.getGitHubUserInfo(args.UserId)
-	if apiErr != nil {
-		return "failed to get GitHubUserInfo, error: " + apiErr.Error()
-	}
-
-	_, err := p.forceResetUserTokenMM34646(context.Background(), p.getConfiguration(), *info)
-	if err != nil {
-		return "forceResetUserToken error: " + err.Error()
-	}
-
-	err = p.forceResetAllMM34646()
-	if err != nil {
-		return "forceResetAll error: " + err.Error()
-	}
-
-	return "OK"
-}
-
 func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid issue command. Available command is 'create'."

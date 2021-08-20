@@ -33,12 +33,11 @@ func (p *Plugin) forceResetAllMM34646() error {
 			tryInfo := GitHubUserInfo{}
 			err := json.Unmarshal(data, &tryInfo)
 			if err != nil {
-				p.API.LogDebug("key failed to unmarshal as GitHubUserInfo", "key", key,
-					"error", err.Error())
+				// too noisy to report
 				continue
 			}
 			if tryInfo.Token == nil || tryInfo.Token.AccessToken == "" {
-				p.API.LogDebug("skipping key with no token", "key", key)
+				// too noisy to report
 				continue
 			}
 
@@ -66,7 +65,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 }
 
 func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info GitHubUserInfo) (string, error) {
-	if info.ForceResetTokenMM34646 {
+	if info.MM34646ResetTokenDone {
 		return info.Token.AccessToken, nil
 	}
 
@@ -96,7 +95,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 	}
 
 	info.Token.AccessToken = newToken
-	info.ForceResetTokenMM34646 = true
+	info.MM34646ResetTokenDone = true
 	err = p.storeGitHubUserInfo(&info)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
