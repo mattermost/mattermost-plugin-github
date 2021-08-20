@@ -316,7 +316,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	var page int
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 
-	webhookURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
+	// webhookURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
 
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
@@ -325,7 +325,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 		githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 		if len(githubHooks) == 0 {
-			msg += fmt.Sprintf("can configure the webhook to receive notification [here](%s).", webhookURL)
+			msg += "\n No webhook was found for this repository or organization. Would you like the webhook to be created?"
+			msg += "\n `github webhook add " + owner + " [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
 		}
 		return msg
 	}
@@ -344,7 +345,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 	if len(githubHooks) == 0 {
-		msg += fmt.Sprintf("can configure the webhook to receive notification [here](%s).", webhookURL)
+		msg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
+		msg += fmt.Sprintf("\n `github webhook add %s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
+		msg += fmt.Sprintf("\n `github webhook add %s/%s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
 	}
 	return msg
 }
@@ -784,8 +787,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url token content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
 	webhookAdd.AddTextArgument("Call Back URL", "", "")
-	webhookAdd.AddTextArgument("token", "", "")
-	webhookAdd.AddTextArgument("content_type", "", "")
+	webhookAdd.AddTextArgument("token", "secret assess token from github plugin console", "")
+	webhookAdd.AddTextArgument("content_type", "[application-json/application/x-www-form-urlencoded]", "")
 	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 
 	insecureSSLValue := []model.AutocompleteListItem{{
