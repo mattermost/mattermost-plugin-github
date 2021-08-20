@@ -272,7 +272,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			p.API.LogWarn("logs", "PR", p.sanitizeDescription(newPRMessage))
 			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
