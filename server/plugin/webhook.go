@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/microcosm-cc/bluemonday"
+
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
@@ -270,7 +272,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			post.Message = newPRMessage
+			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
 		if action == "closed" {
@@ -283,7 +285,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
-
+func (p *Plugin) sanitizeDescription(description string) string {
+	var policy = bluemonday.StrictPolicy()
+	policy.SkipElementsContent("details")
+	return strings.TrimSpace(policy.Sanitize(description))
+}
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != "opened" {
@@ -380,6 +386,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
+	renderedMessage = p.sanitizeDescription(renderedMessage)
+
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Type:    "custom_git_issue",
