@@ -3,83 +3,107 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/http/httputil"
+	"time"
 
+	"github.com/google/go-github/v31/github"
 	"github.com/pkg/errors"
 )
 
-func (p *Plugin) forceRefreshUserTokens(ctx context.Context) error {
-	config := p.getConfiguration()
-	if ctx == nil {
-		ctx = context.Background()
-	}
+const pageSize = 100
+const delayBetweenPages = 5 * time.Minute
 
-	client, err := getGitHubClient(&http.Client{
-		Transport: &basicAuthTransport{
-			ClientID: config.GitHubOAuthClientID,
-			Secret:   config.GitHubOAuthClientSecret,
-		},
-	}, config)
-	if err != nil {
-		return errors.Wrap(err, "failed to get GitHub client")
-	}
+func (p *Plugin) forceResetAllMM34646() error {
+	config := p.getConfiguration()
+	ctx := context.Background()
 
 	for page := 0; ; page++ {
-		keys, appErr := p.API.KVList(page, 100)
+		keys, appErr := p.API.KVList(page, pageSize)
 		if appErr != nil {
 			return appErr
 		}
-		if len(keys) == 0 {
-			break
-		}
 
 		for _, key := range keys {
-			fmt.Printf("<>/<> KEY %q\n", key)
-
 			data, appErr := p.API.KVGet(key)
 			if appErr != nil {
-				p.API.LogWarn("failed to inspect key", "key", key, "error", err.Error())
+				p.API.LogWarn("failed to inspect key", "key", key, "error",
+					appErr.Error())
 				continue
 			}
-			info := GitHubUserInfo{}
-			err = json.Unmarshal(data, &info)
+			tryInfo := GitHubUserInfo{}
+			err := json.Unmarshal(data, &tryInfo)
 			if err != nil {
-				p.API.LogDebug("key failed to unmarshal as GitHubUserInfo", "key", key, "error", err.Error())
+				p.API.LogDebug("key failed to unmarshal as GitHubUserInfo", "key", key,
+					"error", err.Error())
 				continue
 			}
-			if info.Token == nil || info.Token.AccessToken == "" {
+			if tryInfo.Token == nil || tryInfo.Token.AccessToken == "" {
 				p.API.LogDebug("skipping key with no token", "key", key)
 				continue
 			}
 
-			req, err := client.NewRequest(http.MethodPatch,
-				"/applications/"+config.GitHubOAuthClientID+"/token",
-				map[string]string{
-					"access_token": info.Token.AccessToken,
-				},
-			)
-
-
-			bb, _ := httputil.DumpRequest(req, true)
-			fmt.Printf("<>/<> REQUEST:\n%v\n", string(bb))
-
-			if err != nil {
-				p.API.LogDebug("failed to compose GitHub request", "key", key, "error", err.Error())
-				continue
-			}
-			m := map[string]interface{}{}
-			_, err = client.Do(ctx, req, &m)
-			if err != nil {
-				p.API.LogError("failed to refresh token", "key", key, "user_id", info.UserID, "error", err.Error())
+			info, errResp := p.getGitHubUserInfo(tryInfo.UserID)
+			if errResp != nil {
+				p.API.LogError("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
+					"error", errResp.Error())
 				continue
 			}
 
-			fmt.Printf("<>/<> RESPONSE %+v\n", m)
+			_, err = p.forceResetUserTokenMM34646(ctx, config, *info)
+			if err != nil {
+				p.API.LogError("failed to reset GitHub user token", "key", key, "user_id", tryInfo.UserID,
+					"error", err.Error())
+				continue
+			}
 		}
+
+		if len(keys) < pageSize {
+			break
+		}
+		time.Sleep(delayBetweenPages)
 	}
 	return nil
+}
+
+func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info GitHubUserInfo) (string, error) {
+	if info.ForceResetTokenMM34646 {
+		return info.Token.AccessToken, nil
+	}
+
+	client, err := p.getResetUserTokenMM34646Client(config)
+	if err != nil {
+		p.API.LogInfo("Failed to create a special GitHub client to refresh the user's token", "error", err.Error())
+	}
+
+	req, apiErr := client.NewRequest(http.MethodPatch,
+		"/applications/"+config.GitHubOAuthClientID+"/token",
+		map[string]string{
+			"access_token": info.Token.AccessToken,
+		},
+	)
+	if apiErr != nil {
+		return "", errors.Wrap(apiErr, "failed to compose GitHub request")
+	}
+
+	m := map[string]interface{}{}
+	_, apiErr = client.Do(ctx, req, &m)
+	if apiErr != nil {
+		return "", errors.Wrap(apiErr, "failed to reset token")
+	}
+	newToken, ok := m["token"].(string)
+	if !ok {
+		return "", errors.New("no or invalid token in the response")
+	}
+
+	info.Token.AccessToken = newToken
+	info.ForceResetTokenMM34646 = true
+	err = p.storeGitHubUserInfo(&info)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
+	}
+	p.API.LogDebug("Updated user access token for MM-34646", "user_id", info.UserID)
+
+	return newToken, nil
 }
 
 type basicAuthTransport struct {
@@ -90,4 +114,13 @@ type basicAuthTransport struct {
 func (t basicAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.SetBasicAuth(t.ClientID, t.Secret)
 	return http.DefaultTransport.RoundTrip(req)
+}
+
+func (p *Plugin) getResetUserTokenMM34646Client(config *Configuration) (*github.Client, error) {
+	return getGitHubClient(&http.Client{
+		Transport: &basicAuthTransport{
+			ClientID: config.GitHubOAuthClientID,
+			Secret:   config.GitHubOAuthClientSecret,
+		},
+	}, config)
 }

@@ -79,27 +79,28 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
-		"test":         p.handleTest,
+		"test":          p.handleTest,
 	}
 
 	return p
 }
 
-func (p *Plugin) githubConnectUser(c *UserContext) *github.Client {
-	token := *c.GHInfo.Token
-	if c.GHInfo.ForceRefreshTokenMM34646 {
-		refreshedToken, err := p.refreshAccessToken(c)
-		if err == nil {
-			token = *refreshedToken
-		} else {
-			p.API.LogInfo("Failed to refresh access token", "error", err.Error())
-		}
+func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
+	access := info.Token.AccessToken
+	config := p.getConfiguration()
+	updated, err := p.forceResetUserTokenMM34646(ctx, config, *info)
+	if err == nil {
+		access = updated
+	} else {
+		p.API.LogInfo("Failed to refresh access token", "error", err.Error())
 	}
 
-	return p.githubConnect(token)
+	tok := *info.Token
+	tok.AccessToken = access
+	return p.githubConnectToken(tok)
 }
 
-func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
+func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
 	config := p.getConfiguration()
 
 	client, err := GetGitHubClient(token, config)
@@ -204,7 +205,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 	// TODO: make this part of the Plugin struct and reuse it.
-	ghClient := p.githubConnect(*info.Token)
+	ghClient := p.githubConnectUser(context.Background(), info)
 
 	replacements := p.getReplacements(msg)
 	post.Message = p.makeReplacements(msg, replacements, ghClient)
@@ -247,8 +248,8 @@ type GitHubUserInfo struct {
 	Settings            *UserSettings
 	AllowedPrivateRepos bool
 
-	// All tokens issued prior to MM-34646 must be refreshed.
-	ForceRefreshTokenMM34646 bool
+	// ForceResetTokenMM34646 is set for a user whose token has been reset for MM-34646.
+	ForceResetTokenMM34646 bool
 }
 
 type UserSettings struct {
@@ -425,7 +426,8 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 }
 
 func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+	ctx := context.Background()
+	text, err := p.GetToDo(ctx, info.GitHubUsername, p.githubConnectUser(ctx, info))
 	if err != nil {
 		return err
 	}
@@ -561,7 +563,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
-	githubClient := p.githubConnect(*info.Token)
+	githubClient := p.githubConnectUser(ctx, info)
 	config := p.getConfiguration()
 
 	query := getReviewSearchQuery(username, config.GitHubOrg)
