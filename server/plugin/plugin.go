@@ -84,6 +84,20 @@ func NewPlugin() *Plugin {
 	return p
 }
 
+func (p *Plugin) githubConnectUser(c *UserContext) *github.Client {
+	token := *c.GHInfo.Token
+	if c.GHInfo.ForceRefreshTokenMM34646 {
+		refreshedToken, err := p.refreshAccessToken(c)
+		if err == nil {
+			token = *refreshedToken
+		} else {
+			p.API.LogInfo("Failed to refresh access token", "error", err.Error())
+		}
+	}
+
+	return p.githubConnect(token)
+}
+
 func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
 	config := p.getConfiguration()
 
@@ -227,6 +241,9 @@ type GitHubUserInfo struct {
 	LastToDoPostAt      int64
 	Settings            *UserSettings
 	AllowedPrivateRepos bool
+
+	// All tokens issued prior to MM-34646 must be refreshed.
+	ForceRefreshTokenMM34646 bool
 }
 
 type UserSettings struct {

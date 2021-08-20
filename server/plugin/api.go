@@ -443,6 +443,22 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 }
 
+func (p *Plugin) refreshAccessToken(c *UserContext) (*oauth2.Token, error) {
+	conf := p.getOAuthConfig(c.GHInfo.AllowedPrivateRepos)
+
+	ts := conf.TokenSource(c.Ctx, c.GHInfo.Token)
+	newToken, err := ts.Token()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to obtain refreshed token")
+	}
+
+	fmt.Printf("<>/<> Access: %v %q %q,  Refresh: %v %q %q\n",
+		newToken.AccessToken == c.GHInfo.Token.AccessToken, newToken.AccessToken, c.GHInfo.Token.AccessToken,
+		newToken.RefreshToken == c.GHInfo.Token.RefreshToken, newToken.RefreshToken, c.GHInfo.Token.RefreshToken)
+
+	return newToken, nil
+}
+
 func (p *Plugin) getGitHubUser(c *Context, w http.ResponseWriter, r *http.Request) {
 	type GitHubUserRequest struct {
 		UserID string `json:"user_id"`
