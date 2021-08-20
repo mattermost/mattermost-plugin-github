@@ -451,6 +451,14 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	return "Settings updated."
 }
 
+func (p *Plugin) handleTest(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	err := p.forceRefreshUserTokens(nil)
+	if err != nil {
+		return "error: " + err.Error()
+	}
+	return "OK"
+}
+
 func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid issue command. Available command is 'create'."

@@ -79,6 +79,7 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
+		"test":         p.handleTest,
 	}
 
 	return p
@@ -114,8 +115,12 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(context.Background(), ts)
 
+	return getGitHubClient(tc, config)
+}
+
+func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*github.Client, error) {
 	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
-		return github.NewClient(tc), nil
+		return github.NewClient(authenticatedClient), nil
 	}
 
 	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
@@ -124,7 +129,7 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	uploadURL, _ := url.Parse(config.EnterpriseUploadURL)
 	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
 
-	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), tc)
+	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), authenticatedClient)
 	if err != nil {
 		return nil, err
 	}
