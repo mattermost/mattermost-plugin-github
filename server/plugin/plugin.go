@@ -126,7 +126,7 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	chimeraURL := p.API.GetConfig().PluginSettings.ChimeraOAuthProxyUrl
-	if config.UsePreregisteredApplication && (chimeraURL == nil || *chimeraURL == "") {
+	if p.getConfiguration().UsePreregisteredApplication && (chimeraURL == nil || *chimeraURL == "") {
 		return errors.New("cannot use pre-registered application if Chimera URL is not set or empty. Please set a PluginSettings.ChimeraOAuthProxyURL or use a custom application")
 	}
 
