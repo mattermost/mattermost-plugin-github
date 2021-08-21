@@ -332,3 +332,13 @@ func getToDoDisplayText(baseURL, title, url, notifType string) string {
 
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
 }
+
+// ItemExists check if the element exist in the passed array
+func ItemExists(array []string, item string) (bool, int) {
+	for i := 0; i < len(array); i++ {
+		if array[i] == item {
+			return true, i
+		}
+	}
+	return false, -1
+}
