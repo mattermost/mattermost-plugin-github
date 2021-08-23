@@ -70,7 +70,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 
 	client, err := p.getResetUserTokenMM34646Client(config)
 	if err != nil {
-		p.API.LogInfo("Failed to create a special GitHub client to refresh the user's token", "error", err.Error())
+		return "", errors.Wrap(err, "failed to create a special GitHub client to refresh the user's token")
 	}
 
 	a, _, err := client.Authorizations.Reset(ctx, config.GitHubOAuthClientID, info.Token.AccessToken)
