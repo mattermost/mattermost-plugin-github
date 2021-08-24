@@ -10,11 +10,14 @@ import (
 )
 
 const pageSize = 100
-const delayBetweenPages = 5 * time.Minute
+const delayBetweenUsers = 1 * time.Second
+const delayToStart = 5 * time.Minute
 
 func (p *Plugin) forceResetAllMM34646() error {
 	config := p.getConfiguration()
 	ctx := context.Background()
+
+	time.Sleep(delayToStart)
 
 	for page := 0; ; page++ {
 		keys, appErr := p.API.KVList(page, pageSize)
@@ -35,6 +38,9 @@ func (p *Plugin) forceResetAllMM34646() error {
 				// too noisy to report
 				continue
 			}
+			if tryInfo.MM34646ResetTokenDone {
+				continue
+			}
 			if tryInfo.Token == nil || tryInfo.Token.AccessToken == "" {
 				// too noisy to report
 				continue
@@ -53,12 +59,13 @@ func (p *Plugin) forceResetAllMM34646() error {
 					"error", err.Error())
 				continue
 			}
+
+			time.Sleep(delayBetweenUsers)
 		}
 
 		if len(keys) < pageSize {
 			break
 		}
-		time.Sleep(delayBetweenPages)
 	}
 	return nil
 }
