@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v5/model"
 	"github.com/mattermost/mattermost-server/v5/plugin"
@@ -22,6 +22,7 @@ const (
 	featureDeletes       = "deletes"
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
+	featureStars         = "stars"
 )
 
 var validFeatures = map[string]bool{
@@ -33,6 +34,7 @@ var validFeatures = map[string]bool{
 	featureDeletes:       true,
 	featureIssueComments: true,
 	featurePullReviews:   true,
+	featureStars:         true,
 }
 
 const (

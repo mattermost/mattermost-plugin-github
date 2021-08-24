@@ -9,10 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
 	"github.com/microcosm-cc/bluemonday"
-
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-server/v5/model"
 )
 
@@ -161,6 +159,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 		handler = func() {
 			p.postDeleteEvent(event)
+		}
+	case *github.StarEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postStarEvent(event)
 		}
 	}
 
@@ -1043,4 +1046,41 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)
+}
+
+func (p *Plugin) postStarEvent(event *github.StarEvent) {
+	repo := event.GetRepo()
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	newStarMessage, err := renderTemplate("newRepoStar", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render template", "error", err.Error())
+		return
+	}
+
+	post := &model.Post{
+		UserId:  p.BotUserID,
+		Type:    "custom_git_star",
+		Message: newStarMessage,
+	}
+
+	for _, sub := range subs {
+		if !sub.Stars() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
 }
