@@ -326,7 +326,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 		if len(githubHooks) == 0 {
 			msg += "\n No webhook was found for this repository or organization. Would you like the webhook to be created?"
-			msg += "\n `github webhook add " + owner + " [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
+			msg += "\n Can run the command to create a wehook"
+			msg += "\n `/github webhook add " + owner + " [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
 		}
 		return msg
 	}
@@ -346,8 +347,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 	if len(githubHooks) == 0 {
 		msg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
-		msg += fmt.Sprintf("\n `github webhook add %s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
-		msg += fmt.Sprintf("\n `github webhook add %s/%s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
+		msg += "\nCan run any one command to create a wehook"
+		msg += fmt.Sprintf("\n `/github webhook add %s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
+		msg += fmt.Sprintf("\n `/github webhook add %s/%s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
 	}
 	return msg
 }
