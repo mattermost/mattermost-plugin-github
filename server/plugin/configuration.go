@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -65,7 +66,9 @@ func (p *Plugin) getConfiguration() *Configuration {
 	if p.configuration == nil {
 		return &Configuration{}
 	}
-
+	p.configuration.GitHubOrg = strings.TrimSpace(p.configuration.GitHubOrg)
+	p.configuration.GitHubOAuthClientID = strings.TrimSpace(p.configuration.GitHubOAuthClientID)
+	p.configuration.GitHubOAuthClientSecret = strings.TrimSpace(p.configuration.GitHubOAuthClientSecret)
 	return p.configuration
 }
 

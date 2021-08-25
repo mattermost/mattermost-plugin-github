@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/google/go-github/v37/github"
 	"github.com/pkg/errors"
@@ -83,6 +84,9 @@ func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
 
 	config := &plugin.Configuration{}
 	err = json.Unmarshal(respBody, config)
+	config.GitHubOrg = strings.TrimSpace(config.GitHubOrg)
+	config.GitHubOAuthClientID = strings.TrimSpace(config.GitHubOAuthClientID)
+	config.GitHubOAuthClientSecret = strings.TrimSpace(config.GitHubOAuthClientSecret)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode GitHub config")
 	}

@@ -13,18 +13,23 @@ import (
 )
 
 const (
-	SubscriptionsKey     = "subscriptions"
-	excludeOrgMemberFlag = "exclude-org-member"
+	SubscriptionsKey              = "subscriptions"
+	excludeOrgMemberFlag          = "exclude-org-member"
+	excludeOrgReposFlag           = "exclude"
+	SubscribedRepoNotificationOff = "subscribed-turned-off-notifications"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
+	ExcludeOrgRepos   bool
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
 	switch flag { // nolint:gocritic // It's expected that more flags get added.
 	case excludeOrgMemberFlag:
 		s.ExcludeOrgMembers = true
+	case excludeOrgReposFlag:
+		s.ExcludeOrgRepos = true
 	}
 }
 
@@ -166,6 +171,19 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
+func (p *Plugin) IsNotificationOff(repoName string) bool {
+	repos, err := p.GetExcludedNotificationRepos()
+	if err != nil {
+		p.API.LogWarn("Failed to check the disabled notification repo list.", "error", err.Error())
+		return false
+	}
+	if len(repos) == 0 {
+		return false
+	}
+	exist, _ := ItemExists(repos, repoName)
+
+	return exist
+}
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
@@ -259,6 +277,66 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	return nil
 }
 
+func (p *Plugin) GetExcludedNotificationRepos() ([]string, error) {
+	var subscriptions []string
+	value, appErr := p.API.KVGet(SubscribedRepoNotificationOff)
+	if appErr != nil {
+		return nil, errors.Wrap(appErr, "could not get subscriptions from KVStore")
+	}
+	if value == nil {
+		return []string{}, nil
+	}
+	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not properly decode subscriptions key")
+	}
+	return subscriptions, nil
+}
+
+func (p *Plugin) StoreExcludedNotificationRepo(s string) error {
+	var repoNames, err = p.GetExcludedNotificationRepos()
+	if err != nil {
+		return errors.Wrap(err, "error while getting previous value of key")
+	}
+	isDer, _ := ItemExists(repoNames, s)
+	if len(repoNames) > 0 && !isDer {
+		repoNames = append(repoNames, s)
+	} else if len(repoNames) == 0 {
+		repoNames = append(repoNames, s)
+	}
+	b, err := json.Marshal(repoNames)
+	if err != nil {
+		return errors.Wrap(err, "error while converting subscriptions map to json")
+	}
+
+	if appErr := p.API.KVSet(SubscribedRepoNotificationOff, b); appErr != nil {
+		return errors.Wrap(appErr, "could not store subscriptions in KV store")
+	}
+
+	return nil
+}
+func (p *Plugin) EnableNotificationTurnedOffRepo(s string) error {
+	var repoNames, err = p.GetExcludedNotificationRepos()
+	if err != nil {
+		return errors.Wrap(err, "error while getting previous value of key")
+	}
+	if len(repoNames) > 0 {
+		exists, index := ItemExists(repoNames, s)
+		if exists {
+			repoNames = append(repoNames[:index], repoNames[index+1:]...)
+			b, err := json.Marshal(repoNames)
+			if err != nil {
+				return errors.Wrap(err, "error while converting subscriptions map to json")
+			}
+
+			if appErr := p.API.KVSet(SubscribedRepoNotificationOff, b); appErr != nil {
+				return errors.Wrap(appErr, "could not store subscriptions in KV store")
+			}
+		}
+	}
+
+	return nil
+}
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
 	org := strings.Split(name, "/")[0]
