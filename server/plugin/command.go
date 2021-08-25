@@ -40,10 +40,6 @@ const (
 	list      = "list"
 	add       = "add"
 	deleteAll = "delete-all"
-	newLine   = "\n"
-)
-const (
-	inboundWebhookURL = "/plugins/github/webhook"
 )
 
 // validateFeatures returns false when 1 or more given features
@@ -271,7 +267,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
-		txt += newLine
+		txt += "\n"
 	}
 
 	return txt
@@ -326,8 +322,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 		if len(githubHooks) == 0 {
 			msg += "\n No webhook was found for this repository or organization. Would you like the webhook to be created?"
-			msg += "\n Can run the command to create a wehook"
-			msg += "\n `/github webhook add " + owner + " [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
+			msg += "\n Suggested Command to create a wehook"
+			msg += "\n `/github webhook add " + owner + "[secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
 		}
 		return msg
 	}
@@ -347,9 +343,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 	if len(githubHooks) == 0 {
 		msg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
-		msg += "\nCan run any one command to create a wehook"
-		msg += fmt.Sprintf("\n `/github webhook add %s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
-		msg += fmt.Sprintf("\n `/github webhook add %s/%s [token:secret-token] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
+		msg += "\nSuggested Command, Can run any one command to create a wehook"
+		msg += fmt.Sprintf("\n `/github webhook add %s [secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
+		msg += fmt.Sprintf("\n `/github webhook add %s/%s [secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
 	}
 	return msg
 }
@@ -487,40 +483,53 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	case add:
 		if len(parameters) < 1 {
 			return "Unknown action, Currently supported to add and List webhook "
+		} else if len(parameters) < 2 {
+			return "Invalid Command, secret is mandatory"
 		}
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 		if owner == "" {
 			return "Currently supported to add webhook to a specific [owner/repo] ."
 		}
-
-		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + inboundWebhookURL
+		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + Manifest.Props["inbound_webhook_url"].(string)
 		var hook github.Hook
 		var config = make(map[string]interface{})
-
-		if len(parameters) > 2 {
-			for _, val := range strings.Split(parameters[2], ",") {
-				KVPair := strings.Split(val, "=")
+		config["secret"] = parameters[1]
+		if len(parameters) >= 2 {
+			parameters = parameters[2:]
+			for _, val := range parameters {
 				switch {
-				case KVPair[0] == "insecure_ssl":
-					insecureSSL, err := strconv.ParseBool(KVPair[1])
-					if err != nil {
-						return "config filed insecure_ssl can only have on of the following true or false "
-					}
-					config[KVPair[0]] = insecureSSL
-				case KVPair[0] == "options":
-					hook.Events = strings.Split(KVPair[1], "&")
+				case strings.Contains(val, "https://"):
+					config["url"] = val
+				case strings.Contains(val, "true") || strings.Contains(val, "false"):
+					insecureVal, _ := strconv.ParseBool(val)
+					config["insecure_ssl"] = insecureVal
+				case strings.Contains(val, "application/json") || strings.Contains(val, "x-www-form-urlencoded"):
+					config["content_type"] = val
 				default:
-					config[KVPair[0]] = KVPair[1]
+					if strings.Contains(val, "*") && len(val) == 1 {
+						hook.Events = []string{"*"}
+						break
+					}
+					if err := p.CheckOptionsValid(strings.Split(val, ",")); err != nil {
+						return err.Error()
+					}
+					hook.Events = strings.Split(val, ",")
 				}
 			}
-		} else {
+		}
+		if _, exists := config["url"]; !exists {
 			config["url"] = siteURL
+		}
+		if _, exists := config["insecure_ssl"]; !exists {
 			config["insecure_ssl"] = false
-			config["content_type"] = "application/json"
+		}
+		if _, exists := config["content_type"]; !exists {
+			config["content_type"] = "x-www-form-urlencoded"
+		}
+		if len(hook.Events) == 0 {
 			hook.Events = []string{"*"}
 		}
 		hook.Config = config
-
 		githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 		if err != nil {
 			return err.Error()
@@ -538,9 +547,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		hookURL += "/settings/hooks/"
 		txt := "Webhook Created Successfully \n"
 		hookID := strconv.Itoa(int(*githubHook.ID))
-		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
-		txt += newLine
-
+		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
 		return txt
 	case list:
 
@@ -549,33 +556,33 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		}
 
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-		var Page int
-		var ShouldCallNext = true
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
 		var err error
+		opt := &github.ListOptions{
+			PerPage: 10,
+		}
 		if repo == "" {
-			for ShouldCallNext {
-				Page++
-				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, &github.ListOptions{PerPage: Page})
+			for {
+				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
 				if err != nil {
 					return err.Error()
 				}
 				if githubResponse.NextPage == 0 {
-					ShouldCallNext = false
+					break
 				}
+				opt.Page = githubResponse.NextPage
 			}
 		} else {
-			for ShouldCallNext {
-				Page++
-				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: Page})
-
+			for {
+				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
 				if err != nil {
 					return err.Error()
 				}
 				if githubResponse.NextPage == 0 {
-					ShouldCallNext = false
+					break
 				}
+				opt.Page = githubResponse.NextPage
 			}
 		}
 
@@ -593,13 +600,22 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 				hookURL += "/" + repo
 			}
 			hookURL += "/settings/hooks/"
-			txt += fmt.Sprintf(" *  [%s](%s) :  -  %s", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
-			txt += newLine
+			txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
 		}
 
 		return txt
 	}
 	return "invalid action only add and list command are supported"
+}
+func (p *Plugin) CheckOptionsValid(options []string) error {
+	for _, val := range options {
+		for _, item := range Manifest.Props["webhook_events"].([]interface{}) {
+			if item.(string) != val {
+				return errors.New(val + " is not a valid events to trigger webhook")
+			}
+		}
+	}
+	return nil
 }
 func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner, repo string, hookID int64) (*github.Hook, *github.Response, error) {
 	if repo != "" {
@@ -786,11 +802,11 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhookList.AddTextArgument("Owner/repo to list webhooks from", "[owner/repo]", "")
 
 	webhook.AddCommand(webhookList)
-	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url token content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
+	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] secret callback_url content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
-	webhookAdd.AddTextArgument("Call Back URL", "", "")
-	webhookAdd.AddTextArgument("token", "secret assess token from github plugin console", "")
-	webhookAdd.AddTextArgument("content_type", "[application-json/application/x-www-form-urlencoded]", "")
+	webhookAdd.AddTextArgument("secret", "(required), Webhook Secret copy from System Console > Plugins > GitHub", "")
+	webhookAdd.AddTextArgument("Call Back URL", "(optional) ,default:Base_url/plugins/github/webhook", "")
+	webhookAdd.AddTextArgument("content_type", "(optional) ,default:x-www-form-urlencoded", "")
 	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 
 	insecureSSLValue := []model.AutocompleteListItem{{
