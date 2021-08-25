@@ -15,8 +15,9 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )
@@ -125,7 +126,8 @@ func (p *Plugin) OnActivate() error {
 
 	p.initializeAPI()
 
-	botID, err := p.Helpers.EnsureBot(&model.Bot{
+	client := pluginapi.NewClient(p.API, p.Driver)
+	botID, err := client.Bot.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
@@ -166,7 +168,9 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
-	shouldProcessMessage, err := p.Helpers.ShouldProcessMessage(post)
+	client := pluginapi.NewClient(p.API, p.Driver)
+
+	shouldProcessMessage, err := client.Post.ShouldProcessMessage(post)
 	if err != nil {
 		p.API.LogError("Error while checking if the message should be processed", "error", err.Error())
 		return nil, ""

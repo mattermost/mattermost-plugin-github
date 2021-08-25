@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
@@ -261,7 +261,6 @@ func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	r.Header.Set("Mattermost-Plugin-ID", c.SourcePluginId)
 	w.Header().Set("Content-Type", "application/json")
 
 	p.router.ServeHTTP(w, r)
@@ -895,7 +894,6 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
 		RootId:    rootID,
-		ParentId:  rootID,
 		UserId:    c.UserID,
 	}
 
@@ -1305,7 +1303,6 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		Message:   message,
 		ChannelId: channelID,
 		RootId:    rootID,
-		ParentId:  rootID,
 		UserId:    c.UserID,
 	}
 

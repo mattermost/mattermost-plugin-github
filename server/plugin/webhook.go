@@ -13,7 +13,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/google/go-github/v31/github"
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
