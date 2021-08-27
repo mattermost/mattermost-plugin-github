@@ -106,6 +106,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
 
 	if err := p.checkOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
@@ -259,6 +260,7 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
+	name = strings.ToLower(name)
 	org := strings.Split(name, "/")[0]
 	subs, err := p.GetSubscriptions()
 	if err != nil {
@@ -298,6 +300,10 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	if owner == "" && repo == "" {
 		return errors.New("invalid repository")
 	}
+
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
+
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()
