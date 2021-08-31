@@ -24,6 +24,7 @@ const activityTimeout = 60 * 60 * 1000; // 1 hour
 class PluginClass {
     async initialize(registry, store) {
         registry.registerReducer(Reducer);
+        Client.setServerRoute(getServerRoute(store.getState()));
 
         const {data: settings} = await getSettings(store.getState);
         await getConnected(true)(store.dispatch, store.getState);
@@ -48,7 +49,6 @@ class PluginClass {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateIssueModal(store));
         registry.registerReconnectHandler(handleReconnect(store));
 
-        Client.setServerRoute(getServerRoute(store.getState()));
 
         activityFunc = () => {
             const now = new Date().getTime();
