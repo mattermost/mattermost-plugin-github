@@ -5,10 +5,10 @@ import * as React from 'react';
 
 import * as CSS from 'csstype';
 
-import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
+import {Badge, OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {Theme} from 'mattermost-redux/types/preferences';
-import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
+import {changeOpacity, makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
+import {GitPullRequestIcon, IconProps, IssueOpenedIcon} from '@primer/octicons-react';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -202,7 +202,9 @@ function GithubItems(props: GithubItemsProps) {
                     <span
                         title={'Pending'}
                         style={{...style.icon, ...style.iconPending}}
-                    ><DotIcon/></span>
+                    >
+                        <DotIcon/>
+                    </span>
                 );
                 break;
             default:
@@ -210,7 +212,9 @@ function GithubItems(props: GithubItemsProps) {
                     <span
                         title={'Failed'}
                         style={{...style.icon, ...style.iconFailed}}
-                    ><CrossIcon/></span>
+                    >
+                        <CrossIcon/>
+                    </span>
                 );
             }
         }
