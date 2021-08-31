@@ -49,7 +49,6 @@ class PluginClass {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateIssueModal(store));
         registry.registerReconnectHandler(handleReconnect(store));
 
-
         activityFunc = () => {
             const now = new Date().getTime();
             if (now - lastActivityTime > activityTimeout) {
