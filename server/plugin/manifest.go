@@ -3,12 +3,13 @@
 package plugin
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
-var Manifest *model.Manifest
+var Manifest model.Manifest
 
 const manifestStr = `
 {
@@ -144,5 +145,5 @@ const manifestStr = `
 `
 
 func init() {
-	Manifest = model.ManifestFromJson(strings.NewReader(manifestStr))
+	_ = json.NewDecoder(strings.NewReader(manifestStr)).Decode(&Manifest)
 }
