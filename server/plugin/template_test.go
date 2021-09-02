@@ -655,7 +655,7 @@ func TestDeletedMessageTemplate(t *testing.T) {
 
 func TestRepoStarTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Starred by [panda](https://github.com/panda)
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) starred by [panda](https://github.com/panda)
 It now has **1** Stars.`
 
 	actual, err := renderTemplate("newRepoStar", &github.StarEvent{
