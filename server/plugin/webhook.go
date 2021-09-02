@@ -5,13 +5,13 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
+	"github.com/google/go-github/v37/github"
+	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/microcosm-cc/bluemonday"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/google/go-github/v37/github"
-	"github.com/mattermost/mattermost-server/v5/model"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
