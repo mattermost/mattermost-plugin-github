@@ -189,7 +189,7 @@ func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) 
 	}
 }
 
-func (p *Plugin) createContext(_ http.ResponseWriter, r *http.Request) *Context {
+func (p *Plugin) createContext(_ http.ResponseWriter, r *http.Request) (*Context, context.CancelFunc) {
 	userID := r.Header.Get("Mattermost-User-ID")
 
 	logger := logger.New(p.API).With(logger.LogContext{
@@ -197,7 +197,6 @@ func (p *Plugin) createContext(_ http.ResponseWriter, r *http.Request) *Context 
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	context := &Context{
 		Ctx:    ctx,
@@ -205,12 +204,13 @@ func (p *Plugin) createContext(_ http.ResponseWriter, r *http.Request) *Context 
 		Logger: logger,
 	}
 
-	return context
+	return context, cancel
 }
 
 func (p *Plugin) attachContext(handler HTTPHandlerFuncWithContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		context := p.createContext(w, r)
+		context, cancel := p.createContext(w, r)
+		defer cancel()
 
 		handler(context, w, r)
 	}
@@ -218,7 +218,8 @@ func (p *Plugin) attachContext(handler HTTPHandlerFuncWithContext) http.HandlerF
 
 func (p *Plugin) attachUserContext(handler HTTPHandlerFuncWithUserContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		context := p.createContext(w, r)
+		context, cancel := p.createContext(w, r)
+		defer cancel()
 
 		info, apiErr := p.getGitHubUserInfo(context.UserID)
 		if apiErr != nil {
@@ -529,7 +530,9 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		lt := time.Unix(lastPostAt/1000, 0).In(timezone)
 		if nt.Sub(lt).Hours() >= 1 && (nt.Day() != lt.Day() || nt.Month() != lt.Month() || nt.Year() != lt.Year()) {
 			if p.HasUnreads(info) {
-				p.PostToDo(info)
+				if err := p.PostToDo(info, c.UserID); err != nil {
+					p.API.LogWarn("Failed to create GitHub todo message", "user_id", info.UserID, "error", err.Error())
+				}
 				info.LastToDoPostAt = now
 				if err := p.storeGitHubUserInfo(info); err != nil {
 					p.API.LogWarn("Failed to store github info for new user", "userID", c.UserID, "error", err.Error())
@@ -695,7 +698,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	var mergeable bool
 	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
-	var reviewsList []*github.PullRequestReview = []*github.PullRequestReview{}
+	reviewsList := []*github.PullRequestReview{}
 
 	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
 
@@ -1078,7 +1081,7 @@ func (p *Plugin) getAssignees(c *UserContext, w http.ResponseWriter, r *http.Req
 	opt := github.ListOptions{PerPage: 50}
 
 	for {
-		assignees, resp, err := githubClient.Issues.ListAssignees(c.Ctx, owner+"abc", repo, &opt)
+		assignees, resp, err := githubClient.Issues.ListAssignees(c.Ctx, owner, repo, &opt)
 		if err != nil {
 			c.Logger.WithError(err).Warnf("Failed to list assignees")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
