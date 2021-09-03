@@ -80,7 +80,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue , webhook",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue, webhook",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -534,13 +534,13 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	switch command {
 	case add:
 		if len(parameters) < 1 {
-			return "Unknown action, Currently supported to add and List webhook "
+			return "Invalid parameters for add command, Provide [owner/repo] details."
 		} else if len(parameters) < 2 {
 			return "Invalid Command, secret is mandatory"
 		}
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 		if owner == "" {
-			return "Currently supported to add webhook to a specific [owner/repo] ."
+			return "Invalid parameter for add command, provide repo details in `owner/repo` format."
 		}
 		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + Manifest.Props["inbound_webhook_url"].(string)
 		var hook github.Hook
@@ -657,7 +657,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 
 		return txt
 	}
-	return "invalid action only add and list command are supported"
+	return "Invalid action, only `add` and `list` commands are supported."
 }
 func (p *Plugin) CheckOptionsValid(options []string) error {
 	for _, val := range options {

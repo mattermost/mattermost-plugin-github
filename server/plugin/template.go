@@ -351,7 +351,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
 		"  * `/github mute delete-all` - unmute all GitHub users\n" +
-		"* `/github Webhook` - Managed to List Webhook of [owner/repo] and add webhook to owoner[/repo].\n" +
+		"  * `/github Webhook` - Manage all webhooks.\n" +
 		"  * `/github Webhook list` - list your Webhook of a GitHub repository\n" +
 		"  * `/github webhook add [owner/repo] secret url content_type options insecure_ss;`\n" +
 		"    * `secret` - Required - webhook secret\n" +
