@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 )
@@ -18,16 +19,17 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	GitHubOrg               string
-	GitHubOAuthClientID     string
-	GitHubOAuthClientSecret string
-	WebhookSecret           string
-	EnableLeftSidebar       bool
-	EnablePrivateRepo       bool
-	EncryptionKey           string
-	EnterpriseBaseURL       string
-	EnterpriseUploadURL     string
-	EnableCodePreview       string
+	GitHubOrg                 string
+	GitHubOAuthClientID       string
+	GitHubOAuthClientSecret   string
+	WebhookSecret             string
+	EnableLeftSidebar         bool
+	EnablePrivateRepo         bool
+	ConnectToPrivateByDefault bool
+	EncryptionKey             string
+	EnterpriseBaseURL         string
+	EnterpriseUploadURL       string
+	EnableCodePreview         string
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -64,7 +66,9 @@ func (p *Plugin) getConfiguration() *Configuration {
 	if p.configuration == nil {
 		return &Configuration{}
 	}
-
+	p.configuration.GitHubOrg = strings.TrimSpace(p.configuration.GitHubOrg)
+	p.configuration.GitHubOAuthClientID = strings.TrimSpace(p.configuration.GitHubOAuthClientID)
+	p.configuration.GitHubOAuthClientSecret = strings.TrimSpace(p.configuration.GitHubOAuthClientSecret)
 	return p.configuration
 }
 
