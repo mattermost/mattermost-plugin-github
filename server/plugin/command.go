@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode"
 
+
 	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v5/model"
@@ -95,10 +96,6 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 		Message:   text,
 	}
 	_ = p.API.SendEphemeralPost(args.UserId, post)
-}
-
-func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
-	return p.githubConnect(*userInfo.Token)
 }
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
@@ -319,7 +316,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	ctx := context.Background()
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(ctx, userInfo)
 
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
@@ -394,7 +391,7 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 }
 
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
@@ -406,7 +403,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 }
 
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
 	if err != nil {
 		return "Encountered an error getting your GitHub profile."
