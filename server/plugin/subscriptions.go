@@ -89,7 +89,7 @@ func (s *Subscription) PullReviews() bool {
 }
 
 func (s *Subscription) Stars() bool {
-	return strings.Contains(s.Features, "stars")
+	return strings.Contains(s.Features, featureStars)
 }
 
 func (s *Subscription) Label() string {

@@ -357,7 +357,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- if eq .GetAction "created" }} starred
 {{- else }} unstarred
 {{- end }} by {{template "user" .GetSender}}
-It now has **{{.GetRepo.GetStargazersCount}}** Stars.`))
+It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
