@@ -30,6 +30,7 @@ type contentType string
 type Request struct {
 	Method string
 	URL    string
+	Header http.Header
 	Body   interface{}
 }
 
@@ -82,6 +83,10 @@ func (test *HTTPTest) CreateHTTPRequest(request Request) *http.Request {
 
 	req, err := http.NewRequest(request.Method, request.URL, body)
 	tassert.NoError(err, "Error while creating Request")
+
+	if request.Header != nil {
+		req.Header = request.Header
+	}
 
 	return req
 }
