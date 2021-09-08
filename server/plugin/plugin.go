@@ -15,8 +15,9 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )
@@ -84,7 +85,22 @@ func NewPlugin() *Plugin {
 	return p
 }
 
-func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
+func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
+	access := info.Token.AccessToken
+	config := p.getConfiguration()
+	updated, err := p.forceResetUserTokenMM34646(ctx, config, *info)
+	if err == nil {
+		access = updated
+	} else {
+		p.API.LogInfo("Failed to refresh access token", "error", err.Error())
+	}
+
+	tok := *info.Token
+	tok.AccessToken = access
+	return p.githubConnectToken(tok)
+}
+
+func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
 	config := p.getConfiguration()
 
 	client, err := GetGitHubClient(token, config)
@@ -100,8 +116,12 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(context.Background(), ts)
 
+	return getGitHubClient(tc, config)
+}
+
+func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*github.Client, error) {
 	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
-		return github.NewClient(tc), nil
+		return github.NewClient(authenticatedClient), nil
 	}
 
 	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
@@ -110,7 +130,7 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	uploadURL, _ := url.Parse(config.EnterpriseUploadURL)
 	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
 
-	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), tc)
+	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), authenticatedClient)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +145,8 @@ func (p *Plugin) OnActivate() error {
 
 	p.initializeAPI()
 
-	botID, err := p.Helpers.EnsureBot(&model.Bot{
+	client := pluginapi.NewClient(p.API, p.Driver)
+	botID, err := client.Bot.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
@@ -152,6 +173,12 @@ func (p *Plugin) OnActivate() error {
 
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
+	go func() {
+		err := p.forceResetAllMM34646()
+		if err != nil {
+			p.API.LogDebug("failed to reset user tokens", "error", err.Error())
+		}
+	}()
 	return nil
 }
 
@@ -166,7 +193,9 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
-	shouldProcessMessage, err := p.Helpers.ShouldProcessMessage(post)
+	client := pluginapi.NewClient(p.API, p.Driver)
+
+	shouldProcessMessage, err := client.Post.ShouldProcessMessage(post)
 	if err != nil {
 		p.API.LogError("Error while checking if the message should be processed", "error", err.Error())
 		return nil, ""
@@ -185,7 +214,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 	// TODO: make this part of the Plugin struct and reuse it.
-	ghClient := p.githubConnect(*info.Token)
+	ghClient := p.githubConnectUser(context.Background(), info)
 
 	replacements := p.getReplacements(msg)
 	post.Message = p.makeReplacements(msg, replacements, ghClient)
@@ -227,6 +256,9 @@ type GitHubUserInfo struct {
 	LastToDoPostAt      int64
 	Settings            *UserSettings
 	AllowedPrivateRepos bool
+
+	// MM34646ResetTokenDone is set for a user whose token has been reset for MM-34646.
+	MM34646ResetTokenDone bool
 }
 
 type UserSettings struct {
@@ -403,7 +435,8 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 }
 
 func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+	ctx := context.Background()
+	text, err := p.GetToDo(ctx, info.GitHubUsername, p.githubConnectUser(ctx, info))
 	if err != nil {
 		return err
 	}
@@ -539,7 +572,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
-	githubClient := p.githubConnect(*info.Token)
+	githubClient := p.githubConnectUser(ctx, info)
 	config := p.getConfiguration()
 
 	query := getReviewSearchQuery(username, config.GitHubOrg)

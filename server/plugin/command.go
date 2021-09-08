@@ -6,10 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 )
 
@@ -93,10 +92,6 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 		Message:   text,
 	}
 	_ = p.API.SendEphemeralPost(args.UserId, post)
-}
-
-func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
-	return p.githubConnect(*userInfo.Token)
 }
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
@@ -268,6 +263,14 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		txt += "\n"
 	}
 
+	excludeRepos, err := p.GetExcludedNotificationRepos()
+	if err != nil {
+		return err.Error()
+	}
+	for _, repo := range excludeRepos {
+		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(repo, "/"), "notification : disabled")
+		txt += "\n"
+	}
 	return txt
 }
 
@@ -275,17 +278,20 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
+	var excludeRepo string
 	if len(parameters) > 1 {
 		var optionList []string
 
 		for _, element := range parameters[1:] {
-			if isFlag(element) {
+			switch {
+			case isFlag(element):
 				flags.AddFlag(parseFlag(element))
-			} else {
+			case flags.ExcludeOrgRepos && excludeRepo == "":
+				excludeRepo = element
+			default:
 				optionList = append(optionList, element)
 			}
 		}
-
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"
 		} else if len(optionList) == 1 {
@@ -306,15 +312,38 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	ctx := context.Background()
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(ctx, userInfo)
 
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
 		}
-
-		return fmt.Sprintf("Successfully subscribed to organization %s.", owner)
+		orgLink := p.getBaseURL() + owner
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s).", owner, orgLink)
+		if flags.ExcludeOrgRepos {
+			var excludeMsg string
+			for _, value := range strings.Split(excludeRepo, ",") {
+				val := strings.TrimSpace(value)
+				notificationOffRepoOwner, NotificationOffRepo := parseOwnerAndRepo(val, p.getBaseURL())
+				if notificationOffRepoOwner != owner {
+					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
+				}
+				if err := p.StoreExcludedNotificationRepo(val); err != nil {
+					return err.Error()
+				}
+				if excludeMsg != "" {
+					excludeMsg += fmt.Sprintf(" and [%s](%s)", NotificationOffRepo, orgLink+"/"+NotificationOffRepo)
+					continue
+				}
+				excludeMsg += fmt.Sprintf("[%s](%s)", NotificationOffRepo, orgLink+"/"+NotificationOffRepo)
+			}
+			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
+		}
+		return subOrgMsg
+	}
+	if flags.ExcludeOrgRepos {
+		return "--exclude feature currently support on organization level."
 	}
 
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
@@ -340,6 +369,10 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 
 	repo := parameters[0]
 
+	if err := p.EnableNotificationTurnedOffRepo(repo); err != nil {
+		p.API.LogWarn("Failed to unsubscribe while removing repo from disable notification list", "repo", repo, "error", err.Error())
+		return "Encountered an error trying to remove from notify disabled list. Please try again."
+	}
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
 		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
@@ -354,7 +387,7 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 }
 
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
@@ -366,7 +399,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 }
 
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
 	if err != nil {
 		return "Encountered an error getting your GitHub profile."
@@ -598,12 +631,23 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
-		flags := []model.AutocompleteListItem{{
-			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
-			Hint:     "(optional)",
-			Item:     "--exclude-org-member",
-		}}
-		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
+		exclude := []model.AutocompleteListItem{
+			{
+				HelpText: "notifications for these repos will be turned off",
+				Hint:     "(optional)",
+				Item:     "--exclude",
+			},
+		}
+		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude", true, exclude)
+		subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
+		flags := []model.AutocompleteListItem{
+			{
+				HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has no effect)",
+				Hint:     "(optional)",
+				Item:     "--exclude-org-member",
+			},
+		}
+		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member ", false, flags)
 	}
 	subscriptions.AddCommand(subscriptionsAdd)
 
