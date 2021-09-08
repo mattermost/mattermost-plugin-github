@@ -13,7 +13,7 @@ import (
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/google/go-github/v31/github"
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -193,9 +193,10 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	if apiErr != nil {
 		return false
 	}
-	githubClient := p.githubConnect(*info.Token)
+	ctx := context.Background()
+	githubClient := p.githubConnectUser(ctx, info)
 
-	if result, _, err := githubClient.Repositories.Get(context.Background(), owner, repo); result == nil || err != nil {
+	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
 		if err != nil {
 			p.API.LogWarn("Failed fetch repository to check permission", "error", err.Error())
 		}
@@ -216,7 +217,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 		return false
 	}
 
-	githubClient := p.githubConnect(*info.Token)
+	githubClient := p.githubConnectUser(context.Background(), info)
 	organization := p.getConfiguration().GitHubOrg
 
 	return p.isUserOrganizationMember(githubClient, user, organization)

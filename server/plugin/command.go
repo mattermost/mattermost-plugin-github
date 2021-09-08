@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 )
 
@@ -95,10 +95,6 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 		Message:   text,
 	}
 	_ = p.API.SendEphemeralPost(args.UserId, post)
-}
-
-func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
-	return p.githubConnect(*userInfo.Token)
 }
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
@@ -319,8 +315,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	ctx := context.Background()
-	githubClient := p.getGithubClient(userInfo)
 	var page int
+	githubClient := p.githubConnectUser(ctx, userInfo)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 
 	if repo == "" {
@@ -351,9 +347,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		}
 		githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
 		if len(githubHooks) == 0 {
-			subOrgMsg += "\n No webhook was found for this repository or organization. Would you like the webhook to be created?"
-			subOrgMsg += "\n Suggested Command to create a wehook"
-			subOrgMsg += "\n `/github webhook add " + owner + "[secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
+			subOrgMsg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
+			subOrgMsg += "\nSuggested Command to create a wehook"
+			subOrgMsg += "\n`/github webhook add " + owner + "[secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
 		}
 		return subOrgMsg
 	}
@@ -377,8 +373,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if len(githubHooks) == 0 {
 		msg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
 		msg += "\nSuggested Command, Can run any one command to create a wehook"
-		msg += fmt.Sprintf("\n `/github webhook add %s [secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
-		msg += fmt.Sprintf("\n `/github webhook add %s/%s [secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
+		msg += fmt.Sprintf("\n`/github webhook add %s [secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner)
+		msg += fmt.Sprintf("\n`/github webhook add %s/%s [secret:replace with webhook secret from Plugin console] [content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`", owner, repo)
 	}
 	return msg
 }
@@ -408,7 +404,7 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 }
 
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
@@ -420,7 +416,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 }
 
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
 	if err != nil {
 		return "Encountered an error getting your GitHub profile."
@@ -524,18 +520,20 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
-		return "Invalid webhook command. Available command are `add` and `list` ."
+		return "Invalid webhook command. Available command are `add` and `list`."
 	}
 	command := parameters[0]
 	parameters = parameters[1:]
 	ctx := context.Background()
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(ctx, userInfo)
 	baseURL := p.getBaseURL()
 	switch command {
 	case add:
 		if len(parameters) < 1 {
 			return "Invalid parameters for add command, Provide [owner/repo] details."
-		} else if len(parameters) < 2 {
+		}
+
+		if len(parameters) < 2 {
 			return "Invalid Command, secret is mandatory"
 		}
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
@@ -676,7 +674,6 @@ func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner
 	return githubClient.Organizations.GetHook(ctx, owner, hookID)
 }
 func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, owner, repo string, hook github.Hook) (*github.Hook, *github.Response, error) {
-	p.API.LogWarn("log ", "githubClient", githubClient, "owner", owner)
 
 	if repo != "" {
 		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
