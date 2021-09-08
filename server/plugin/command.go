@@ -674,7 +674,6 @@ func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner
 	return githubClient.Organizations.GetHook(ctx, owner, hookID)
 }
 func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, owner, repo string, hook github.Hook) (*github.Hook, *github.Response, error) {
-
 	if repo != "" {
 		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
 	}
