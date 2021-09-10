@@ -530,12 +530,10 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	switch command {
 	case add:
 		if len(parameters) < 1 {
-			return "Invalid parameters for add command, Provide [owner/repo] details."
+			return "Invalid parameter for add command, provide repo details in `[owner/repo]` format."
 		}
+
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-		if owner == "" {
-			return "Invalid parameter for add command, provide repo details in `owner/repo` format."
-		}
 		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + Manifest.Props["inbound_webhook_url"].(string)
 		var hook github.Hook
 		var config = make(map[string]interface{})
@@ -673,8 +671,6 @@ func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, ow
 	if repo != "" {
 		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
 	}
-	temp, _, err := githubClient.Organizations.Get(ctx, owner)
-	p.API.LogWarn("log ", "temp", temp, "err", err)
 
 	return githubClient.Organizations.CreateHook(ctx, owner, &hook)
 }
