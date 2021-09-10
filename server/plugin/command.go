@@ -468,8 +468,6 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	case add:
 		if len(parameters) < 1 {
 			return "Unknown action, Currently supported to add and List webhook "
-		} else if len(parameters) < 2 {
-			return "Invalid Command, secret is mandatory"
 		}
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 		if owner == "" {
@@ -478,9 +476,9 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + Manifest.Props["inbound_webhook_url"].(string)
 		var hook github.Hook
 		var config = make(map[string]interface{})
-		config["secret"] = parameters[1]
-		if len(parameters) >= 2 {
-			parameters = parameters[2:]
+		config["secret"] = p.getConfiguration().WebhookSecret
+		if len(parameters) >= 1 {
+			parameters = parameters[1:]
 			for _, val := range parameters {
 				switch {
 				case strings.Contains(val, "https://"):
@@ -787,9 +785,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhookList.AddTextArgument("Owner/repo to list webhooks from", "[owner/repo]", "")
 
 	webhook.AddCommand(webhookList)
-	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] secret callback_url content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
+	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
-	webhookAdd.AddTextArgument("secret", "(required), Webhook Secret copy from System Console > Plugins > GitHub", "")
 	webhookAdd.AddTextArgument("Call Back URL", "(optional) ,default:Base_url/plugins/github/webhook", "")
 	webhookAdd.AddTextArgument("content_type", "(optional) ,default:x-www-form-urlencoded", "")
 	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
