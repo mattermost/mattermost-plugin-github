@@ -467,12 +467,11 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	switch command {
 	case add:
 		if len(parameters) < 1 {
-			return "Unknown action, Currently supported to add and List webhook "
+			return "Invalid parameter for add command, provide repo details in `[owner/repo]` format."
 		}
+
 		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-		if owner == "" {
-			return "Currently supported to add webhook to a specific [owner/repo] ."
-		}
+
 		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + Manifest.Props["inbound_webhook_url"].(string)
 		var hook github.Hook
 		var config = make(map[string]interface{})
@@ -607,13 +606,9 @@ func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner
 	return githubClient.Organizations.GetHook(ctx, owner, hookID)
 }
 func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, owner, repo string, hook github.Hook) (*github.Hook, *github.Response, error) {
-	p.API.LogWarn("log ", "githubClient", githubClient, "owner", owner)
-
 	if repo != "" {
 		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
 	}
-	temp, _, err := githubClient.Organizations.Get(ctx, owner)
-	p.API.LogWarn("log ", "temp", temp, "err", err)
 
 	return githubClient.Organizations.CreateHook(ctx, owner, &hook)
 }
