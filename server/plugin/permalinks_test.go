@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"testing"
 
-
 	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
