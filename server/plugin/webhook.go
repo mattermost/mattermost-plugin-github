@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
+
 	"github.com/google/go-github/v37/github"
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
 )
 
