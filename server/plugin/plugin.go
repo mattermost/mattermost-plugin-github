@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -62,6 +63,8 @@ type Plugin struct {
 	configuration *Configuration
 
 	router *mux.Router
+
+	chimeraURL string
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -145,8 +148,8 @@ func (p *Plugin) OnActivate() error {
 		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
 	}
 
-	chimeraURL := p.API.GetConfig().PluginSettings.ChimeraOAuthProxyURL
-	if p.getConfiguration().UsePreregisteredApplication && (chimeraURL == nil || *chimeraURL == "") {
+	p.registerChimeraURL()
+	if p.getConfiguration().UsePreregisteredApplication && p.chimeraURL == "" {
 		return errors.New("cannot use pre-registered application if Chimera URL is not set or empty. " +
 			"For now using pre-registered application is intended for Cloud instances only. " +
 			"If you are running on-prem disable the setting and use a custom application, otherwise set PluginSettings.ChimeraOAuthProxyURL")
@@ -189,6 +192,18 @@ func (p *Plugin) OnActivate() error {
 		}
 	}()
 	return nil
+}
+
+// registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.
+func (p *Plugin) registerChimeraURL() {
+	chimeraURLSetting := p.API.GetConfig().PluginSettings.ChimeraOAuthProxyURL
+	if chimeraURLSetting != nil && *chimeraURLSetting != "" {
+		p.chimeraURL = *chimeraURLSetting
+		return
+	}
+	// Due to setting name change in v6 (ChimeraOAuthProxyUrl -> ChimeraOAuthProxyURL)
+	// fall back to env var to work with older servers.
+	p.chimeraURL = os.Getenv("MM_PLUGINSETTINGS_CHIMERAOAUTHPROXYURL")
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
@@ -265,7 +280,7 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 }
 
 func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
-	baseURL := fmt.Sprintf("%s/v1/github/%s", *p.API.GetConfig().PluginSettings.ChimeraOAuthProxyURL, chimeraGitHubAppIdentifier)
+	baseURL := fmt.Sprintf("%s/v1/github/%s", p.chimeraURL, chimeraGitHubAppIdentifier)
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
 
