@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -197,13 +196,9 @@ func (p *Plugin) OnActivate() error {
 // registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.
 func (p *Plugin) registerChimeraURL() {
 	chimeraURLSetting := p.API.GetConfig().PluginSettings.ChimeraOAuthProxyURL
-	if chimeraURLSetting != nil && *chimeraURLSetting != "" {
+	if chimeraURLSetting != nil {
 		p.chimeraURL = *chimeraURLSetting
-		return
 	}
-	// Due to setting name change in v6 (ChimeraOAuthProxyUrl -> ChimeraOAuthProxyURL)
-	// fall back to env var to work with older servers.
-	p.chimeraURL = os.Getenv("MM_PLUGINSETTINGS_CHIMERAOAUTHPROXYURL")
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {

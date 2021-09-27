@@ -41,7 +41,7 @@ const manifestStr = `
         "key": "UsePreregisteredApplication",
         "display_name": "Use Preregistered OAuth Application:",
         "type": "bool",
-        "help_text": "When true, instructs plugin to use preregistered GitHub OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with GitHub enterprise. **This setting is intended for Cloud instances.**",
+        "help_text": "When true, instructs the plugin to use the preregistered GitHub OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with GitHub enterprise. **This setting is intended to be used with Mattermost Cloud instances only.**",
         "placeholder": "",
         "default": false
       },
