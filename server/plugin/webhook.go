@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -938,21 +937,20 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 		case "issues":
 			templateName = "commentAuthorIssueNotification"
 		default:
-			p.API.LogError("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+			p.API.LogWarn("Unhandled issue type", "type", splitURL[len(splitURL)-2])
 			return
 		}
 
 		if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
-			p.API.LogError("Commenter is muted, skipping notification")
+			p.API.LogWarn("Commenter is muted, skipping notification")
 			return
 		}
 
 		message, err := renderTemplate(templateName, event)
 		if err != nil {
-			p.API.LogError("Failed to render template", "error", err.Error())
+			p.API.LogWarn("Failed to render template", "error", err.Error())
 			return
 		}
-		p.API.LogError(fmt.Sprintf("userId: %s", assigneeID))
 		p.CreateBotDMPost(assigneeID, message, "custom_git_author")
 		p.sendRefreshEvent(assigneeID)
 	}
