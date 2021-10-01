@@ -138,6 +138,14 @@ const manifestStr = `
             "value": "disable"
           }
         ]
+      },
+      {
+        "key": "EnableWebhookEventLogging",
+        "display_name": "Enable Webhook Event Logging:",
+        "type": "bool",
+        "help_text": "Allow the plugin to log the event from webhook.",
+        "placeholder": "",
+        "default": true
       }
     ]
   }

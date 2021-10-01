@@ -30,6 +30,7 @@ type Configuration struct {
 	EnterpriseBaseURL         string
 	EnterpriseUploadURL       string
 	EnableCodePreview         string
+	EnableWebhookEventLogging bool
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
