@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -36,10 +37,10 @@ var validFeatures = map[string]bool{
 }
 
 const (
-	list      = "list"
-	add       = "add"
-	delete    = "delete"
-	deleteAll = "delete-all"
+	list             = "list"
+	add              = "add"
+	subCommandDelete = "delete"
+	deleteAll        = "delete-all"
 )
 
 var webhookEvents = []string{
@@ -230,7 +231,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleMuteAdd(args, parameters[1], userInfo)
-	case command == delete:
+	case command == subCommandDelete:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
@@ -680,7 +681,7 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	command := parameters[0]
 	parameters = parameters[1:]
 	ctx := context.Background()
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(ctx, userInfo)
 	baseURL := p.getBaseURL()
 	switch command {
 	case add:
