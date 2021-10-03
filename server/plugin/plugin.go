@@ -41,6 +41,8 @@ const (
 
 	notificationReasonSubscribed = "subscribed"
 	dailySummary                 = "_dailySummary"
+
+	chimeraGitHubAppIdentifier = "plugin-github"
 )
 
 type Plugin struct {
@@ -60,6 +62,8 @@ type Plugin struct {
 	configuration *Configuration
 
 	router *mux.Router
+
+	chimeraURL string
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -144,6 +148,13 @@ func (p *Plugin) OnActivate() error {
 		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
 	}
 
+	p.registerChimeraURL()
+	if p.getConfiguration().UsePreregisteredApplication && p.chimeraURL == "" {
+		return errors.New("cannot use pre-registered application if Chimera URL is not set or empty. " +
+			"For now using pre-registered application is intended for Cloud instances only. " +
+			"If you are running on-prem disable the setting and use a custom application, otherwise set PluginSettings.ChimeraOAuthProxyURL")
+	}
+
 	p.initializeAPI()
 
 	client := pluginapi.NewClient(p.API, p.Driver)
@@ -181,6 +192,14 @@ func (p *Plugin) OnActivate() error {
 		}
 	}()
 	return nil
+}
+
+// registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.
+func (p *Plugin) registerChimeraURL() {
+	chimeraURLSetting := p.API.GetConfig().PluginSettings.ChimeraOAuthProxyURL
+	if chimeraURLSetting != nil {
+		p.chimeraURL = *chimeraURLSetting
+	}
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
@@ -225,6 +244,18 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	config := p.getConfiguration()
 
+	repo := github.ScopePublicRepo
+	if config.EnablePrivateRepo && privateAllowed {
+		// means that asks scope for private repositories
+		repo = github.ScopeRepo
+	}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)}
+
+	if config.UsePreregisteredApplication {
+		p.API.LogDebug("Using Chimera Proxy OAuth configuration")
+		return p.getOAuthConfigForChimeraApp(scopes)
+	}
+
 	baseURL := p.getBaseURL()
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
@@ -232,16 +263,33 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
-	repo := github.ScopePublicRepo
-	if config.EnablePrivateRepo && privateAllowed {
-		// means that asks scope for private repositories
-		repo = github.ScopeRepo
-	}
-
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)},
+		Scopes:       scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:   authURL.String(),
+			TokenURL:  tokenURL.String(),
+			AuthStyle: oauth2.AuthStyleInHeader,
+		},
+	}
+}
+
+func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
+	baseURL := fmt.Sprintf("%s/v1/github/%s", p.chimeraURL, chimeraGitHubAppIdentifier)
+	authURL, _ := url.Parse(baseURL)
+	tokenURL, _ := url.Parse(baseURL)
+
+	authURL.Path = path.Join(authURL.Path, "oauth", "authorize")
+	tokenURL.Path = path.Join(tokenURL.Path, "oauth", "token")
+
+	redirectURL, _ := url.Parse(fmt.Sprintf("%s/plugins/github/oauth/complete", *p.API.GetConfig().ServiceSettings.SiteURL))
+
+	return &oauth2.Config{
+		ClientID:     "placeholder",
+		ClientSecret: "placeholder",
+		Scopes:       scopes,
+		RedirectURL:  redirectURL.String(),
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   authURL.String(),
 			TokenURL:  tokenURL.String(),

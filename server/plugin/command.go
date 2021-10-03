@@ -37,10 +37,10 @@ var validFeatures = map[string]bool{
 }
 
 const (
-	list      = "list"
-	add       = "add"
-	delete    = "delete"
-	deleteAll = "delete-all"
+	list             = "list"
+	add              = "add"
+	subCommandDelete = "delete"
+	deleteAll        = "delete-all"
 )
 
 var webhookEvents = []string{
@@ -231,7 +231,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleMuteAdd(args, parameters[1], userInfo)
-	case command == delete:
+	case command == subCommandDelete:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
