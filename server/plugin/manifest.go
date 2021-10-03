@@ -139,51 +139,6 @@ const manifestStr = `
         ]
       }
     ]
-  },
-  "props": {
-    "inbound_webhook_url": "/plugins/github/webhook",
-    "webhook_events": [
-      "create",
-      "delete",
-      "check_run",
-      "check_suite",
-      "code_scanning_alert",
-      "member",
-      "commit_comment",
-      "deploy_key",
-      "deployment_status",
-      "deployment",
-      "discussion_comment",
-      "discussion",
-      "fork",
-      "issue_comment",
-      "issues",
-      "label",
-      "meta",
-      "milestone",
-      "package",
-      "page_build",
-      "project_card",
-      "project_column",
-      "project",
-      "pull_request_review_comment",
-      "pull_request_review_thread",
-      "pull_request_review",
-      "pull_request",
-      "push",
-      "registry_package",
-      "release",
-      "repository",
-      "repository_import",
-      "repository_vulnerability_alert",
-      "secret_scanning_alert",
-      "star",
-      "status",
-      "team_add",
-      "public",
-      "watch",
-      "gollum"
-    ]
   }
 }
 `

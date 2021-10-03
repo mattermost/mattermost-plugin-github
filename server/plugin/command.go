@@ -39,8 +39,52 @@ var validFeatures = map[string]bool{
 const (
 	list      = "list"
 	add       = "add"
+	delete    = "delete"
 	deleteAll = "delete-all"
 )
+
+var webhookEvents = []string{
+	"create",
+	"delete",
+	"check_run",
+	"check_suite",
+	"code_scanning_alert",
+	"member",
+	"commit_comment",
+	"deploy_key",
+	"deployment_status",
+	"deployment",
+	"discussion_comment",
+	"discussion",
+	"fork",
+	"issue_comment",
+	"issues",
+	"label",
+	"meta",
+	"milestone",
+	"package",
+	"page_build",
+	"project_card",
+	"project_column",
+	"project",
+	"pull_request_review_comment",
+	"pull_request_review_thread",
+	"pull_request_review",
+	"pull_request",
+	"push",
+	"registry_package",
+	"release",
+	"repository",
+	"repository_import",
+	"repository_vulnerability_alert",
+	"secret_scanning_alert",
+	"star",
+	"status",
+	"team_add",
+	"public",
+	"watch",
+	"gollum",
+}
 
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
@@ -191,7 +235,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleMuteAdd(args, parameters[1], userInfo)
-	case command == "delete":
+	case command == delete:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
@@ -455,6 +499,132 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
+func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
+	if len(parameters) < 1 {
+		return "Invalid parameter for add command, provide repo details in `[owner/repo]` format."
+	}
+
+	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+
+	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/plugins/" + Manifest.Id + "/webhook"
+	var hook github.Hook
+	var config = make(map[string]interface{})
+	config["secret"] = p.getConfiguration().WebhookSecret
+	if len(parameters) >= 1 {
+		parameters = parameters[1:]
+		for _, val := range parameters {
+			switch {
+			case strings.Contains(val, "https://"):
+				config["url"] = val
+			case strings.Contains(val, "true") || strings.Contains(val, "false"):
+				insecureVal, _ := strconv.ParseBool(val)
+				config["insecure_ssl"] = insecureVal
+			case strings.Contains(val, "application/json") || strings.Contains(val, "x-www-form-urlencoded"):
+				config["content_type"] = val
+			default:
+				if strings.Contains(val, "*") && len(val) == 1 {
+					hook.Events = []string{"*"}
+					break
+				}
+				if err := p.CheckOptionsValid(strings.Split(val, ",")); err != nil {
+					return err.Error()
+				}
+				hook.Events = strings.Split(val, ",")
+			}
+		}
+	}
+	if _, exists := config["url"]; !exists {
+		config["url"] = siteURL
+	}
+	if _, exists := config["insecure_ssl"]; !exists {
+		config["insecure_ssl"] = false
+	}
+	if _, exists := config["content_type"]; !exists {
+		config["content_type"] = "x-www-form-urlencoded"
+	}
+	if len(hook.Events) == 0 {
+		hook.Events = []string{"*"}
+	}
+	hook.Config = config
+	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
+	if err != nil {
+		return err.Error()
+	}
+
+	hookDetails, _, err := p.GetHook(ctx, githubClient, owner, repo, *githubHook.ID)
+	if err != nil {
+		return err.Error()
+	}
+
+	hookURL := baseURL + owner
+	if repo != "" {
+		hookURL += "/" + repo
+	}
+	hookURL += "/settings/hooks/"
+	txt := "Webhook Created Successfully \n"
+	hookID := strconv.Itoa(int(*githubHook.ID))
+	txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
+	return txt
+}
+func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
+	if len(parameters) != 1 {
+		return "Unknown action, please use `/github help` to see all actions available."
+	}
+
+	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	var githubHooks []*github.Hook
+	var githubResponse *github.Response
+	var err error
+	opt := &github.ListOptions{
+		PerPage: 10,
+	}
+	if repo == "" {
+		for {
+			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+			if err != nil {
+				return err.Error()
+			}
+			if githubResponse.NextPage == 0 {
+				break
+			}
+			opt.Page = githubResponse.NextPage
+		}
+	} else {
+		for {
+			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+			if err != nil {
+				return err.Error()
+			}
+			if githubResponse.NextPage == 0 {
+				break
+			}
+			opt.Page = githubResponse.NextPage
+		}
+	}
+
+	var txt string
+	if len(githubHooks) == 0 {
+		if repo == "" {
+			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
+		} else {
+			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org or the [%s/%s](https://github.com/%s/%s) repository.", owner, owner, owner, repo, owner, repo)
+		}
+	} else {
+		txt = "### Webhooks in this Repository\n"
+	}
+
+	for _, hook := range githubHooks {
+		hookID := strconv.Itoa(int(*hook.ID))
+		hookURL := baseURL + owner
+		if repo != "" {
+			hookURL += "/" + repo
+		}
+		hookURL += "/settings/hooks/"
+		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
+	}
+
+	return txt
+}
 func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid webhook command. Available command are `add` and `list` ."
@@ -466,133 +636,16 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	baseURL := p.getBaseURL()
 	switch command {
 	case add:
-		if len(parameters) < 1 {
-			return "Invalid parameter for add command, provide repo details in `[owner/repo]` format."
-		}
-
-		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-
-		siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + Manifest.Props["inbound_webhook_url"].(string)
-		var hook github.Hook
-		var config = make(map[string]interface{})
-		config["secret"] = p.getConfiguration().WebhookSecret
-		if len(parameters) >= 1 {
-			parameters = parameters[1:]
-			for _, val := range parameters {
-				switch {
-				case strings.Contains(val, "https://"):
-					config["url"] = val
-				case strings.Contains(val, "true") || strings.Contains(val, "false"):
-					insecureVal, _ := strconv.ParseBool(val)
-					config["insecure_ssl"] = insecureVal
-				case strings.Contains(val, "application/json") || strings.Contains(val, "x-www-form-urlencoded"):
-					config["content_type"] = val
-				default:
-					if strings.Contains(val, "*") && len(val) == 1 {
-						hook.Events = []string{"*"}
-						break
-					}
-					if err := p.CheckOptionsValid(strings.Split(val, ",")); err != nil {
-						return err.Error()
-					}
-					hook.Events = strings.Split(val, ",")
-				}
-			}
-		}
-		if _, exists := config["url"]; !exists {
-			config["url"] = siteURL
-		}
-		if _, exists := config["insecure_ssl"]; !exists {
-			config["insecure_ssl"] = false
-		}
-		if _, exists := config["content_type"]; !exists {
-			config["content_type"] = "x-www-form-urlencoded"
-		}
-		if len(hook.Events) == 0 {
-			hook.Events = []string{"*"}
-		}
-		hook.Config = config
-		githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
-		if err != nil {
-			return err.Error()
-		}
-
-		hookDetails, _, err := p.GetHook(ctx, githubClient, owner, repo, *githubHook.ID)
-		if err != nil {
-			return err.Error()
-		}
-
-		hookURL := baseURL + owner
-		if repo != "" {
-			hookURL += "/" + repo
-		}
-		hookURL += "/settings/hooks/"
-		txt := "Webhook Created Successfully \n"
-		hookID := strconv.Itoa(int(*githubHook.ID))
-		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
-		return txt
+		return p.handleWebhookAdd(ctx, parameters, baseURL, githubClient)
 	case list:
-
-		if len(parameters) != 1 {
-			return "Unknown action, please use `/github help` to see all actions available."
-		}
-
-		owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-		var githubHooks []*github.Hook
-		var githubResponse *github.Response
-		var err error
-		opt := &github.ListOptions{
-			PerPage: 10,
-		}
-		if repo == "" {
-			for {
-				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
-				if err != nil {
-					return err.Error()
-				}
-				if githubResponse.NextPage == 0 {
-					break
-				}
-				opt.Page = githubResponse.NextPage
-			}
-		} else {
-			for {
-				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
-				if err != nil {
-					return err.Error()
-				}
-				if githubResponse.NextPage == 0 {
-					break
-				}
-				opt.Page = githubResponse.NextPage
-			}
-		}
-
-		var txt string
-		if len(githubHooks) == 0 {
-			txt = "Currently there are no webhook in this [Owner/Repo]"
-		} else {
-			txt = "### Webhook in this Repositories\n"
-		}
-
-		for _, hook := range githubHooks {
-			hookID := strconv.Itoa(int(*hook.ID))
-			hookURL := baseURL + owner
-			if repo != "" {
-				hookURL += "/" + repo
-			}
-			hookURL += "/settings/hooks/"
-			txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
-		}
-
-		return txt
+		return p.handleWebhookList(ctx, parameters, baseURL, githubClient)
 	}
 	return "invalid action only add and list command are supported"
 }
 func (p *Plugin) CheckOptionsValid(options []string) error {
 	for _, val := range options {
-		for _, item := range Manifest.Props["webhook_events"].([]interface{}) {
-			if item.(string) != val {
+		for _, item := range webhookEvents {
+			if item != val {
 				return errors.New(val + " is not a valid events to trigger webhook")
 			}
 		}
