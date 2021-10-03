@@ -3,12 +3,13 @@
 package plugin
 
 import (
+	"encoding/json"
 	"strings"
 
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
-var Manifest *model.Manifest
+var Manifest model.Manifest
 
 const manifestStr = `
 {
@@ -20,11 +21,11 @@ const manifestStr = `
   "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.1",
   "icon_path": "assets/icon.svg",
   "version": "2.0.1",
-  "min_server_version": "5.25.0",
+  "min_server_version": "5.38.0",
   "server": {
     "executables": {
-      "linux-amd64": "server/dist/plugin-linux-amd64",
       "darwin-amd64": "server/dist/plugin-darwin-amd64",
+      "linux-amd64": "server/dist/plugin-linux-amd64",
       "windows-amd64": "server/dist/plugin-windows-amd64.exe"
     },
     "executable": ""
@@ -36,6 +37,14 @@ const manifestStr = `
     "header": "The GitHub plugin for Mattermost allows users to subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common GitHub actions - directly from Mattermost. \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration).",
     "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github).",
     "settings": [
+      {
+        "key": "UsePreregisteredApplication",
+        "display_name": "Use Preregistered OAuth Application:",
+        "type": "bool",
+        "help_text": "When true, instructs the plugin to use the preregistered GitHub OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with GitHub enterprise. **This setting is intended to be used with Mattermost Cloud instances only.**",
+        "placeholder": "",
+        "default": false
+      },
       {
         "key": "GitHubOAuthClientID",
         "display_name": "GitHub OAuth Client ID:",
@@ -144,5 +153,5 @@ const manifestStr = `
 `
 
 func init() {
-	Manifest = model.ManifestFromJson(strings.NewReader(manifestStr))
+	_ = json.NewDecoder(strings.NewReader(manifestStr)).Decode(&Manifest)
 }

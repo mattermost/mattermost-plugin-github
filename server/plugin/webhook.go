@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/microcosm-cc/bluemonday"
+
 	"github.com/google/go-github/v31/github"
-	"github.com/mattermost/mattermost-server/v5/model"
+	"github.com/mattermost/mattermost-server/v6/model"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -92,6 +94,9 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
@@ -99,12 +104,18 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssuesEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postIssueEvent(event)
 			p.handleIssueNotification(event)
 		}
 	case *github.IssueCommentEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
@@ -112,27 +123,42 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
 		}
 	case *github.PushEvent:
 		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postPushEvent(event)
 		}
 	case *github.CreateEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postCreateEvent(event)
 		}
 	case *github.DeleteEvent:
 		repo = event.GetRepo()
+		if p.IsNotificationOff(*repo.FullName) {
+			return
+		}
 		handler = func() {
 			p.postDeleteEvent(event)
 		}
@@ -167,9 +193,10 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	if apiErr != nil {
 		return false
 	}
-	githubClient := p.githubConnect(*info.Token)
+	ctx := context.Background()
+	githubClient := p.githubConnectUser(ctx, info)
 
-	if result, _, err := githubClient.Repositories.Get(context.Background(), owner, repo); result == nil || err != nil {
+	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
 		if err != nil {
 			p.API.LogWarn("Failed fetch repository to check permission", "error", err.Error())
 		}
@@ -190,7 +217,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 		return false
 	}
 
-	githubClient := p.githubConnect(*info.Token)
+	githubClient := p.githubConnectUser(context.Background(), info)
 	organization := p.getConfiguration().GitHubOrg
 
 	return p.isUserOrganizationMember(githubClient, user, organization)
@@ -270,7 +297,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == "opened" {
-			post.Message = newPRMessage
+			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
 		if action == "closed" {
@@ -283,7 +310,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
-
+func (p *Plugin) sanitizeDescription(description string) string {
+	var policy = bluemonday.StrictPolicy()
+	policy.SkipElementsContent("details")
+	return strings.TrimSpace(policy.Sanitize(description))
+}
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != "opened" {
@@ -380,6 +411,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
 		return
 	}
+	renderedMessage = p.sanitizeDescription(renderedMessage)
+
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Type:    "custom_git_issue",
