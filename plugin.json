@@ -115,7 +115,7 @@
                 "display_name": "Enable Webhook Event Logging:",
                 "type": "bool",
                 "help_text": "Allow the plugin to log the event from webhook.",
-                "default": true
+                "default": false
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

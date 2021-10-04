@@ -89,8 +89,9 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if config.EnableWebhookEventLogging {
-		p.API.LogInfo("Webhook Event Log", "event", event)
+		p.API.LogDebug("Webhook Event Log", "event", event)
 	}
+
 	var repo *github.Repository
 	var handler func()
 

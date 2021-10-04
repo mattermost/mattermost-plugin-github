@@ -142,7 +142,7 @@ const manifest = JSON.parse(`
                 "type": "bool",
                 "help_text": "Allow the plugin to log the event from webhook.",
                 "placeholder": "",
-                "default": true
+                "default": false
             }
         ]
     }
