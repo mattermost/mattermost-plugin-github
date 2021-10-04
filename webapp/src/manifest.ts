@@ -7,9 +7,9 @@ const manifest = JSON.parse(`
     "description": "GitHub plugin for Mattermost.",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
     "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
-    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.1",
+    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.1.0",
     "icon_path": "assets/icon.svg",
-    "version": "2.0.1",
+    "version": "2.1.0",
     "min_server_version": "5.38.0",
     "server": {
         "executables": {
