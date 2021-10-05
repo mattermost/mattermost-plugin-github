@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 	"time"
 
@@ -61,6 +62,13 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
+	if config.EnableWebhookEventLogging {
+		parsedRequest, err := httputil.DumpRequest(r, true)
+		if err != nil {
+			p.API.LogWarn("Error while parsing Webhook Request")
+		}
+		p.API.LogDebug("Webhook Event Log", "event", string(parsedRequest))
+	}
 	signature := r.Header.Get("X-Hub-Signature")
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -86,10 +94,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
 		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
-	}
-
-	if config.EnableWebhookEventLogging {
-		p.API.LogDebug("Webhook Event Log", "event", event)
 	}
 
 	var repo *github.Repository
