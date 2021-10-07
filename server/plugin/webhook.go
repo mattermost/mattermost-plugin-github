@@ -921,10 +921,6 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 			return
 		}
 
-		if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
-			return
-		}
-
 		splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
 		if len(splitURL) < 2 {
 			return
