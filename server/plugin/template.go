@@ -351,6 +351,13 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
 		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+
+	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}}
+{{- if eq .GetAction "created" }} starred
+{{- else }} unstarred
+{{- end }} by {{template "user" .GetSender}}
+It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
