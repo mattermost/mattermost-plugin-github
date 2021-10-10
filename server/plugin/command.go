@@ -86,6 +86,9 @@ var webhookEvents = []string{
 	"gollum",
 }
 
+const (
+	webhookCreateCommand ="\n`/github webhook add [owner/repo]`"
+)
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
@@ -393,7 +396,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if len(githubHooks) == 0 {
 			subOrgMsg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
 			subOrgMsg += "\nSuggested Command to create a wehook"
-			subOrgMsg += "\n`/github webhook add " + owner + "[content-type:application-json/application/x-www-form-urlencoded] [features:create/delete..]  [ssecure-ssl:true/false]`"
+			subOrgMsg += webhookCreateCommand
 		}
 		return subOrgMsg
 	}
@@ -623,10 +626,12 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	if repo != "" {
 		hookURL += "/" + repo
 	}
-	hookURL += "/settings/hooks/"
 	txt := "Webhook Created Successfully \n"
+
+	hookURL += "/settings/hooks/"
+	events := strings.Join(hookDetails.Events, " , ")
 	hookID := strconv.Itoa(int(*githubHook.ID))
-	txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
+	txt += fmt.Sprintf(" *  [%s](%s/%v) :  -  %s \n", hookID, hookURL, *githubHook.ID, events)
 	return txt
 }
 func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
@@ -690,7 +695,7 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, bas
 }
 func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
-		return "Invalid webhook command. Available command are `add` and `list` ."
+		return "Invalid webhook command. Available commands are `add` and `list` ."
 	}
 	command := parameters[0]
 	parameters = parameters[1:]
@@ -705,11 +710,12 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	}
 	return "Invalid action, only `add` and `list` commands are supported."
 }
+
 func (p *Plugin) CheckOptionsValid(options []string) error {
 	for _, val := range options {
 		for _, item := range webhookEvents {
 			if item != val {
-				return errors.New(val + " is not a valid events to trigger webhook")
+				return errors.New(val + " is not a valid event to trigger webhook")
 			}
 		}
 	}
