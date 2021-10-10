@@ -398,7 +398,15 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `team_add` - Team adds - Team added or modified on a repository. \n" +
 		"    	* `public` - Visibility changes - Repository changes from private to public. \n" +
 		"    	* `watch` - Watches - User stars a repository. \n" +
-		"    	* `gollum` - Wiki - Wiki page updated. \n"))
+		"    	* `gollum` - Wiki - Wiki page updated. \n" +
+		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+
+	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}}
+{{- if eq .GetAction "created" }} starred
+{{- else }} unstarred
+{{- end }} by {{template "user" .GetSender}}
+It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {

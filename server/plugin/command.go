@@ -23,6 +23,7 @@ const (
 	featureDeletes       = "deletes"
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
+	featureStars         = "stars"
 )
 
 var validFeatures = map[string]bool{
@@ -34,6 +35,7 @@ var validFeatures = map[string]bool{
 	featureDeletes:       true,
 	featureIssueComments: true,
 	featurePullReviews:   true,
+	featureStars:         true,
 }
 
 const (
