@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -89,8 +89,9 @@ var webhookEvents = []string{
 }
 
 const (
-	webhookCreateCommand ="\n`/github webhook add [owner/repo]`"
+	webhookCreateCommand = "/github webhook add "
 )
+
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
@@ -398,7 +399,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if len(githubHooks) == 0 {
 			subOrgMsg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
 			subOrgMsg += "\nSuggested Command to create a wehook"
-			subOrgMsg += webhookCreateCommand
+			subOrgMsg += "\n`" + webhookCreateCommand + owner + "`"
 		}
 		return subOrgMsg
 	}
@@ -422,8 +423,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if len(githubHooks) == 0 {
 		msg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
 		msg += "\nSuggested Command, Can run any one command to create a wehook"
-		msg += fmt.Sprintf("\n`/github webhook add %s", owner)
-		msg += fmt.Sprintf("\n`/github webhook add %s/%s", owner, repo)
+		msg += "\n`" + webhookCreateCommand + owner + "`"
+		msg += "\n or "
+		msg += "\n`" + webhookCreateCommand + owner + "/" + repo + "`"
 	}
 	return msg
 }
