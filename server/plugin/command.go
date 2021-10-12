@@ -511,7 +511,6 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	}
 
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-
 	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL
 	if strings.Contains(siteURL, "localhost") {
 		return fmt.Sprintf("Site url should be a public url , can configure the site url [here](%s)", *p.API.GetConfig().ServiceSettings.SiteURL+"/admin_console/environment/web_server")
