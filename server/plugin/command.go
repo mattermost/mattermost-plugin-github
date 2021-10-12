@@ -516,11 +516,10 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	if strings.Contains(siteURL, "localhost") {
 		return fmt.Sprintf("Site url should be a public url , can configure the site url [here](%s)", *p.API.GetConfig().ServiceSettings.SiteURL+"/admin_console/environment/web_server")
 	}
-	siteURL += "/plugins/" + Manifest.Id + "/webhook"
 	var hook github.Hook
 	var config = make(map[string]interface{})
 	config["secret"] = p.getConfiguration().WebhookSecret
-	config["url"] = "https://temp/asdasd"
+	config["url"] = siteURL + "/plugins/" + Manifest.Id + "/webhook"
 	config["insecure_ssl"] = false
 	config["content_type"] = "application/json"
 	hook.Events = []string{"*"}
