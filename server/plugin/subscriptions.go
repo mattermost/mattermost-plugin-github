@@ -114,9 +114,6 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		return errors.Errorf("invalid repository")
 	}
 
-	owner = strings.ToLower(owner)
-	repo = strings.ToLower(repo)
-
 	if err := p.checkOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
 	}
