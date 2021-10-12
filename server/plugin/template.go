@@ -352,54 +352,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
 		"  * `/github mute delete-all` - unmute all GitHub users\n" +
 		"  * `/github Webhook` - Manage all webhooks.\n" +
-		"  * `/github Webhook list` - list your Webhook of a GitHub repository\n" +
-		"  * `/github webhook add [owner/repo] url content_type options insecure_ss;`\n" +
-		"    * `url` - Optional - Callback Url, default `SITE_URL` + `/plugins/github/webhook` \n" +
-		"    * `content_type` - Optional - application/json or application/x-www-form-encoded, default x-www-form-encoded \n" +
-		"    * `insecure_ssl` - Optional - true or false, default true\n" +
-		"  	 * `options` is a comma-delimated can have one or more values `options:value1,value2`, default *\n" +
-		"    	* `*` - includes all the event mentioned below \n" +
-		"    	* `create` - Branch or tag creation - Branch or tag created.           \n" +
-		"    	* `delete` - Branch or tag deletion - Branch or tag deleted. \n" +
-		"    	* `check_run` - Check runs - Check run is created, requested, rerequested, or completed. \n" +
-		"    	* `check_suite` - Check suites - Check suite is requested, rerequested, or completed. \n" +
-		"    	* `code_scanning_alert` - Code scanning alerts - Code Scanning alert created, fixed in branch, or closed \n" +
-		"    	* `member` - Collaborator add, remove, or changed- Collaborator added to, removed from, or has changed permissions for a repository. \n" +
-		"    	* `commit_comment` - Commit comments - Commit or diff commented on. \n" +
-		"    	* `deploy_key` - Deploy keys - A deploy key is created or deleted from a repository. \n" +
-		"    	* `deployment_status` - Deployment statuses - Deployment status updated from the API. \n" +
-		"    	* `deployment` - Deployments - Repository was deployed or a deployment was deleted. \n" +
-		"    	* `discussion_comment` - Discussion comments - Discussion comment created, edited, or deleted. \n" +
-		"    	* `discussion` - Discussions - Discussion created, edited, pinned, unpinned, locked, unlocked, transferred, answered, unanswered, labeled, unlabeled, had its category changed, or was deleted. \n" +
-		"    	* `fork` - Forks - Repository forked. \n" +
-		"    	* `issue_comment` - Issue comments - Issue comment created, edited, or deleted. \n" +
-		"    	* `issues` - Issues - Issue opened, edited, deleted, transferred, pinned, unpinned, closed, reopened, assigned, unassigned, labeled, unlabeled, milestoned, demilestoned, locked, or unlocked. \n" +
-		"    	* `label` - Labels - Label created, edited or deleted. \n" +
-		"    	* `meta` - Meta- This particular hook is deleted. \n" +
-		"    	* `milestone` -  Milestones - Milestone created, closed, opened, edited, or deleted. \n" +
-		"    	* `package` - Packages - GitHub Packages published or updated in a repository. \n" +
-		"    	* `page_build` - Page builds - Pages site built. \n" +
-		"    	* `project_card` - Project cards - Project card created, updated, or deleted. \n" +
-		"    	* `project_column` - Project columns - Project column created, updated, moved or deleted. \n" +
-		"    	* `project` - Projects - Project created, updated, or deleted. \n" +
-		"    	* `pull_request_review_comment` - Pull request review comments - Pull request diff comment created, edited, or deleted. \n" +
-		"    	* `pull_request_review_thread` - Pull request review threads - A pull request review thread was resolved or unresolved. \n" +
-		"    	* `pull_request_review` - Pull request reviews - Pull request review submitted, edited, or dismissed. \n" +
-		"    	* `pull_request` - Pull requests - Pull request opened, closed, reopened, edited, assigned, unassigned, review requested, review request removed, labeled, unlabeled, synchronized, ready for review, converted to draft, locked, unlocked, auto merge enabled, auto merge disabled, milestoned, or demilestoned. \n" +
-		"    	* `push` - Pushes - Git push to a repository. \n" +
-		"    	* `registry_package` - Registry packages - Registry package published or updated in a repository. \n" +
-		"    	* `release` - Releases - Release created, edited, published, unpublished, or deleted. \n" +
-		"    	* `repository` - Repositories - Repository created, deleted, archived, unarchived, publicized, privatized, edited, renamed, or transferred. \n" +
-		"    	* `repository_import` - Repository imports - Repository import succeeded, failed, or canceled. \n" +
-		"    	* `repository_vulnerability_alert` - Repository vulnerability alerts - Security alert created, resolved, or dismissed on a repository. \n" +
-		"    	* `secret_scanning_alert` - Secret scanning alerts - Secrets scanning alert created, resolved, or reopened \n" +
-		"    	* `star` - Stars - A star is created or deleted from a repository. \n" +
-		"    	* `status` - Statuses - Commit status updated from the API. \n" +
-		"    	* `team_add` - Team adds - Team added or modified on a repository. \n" +
-		"    	* `public` - Visibility changes - Repository changes from private to public. \n" +
-		"    	* `watch` - Watches - User stars a repository. \n" +
-		"    	* `gollum` - Wiki - Wiki page updated. \n" +
-		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+		"  * `/github Webhook list [owner/repo]` - list your Webhook of a GitHub repository\n" +
+		"  * `/github webhook add [owner/repo]`\n"))
 
 	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}}
