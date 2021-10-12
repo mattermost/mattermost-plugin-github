@@ -898,6 +898,21 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 	author := event.GetIssue().GetUser().GetLogin()
 	assignees := event.GetIssue().Assignees
 
+	splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
+	if len(splitURL) < 2 {
+		return
+	}
+	var templateName string
+	switch splitURL[len(splitURL)-2] {
+	case "pull":
+		templateName = "commentAssigneePullRequestNotification"
+	case "issues":
+		templateName = "commentAssigneeIssueNotification"
+	default:
+		p.API.LogWarn("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+		return
+	}
+
 	for _, assignee := range assignees {
 		userID := p.getGitHubToUserIDMapping(assignee.GetLogin())
 		if userID == "" {
@@ -905,49 +920,28 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 		}
 
 		if author == assignee.GetLogin() {
-			return
+			continue
 		}
 		if event.Sender.GetLogin() == assignee.GetLogin() {
-			return
-		}
-
-		authorUserID := p.getGitHubToUserIDMapping(author)
-		if authorUserID == "" {
-			return
+			continue
 		}
 
 		assigneeID := p.getGitHubToUserIDMapping(assignee.GetLogin())
 		if assigneeID == "" {
-			return
+			continue
 		}
 
-		splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
-		if len(splitURL) < 2 {
-			return
-		}
-
-		var templateName string
-		switch splitURL[len(splitURL)-2] {
-		case "pull":
-			templateName = "commentAuthorPullRequestNotification"
-		case "issues":
-			templateName = "commentAuthorIssueNotification"
-		default:
-			p.API.LogWarn("Unhandled issue type", "type", splitURL[len(splitURL)-2])
-			return
-		}
-
-		if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
+		if p.senderMutedByReceiver(assigneeID, event.GetSender().GetLogin()) {
 			p.API.LogWarn("Commenter is muted, skipping notification")
-			return
+			continue
 		}
 
 		message, err := renderTemplate(templateName, event)
 		if err != nil {
 			p.API.LogWarn("Failed to render template", "error", err.Error())
-			return
+			continue
 		}
-		p.CreateBotDMPost(assigneeID, message, "custom_git_author")
+		p.CreateBotDMPost(assigneeID, message, "custom_git_assignee")
 		p.sendRefreshEvent(assigneeID)
 	}
 }
