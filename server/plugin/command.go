@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
