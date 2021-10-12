@@ -45,49 +45,6 @@ const (
 	deleteAll        = "delete-all"
 )
 
-var webhookEvents = []string{
-	"create",
-	"delete",
-	"check_run",
-	"check_suite",
-	"code_scanning_alert",
-	"member",
-	"commit_comment",
-	"deploy_key",
-	"deployment_status",
-	"deployment",
-	"discussion_comment",
-	"discussion",
-	"fork",
-	"issue_comment",
-	"issues",
-	"label",
-	"meta",
-	"milestone",
-	"package",
-	"page_build",
-	"project_card",
-	"project_column",
-	"project",
-	"pull_request_review_comment",
-	"pull_request_review_thread",
-	"pull_request_review",
-	"pull_request",
-	"push",
-	"registry_package",
-	"release",
-	"repository",
-	"repository_import",
-	"repository_vulnerability_alert",
-	"secret_scanning_alert",
-	"star",
-	"status",
-	"team_add",
-	"public",
-	"watch",
-	"gollum",
-}
-
 const (
 	webhookCreateCommand = "/github webhook add "
 )
@@ -576,45 +533,18 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 
-	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/plugins/" + Manifest.Id + "/webhook"
+	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL
+	if strings.Contains(siteURL, "localhost") {
+		return fmt.Sprintf("Site url should be a public url , can configure the site url [here](%s)", *p.API.GetConfig().ServiceSettings.SiteURL+"/admin_console/environment/web_server")
+	}
+	siteURL += "/plugins/" + Manifest.Id + "/webhook"
 	var hook github.Hook
 	var config = make(map[string]interface{})
 	config["secret"] = p.getConfiguration().WebhookSecret
-	if len(parameters) >= 1 {
-		parameters = parameters[1:]
-		for _, val := range parameters {
-			switch {
-			case strings.Contains(val, "https://"):
-				config["url"] = val
-			case strings.Contains(val, "true") || strings.Contains(val, "false"):
-				insecureVal, _ := strconv.ParseBool(val)
-				config["insecure_ssl"] = insecureVal
-			case strings.Contains(val, "application/json") || strings.Contains(val, "x-www-form-urlencoded"):
-				config["content_type"] = val
-			default:
-				if strings.Contains(val, "*") && len(val) == 1 {
-					hook.Events = []string{"*"}
-					break
-				}
-				if err := p.CheckOptionsValid(strings.Split(val, ",")); err != nil {
-					return err.Error()
-				}
-				hook.Events = strings.Split(val, ",")
-			}
-		}
-	}
-	if _, exists := config["url"]; !exists {
-		config["url"] = siteURL
-	}
-	if _, exists := config["insecure_ssl"]; !exists {
-		config["insecure_ssl"] = false
-	}
-	if _, exists := config["content_type"]; !exists {
-		config["content_type"] = "x-www-form-urlencoded"
-	}
-	if len(hook.Events) == 0 {
-		hook.Events = []string{"*"}
-	}
+	config["url"] = "https://temp/asdasd"
+	config["insecure_ssl"] = false
+	config["content_type"] = "application/json"
+	hook.Events = []string{"*"}
 	hook.Config = config
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 	if err != nil {
@@ -715,16 +645,6 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	return "Invalid action, only `add` and `list` commands are supported."
 }
 
-func (p *Plugin) CheckOptionsValid(options []string) error {
-	for _, val := range options {
-		for _, item := range webhookEvents {
-			if item != val {
-				return errors.New(val + " is not a valid event to trigger webhook")
-			}
-		}
-	}
-	return nil
-}
 func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner, repo string, hookID int64) (*github.Hook, *github.Response, error) {
 	if repo != "" {
 		return githubClient.Repositories.GetHook(ctx, owner, repo, hookID)
@@ -960,18 +880,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhook.AddCommand(webhookList)
 	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
-	webhookAdd.AddTextArgument("Call Back URL", "(optional) ,default:Base_url/plugins/github/webhook", "")
-	webhookAdd.AddTextArgument("content_type", "(optional) ,default:x-www-form-urlencoded", "")
-	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 
-	insecureSSLValue := []model.AutocompleteListItem{{
-		HelpText: "Turn on insecure_ssl",
-		Item:     "true",
-	}, {
-		HelpText: "Turn off insecure_ssl",
-		Item:     "false",
-	}}
-	webhookAdd.AddStaticListArgument("", false, insecureSSLValue)
 	webhook.AddCommand(webhookAdd)
 
 	github.AddCommand(webhook)
