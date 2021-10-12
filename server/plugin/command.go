@@ -937,8 +937,6 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
 	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
 	webhookAdd.AddTextArgument("Call Back URL", "(optional) ,default:Base_url/plugins/github/webhook", "")
-	webhookAdd.AddTextArgument("content_type", "(optional) ,default:x-www-form-urlencoded", "")
-	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 
 	insecureSSLValue := []model.AutocompleteListItem{{
 		HelpText: "Turn on insecure_ssl",
@@ -947,7 +945,19 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 		HelpText: "Turn off insecure_ssl",
 		Item:     "false",
 	}}
-	webhookAdd.AddStaticListArgument("", false, insecureSSLValue)
+	webhookAdd.AddStaticListArgument("Enable SSL Verification", false, insecureSSLValue)
+
+	webhookAdd.AddTextArgument("content_type", "(optional) ,default:x-www-form-urlencoded", "")
+	contentTypeValue := []model.AutocompleteListItem{{
+		HelpText: "Set to x-www-form-urlencoded",
+		Item:     "x-www-form-urlencoded",
+	}, {
+		HelpText: "Set to application/json",
+		Item:     "application/json",
+	}}
+	webhookAdd.AddStaticListArgument("Content Type of Request Body", false, contentTypeValue)
+	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum . Defaults to *", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+
 	webhook.AddCommand(webhookAdd)
 
 	github.AddCommand(webhook)
