@@ -265,7 +265,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
-		if !sub.Pulls() {
+		if !sub.Pulls() && !sub.PullsMerged() {
+			continue
+		}
+
+		if sub.PullsMerged() && action != "opened" && action != "labeled" && action != "closed" {
 			continue
 		}
 
