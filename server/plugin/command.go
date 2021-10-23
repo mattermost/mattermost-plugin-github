@@ -16,6 +16,7 @@ const (
 	featureIssueCreation = "issue_creations"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
+	featurePullsMerged   = "pulls_merged"
 	featurePushes        = "pushes"
 	featureCreates       = "creates"
 	featureDeletes       = "deletes"
@@ -28,6 +29,7 @@ var validFeatures = map[string]bool{
 	featureIssueCreation: true,
 	featureIssues:        true,
 	featurePulls:         true,
+	featurePullsMerged:   true,
 	featurePushes:        true,
 	featureCreates:       true,
 	featureDeletes:       true,
@@ -301,6 +303,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			fs := strings.Split(features, ",")
 			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 				return "Feature list cannot contain both issue and issue_creations"
+			}
+			if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+				return "Feature list cannot contain both pulls and pulls_merged"
 			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
@@ -631,7 +636,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
 		exclude := []model.AutocompleteListItem{
 			{
