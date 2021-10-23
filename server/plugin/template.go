@@ -331,6 +331,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `features` is a comma-delimited list of one or more the following:\n" +
 		"    * `issues` - includes new and closed issues\n" +
 		"    * `pulls` - includes new and closed pull requests\n" +
+		"    * `pulls_merged` - includes merged pull requests only\n" +
 		"    * `pushes` - includes pushes\n" +
 		"    * `creates` - includes branch and tag creations\n" +
 		"    * `deletes` - includes branch and tag deletions\n" +
