@@ -263,10 +263,11 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		txt += "\n"
 	}
 
-	excludeRepos, err := p.GetExcludedNotificationRepos()
-	if err != nil {
-		return err.Error()
+	var allIgnoredRepos, err2 = p.GetExcludedNotificationRepos()
+	if err2 != nil {
+		return err2.Error()
 	}
+	excludeRepos := allIgnoredRepos.IgnoredRepos[args.ChannelId]
 	for _, repo := range excludeRepos {
 		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(repo, "/"), "notification : disabled")
 		txt += "\n"
@@ -329,7 +330,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
-				if err := p.StoreExcludedNotificationRepo(val); err != nil {
+				if err := p.StoreExcludedNotificationRepo(args, val); err != nil {
 					return err.Error()
 				}
 				if excludeMsg != "" {
@@ -369,7 +370,7 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 
 	repo := parameters[0]
 
-	if err := p.EnableNotificationTurnedOffRepo(repo); err != nil {
+	if err := p.EnableNotificationTurnedOffRepo(repo, args.ChannelId); err != nil {
 		p.API.LogWarn("Failed to unsubscribe while removing repo from disable notification list", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to remove from notify disabled list. Please try again."
 	}

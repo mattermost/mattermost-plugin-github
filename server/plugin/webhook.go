@@ -94,9 +94,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event := event.(type) {
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
@@ -104,18 +101,12 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssuesEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postIssueEvent(event)
 			p.handleIssueNotification(event)
 		}
 	case *github.IssueCommentEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
@@ -123,42 +114,27 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
 		}
 	case *github.PushEvent:
 		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPushEvent(event)
 		}
 	case *github.CreateEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postCreateEvent(event)
 		}
 	case *github.DeleteEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postDeleteEvent(event)
 		}
@@ -261,6 +237,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.Pulls() {
 			continue
 		}
@@ -426,6 +406,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	for _, sub := range subscribedChannels {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.Issues() && !sub.IssueCreations() {
 			continue
 		}
@@ -491,6 +475,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.Pushes() {
 			continue
 		}
@@ -532,6 +520,10 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.Creates() {
 			continue
 		}
@@ -575,6 +567,10 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.Deletes() {
 			continue
 		}
@@ -620,6 +616,10 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.IssueComments() {
 			continue
 		}
@@ -699,6 +699,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.PullReviews() {
 			continue
 		}
@@ -753,6 +757,10 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	}
 
 	for _, sub := range subs {
+		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+			continue
+		}
+
 		if !sub.PullReviews() {
 			continue
 		}
