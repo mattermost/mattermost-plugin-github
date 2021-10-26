@@ -311,13 +311,11 @@ func (p *Plugin) StoreExcludedNotificationRepo(args *model.CommandArgs, s string
 		return nil
 	}
 	repoNames = append(repoNames, s)
-	p.API.LogError(fmt.Sprintf("%+v \n -------------------%s<|>", repoNames, args.ChannelId))
 	if len(allIgnoredRepos.IgnoredRepos) == 0 {
 		allIgnoredRepos.IgnoredRepos = make(map[string][]string)
 	}
 	allIgnoredRepos.IgnoredRepos[args.ChannelId] = repoNames
 
-	p.API.LogError(fmt.Sprintf("%+v \n --------------------|>", allIgnoredRepos))
 	ignored := IgnoredRepositoriesPerChannel{
 		allIgnoredRepos.IgnoredRepos,
 	}
