@@ -676,10 +676,15 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 }
 func (p *Plugin) CheckOptionsValid(options []string) error {
 	for _, val := range options {
+		isValidEvent := false
 		for _, item := range events {
-			if item != val {
-				return errors.New(val + " is not a valid events to trigger webhook")
+			if item == val {
+				isValidEvent = true
+				break
 			}
+		}
+		if !isValidEvent {
+			return errors.New(val + " is not a valid events to trigger webhook")
 		}
 	}
 	return nil
