@@ -687,6 +687,7 @@ func (p *Plugin) CheckOptionsValid(options []string) error {
 			return errors.New(val + " is not a valid events to trigger webhook")
 		}
 	}
+
 	return nil
 }
 func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
