@@ -84,7 +84,7 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
-		"webhook":       p.handlewebhook,
+		"webhook":       p.handleWebhooks,
 	}
 
 	return p
@@ -745,4 +745,10 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 	}
 
 	return "@" + info.GitHubUsername, nil
+}
+func (p *Plugin) getSiteURL() string {
+	if p.API.GetConfig().ServiceSettings.SiteURL != nil {
+		return *p.API.GetConfig().ServiceSettings.SiteURL
+	}
+	return ""
 }
