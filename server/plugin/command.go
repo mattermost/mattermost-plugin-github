@@ -39,10 +39,56 @@ var validFeatures = map[string]bool{
 }
 
 const (
-	list             = "list"
-	add              = "add"
-	subCommandDelete = "delete"
-	deleteAll        = "delete-all"
+	subCommandList      = "list"
+	subCommandAdd       = "add"
+	subCommandDelete    = "delete"
+	subCommandDeleteAll = "delete-all"
+)
+
+var events = []string{
+	"create",
+	"delete",
+	"check_run",
+	"check_suite",
+	"code_scanning_alert",
+	"member",
+	"commit_comment",
+	"deploy_key",
+	"deployment_status",
+	"deployment",
+	"discussion_comment",
+	"discussion",
+	"fork",
+	"issue_comment",
+	"issues",
+	"label",
+	"meta",
+	"milestone",
+	"package",
+	"page_build",
+	"project_card",
+	"project_column",
+	"project",
+	"pull_request_review_comment",
+	"pull_request_review_thread",
+	"pull_request_review",
+	"pull_request",
+	"push",
+	"registry_package",
+	"release",
+	"repository",
+	"repository_import",
+	"repository_vulnerability_alert",
+	"secret_scanning_alert",
+	"star",
+	"status",
+	"team_add",
+	"public",
+	"watch",
+	"gollum"}
+
+const (
+	githubHookURL = "/settings/hooks/"
 )
 
 const (
@@ -187,9 +233,9 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	command := parameters[0]
 
 	switch {
-	case command == list:
+	case command == subCommandList:
 		return p.handleMuteList(args, userInfo)
-	case command == add:
+	case command == subCommandAdd:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
@@ -199,7 +245,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == deleteAll:
+	case command == subCommandDeleteAll:
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -225,7 +271,7 @@ func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, par
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
-	case len(parameters) == 1 && parameters[0] == list:
+	case len(parameters) == 1 && parameters[0] == subCommandList:
 		return p.handleSubscriptionsList(c, args, parameters[1:], userInfo)
 	default:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
@@ -241,9 +287,9 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	parameters = parameters[1:]
 
 	switch {
-	case command == list:
+	case command == subCommandList:
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	case command == add:
+	case command == subCommandAdd:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
 	case command == "delete":
 		return p.handleUnsubscribe(c, args, parameters, userInfo)
@@ -322,7 +368,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	ctx := context.Background()
-	var page int
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 
@@ -352,8 +397,34 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
-		githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
-		if len(githubHooks) == 0 {
+		isWebhook := false
+
+		opt := &github.ListOptions{
+			PerPage: 50,
+		}
+		for {
+			var githubHooks []*github.Hook
+			var githubResponse *github.Response
+			var err error
+			if repo == "" {
+				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+			} else {
+				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+			}
+			if err != nil {
+				return err.Error()
+			}
+			for _, hook := range githubHooks {
+				if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
+					isWebhook = true
+				}
+			}
+			if githubResponse.NextPage == 0 {
+				break
+			}
+			opt.Page = githubResponse.NextPage
+		}
+		if !isWebhook {
 			subOrgMsg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
 			subOrgMsg += "\nSuggested Command to create a wehook"
 			subOrgMsg += "\n`" + webhookCreateCommand + owner + "`"
@@ -376,8 +447,34 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	} else if ghRepo != nil && ghRepo.GetPrivate() {
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
-	githubHooks, _, _ := githubClient.Repositories.ListHooks(ctx, owner, repo, &github.ListOptions{PerPage: page})
-	if len(githubHooks) == 0 {
+	isWebhook := false
+
+	opt := &github.ListOptions{
+		PerPage: 50,
+	}
+	for {
+		var githubHooks []*github.Hook
+		var githubResponse *github.Response
+		var err error
+		if repo == "" {
+			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+		} else {
+			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+		}
+		if err != nil {
+			return err.Error()
+		}
+		for _, hook := range githubHooks {
+			if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
+				isWebhook = true
+			}
+		}
+		if githubResponse.NextPage == 0 {
+			break
+		}
+		opt.Page = githubResponse.NextPage
+	}
+	if !isWebhook {
 		msg += "\nNo webhook was found for this repository or organization. Would you like the webhook to be created?"
 		msg += "\nSuggested Command, Can run any one command to create a wehook"
 		msg += "\n`" + webhookCreateCommand + owner + "`"
@@ -528,14 +625,14 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
 	if len(parameters) < 1 {
-		return "Invalid parameter for add command, provide repo details in `[owner/repo]` format."
+		return "Invalid parameter for add command, provide repo details in `owner[/repo]` format."
 	}
 
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL
+	siteURL := p.getSiteURL()
 	if strings.Contains(siteURL, "localhost") {
-		return fmt.Sprintf("Site url should be a public url , can configure the site url [here](%s)", *p.API.GetConfig().ServiceSettings.SiteURL+"/admin_console/environment/web_server")
+		return fmt.Sprintf("Your Site URL should be a public URL. You can configure the Site URL [here](%s/admin_console/environment/web_server)", *p.API.GetConfig().ServiceSettings.SiteURL)
 	}
+	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	var hook github.Hook
 	var config = make(map[string]interface{})
 	config["secret"] = p.getConfiguration().WebhookSecret
@@ -543,6 +640,16 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	config["insecure_ssl"] = false
 	config["content_type"] = "application/json"
 	hook.Events = []string{"*"}
+
+	if len(parameters) == 2 {
+		if strings.Contains(parameters[1], "*") && len(parameters[1]) == 1 {
+			hook.Events = []string{"*"}
+		}
+		if err := p.CheckOptionsValid(strings.Split(parameters[1], ",")); err != nil {
+			return err.Error()
+		}
+		hook.Events = strings.Split(parameters[1], ",")
+	}
 	hook.Config = config
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 	if err != nil {
@@ -558,6 +665,7 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	if repo != "" {
 		hookURL += "/" + repo
 	}
+	hookURL += githubHookURL
 	txt := "Webhook Created Successfully \n"
 
 	hookURL += "/settings/hooks/"
@@ -566,68 +674,80 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	txt += fmt.Sprintf(" *  [%s](%s/%v) :  -  %s \n", hookID, hookURL, *githubHook.ID, events)
 	return txt
 }
-func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
-	if len(parameters) != 1 {
-		return "Unknown action, please use `/github help` to see all actions available."
+func (p *Plugin) CheckOptionsValid(options []string) error {
+	for _, val := range options {
+		for _, item := range events {
+			if item != val {
+				return errors.New(val + " is not a valid events to trigger webhook")
+			}
+		}
 	}
-
+	return nil
+}
+func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
+	if len(parameters) == 0 {
+		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
+	}
+	if len(parameters) != 1 {
+		return "Invalid parameter for list command, only accept one argument."
+	}
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	var githubHooks []*github.Hook
-	var githubResponse *github.Response
+	var githubHookList []*github.Hook
 	var err error
 	opt := &github.ListOptions{
-		PerPage: 10,
+		PerPage: 50,
 	}
-	if repo == "" {
-		for {
+	for {
+		var githubHooks []*github.Hook
+		var githubResponse *github.Response
+		if repo == "" {
 			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
-			if err != nil {
-				return err.Error()
-			}
-			if githubResponse.NextPage == 0 {
-				break
-			}
-			opt.Page = githubResponse.NextPage
-		}
-	} else {
-		for {
+		} else {
 			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
-			if err != nil {
-				return err.Error()
-			}
-			if githubResponse.NextPage == 0 {
-				break
-			}
-			opt.Page = githubResponse.NextPage
 		}
+		if err != nil {
+			return err.Error()
+		}
+		githubHookList = append(githubHookList, githubHooks...)
+		if githubResponse.NextPage == 0 {
+			break
+		}
+		opt.Page = githubResponse.NextPage
 	}
 
-	var txt string
-	if len(githubHooks) == 0 {
+	txt := "### Webhooks in this Repository\n"
+	if len(githubHookList) == 0 {
 		if repo == "" {
 			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
 		} else {
 			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org or the [%s/%s](https://github.com/%s/%s) repository.", owner, owner, owner, repo, owner, repo)
 		}
-	} else {
-		txt = "### Webhooks in this Repository\n"
 	}
-
-	for _, hook := range githubHooks {
-		hookID := strconv.Itoa(int(*hook.ID))
-		hookURL := baseURL + owner
-		if repo != "" {
-			hookURL += "/" + repo
+	isWebHook := false
+	for _, hook := range githubHookList {
+		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
+			hookURL := baseURL + owner
+			if repo != "" {
+				hookURL += "/" + repo
+			}
+			hookURL += githubHookURL
+			txt += fmt.Sprintf(" *  [%d](%s%d) :  -  %s \n", *hook.ID, hookURL, *hook.ID, strings.Join(hook.Events, " , "))
+			isWebHook = true
 		}
-		hookURL += "/settings/hooks/"
-		txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hook.Events, " , "))
+	}
+	if !isWebHook {
+		if repo == "" {
+			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
+		} else {
+			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org or the [%s/%s](https://github.com/%s/%s) repository.", owner, owner, owner, repo, owner, repo)
+		}
 	}
 
 	return txt
 }
-func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleWebhooks(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
-		return "Invalid webhook command. Available commands are `add` and `list` ."
+		return "Please provide a subcommand `add` or `list`."
 	}
 	command := parameters[0]
 	parameters = parameters[1:]
@@ -635,12 +755,13 @@ func (p *Plugin) handlewebhook(_ *plugin.Context, args *model.CommandArgs, param
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	baseURL := p.getBaseURL()
 	switch command {
-	case add:
+	case subCommandAdd:
 		return p.handleWebhookAdd(ctx, parameters, baseURL, githubClient)
-	case list:
+	case subCommandList:
 		return p.handleWebhookList(ctx, parameters, baseURL, githubClient)
+	default:
+		return fmt.Sprintf("Invalid subcommand `%s`.", command)
 	}
-	return "Invalid action, only `add` and `list` commands are supported."
 }
 
 func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner, repo string, hookID int64) (*github.Hook, *github.Response, error) {
@@ -780,10 +901,10 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: list, add, delete")
 
-	subscribeList := model.NewAutocompleteData(list, "", "List the current channel subscriptions")
+	subscribeList := model.NewAutocompleteData(subCommandList, "", "List the current channel subscriptions")
 	subscriptions.AddCommand(subscribeList)
 
-	subscriptionsAdd := model.NewAutocompleteData(add, "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
+	subscriptionsAdd := model.NewAutocompleteData(subCommandAdd, "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
@@ -818,7 +939,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
-	muteAdd := model.NewAutocompleteData(add, "[github username]", "Mute notifications from the provided GitHub user")
+	muteAdd := model.NewAutocompleteData(subCommandAdd, "[github username]", "Mute notifications from the provided GitHub user")
 	muteAdd.AddTextArgument("GitHub user to mute", "[username]", "")
 	mute.AddCommand(muteAdd)
 
@@ -831,7 +952,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted GitHub users")
 	mute.AddCommand(muteDeleteAll)
 
-	muteList := model.NewAutocompleteData(list, "", "List muted GitHub users")
+	muteList := model.NewAutocompleteData(subCommandList, "", "List muted GitHub users")
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
@@ -871,16 +992,15 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	github.AddCommand(issue)
 
-	webhook := model.NewAutocompleteData("webhook", "[command]", "Available commands: add , list")
-	webhookList := model.NewAutocompleteData(list, "[owner/repo]", "List webhooks or an organization or repository.")
+	webhook := model.NewAutocompleteData("webhook", "[command]", "Available commands: add, list")
+
+	webhookList := model.NewAutocompleteData(subCommandList, "owner[/repo]", "List webhooks or an organization or repository.")
 	webhookList.AddTextArgument("Owner/repo to list webhooks from", "[owner/repo]", "")
-
 	webhook.AddCommand(webhookList)
-	webhookAdd := model.NewAutocompleteData(add, "[owner/repo] callback_url content_type events insecure_ssl", "Add a webhook to desired owner[/repo] with optional --config")
-	webhookAdd.AddTextArgument("Owner/repo to create a webhook", "owner[/repo]", "")
-
+	webhookAdd := model.NewAutocompleteData(subCommandAdd, "owner[/repo]", "Add a webhook to desired owner[/repo] events")
+	webhookAdd.AddTextArgument("Organization or repository to list webhooks from", "owner[/repo]", "")
+	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum", "[events] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	webhook.AddCommand(webhookAdd)
-
 	github.AddCommand(webhook)
 
 	return github
