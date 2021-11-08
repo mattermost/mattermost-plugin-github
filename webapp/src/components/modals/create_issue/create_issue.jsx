@@ -118,32 +118,30 @@ export default class CreateIssueModal extends PureComponent {
     handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        let repoName;
-        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
-            repoName = '';
-        } else {
-            repoName = this.state.repo.name;
-        }
+        const otherOptionsDisabled = !this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push);
 
         return (
             <>
                 <GithubLabelSelector
-                    repoName={repoName}
+                    repoName={this.state.repo ? this.state.repo.name : ''}
                     theme={this.props.theme}
+                    disabled={otherOptionsDisabled}
                     selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
                 />
 
                 <GithubAssigneeSelector
-                    repoName={repoName}
+                    repoName={this.state.repo ? this.state.repo.name : ''}
                     theme={this.props.theme}
+                    disabled={otherOptionsDisabled}
                     selectedAssignees={this.state.assignees}
                     onChange={this.handleAssigneesChange}
                 />
 
                 <GithubMilestoneSelector
-                    repoName={repoName}
+                    repoName={this.state.repo ? this.state.repo.name : ''}
                     theme={this.props.theme}
+                    disabled={otherOptionsDisabled}
                     selectedMilestone={this.state.milestone}
                     onChange={this.handleMilestoneChange}
                 />

@@ -10,6 +10,7 @@ export default class GithubAssigneeSelector extends PureComponent {
     static propTypes = {
         repoName: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
+        disabled: PropTypes.bool,
         selectedAssignees: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
         actions: PropTypes.shape({
@@ -18,7 +19,7 @@ export default class GithubAssigneeSelector extends PureComponent {
     };
 
     loadAssignees = async () => {
-        if (this.props.repoName === '') {
+        if (this.props.repoName === '' || this.props.disabled) {
             return [];
         }
 
@@ -49,6 +50,7 @@ export default class GithubAssigneeSelector extends PureComponent {
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={true}
+                    disabled={this.props.disabled}
                     onChange={this.onChange}
                     selection={this.props.selectedAssignees}
                     loadOptions={this.loadAssignees}

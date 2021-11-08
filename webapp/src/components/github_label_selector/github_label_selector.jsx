@@ -9,6 +9,7 @@ import IssueAttributeSelector from 'components/issue_attribute_selector';
 export default class GithubLabelSelector extends PureComponent {
     static propTypes = {
         repoName: PropTypes.string.isRequired,
+        disabled: PropTypes.bool,
         theme: PropTypes.object.isRequired,
         selectedLabels: PropTypes.array.isRequired,
         onChange: PropTypes.func.isRequired,
@@ -18,7 +19,7 @@ export default class GithubLabelSelector extends PureComponent {
     };
 
     loadLabels = async () => {
-        if (this.props.repoName === '') {
+        if (this.props.repoName === '' || this.props.disabled) {
             return [];
         }
 
@@ -49,6 +50,7 @@ export default class GithubLabelSelector extends PureComponent {
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={true}
+                    disabled={this.props.disabled}
                     onChange={this.onChange}
                     selection={this.props.selectedLabels}
                     loadOptions={this.loadLabels}

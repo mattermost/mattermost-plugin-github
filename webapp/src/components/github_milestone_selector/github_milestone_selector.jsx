@@ -10,6 +10,7 @@ export default class GithubMilestoneSelector extends PureComponent {
     static propTypes = {
         repoName: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
+        disabled: PropTypes.bool,
         selectedMilestone: PropTypes.object,
         onChange: PropTypes.func.isRequired,
         actions: PropTypes.shape({
@@ -18,7 +19,7 @@ export default class GithubMilestoneSelector extends PureComponent {
     };
 
     loadMilestones = async () => {
-        if (this.props.repoName === '') {
+        if (this.props.repoName === '' || this.props.disabled) {
             return [];
         }
 
@@ -47,6 +48,7 @@ export default class GithubMilestoneSelector extends PureComponent {
                 <IssueAttributeSelector
                     {...this.props}
                     isMulti={false}
+                    disabled={this.props.disabled}
                     selection={this.props.selectedMilestone}
                     loadOptions={this.loadMilestones}
                 />

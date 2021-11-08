@@ -11,6 +11,7 @@ import Setting from 'components/setting';
 export default class IssueAttributeSelector extends PureComponent {
     static propTypes = {
         isMulti: PropTypes.bool.isRequired,
+        disabled: PropTypes.bool,
         repoName: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
@@ -32,7 +33,7 @@ export default class IssueAttributeSelector extends PureComponent {
     }
 
     componentDidMount() {
-        if (this.props.repoName) {
+        if (this.props.repoName && !this.props.disabled) {
             this.loadOptions();
         }
     }
@@ -110,7 +111,7 @@ export default class IssueAttributeSelector extends PureComponent {
                     {...this.props}
                     isClearable={true}
                     placeholder={'Select...'}
-                    isDisabled={this.props.repoName === ''}
+                    isDisabled={this.props.disabled}
                     noOptionsMessage={() => noOptionsMessage}
                     closeMenuOnSelect={!this.props.isMulti}
                     hideSelectedOptions={this.props.isMulti}
