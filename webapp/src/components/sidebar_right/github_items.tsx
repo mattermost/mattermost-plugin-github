@@ -168,6 +168,7 @@ function GithubItems(props: GithubItemsProps) {
         if (item.milestone) {
             milestone = (
                 <span
+                    title={'Milestone'}
                     style={
                         {
                             ...style.milestoneIcon,
