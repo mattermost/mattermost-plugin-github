@@ -269,7 +269,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && (action == "opened" || action == "labeled" || action != "closed") {
+		if sub.PullsMerged() && action != "closed" {
 			continue
 		}
 
