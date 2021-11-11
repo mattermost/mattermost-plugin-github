@@ -680,7 +680,7 @@ func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
 	configOrg := strings.TrimSpace(config.GitHubOrg)
-	if configOrg != "" && configOrg != org {
+	if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
 		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
 	}
 

@@ -114,8 +114,8 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		return errors.Errorf("invalid repository")
 	}
 
-	lowerOwner := strings.ToLower(owner)
-	lowerRepo := strings.ToLower(repo)
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
 
 	if err := p.checkOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
@@ -155,11 +155,11 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		ChannelID:  channelID,
 		CreatorID:  userID,
 		Features:   features,
-		Repository: fullNameFromOwnerAndRepo(lowerOwner, lowerRepo),
+		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
 	}
 
-	if err := p.AddSubscription(fullNameFromOwnerAndRepo(lowerOwner, lowerRepo), sub); err != nil {
+	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
 		return errors.Wrap(err, "could not add subscription")
 	}
 
