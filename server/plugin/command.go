@@ -287,7 +287,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
 	case command == subCommandAdd:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
-	case command == "delete":
+	case command == subCommandDelete:
 		return p.handleUnsubscribe(c, args, parameters, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -575,7 +575,7 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 		if strings.Contains(parameters[1], "*") && len(parameters[1]) == 1 {
 			hook.Events = []string{"*"}
 		}
-		if err := p.CheckOptionsValid(strings.Split(parameters[1], ",")); err != nil {
+		if err := p.checkOptionsValid(strings.Split(parameters[1], ",")); err != nil {
 			return err.Error()
 		}
 		hook.Events = strings.Split(parameters[1], ",")
@@ -601,7 +601,7 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
 	return txt
 }
-func (p *Plugin) CheckOptionsValid(options []string) error {
+func (p *Plugin) checkOptionsValid(options []string) error {
 	for _, val := range options {
 		isValidEvent := false
 		for _, item := range events {
@@ -629,12 +629,14 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, bas
 	opt := &github.ListOptions{
 		PerPage: 50,
 	}
+	txt := "### Webhooks in this Repository\n"
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
 		if repo == "" {
 			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
 		} else {
+			txt = "### Webhooks in this Organization\n"
 			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
 		}
 		if err != nil {
@@ -647,15 +649,7 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, bas
 		opt.Page = githubResponse.NextPage
 	}
 
-	txt := "### Webhooks in this Repository\n"
-	if len(githubHookList) == 0 {
-		if repo == "" {
-			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
-		} else {
-			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org or the [%s/%s](https://github.com/%s/%s) repository.", owner, owner, owner, repo, owner, repo)
-		}
-	}
-	isWebHook := false
+	webHookPresent := false
 	for _, hook := range githubHookList {
 		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
 			hookURL := baseURL + owner
@@ -664,10 +658,10 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, bas
 			}
 			hookURL += githubHookURL
 			txt += fmt.Sprintf(" *  [%d](%s%d) :  -  %s \n", *hook.ID, hookURL, *hook.ID, strings.Join(hook.Events, " , "))
-			isWebHook = true
+			webHookPresent = true
 		}
 	}
-	if !isWebHook {
+	if !webHookPresent {
 		if repo == "" {
 			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
 		} else {
