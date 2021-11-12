@@ -315,42 +315,8 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	if strings.Contains(stateToken, githubTokenKey) {
-		html := `
-		<!DOCTYPE html>
-		<html>
-		<head>
-		<script>
-		window.close();
-		</script>
-		</head>
-		<body>
-		<p>Completed connecting to GitHub. Please close this window.</p>
-		</body>
-		</html>
-		`
-		if string(storedState) == "" {
-			html = `
-			<!DOCTYPE html>
-			<html>
-			<head>
-			<script>
-			window.close();
-			</script>
-			</head>
-			<body>
-			<p>Invalid Request. Please close this window.</p>
-			</body>
-			</html>
-		`
-		}
-
-		w.Header().Set("Content-Type", "text/html")
-		_, err := w.Write([]byte(html))
-		if err != nil {
-			p.API.LogWarn("Failed to write HTML response", "error", err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
 	}
 
 	var state OAuthState
@@ -379,6 +345,13 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		return
 	}
 
+	appErr = p.API.KVDelete(stateToken)
+	if appErr != nil {
+		p.API.LogWarn("Failed to delete state token", "error", appErr.Error())
+		http.Error(w, "error deleting stored state", http.StatusBadRequest)
+		return
+	}
+
 	githubClient := p.githubConnectToken(*tok)
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
@@ -399,13 +372,6 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		},
 		AllowedPrivateRepos:   state.PrivateAllowed,
 		MM34646ResetTokenDone: true,
-	}
-
-	appErr = p.API.KVDelete(stateToken)
-	if appErr != nil {
-		p.API.LogWarn("Failed to delete state token", "error", appErr.Error())
-		http.Error(w, "error deleting stored state", http.StatusBadRequest)
-		return
 	}
 
 	if err = p.storeGitHubUserInfo(userInfo); err != nil {
