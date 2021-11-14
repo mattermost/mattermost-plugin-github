@@ -119,11 +119,12 @@ export default class CreateIssueModal extends PureComponent {
 
     renderIssueAttributeSelectors = () => {
         const otherOptionsDisabled = !this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push);
+        const repoName = this.state.repo ? this.state.repo.name : '';
 
         return (
             <>
                 <GithubLabelSelector
-                    repoName={this.state.repo ? this.state.repo.name : ''}
+                    repoName={repoName}
                     theme={this.props.theme}
                     disabled={otherOptionsDisabled}
                     selectedLabels={this.state.labels}
@@ -131,7 +132,7 @@ export default class CreateIssueModal extends PureComponent {
                 />
 
                 <GithubAssigneeSelector
-                    repoName={this.state.repo ? this.state.repo.name : ''}
+                    repoName={repoName}
                     theme={this.props.theme}
                     disabled={otherOptionsDisabled}
                     selectedAssignees={this.state.assignees}
@@ -139,7 +140,7 @@ export default class CreateIssueModal extends PureComponent {
                 />
 
                 <GithubMilestoneSelector
-                    repoName={this.state.repo ? this.state.repo.name : ''}
+                    repoName={repoName}
                     theme={this.props.theme}
                     disabled={otherOptionsDisabled}
                     selectedMilestone={this.state.milestone}
