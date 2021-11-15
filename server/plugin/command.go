@@ -553,7 +553,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, githubClient *github.Client) string {
 	if len(parameters) < 1 {
 		return "Invalid parameter for add command, provide repo details in `owner[/repo]` format."
 	}
@@ -562,7 +562,8 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, base
 	if strings.Contains(siteURL, "localhost") {
 		return fmt.Sprintf("Your Site URL should be a public URL. You can configure the Site URL [here](%s/admin_console/environment/web_server)", *p.API.GetConfig().ServiceSettings.SiteURL)
 	}
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	baseURL := p.getBaseURL()
+	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
 	var hook github.Hook
 	var config = make(map[string]interface{})
 	config["secret"] = p.getConfiguration().WebhookSecret
@@ -616,14 +617,15 @@ func (p *Plugin) checkOptionsValid(options []string) error {
 	}
 	return nil
 }
-func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, baseURL string, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, githubClient *github.Client) string {
 	if len(parameters) == 0 {
 		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
 	}
 	if len(parameters) != 1 {
 		return "Invalid parameter for list command, only accept one argument."
 	}
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	baseURL := p.getBaseURL()
+	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
 	var githubHookList []*github.Hook
 	var err error
 	opt := &github.ListOptions{
@@ -679,12 +681,11 @@ func (p *Plugin) handleWebhooks(_ *plugin.Context, args *model.CommandArgs, para
 	parameters = parameters[1:]
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-	baseURL := p.getBaseURL()
 	switch command {
 	case subCommandAdd:
-		return p.handleWebhookAdd(ctx, parameters, baseURL, githubClient)
+		return p.handleWebhookAdd(ctx, parameters, githubClient)
 	case subCommandList:
-		return p.handleWebhookList(ctx, parameters, baseURL, githubClient)
+		return p.handleWebhookList(ctx, parameters, githubClient)
 	default:
 		return fmt.Sprintf("Invalid subcommand `%s`.", command)
 	}
@@ -733,7 +734,6 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		default:
 			text = "Please contact your system administrator to configure the GitHub plugin."
 		}
-
 		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
