@@ -5,9 +5,9 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"strings"
 	"time"
 
@@ -62,22 +62,29 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
-	if config.EnableWebhookEventLogging {
-		parsedRequest, err := httputil.DumpRequest(r, true)
-		if err != nil {
-			p.API.LogWarn("Error while parsing Webhook Request", "err", err.Error())
-			return
-		}
-		p.API.LogDebug("Webhook Event Log", "event", string(parsedRequest))
-	}
 	signature := r.Header.Get("X-Hub-Signature")
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}
 
+	event, err := github.ParseWebHook(github.WebHookType(r), body)
+	if err != nil {
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
+		return
+	}
+
+	if config.EnableWebhookEventLogging {
+		bodyByte, err := json.Marshal(event)
+		if err != nil {
+			p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+			http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
+			return
+		}
+		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
+	}
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
 		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
@@ -87,13 +94,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if !valid {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
-	event, err := github.ParseWebHook(github.WebHookType(r), body)
-	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
-		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
 
