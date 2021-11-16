@@ -631,11 +631,12 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, git
 	opt := &github.ListOptions{
 		PerPage: 50,
 	}
-	txt := "### Webhooks in this Repository\n"
+	var txt string
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
 		if repo == "" {
+			txt = "### Webhooks in this Repository\n"
 			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
 		} else {
 			txt = "### Webhooks in this Organization\n"
