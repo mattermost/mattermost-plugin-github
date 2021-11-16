@@ -79,8 +79,8 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	if config.EnableWebhookEventLogging {
 		bodyByte, appErr := json.Marshal(event)
 		if appErr != nil {
-			p.API.LogWarn("Error while parsing Webhook Request", "err", err.Error())
-			http.Error(w, "Error while parsing Webhook Request", http.StatusBadRequest)
+			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
+			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
 			return
 		}
 		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
