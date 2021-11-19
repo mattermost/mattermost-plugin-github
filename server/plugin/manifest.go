@@ -151,7 +151,7 @@ const manifestStr = `
         "key": "EnableWebhookEventLogging",
         "display_name": "Enable Webhook Event Logging:",
         "type": "bool",
-        "help_text": "Allow the plugin to log the event from webhook.",
+        "help_text": "Allow the plugin to log the webhook event. The log level needs to be set to DEBUG.",
         "placeholder": "",
         "default": false
       }
