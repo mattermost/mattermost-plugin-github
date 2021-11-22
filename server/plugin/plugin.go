@@ -24,7 +24,7 @@ import (
 
 const (
 	githubTokenKey       = "_githubtoken"
-	githubOauthKey       = "_githuboauthkey"
+	githubOauthKey       = "githuboauthkey_"
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 

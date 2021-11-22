@@ -287,7 +287,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	appErr := p.API.KVSetWithExpiry(state.Token+githubOauthKey, stateBytes, TokenTTL)
+	appErr := p.API.KVSetWithExpiry(githubOauthKey+state.Token, stateBytes, TokenTTL)
 	if appErr != nil {
 		http.Error(w, "error setting stored state", http.StatusBadRequest)
 		return
@@ -307,7 +307,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	stateToken := r.URL.Query().Get("state")
 
-	storedState, appErr := p.API.KVGet(stateToken + githubOauthKey)
+	storedState, appErr := p.API.KVGet(githubOauthKey + stateToken )
 	if appErr != nil {
 		p.API.LogWarn("Failed to get state token", "error", appErr.Error())
 		http.Error(w, "missing stored state", http.StatusBadRequest)
@@ -319,7 +319,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		return
 	}
 
-	appErr = p.API.KVDelete(stateToken + githubOauthKey)
+	appErr = p.API.KVDelete(githubOauthKey + stateToken)
 	if appErr != nil {
 		p.API.LogWarn("Failed to delete state token", "error", appErr.Error())
 		http.Error(w, "error deleting stored state", http.StatusBadRequest)
