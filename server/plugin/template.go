@@ -331,6 +331,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `features` is a comma-delimited list of one or more the following:\n" +
 		"    * `issues` - includes new and closed issues\n" +
 		"    * `pulls` - includes new and closed pull requests\n" +
+		"    * `pulls_merged` - includes merged pull requests only\n" +
 		"    * `pushes` - includes pushes\n" +
 		"    * `creates` - includes branch and tag creations\n" +
 		"    * `deletes` - includes branch and tag deletions\n" +
@@ -351,6 +352,13 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
 		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+
+	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}}
+{{- if eq .GetAction "created" }} starred
+{{- else }} unstarred
+{{- end }} by {{template "user" .GetSender}}
+It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
