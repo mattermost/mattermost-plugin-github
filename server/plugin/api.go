@@ -307,7 +307,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	stateToken := r.URL.Query().Get("state")
 
-	storedState, appErr := p.API.KVGet(githubOauthKey + stateToken )
+	storedState, appErr := p.API.KVGet(githubOauthKey + stateToken)
 	if appErr != nil {
 		p.API.LogWarn("Failed to get state token", "error", appErr.Error())
 		http.Error(w, "missing stored state", http.StatusBadRequest)
