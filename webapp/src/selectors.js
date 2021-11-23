@@ -18,3 +18,7 @@ export const getServerRoute = (state) => {
 
     return basePath;
 };
+
+export function isLoggedIn(state) {
+    return state.entities.users.currentUserId !== '';
+}

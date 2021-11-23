@@ -426,5 +426,5 @@ export async function getSettings() {
     } catch (error) {
         return {error};
     }
-    return {data};
+    return data;
 }
