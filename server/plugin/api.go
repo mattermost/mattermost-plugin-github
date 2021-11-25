@@ -72,10 +72,6 @@ type HTTPHandlerFuncWithUserContext func(c *UserContext, w http.ResponseWriter, 
 // ResponseType indicates type of response returned by api
 type ResponseType string
 
-type Settings struct {
-	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
-}
-
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
@@ -129,8 +125,6 @@ func (p *Plugin) initializeAPI() {
 	oauthRouter.HandleFunc("/complete", p.checkAuth(p.attachContext(p.completeConnectUserToGitHub), ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/connected", p.attachContext(p.getConnected)).Methods(http.MethodGet)
-
-	apiRouter.HandleFunc("/settings", p.checkAuth(p.getSettings, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/user", p.checkAuth(p.attachContext(p.getGitHubUser), ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/todo", p.checkAuth(p.attachUserContext(p.postToDo), ResponseTypeJSON)).Methods(http.MethodPost)
@@ -492,13 +486,15 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		GitHubClientID    string        `json:"github_client_id"`
 		EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
 		Organization      string        `json:"organization"`
-		Settings          *UserSettings `json:"settings"`
+		UserSettings      *UserSettings `json:"user_settings"`
+		PluginSettings    Settings      `json:"plugin_settings"`
 	}
 
 	resp := &ConnectedResponse{
 		Connected:         false,
 		EnterpriseBaseURL: config.EnterpriseBaseURL,
 		Organization:      config.GitHubOrg,
+		PluginSettings:    p.getPluginSettings(),
 	}
 
 	if c.UserID == "" {
@@ -515,7 +511,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	resp.Connected = true
 	resp.GitHubUsername = info.GitHubUsername
 	resp.GitHubClientID = config.GitHubOAuthClientID
-	resp.Settings = info.Settings
+	resp.UserSettings = info.Settings
 
 	if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
 		lastPostAt := info.LastToDoPostAt
@@ -567,12 +563,12 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	p.writeJSON(w, resp)
 }
 
-func (p *Plugin) getSettings(w http.ResponseWriter, _ *http.Request) {
-	resp := Settings{
+func (p *Plugin) getPluginSettings() Settings {
+	pluginSettings := Settings{
 		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
 	}
 
-	p.writeJSON(w, resp)
+	return pluginSettings
 }
 
 func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Request) {

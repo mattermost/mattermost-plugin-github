@@ -19,6 +19,4 @@ export const getServerRoute = (state) => {
     return basePath;
 };
 
-export function isLoggedIn(state) {
-    return state.entities.users.currentUserId !== '';
-}
+export const pluginSettings = (state) => getPluginState(state).pluginSettings;

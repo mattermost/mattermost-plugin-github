@@ -12,9 +12,9 @@ import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
 import Client from './client';
-import {getConnected, setShowRHSAction, getSettings} from './actions';
+import {getConnected, setShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
-import {getServerRoute, isLoggedIn} from './selectors';
+import {getServerRoute} from './selectors';
 import {id as pluginId} from './manifest';
 
 let activityFunc;
@@ -23,20 +23,13 @@ const activityTimeout = 60 * 60 * 1000; // 1 hour
 
 class PluginClass {
     async initialize(registry, store) {
-        const userLoggedIn = isLoggedIn(store.getState());
-        let settings = false;
         registry.registerReducer(Reducer);
         Client.setServerRoute(getServerRoute(store.getState()));
 
-        if (userLoggedIn) {
-            settings = await getSettings(store.getState);
-            await getConnected(true)(store.dispatch, store.getState);
-        }
+        await getConnected(true)(store.dispatch, store.getState);
 
-        if (!userLoggedIn || (settings !== false && settings.left_sidebar_enabled)) {
-            registry.registerLeftSidebarHeaderComponent(SidebarHeader);
-            registry.registerBottomTeamSidebarComponent(TeamSidebar);
-        }
+        registry.registerLeftSidebarHeaderComponent(SidebarHeader);
+        registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
         registry.registerRootComponent(CreateIssueModal);
         registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
