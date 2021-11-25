@@ -16,22 +16,26 @@ const (
 	featureIssueCreation = "issue_creations"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
+	featurePullsMerged   = "pulls_merged"
 	featurePushes        = "pushes"
 	featureCreates       = "creates"
 	featureDeletes       = "deletes"
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
+	featureStars         = "stars"
 )
 
 var validFeatures = map[string]bool{
 	featureIssueCreation: true,
 	featureIssues:        true,
 	featurePulls:         true,
+	featurePullsMerged:   true,
 	featurePushes:        true,
 	featureCreates:       true,
 	featureDeletes:       true,
 	featureIssueComments: true,
 	featurePullReviews:   true,
+	featureStars:         true,
 }
 
 const (
@@ -300,6 +304,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 				return "Feature list cannot contain both issue and issue_creations"
 			}
+			if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+				return "Feature list cannot contain both pulls and pulls_merged"
+			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
 				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
@@ -349,8 +356,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 		return err.Error()
 	}
+	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to %s.", repo)
+	msg := fmt.Sprintf("Successfully subscribed to [%s](%s).", repo, repoLink)
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
@@ -629,7 +637,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
 		exclude := []model.AutocompleteListItem{
 			{
