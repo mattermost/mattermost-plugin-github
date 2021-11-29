@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -61,13 +62,28 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
 	signature := r.Header.Get("X-Hub-Signature")
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}
 
+	event, err := github.ParseWebHook(github.WebHookType(r), body)
+	if err != nil {
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
+		return
+	}
+
+	if config.EnableWebhookEventLogging {
+		bodyByte, appErr := json.Marshal(event)
+		if appErr != nil {
+			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
+			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
+			return
+		}
+		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
+	}
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
 		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
@@ -77,13 +93,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if !valid {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
-	event, err := github.ParseWebHook(github.WebHookType(r), body)
-	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
-		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
 
