@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-
 	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -45,7 +44,7 @@ const (
 	subCommandDeleteAll = "delete-all"
 )
 
-var events = []string{
+var webhookEvents = []string{
 	"create",
 	"delete",
 	"check_run",
@@ -553,7 +552,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, githubClient *github.Client) string {
 	if len(parameters) < 1 {
 		return "Invalid parameter for add command, provide repo details in `owner[/repo]` format."
 	}
@@ -582,6 +581,7 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, gith
 		hook.Events = strings.Split(parameters[1], ",")
 	}
 	hook.Config = config
+	ctx := context.Background()
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 	if err != nil {
 		return err.Error()
@@ -605,7 +605,7 @@ func (p *Plugin) handleWebhookAdd(ctx context.Context, parameters []string, gith
 func (p *Plugin) checkOptionsValid(options []string) error {
 	for _, val := range options {
 		isValidEvent := false
-		for _, item := range events {
+		for _, item := range webhookEvents {
 			if item == val {
 				isValidEvent = true
 				break
@@ -617,7 +617,7 @@ func (p *Plugin) checkOptionsValid(options []string) error {
 	}
 	return nil
 }
-func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githubClient *github.Client) string {
 	if len(parameters) == 0 {
 		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
 	}
@@ -632,6 +632,7 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, git
 		PerPage: 50,
 	}
 	var txt string
+	ctx := context.Background()
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
@@ -674,7 +675,7 @@ func (p *Plugin) handleWebhookList(ctx context.Context, parameters []string, git
 
 	return txt
 }
-func (p *Plugin) handleWebhooks(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleWebhooks(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please provide a subcommand `add` or `list`."
 	}
@@ -684,9 +685,9 @@ func (p *Plugin) handleWebhooks(_ *plugin.Context, args *model.CommandArgs, para
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	switch command {
 	case subCommandAdd:
-		return p.handleWebhookAdd(ctx, parameters, githubClient)
+		return p.handleWebhookAdd(c, parameters, githubClient)
 	case subCommandList:
-		return p.handleWebhookList(ctx, parameters, githubClient)
+		return p.handleWebhookList(c, parameters, githubClient)
 	default:
 		return fmt.Sprintf("Invalid subcommand `%s`.", command)
 	}
