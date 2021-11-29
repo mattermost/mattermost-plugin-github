@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
 	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -736,6 +737,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		default:
 			text = "Please contact your system administrator to configure the GitHub plugin."
 		}
+
 		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
