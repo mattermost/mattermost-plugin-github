@@ -327,7 +327,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s): %s.", owner, orgLink,features)
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s): %s.", owner, orgLink, features)
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
@@ -358,7 +358,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to [%s](%s): %s.", repo, repoLink,features)
+	msg := fmt.Sprintf("Successfully subscribed to [%s](%s): %s.", repo, repoLink, features)
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
@@ -368,7 +368,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	post := &model.Post{
-		ChannelId:  args.ChannelId,
+		ChannelId: args.ChannelId,
 		UserId:    p.BotUserID,
 		Message:   msg,
 	}
