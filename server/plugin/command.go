@@ -327,7 +327,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s).", owner, orgLink)
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s): %s.", owner, orgLink,features)
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
@@ -358,7 +358,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to [%s](%s).", repo, repoLink)
+	msg := fmt.Sprintf("Successfully subscribed to [%s](%s): %s.", repo, repoLink,features)
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
@@ -367,7 +367,17 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
 
-	return msg
+	post := &model.Post{
+		ChannelId:  args.ChannelId,
+		UserId:    p.BotUserID,
+		Message:   msg,
+	}
+
+	if _, err := p.API.CreatePost(post); err != nil {
+		p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+	}
+
+	return ""
 }
 
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
