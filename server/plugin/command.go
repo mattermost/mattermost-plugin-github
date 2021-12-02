@@ -320,7 +320,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-
+	username,_:= p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
@@ -347,6 +347,17 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
+		orgMsg := fmt.Sprintf("Github subscription, \"[%s](%s)\", with events: %s  was added to this channel by %v", owner, orgLink, features, username.Username)
+		post := &model.Post{
+			ChannelId: args.ChannelId,
+			UserId:    p.BotUserID,
+			Message:   orgMsg,
+		}
+	
+		if _, err := p.API.CreatePost(post); err != nil {
+			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
+			return fmt.Sprintf("%s Though there was an error creating the public post: %s", orgMsg, err.Error())
+		}
 		return subOrgMsg
 	}
 	if flags.ExcludeOrgRepos {
@@ -358,7 +369,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, features)
+	msg := fmt.Sprintf("Github subscription, \"[%s](%s)\", with events: %s  was added to this channel by %v", repo, repoLink, features, username.Username)
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
@@ -375,10 +386,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	if _, err := p.API.CreatePost(post); err != nil {
 		p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
-		return err.Error()
+		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, err.Error())
 	}
 
-	return ""
+	return fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, features)
 }
 
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
