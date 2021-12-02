@@ -320,7 +320,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-	username,_:= p.API.GetUser(args.UserId)
+	username, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
@@ -353,7 +353,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			UserId:    p.BotUserID,
 			Message:   orgMsg,
 		}
-	
+
 		if _, err := p.API.CreatePost(post); err != nil {
 			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
 			return fmt.Sprintf("%s Though there was an error creating the public post: %s", orgMsg, err.Error())
