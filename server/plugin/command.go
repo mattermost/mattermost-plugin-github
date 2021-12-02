@@ -44,47 +44,7 @@ const (
 	subCommandDeleteAll = "delete-all"
 )
 
-var webhookEvents = []string{
-	"create",
-	"delete",
-	"check_run",
-	"check_suite",
-	"code_scanning_alert",
-	"member",
-	"commit_comment",
-	"deploy_key",
-	"deployment_status",
-	"deployment",
-	"discussion_comment",
-	"discussion",
-	"fork",
-	"issue_comment",
-	"issues",
-	"label",
-	"meta",
-	"milestone",
-	"package",
-	"page_build",
-	"project_card",
-	"project_column",
-	"project",
-	"pull_request_review_comment",
-	"pull_request_review_thread",
-	"pull_request_review",
-	"pull_request",
-	"push",
-	"registry_package",
-	"release",
-	"repository",
-	"repository_import",
-	"repository_vulnerability_alert",
-	"secret_scanning_alert",
-	"star",
-	"status",
-	"team_add",
-	"public",
-	"watch",
-	"gollum"}
+var webhookEvents = []string{"create", "delete", "issue_comment", "issues", "pull_request", "pull_request_review", "pull_request_review_comment", "push", "star"}
 
 const (
 	githubHookURL = "/settings/hooks/"
@@ -569,20 +529,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 	config["url"] = siteURL + "/plugins/" + Manifest.Id + "/webhook"
 	config["insecure_ssl"] = false
 	config["content_type"] = "application/json"
-
-	if len(parameters) < 2 {
-		return "Invalid Events, Provide which events would you like to trigger this webhook?"
-	}
-
-	if strings.Contains(parameters[1], "*") && len(parameters[1]) == 1 {
-		hook.Events = []string{"*"}
-	}
-
-	if err := p.checkValidWebhookEvents(strings.Split(parameters[1], ",")); err != nil {
-		return err.Error()
-	}
-
-	hook.Events = strings.Split(parameters[1], ",")
+	hook.Events = webhookEvents
 	hook.Config = config
 	ctx := context.Background()
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
@@ -590,39 +537,21 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 		return err.Error()
 	}
 
-	hookDetails, _, err := p.GetHook(ctx, githubClient, owner, repo, *githubHook.ID)
-	if err != nil {
-		return err.Error()
-	}
-
 	hookURL := baseURL
-
+	label := owner
 	if repo != "" {
 		hookURL += owner + "/" + repo
+		label = owner + "/" + repo
 	} else {
 		hookURL += "organizations/" + owner
 	}
 
 	hookURL += githubHookURL
 	txt := "Webhook Created Successfully \n"
-	txt += fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id - (%d) with events:  -  %s \n", hookURL, *githubHook.ID, *githubHook.ID, strings.Join(hookDetails.Events, " , "))
+	txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *githubHook.ID)
 	return txt
 }
-func (p *Plugin) checkValidWebhookEvents(options []string) error {
-	for _, val := range options {
-		isValidEvent := false
-		for _, item := range webhookEvents {
-			if item == val {
-				isValidEvent = true
-				break
-			}
-		}
-		if !isValidEvent {
-			return errors.New(val + " is not a valid events to trigger webhook")
-		}
-	}
-	return nil
-}
+
 func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githubClient *github.Client) string {
 	if len(parameters) == 0 {
 		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
@@ -663,13 +592,15 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 	for _, hook := range githubHookList {
 		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
 			hookURL := baseURL
+			label := owner
 			if repo != "" {
 				hookURL += owner + "/" + repo
+				label += "/" + repo
 			} else {
 				hookURL += "organizations/" + owner
 			}
 			hookURL += githubHookURL
-			txt += fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id - (%d) with events:  -  %s \n", hookURL, *hook.ID, *hook.ID, strings.Join(hook.Events, " , "))
+			txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *hook.ID)
 			webHookPresent = true
 		}
 	}
@@ -934,9 +865,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	webhookList := model.NewAutocompleteData(subCommandList, "owner[/repo]", "List webhooks or an organization or repository.")
 	webhookList.AddTextArgument("Owner/repo to list webhooks from", "[owner/repo]", "")
 	webhook.AddCommand(webhookList)
-	webhookAdd := model.NewAutocompleteData(subCommandAdd, "owner[/repo]", "Add a webhook to desired owner[/repo] events")
+	webhookAdd := model.NewAutocompleteData(subCommandAdd, "owner[/repo]", "Add a webhook to desired owner[/repo]")
 	webhookAdd.AddTextArgument("Organization or repository to list webhooks from", "owner[/repo]", "")
-	webhookAdd.AddTextArgument("Comma-delimited list of one or more of: create, delete, check_run, check_suite, code_scanning_alert, member, commit_comment, deploy_key, deployment_status, deployment, discussion_comment, discussion, fork, issue_comment, issues, label, meta, milestone, package, page_build, project_card, project_column, project, pull_request_review_comment, pull_request_review_thread, pull_request_review, pull_request, push, registry_package, release, repository, repository_import, repository_vulnerability_alert, secret_scanning_alert, star, status, team_add, public, watch, gollum", "[events] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	webhook.AddCommand(webhookAdd)
 	github.AddCommand(webhook)
 
