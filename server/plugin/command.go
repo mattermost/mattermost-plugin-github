@@ -568,11 +568,11 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 	}
 	var txt = "### Webhooks in this Repository\n"
 	ctx := context.Background()
-	
+
 	if repo == "" {
 		txt = "### Webhooks in this Organization\n"
 	}
-	
+
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
