@@ -3,7 +3,6 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -570,17 +569,20 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 	config["url"] = siteURL + "/plugins/" + Manifest.Id + "/webhook"
 	config["insecure_ssl"] = false
 	config["content_type"] = "application/json"
-	hook.Events = []string{"*"}
 
-	if len(parameters) == 2 {
-		if strings.Contains(parameters[1], "*") && len(parameters[1]) == 1 {
-			hook.Events = []string{"*"}
-		}
-		if err := p.checkOptionsValid(strings.Split(parameters[1], ",")); err != nil {
-			return err.Error()
-		}
-		hook.Events = strings.Split(parameters[1], ",")
+	if len(parameters) < 2 {
+		return "Invalid Events, Provide which events would you like to trigger this webhook?"
 	}
+
+	if strings.Contains(parameters[1], "*") && len(parameters[1]) == 1 {
+		hook.Events = []string{"*"}
+	}
+
+	if err := p.checkValidWebhookEvents(strings.Split(parameters[1], ",")); err != nil {
+		return err.Error()
+	}
+
+	hook.Events = strings.Split(parameters[1], ",")
 	hook.Config = config
 	ctx := context.Background()
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
@@ -593,17 +595,19 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 		return err.Error()
 	}
 
-	hookURL := baseURL + owner
+	hookURL := baseURL 
+	
 	if repo != "" {
-		hookURL += "/" + repo
+		hookURL += owner+"/" + repo
+	}else{
+		hookURL += "organizations/"+owner
 	}
 	hookURL += githubHookURL
 	txt := "Webhook Created Successfully \n"
-	hookID := strconv.Itoa(int(*githubHook.ID))
-	txt += fmt.Sprintf(" *  [%s](%s) :  -  %s \n", hookID, hookURL+hookID, strings.Join(hookDetails.Events, " , "))
+	fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL,*githubHook.ID, *githubHook.ID,strings.Join(hookDetails.Events, " , "))
 	return txt
 }
-func (p *Plugin) checkOptionsValid(options []string) error {
+func (p *Plugin) checkValidWebhookEvents(options []string) error {
 	for _, val := range options {
 		isValidEvent := false
 		for _, item := range webhookEvents {
@@ -657,12 +661,14 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 	webHookPresent := false
 	for _, hook := range githubHookList {
 		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
-			hookURL := baseURL + owner
+			hookURL := baseURL
 			if repo != "" {
-				hookURL += "/" + repo
+				hookURL += owner+ "/" + repo
+			}else{
+				hookURL += "organizations/"+owner
 			}
 			hookURL += githubHookURL
-			txt += fmt.Sprintf(" *  [%d](%s%d) :  -  %s \n", *hook.ID, hookURL, *hook.ID, strings.Join(hook.Events, " , "))
+			fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL,*hook.ID, *hook.ID,strings.Join(hook.Events, " , "))
 			webHookPresent = true
 		}
 	}

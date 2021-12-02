@@ -249,7 +249,7 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 		// means that asks scope for private repositories
 		repo = github.ScopeRepo
 	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)}
+	scopes := []string{ string(github.ScopeAdminOrgHook),string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)}
 
 	if config.UsePreregisteredApplication {
 		p.API.LogDebug("Using Chimera Proxy OAuth configuration")
