@@ -374,7 +374,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	if _, err := p.API.CreatePost(post); err != nil {
-		p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
 		return err.Error()
 	}
 
