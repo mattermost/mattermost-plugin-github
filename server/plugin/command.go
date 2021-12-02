@@ -605,7 +605,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 
 	hookURL += githubHookURL
 	txt := "Webhook Created Successfully \n"
-	txt += fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL, *githubHook.ID, *githubHook.ID, strings.Join(hookDetails.Events, " , "))
+	txt += fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id - (%d) with events:  -  %s \n", hookURL, *githubHook.ID, *githubHook.ID, strings.Join(hookDetails.Events, " , "))
 	return txt
 }
 func (p *Plugin) checkValidWebhookEvents(options []string) error {
@@ -669,7 +669,7 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 				hookURL += "organizations/" + owner
 			}
 			hookURL += githubHookURL
-			txt += fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL, *hook.ID, *hook.ID, strings.Join(hook.Events, " , "))
+			txt += fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id - (%d) with events:  -  %s \n", hookURL, *hook.ID, *hook.ID, strings.Join(hook.Events, " , "))
 			webHookPresent = true
 		}
 	}
