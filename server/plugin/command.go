@@ -595,16 +595,17 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 		return err.Error()
 	}
 
-	hookURL := baseURL 
-	
+	hookURL := baseURL
+
 	if repo != "" {
-		hookURL += owner+"/" + repo
-	}else{
-		hookURL += "organizations/"+owner
+		hookURL += owner + "/" + repo
+	} else {
+		hookURL += "organizations/" + owner
 	}
+
 	hookURL += githubHookURL
 	txt := "Webhook Created Successfully \n"
-	fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL,*githubHook.ID, *githubHook.ID,strings.Join(hookDetails.Events, " , "))
+	fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL, *githubHook.ID, *githubHook.ID, strings.Join(hookDetails.Events, " , "))
 	return txt
 }
 func (p *Plugin) checkValidWebhookEvents(options []string) error {
@@ -663,12 +664,12 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
 			hookURL := baseURL
 			if repo != "" {
-				hookURL += owner+ "/" + repo
-			}else{
-				hookURL += "organizations/"+owner
+				hookURL += owner + "/" + repo
+			} else {
+				hookURL += "organizations/" + owner
 			}
 			hookURL += githubHookURL
-			fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL,*hook.ID, *hook.ID,strings.Join(hook.Events, " , "))
+			fmt.Sprintf(" *  can redirect to webhook [here](%s%d) id -(%d) with events:  -  %s \n", hookURL, *hook.ID, *hook.ID, strings.Join(hook.Events, " , "))
 			webHookPresent = true
 		}
 	}
