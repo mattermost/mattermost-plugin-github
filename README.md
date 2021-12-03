@@ -84,19 +84,8 @@ A System Admin performs the remaining steps:
 
 As a system admin, you must create a webhook for each organization you want to receive notifications for or subscribe to.
 
-1. In **System Console > Plugins > GitHub**, generate a new value for **Webhook Secret**. Copy it, as you will use it in a later step.
-2. Hit **Save** to save the secret.
-3. Go to the **Settings** page of your GitHub organization you want to send notifications from, then select **Webhooks** in the sidebar.
-4. Click **Add Webhook**.
-5. Set the following values:
-   - **Payload URL:** `https://your-mattermost-url.com/plugins/github/webhook`, replacing `https://your-mattermost-url.com` with your Mattermost URL.
-   - **Content Type:** `application/json`
-   - **Secret:** the webhook secret you copied previously.
-6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?".
-7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`, `Stars`.
-7. Hit **Add Webhook** to save it.
-
-If you have multiple organizations, repeat the process starting from step 3 to create a webhook for each organization.
+1. Switch to Mattermost and run `/github webhook add org/[repo]` in a Mattermost channel. You should receive a Direct Message in channel for successfully creating webhook.
+2. Can Check List Webhook in `org/[repo]` using command `/github webhook list org/[repo]`.
 
 ### Step 3: Configure the Plugin in Mattermost
 
