@@ -322,7 +322,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	username, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	eventsSubscribed := "`"+strings.Join(strings.Split(features,","),"`, `")+"`"
+	eventsSubscribed := "`" + strings.Join(strings.Split(features, ","), "`, `") + "`"
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
