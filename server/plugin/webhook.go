@@ -5,15 +5,15 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/microcosm-cc/bluemonday"
-
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/microcosm-cc/bluemonday"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -62,13 +62,28 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
 	signature := r.Header.Get("X-Hub-Signature")
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}
 
+	event, err := github.ParseWebHook(github.WebHookType(r), body)
+	if err != nil {
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
+		return
+	}
+
+	if config.EnableWebhookEventLogging {
+		bodyByte, appErr := json.Marshal(event)
+		if appErr != nil {
+			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
+			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
+			return
+		}
+		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
+	}
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
 		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
@@ -78,13 +93,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if !valid {
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
-	}
-
-	event, err := github.ParseWebHook(github.WebHookType(r), body)
-	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
-		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
 
@@ -137,6 +145,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		repo = event.GetRepo()
 		handler = func() {
 			p.postDeleteEvent(event)
+		}
+	case *github.StarEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postStarEvent(event)
 		}
 	}
 
@@ -237,11 +250,17 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
+
 		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
-		if !sub.Pulls() {
+		if !sub.Pulls() && !sub.PullsMerged() {
+			continue
+		}
+
+		if sub.PullsMerged() && action != "closed" {
+
 			continue
 		}
 
@@ -1052,4 +1071,41 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)
+}
+
+func (p *Plugin) postStarEvent(event *github.StarEvent) {
+	repo := event.GetRepo()
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	newStarMessage, err := renderTemplate("newRepoStar", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render template", "error", err.Error())
+		return
+	}
+
+	post := &model.Post{
+		UserId:  p.BotUserID,
+		Type:    "custom_git_star",
+		Message: newStarMessage,
+	}
+
+	for _, sub := range subs {
+		if !sub.Stars() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if _, err := p.API.CreatePost(post); err != nil {
+			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
 }

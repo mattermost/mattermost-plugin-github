@@ -5,13 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/stretchr/testify/require"
 )
 
 var repo = github.Repository{
-	FullName: sToP("mattermost-plugin-github"),
-	HTMLURL:  sToP("https://github.com/mattermost/mattermost-plugin-github"),
+	FullName:        sToP("mattermost-plugin-github"),
+	StargazersCount: iToP(1),
+	HTMLURL:         sToP("https://github.com/mattermost/mattermost-plugin-github"),
 }
 
 var pushEventRepository = github.PushEventRepository{
@@ -647,6 +648,20 @@ func TestDeletedMessageTemplate(t *testing.T) {
 		Ref:     sToP("branchname"),
 		RefType: sToP("branch"),
 		Sender:  &user,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
+func TestRepoStarTemplate(t *testing.T) {
+	expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) starred by [panda](https://github.com/panda)
+It now has **1** stars.`
+
+	actual, err := renderTemplate("newRepoStar", &github.StarEvent{
+		Action: sToP("created"),
+		Repo:   &repo,
+		Sender: &user,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)

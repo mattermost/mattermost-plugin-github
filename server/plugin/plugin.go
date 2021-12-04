@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -24,6 +24,7 @@ import (
 
 const (
 	githubTokenKey       = "_githubtoken"
+	githubOauthKey       = "githuboauthkey_"
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
@@ -680,7 +681,7 @@ func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
 	configOrg := strings.TrimSpace(config.GitHubOrg)
-	if configOrg != "" && configOrg != org {
+	if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
 		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
 	}
 

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v37/github"
 	"github.com/pkg/errors"
 )
 
@@ -60,6 +60,10 @@ func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features, featurePulls)
 }
 
+func (s *Subscription) PullsMerged() bool {
+	return strings.Contains(s.Features, "pulls_merged")
+}
+
 func (s *Subscription) IssueCreations() bool {
 	return strings.Contains(s.Features, "issue_creations")
 }
@@ -86,6 +90,10 @@ func (s *Subscription) IssueComments() bool {
 
 func (s *Subscription) PullReviews() bool {
 	return strings.Contains(s.Features, "pull_reviews")
+}
+
+func (s *Subscription) Stars() bool {
+	return strings.Contains(s.Features, featureStars)
 }
 
 func (s *Subscription) Label() string {
