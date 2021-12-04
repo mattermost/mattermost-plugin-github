@@ -237,7 +237,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -406,7 +406,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	}
 
 	for _, sub := range subscribedChannels {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -475,7 +475,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -520,7 +520,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -567,7 +567,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -616,7 +616,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -699,7 +699,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 
@@ -757,7 +757,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	}
 
 	for _, sub := range subs {
-		if p.IsNotificationOff(*repo.FullName, sub.ChannelID) {
+		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
 

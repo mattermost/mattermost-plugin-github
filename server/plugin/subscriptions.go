@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"sort"
 	"strings"
 
@@ -14,19 +13,15 @@ import (
 )
 
 const (
-	SubscriptionsKey              = "subscriptions"
-	excludeOrgMemberFlag          = "exclude-org-member"
-	excludeOrgReposFlag           = "exclude"
-	SubscribedRepoNotificationOff = "subscribed-turned-off-notifications"
+	SubscriptionsKey     = "subscriptions"
+	excludeOrgMemberFlag = "exclude-org-member"
+	excludeOrgReposFlag  = "exclude"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
 	ExcludeOrgRepos   bool
-}
-
-type IgnoredRepositoriesPerChannel struct {
-	IgnoredRepos map[string][]string `json:"ignored_repos"`
+	ExcludeRepos      []string
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
@@ -175,16 +170,8 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
-func (p *Plugin) IsNotificationOff(repoName string, channelID string) bool {
-	var allIgnoredRepos, err = p.GetExcludedNotificationRepos()
-	if err != nil {
-		p.API.LogWarn("Failed to check the disabled notification repo list.", "error", err.Error())
-		return false
-	}
-	repos := allIgnoredRepos.IgnoredRepos[channelID]
-	if len(repos) == 0 {
-		return false
-	}
+func (p *Plugin) IsNotificationOff(repoName string, s *Subscription) bool {
+	var repos = p.GetExcludedNotificationRepos(*s)
 	exist, _ := ItemExists(repos, repoName)
 
 	return exist
@@ -282,74 +269,10 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	return nil
 }
 
-func (p *Plugin) GetExcludedNotificationRepos() (IgnoredRepositoriesPerChannel, error) {
-	var subscriptions IgnoredRepositoriesPerChannel
-	value, appErr := p.API.KVGet(SubscribedRepoNotificationOff)
-	if appErr != nil {
-		return subscriptions, errors.Wrap(appErr, "could not get subscriptions from KVStore")
-	}
-	if value == nil {
-		return subscriptions, nil
-	}
-	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
-	if err != nil {
-		return subscriptions, errors.Wrap(err, "could not properly decode subscriptions key")
-	}
-	return subscriptions, nil
+func (p *Plugin) GetExcludedNotificationRepos(s Subscription) []string {
+	return s.Flags.ExcludeRepos
 }
 
-func (p *Plugin) StoreExcludedNotificationRepo(args *model.CommandArgs, s string) error {
-	var allIgnoredRepos, err = p.GetExcludedNotificationRepos()
-
-	if err != nil {
-		return nil
-	}
-	repoNames := allIgnoredRepos.IgnoredRepos[args.ChannelId]
-
-	_, alreadyExists := Find(repoNames, s)
-	if alreadyExists {
-		return nil
-	}
-	repoNames = append(repoNames, s)
-	if len(allIgnoredRepos.IgnoredRepos) == 0 {
-		allIgnoredRepos.IgnoredRepos = make(map[string][]string)
-	}
-	allIgnoredRepos.IgnoredRepos[args.ChannelId] = repoNames
-
-	ignored := IgnoredRepositoriesPerChannel{
-		allIgnoredRepos.IgnoredRepos,
-	}
-
-	stringifies, _ := json.Marshal(ignored)
-	if appErr := p.API.KVSet(SubscribedRepoNotificationOff, stringifies); appErr != nil {
-		return errors.Wrap(appErr, "could not store subscriptions in KV store")
-	}
-
-	return nil
-}
-func (p *Plugin) EnableNotificationTurnedOffRepo(s string, channelID string) error {
-	var allIgnoredRepos, err = p.GetExcludedNotificationRepos()
-	if err != nil {
-		return errors.Wrap(err, "error while getting previous value of key")
-	}
-	repoNames := allIgnoredRepos.IgnoredRepos[channelID]
-	if len(repoNames) > 0 {
-		exists, index := ItemExists(repoNames, s)
-		if exists {
-			repoNames = append(repoNames[:index], repoNames[index+1:]...)
-			allIgnoredRepos.IgnoredRepos[channelID] = repoNames
-			ignored := IgnoredRepositoriesPerChannel{
-				allIgnoredRepos.IgnoredRepos,
-			}
-			stringifies, _ := json.Marshal(ignored)
-			if appErr := p.API.KVSet(SubscribedRepoNotificationOff, stringifies); appErr != nil {
-				return errors.Wrap(appErr, "could not store subscriptions in KV store")
-			}
-		}
-	}
-
-	return nil
-}
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
 	name = strings.ToLower(name)
@@ -425,12 +348,4 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 	}
 
 	return nil
-}
-func Find(slice []string, val string) (int, bool) {
-	for i, item := range slice {
-		if item == val {
-			return i, true
-		}
-	}
-	return -1, false
 }

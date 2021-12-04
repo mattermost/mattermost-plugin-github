@@ -260,18 +260,10 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
+		txt += fmt.Sprintf(" | Exclusions:  `%s`", strings.Trim(strings.Join(sub.Flags.ExcludeRepos, ", "), "/"))
 		txt += "\n"
 	}
 
-	var allIgnoredRepos, err2 = p.GetExcludedNotificationRepos()
-	if err2 != nil {
-		return err2.Error()
-	}
-	excludeRepos := allIgnoredRepos.IgnoredRepos[args.ChannelId]
-	for _, repo := range excludeRepos {
-		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(repo, "/"), "notification : disabled")
-		txt += "\n"
-	}
 	return txt
 }
 
@@ -317,9 +309,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
-		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
-			return err.Error()
-		}
 		orgLink := p.getBaseURL() + owner
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s).", owner, orgLink)
 		if flags.ExcludeOrgRepos {
@@ -330,7 +319,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
-				if err := p.StoreExcludedNotificationRepo(args, val); err != nil {
+				flags.ExcludeRepos = append(flags.ExcludeRepos, val)
+				if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 					return err.Error()
 				}
 				if excludeMsg != "" {
@@ -370,10 +360,6 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 
 	repo := parameters[0]
 
-	if err := p.EnableNotificationTurnedOffRepo(repo, args.ChannelId); err != nil {
-		p.API.LogWarn("Failed to unsubscribe while removing repo from disable notification list", "repo", repo, "error", err.Error())
-		return "Encountered an error trying to remove from notify disabled list. Please try again."
-	}
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
 		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
