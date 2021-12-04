@@ -250,7 +250,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
-
 		if p.IsNotificationOff(*repo.FullName, sub) {
 			continue
 		}
@@ -260,7 +259,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if sub.PullsMerged() && action != "closed" {
-
 			continue
 		}
 
