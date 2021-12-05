@@ -21,7 +21,7 @@ export function handleConnect(store) {
         }
         store.dispatch({
             type: ActionTypes.RECEIVED_CONNECTED,
-            data: {...msg.data, user_settings: {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true}},
+            data: {...msg.data, settings: {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true}},
         });
     };
 }

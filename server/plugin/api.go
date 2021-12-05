@@ -481,13 +481,13 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	config := p.getConfiguration()
 
 	type ConnectedResponse struct {
-		Connected         bool          `json:"connected"`
-		GitHubUsername    string        `json:"github_username"`
-		GitHubClientID    string        `json:"github_client_id"`
-		EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
-		Organization      string        `json:"organization"`
-		UserSettings      *UserSettings `json:"user_settings"`
-		PluginSettings    Settings      `json:"plugin_settings"`
+		Connected         bool               `json:"connected"`
+		GitHubUsername    string             `json:"github_username"`
+		GitHubClientID    string             `json:"github_client_id"`
+		EnterpriseBaseURL string             `json:"enterprise_base_url,omitempty"`
+		Organization      string             `json:"organization"`
+		UserSettings      *UserSettings      `json:"user_settings"`
+		PluginSettings    ClientSafeSettings `json:"plugin_settings"`
 	}
 
 	resp := &ConnectedResponse{
@@ -563,8 +563,8 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	p.writeJSON(w, resp)
 }
 
-func (p *Plugin) getPluginSettings() Settings {
-	pluginSettings := Settings{
+func (p *Plugin) getPluginSettings() ClientSafeSettings {
+	pluginSettings := ClientSafeSettings{
 		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
 	}
 

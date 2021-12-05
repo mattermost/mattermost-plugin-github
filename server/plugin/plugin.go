@@ -316,7 +316,7 @@ type UserSettings struct {
 	Notifications         bool   `json:"notifications"`
 }
 
-type Settings struct {
+type ClientSafeSettings struct {
 	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
 }
 
