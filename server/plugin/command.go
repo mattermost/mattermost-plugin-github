@@ -524,7 +524,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	}
 	baseURL := p.getBaseURL()
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
-	webhookExist, hookId, err := p.CheckWebhookExist(owner, repo, args.ChannelId)
+	webhookExist, hookID, err := p.CheckWebhookExist(owner, repo, args.ChannelId)
 	if err != nil {
 		return err.Error()
 	}
@@ -539,7 +539,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 			hookURL += "organizations/" + owner
 		}
 		hookURL += githubHookURL
-		return fmt.Sprintf("There is already a webhook for this repository that is pointing to this Mattermost server. Please delete the webhook from [%s](%s/%s) before running this command again.", label, hookURL, hookId)
+		return fmt.Sprintf("There is already a webhook for this repository that is pointing to this Mattermost server. Please delete the webhook from [%s](%s/%s) before running this command again.", label, hookURL, hookID)
 	}
 	var hook github.Hook
 	var config = make(map[string]interface{})
@@ -547,8 +547,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	config["url"] = siteURL + "/plugins/" + Manifest.Id + "/webhook"
 	config["insecure_ssl"] = false
 	config["content_type"] = "application/json"
-	// hook.Events = webhookEvents
-	hook.Events = []string{"*"}
+	hook.Events = webhookEvents
 	hook.Config = config
 	ctx := context.Background()
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
@@ -597,6 +596,9 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 
 	var hookIDs []string
 	ids, err := p.GetWebhook(owner, repo, args.ChannelId)
+	if err != nil {
+		return err.Error()
+	}
 	for _, id := range ids {
 		if strings.Contains(id, owner+"_"+repo) {
 			hookIDs = append(hookIDs, id)

@@ -1120,9 +1120,9 @@ func (p *Plugin) AddWebhook(owner, repo string, id int64, channelID string) erro
 	return nil
 }
 
-func (p *Plugin) GetWebhook(owner, repo, ChannelID string) ([]string, error) {
+func (p *Plugin) GetWebhook(owner, repo, channelID string) ([]string, error) {
 	var hookIDs []string
-	hookBytes, appErr := p.API.KVGet(ChannelID + webhookSuffix)
+	hookBytes, appErr := p.API.KVGet(channelID + webhookSuffix)
 	if appErr != nil {
 		return hookIDs, errors.Wrap(appErr, "error while fetching hook details")
 	}
@@ -1155,7 +1155,6 @@ func (p *Plugin) DeleteWebhook(owner, repo, channelID, id string) error {
 	}
 
 	return nil
-
 }
 
 func deleteFromSlice(ss []string, ind int) []string {
