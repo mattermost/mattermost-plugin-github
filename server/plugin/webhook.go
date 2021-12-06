@@ -5,14 +5,21 @@ import (
 	"crypto/hmac"
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/go-github/v37/github"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
+	"github.com/pkg/errors"
+)
+
+const (
+	webhookSuffix = "_wehbook"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -1085,4 +1092,98 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
+}
+
+func (p *Plugin) AddWebhook(owner, repo string, id int64, channelID string) error {
+	webhookID := strconv.FormatInt(id, 10)
+	webhookID += "_" + getWehbookConstKey(owner, repo)
+	hookIDs, err := p.GetWebhook(owner, repo, channelID)
+	if err != nil {
+		return errors.Wrap(err, "error while fetching hook details")
+	}
+
+	if hookContain, _ := contains(hookIDs, webhookID); hookContain {
+		return nil
+	}
+
+	hookIDs = append(hookIDs, webhookID)
+	hookBytes, err := json.Marshal(hookIDs)
+	if err != nil {
+		return errors.Wrap(err, "error while marshaling hook details")
+	}
+
+	appErr := p.API.KVSet(channelID+webhookSuffix, hookBytes)
+	if appErr != nil {
+		return errors.Wrap(appErr, "error while storing hook details")
+	}
+
+	return nil
+}
+
+func (p *Plugin) GetWebhook(owner, repo, ChannelID string) ([]string, error) {
+	var hookIDs []string
+	hookBytes, appErr := p.API.KVGet(ChannelID + webhookSuffix)
+	if appErr != nil {
+		return hookIDs, errors.Wrap(appErr, "error while fetching hook details")
+	}
+	if len(hookBytes) != 0 {
+		err := json.Unmarshal(hookBytes, &hookIDs)
+		if err != nil {
+			return hookIDs, errors.Wrap(err, "error while unmarshling hook details")
+		}
+	}
+
+	return hookIDs, nil
+}
+func (p *Plugin) DeleteWebhook(owner, repo, channelID, id string) error {
+	hookIDs, err := p.GetWebhook(owner, repo, channelID)
+	if err != nil {
+		return errors.Wrap(err, "error while fetching hook details")
+	}
+
+	if hookContain, hookIndex := contains(hookIDs, id+"_"+getWehbookConstKey(owner, repo)); hookContain {
+		hookIDs = deleteFromSlice(hookIDs, hookIndex)
+		hookBytes, err := json.Marshal(hookIDs)
+		if err != nil {
+			return errors.Wrap(err, "error while marshaling hook details")
+		}
+
+		appErr := p.API.KVSet(channelID+webhookSuffix, hookBytes)
+		if appErr != nil {
+			return errors.Wrap(appErr, "error while storing hook details")
+		}
+	}
+
+	return nil
+
+}
+
+func deleteFromSlice(ss []string, ind int) []string {
+	if ind < 0 || ind >= len(ss) {
+		return ss
+	}
+	return append(ss[0:ind], ss[ind+1:]...)
+}
+
+func (p *Plugin) CheckWebhookExist(owner, repo, channelID string) (bool, string, error) {
+	hookIDs, err := p.GetWebhook(owner, repo, channelID)
+	if err != nil {
+		return false, "", err
+	}
+
+	for _, hookID := range hookIDs {
+		if strings.Contains(hookID, getWehbookConstKey(owner, repo)) {
+			return true, strings.Split(hookID, "_")[0], nil
+		}
+	}
+
+	return false, "", nil
+}
+func getWehbookConstKey(owner, repo string) string {
+	hookConstantkey := owner
+	if repo != "" {
+		hookConstantkey += "_" + repo
+	}
+
+	return hookConstantkey
 }

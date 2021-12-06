@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -131,18 +132,18 @@ func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInf
 	return "Your muted users:\n" + mutedUsers
 }
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
+func contains(s []string, e string) (bool, int) {
+	for index, a := range s {
 		if a == e {
-			return true
+			return true, index
 		}
 	}
-	return false
+	return false, -1
 }
 
 func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
-	if contains(mutedUsernames, username) {
+	if userContains, _ := contains(mutedUsernames, username); userContains {
 		return username + " is already muted"
 	}
 
@@ -512,7 +513,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client) string {
 	if len(parameters) < 1 {
 		return "Invalid parameter for add command, provide repo details in `owner[/repo]` format."
 	}
@@ -523,13 +524,31 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 	}
 	baseURL := p.getBaseURL()
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
+	webhookExist, hookId, err := p.CheckWebhookExist(owner, repo, args.ChannelId)
+	if err != nil {
+		return err.Error()
+	}
+
+	if webhookExist {
+		hookURL := baseURL
+		label := owner
+		if repo != "" {
+			hookURL += owner + "/" + repo
+			label += "/" + repo
+		} else {
+			hookURL += "organizations/" + owner
+		}
+		hookURL += githubHookURL
+		return fmt.Sprintf("There is already a webhook for this repository that is pointing to this Mattermost server. Please delete the webhook from [%s](%s/%s) before running this command again.", label, hookURL, hookId)
+	}
 	var hook github.Hook
 	var config = make(map[string]interface{})
 	config["secret"] = p.getConfiguration().WebhookSecret
 	config["url"] = siteURL + "/plugins/" + Manifest.Id + "/webhook"
 	config["insecure_ssl"] = false
 	config["content_type"] = "application/json"
-	hook.Events = webhookEvents
+	// hook.Events = webhookEvents
+	hook.Events = []string{"*"}
 	hook.Config = config
 	ctx := context.Background()
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
@@ -546,26 +565,29 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, github
 		hookURL += "organizations/" + owner
 	}
 
+	err = p.AddWebhook(owner, repo, *githubHook.ID, args.ChannelId)
+	if err != nil {
+		return err.Error()
+	}
+
 	hookURL += githubHookURL
 	txt := "Webhook Created Successfully \n"
 	txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *githubHook.ID)
 	return txt
 }
 
-func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client) string {
 	if len(parameters) == 0 {
 		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
 	}
 	if len(parameters) != 1 {
 		return "Invalid parameter for list command, only accept one argument."
 	}
+
 	baseURL := p.getBaseURL()
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
-	var githubHookList []*github.Hook
+
 	var err error
-	opt := &github.ListOptions{
-		PerPage: 50,
-	}
 	var txt = "### Webhooks in this Repository\n"
 	ctx := context.Background()
 
@@ -573,27 +595,58 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 		txt = "### Webhooks in this Organization\n"
 	}
 
-	for {
-		var githubHooks []*github.Hook
-		var githubResponse *github.Response
-		if repo == "" {
-			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
-		} else {
-			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+	var hookIDs []string
+	ids, err := p.GetWebhook(owner, repo, args.ChannelId)
+	for _, id := range ids {
+		if strings.Contains(id, owner+"_"+repo) {
+			hookIDs = append(hookIDs, id)
 		}
-		if err != nil {
-			return err.Error()
-		}
-		githubHookList = append(githubHookList, githubHooks...)
-		if githubResponse.NextPage == 0 {
-			break
-		}
-		opt.Page = githubResponse.NextPage
 	}
+	if len(hookIDs) == 0 {
+		var githubHookList []*github.Hook
+		opt := &github.ListOptions{
+			PerPage: 50,
+		}
 
-	webHookPresent := false
-	for _, hook := range githubHookList {
-		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
+		for {
+			var githubHooks []*github.Hook
+			var githubResponse *github.Response
+			if repo == "" {
+				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+			} else {
+				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+			}
+			if err != nil {
+				return err.Error()
+			}
+			githubHookList = append(githubHookList, githubHooks...)
+			if githubResponse.NextPage == 0 {
+				break
+			}
+			opt.Page = githubResponse.NextPage
+		}
+
+		webHookPresent := false
+		var mmHookIds []int64
+
+		for _, hook := range githubHookList {
+			if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
+				hookURL := baseURL
+				label := owner
+				if repo != "" {
+					hookURL += owner + "/" + repo
+					label += "/" + repo
+				} else {
+					hookURL += "organizations/" + owner
+				}
+				hookURL += githubHookURL
+				txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *hook.ID)
+				webHookPresent = true
+				mmHookIds = append(mmHookIds, *hook.ID)
+			}
+		}
+
+		if len(mmHookIds) > 1 {
 			hookURL := baseURL
 			label := owner
 			if repo != "" {
@@ -603,20 +656,55 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, githu
 				hookURL += "organizations/" + owner
 			}
 			hookURL += githubHookURL
-			txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *hook.ID)
-			webHookPresent = true
+			return fmt.Sprintf("There is already a webhook for this repository that is pointing to this Mattermost server. Please delete the webhook from [%s](%s) before running this command again.", label, hookURL)
 		}
+
+		for _, hookID := range mmHookIds {
+			err = p.AddWebhook(owner, repo, hookID, args.ChannelId)
+			if err != nil {
+				return err.Error()
+			}
+		}
+
+		if !webHookPresent {
+			if repo == "" {
+				txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
+			} else {
+				txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org or the [%s/%s](https://github.com/%s/%s) repository.", owner, owner, owner, repo, owner, repo)
+			}
+		}
+
+		return txt
 	}
-	if !webHookPresent {
-		if repo == "" {
-			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org.", owner, owner)
-		} else {
-			txt = fmt.Sprintf("There are currently no GitHub webhooks created for the [%s](https://github.com/%s) org or the [%s/%s](https://github.com/%s/%s) repository.", owner, owner, owner, repo, owner, repo)
+
+	for _, id := range hookIDs {
+		hookID, _ := strconv.ParseInt(id, 10, 64)
+
+		_, _, err := p.GetHook(context.Background(), githubClient, owner, repo, hookID)
+		if err != nil && !strings.Contains(err.Error(), "404 Not Found") {
+			return err.Error()
 		}
+
+		if err != nil && strings.Contains(err.Error(), "404 Not Found") {
+			appErr := p.DeleteWebhook(owner, repo, id, args.ChannelId)
+			if appErr != nil {
+				return appErr.Error()
+			}
+		}
+		hookURL := baseURL
+		label := owner
+		if repo != "" {
+			hookURL += owner + "/" + repo
+			label += "/" + repo
+		} else {
+			hookURL += "organizations/" + owner
+		}
+		txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, hookID)
 	}
 
 	return txt
 }
+
 func (p *Plugin) handleWebhooks(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please provide a subcommand `add` or `list`."
@@ -627,9 +715,9 @@ func (p *Plugin) handleWebhooks(c *plugin.Context, args *model.CommandArgs, para
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	switch command {
 	case subCommandAdd:
-		return p.handleWebhookAdd(c, parameters, githubClient)
+		return p.handleWebhookAdd(c, parameters, args, githubClient)
 	case subCommandList:
-		return p.handleWebhookList(c, parameters, githubClient)
+		return p.handleWebhookList(c, parameters, args, githubClient)
 	default:
 		return fmt.Sprintf("Invalid subcommand `%s`.", command)
 	}
@@ -641,6 +729,7 @@ func (p *Plugin) GetHook(ctx context.Context, githubClient *github.Client, owner
 	}
 	return githubClient.Organizations.GetHook(ctx, owner, hookID)
 }
+
 func (p *Plugin) CreateHook(ctx context.Context, githubClient *github.Client, owner, repo string, hook github.Hook) (*github.Hook, *github.Response, error) {
 	if repo != "" {
 		return githubClient.Repositories.CreateHook(ctx, owner, repo, &hook)
