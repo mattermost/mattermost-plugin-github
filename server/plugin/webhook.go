@@ -932,7 +932,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 		}
 
 		if p.senderMutedByReceiver(assigneeID, event.GetSender().GetLogin()) {
-			p.API.LogWarn("Commenter is muted, skipping notification")
+			p.API.LogDebug("Commenter is muted, skipping notification")
 			continue
 		}
 
