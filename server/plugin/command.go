@@ -379,7 +379,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Github subscription \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username,subscribeEvents.String())
+	msg := fmt.Sprintf("Github subscription \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, subscribeEvents.String())
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
 		p.API.LogWarn("Failed to fetch repository", "error", err.Error())
