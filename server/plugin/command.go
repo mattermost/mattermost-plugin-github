@@ -43,12 +43,14 @@ const (
 	deleteAll = "delete-all"
 )
 
-type Features struct {
-	Features string
-}
+type Features string
 
 func (features Features) String() string {
-	return "`" + strings.Join(strings.Split(features.Features, ","), "`, `") + "`"
+	return "`" + strings.Join(strings.Split(string(features), ","), "`, `") + "`"
+}
+
+func (features Features) ToSlice() []string {
+	return strings.Split(string(features), ",")
 }
 
 // validateFeatures returns false when 1 or more given features
@@ -287,8 +289,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	var subscribeEvents Features
-	subscribeEvents.Features = "pulls,issues,creates,deletes"
+	var subscribeEvents Features = "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
 	var excludeRepo string
@@ -308,8 +309,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"
 		} else if len(optionList) == 1 {
-			subscribeEvents.Features = optionList[0]
-			fs := strings.Split(subscribeEvents.Features, ",")
+			subscribeEvents = Features(optionList[0])
+			fs := subscribeEvents.ToSlice()
 			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 				return "Feature list cannot contain both issue and issue_creations"
 			}
@@ -329,10 +330,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-	username, _ := p.API.GetUser(args.UserId)
+	user, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
 	if repo == "" {
-		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscribeEvents.Features, flags); err != nil {
+		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, string(subscribeEvents), flags); err != nil {
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
@@ -356,16 +357,16 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
-		orgMsg := fmt.Sprintf("Github subscription, \"[%s](%s)\", with events: %s  was added to this channel by %v", owner, orgLink, subscribeEvents.String(), username.Username)
+		subscriptionSuccess := fmt.Sprintf("Github subscription \"[%s](%s)\" was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.String())
 		post := &model.Post{
 			ChannelId: args.ChannelId,
 			UserId:    p.BotUserID,
-			Message:   orgMsg,
+			Message:   subscriptionSuccess,
 		}
 
 		if _, err := p.API.CreatePost(post); err != nil {
 			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
-			return fmt.Sprintf("%s Though there was an error creating the public post: %s", orgMsg, err.Error())
+			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
 		return subOrgMsg
 	}
@@ -373,13 +374,12 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return "--exclude feature currently support on organization level."
 	}
 
-	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscribeEvents.Features, flags); err != nil {
+	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, string(subscribeEvents), flags); err != nil {
 		return err.Error()
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Github subscription, \"[%s](%s)\", with events: %s  was added to this channel by %v", repo, repoLink, subscribeEvents.String(), username.Username)
-
+	msg := fmt.Sprintf("Github subscription \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username,subscribeEvents.String())
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
 		p.API.LogWarn("Failed to fetch repository", "error", err.Error())
@@ -393,9 +393,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		Message:   msg,
 	}
 
-	if _, err := p.API.CreatePost(post); err != nil {
-		p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
-		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, err.Error())
+	if _, appErr := p.API.CreatePost(post); appErr != nil {
+		p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
+		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
 	return fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.String())
