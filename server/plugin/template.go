@@ -352,7 +352,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
 		"  * `/github mute delete-all` - unmute all GitHub users\n" +
 		"* `/github webhook` - Manage webhooks for organizations and repositories" +
-		"  * `/github webhook list owner[/repo]` - List the webhooks of a GitHub organization or repository\n" +
+		"  * `/github webhook view owner[/repo]` - View the webhooks of a GitHub organization or repository\n" +
 		"  * `/github webhook add owner[/repo]` - Add a new webhook to your organization or repository\n" +
 		"  	 * `default events are` \n" +
 		"    	* `create` - Branch or tag creation - Branch or tag created.\n" +
