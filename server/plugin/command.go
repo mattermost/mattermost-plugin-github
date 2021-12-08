@@ -331,7 +331,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	user, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	previouslySubscribed,previousSubscribedEvents,appErr := p.fetchSubscribedEvent(args,owner,repo)
+	previouslySubscribed, previousSubscribedEvents, appErr := p.fetchSubscribedEvent(args, owner, repo)
 	var previouslySubscribedEventMessage string
 	if appErr != nil {
 		return appErr.Error()
@@ -347,7 +347,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		}
 		orgLink := p.getBaseURL() + owner
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.String())
-		
+
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
@@ -420,30 +420,30 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	message := fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.String())
-	if previouslySubscribed{
+	if previouslySubscribed {
 		message += previouslySubscribedEventMessage
 	}
 
 	return message
 }
-func (p *Plugin) fetchSubscribedEvent(args *model.CommandArgs , owner, repo string) (bool, Features, error) {
+func (p *Plugin) fetchSubscribedEvent(args *model.CommandArgs, owner, repo string) (bool, Features, error) {
 	var previousEvents Features
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
-		return false , previousEvents, err
+		return false, previousEvents, err
 	}
 
 	if len(subs) == 0 {
-		return  false, previousEvents , nil 
-	} 
+		return false, previousEvents, nil
+	}
 
 	for _, sub := range subs {
 		if sub.Repository == owner+"/"+repo {
 			previousEvents = Features(sub.Features)
-			return  true, previousEvents, nil
+			return true, previousEvents, nil
 		}
 	}
-	return  false, previousEvents, nil
+	return false, previousEvents, nil
 }
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
