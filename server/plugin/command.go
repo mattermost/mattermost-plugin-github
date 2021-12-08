@@ -291,7 +291,6 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	var subscribeEvents Features = "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
-
 	var excludeRepo string
 	if len(parameters) > 1 {
 		var optionList []string
@@ -332,12 +331,23 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	user, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	previouslySubscribed,previousSubscribedEvents,err := p.fetchSubscribedEvent(args,owner,repo)
+	var previouslySubscribedEventMessage string
+	if err != nil {
+		return err.Error()
+	}
+
+	if previouslySubscribed {
+		previouslySubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.String())
+	}
+
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, string(subscribeEvents), flags); err != nil {
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.String())
+		
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
@@ -357,7 +367,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
+
 		subscriptionSuccess := fmt.Sprintf("Github subscription \"[%s](%s)\" was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.String())
+
+		if previouslySubscribed {
+			subscriptionSuccess += previouslySubscribedEventMessage
+			subOrgMsg += previouslySubscribedEventMessage
+		}
+
 		post := &model.Post{
 			ChannelId: args.ChannelId,
 			UserId:    p.BotUserID,
@@ -380,6 +397,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
 	msg := fmt.Sprintf("Github subscription \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, subscribeEvents.String())
+	if previouslySubscribed {
+		msg += previouslySubscribedEventMessage
+	}
+
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
 		p.API.LogWarn("Failed to fetch repository", "error", err.Error())
@@ -398,9 +419,32 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
-	return fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.String())
-}
+	message := fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.String())
+	if previouslySubscribed{
+		message += previouslySubscribedEventMessage
+	}
 
+	return message
+}
+func (p *Plugin) fetchSubscribedEvent(args *model.CommandArgs , owner, repo string) (bool, Features, error) {
+	var previousEvents Features
+	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
+	if err != nil {
+		return false , previousEvents, err
+	}
+
+	if len(subs) == 0 {
+		return  false, previousEvents , nil 
+	} 
+
+	for _, sub := range subs {
+		if sub.Repository == owner+"/"+repo {
+			previousEvents = Features(sub.Features)
+			return  true, previousEvents, nil
+		}
+	}
+	return  false, previousEvents, nil
+}
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
