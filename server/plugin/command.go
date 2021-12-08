@@ -625,7 +625,7 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 
 		if strings.Contains(hook.Config["url"].(string), p.getSiteURL()) {
 			txt += fmt.Sprintf(" * [%s](%s%d) - points to Mattermost Server\n", label, hookURL, *hook.ID)
-		}else{
+		} else {
 			txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *hook.ID)
 		}
 	}
