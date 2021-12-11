@@ -264,7 +264,9 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
-		txt += fmt.Sprintf(" | Exclusions:  `%s`", strings.Trim(strings.Join(sub.Flags.ExcludeRepos, ", "), "/"))
+		if len(sub.Flags.ExcludedRepos) > 0 {
+			txt += fmt.Sprintf(" | Excluded repositories:  `%s`", strings.Trim(strings.Join(sub.Flags.ExcludedRepos, ", "), "/"))
+		}
 		txt += "\n"
 	}
 
@@ -326,7 +328,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
-				flags.ExcludeRepos = append(flags.ExcludeRepos, val)
+				flags.ExcludedRepos = append(flags.ExcludedRepos, val)
 				if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 					return err.Error()
 				}

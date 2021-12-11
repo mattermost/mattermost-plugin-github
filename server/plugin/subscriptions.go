@@ -21,7 +21,7 @@ const (
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
 	ExcludeOrgRepos   bool
-	ExcludeRepos      []string
+	ExcludedRepos     []string
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
@@ -178,9 +178,8 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
-func (p *Plugin) IsNotificationOff(repoName string, s *Subscription) bool {
-	var repos = p.GetExcludedNotificationRepos(*s)
-	exist, _ := ItemExists(repos, repoName)
+func (p *Plugin) IsExcludedFromSubscription(repoName string, s *Subscription) bool {
+	exist, _ := ItemExists(p.GetExcludedNotificationRepos(*s), repoName)
 
 	return exist
 }
@@ -278,7 +277,7 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 }
 
 func (p *Plugin) GetExcludedNotificationRepos(s Subscription) []string {
-	return s.Flags.ExcludeRepos
+	return s.Flags.ExcludedRepos
 }
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
