@@ -45,8 +45,8 @@ const (
 
 type Features string
 
-func (f Features) String() string {
-	return string(f)
+func (features Features) String() string {
+	return string(features)
 }
 
 func (features Features) ToString() string {
@@ -440,10 +440,10 @@ func (p *Plugin) getSubscribedEvent(args *model.CommandArgs, owner, repo string)
 	for _, sub := range subs {
 		label := repo
 		if owner != "" {
-			label = owner+"/"+repo 
+			label = owner + "/" + repo
 		}
 
-		if sub.Repository == label{
+		if sub.Repository == label {
 			previousEvents = sub.Features
 			return true, previousEvents, nil
 		}
