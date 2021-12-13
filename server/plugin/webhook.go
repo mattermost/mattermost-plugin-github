@@ -128,6 +128,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
 			p.handleCommentAuthorNotification(event)
+			p.handleCommentAssigneeNotification(event)
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
@@ -908,6 +909,63 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_author")
 	p.sendRefreshEvent(authorUserID)
+}
+
+func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEvent) {
+	author := event.GetIssue().GetUser().GetLogin()
+	assignees := event.GetIssue().Assignees
+	repoName := event.GetRepo().GetFullName()
+
+	splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
+	if len(splitURL) < 2 {
+		return
+	}
+	var templateName string
+	switch splitURL[len(splitURL)-2] {
+	case "pull":
+		templateName = "commentAssigneePullRequestNotification"
+	case "issues":
+		templateName = "commentAssigneeIssueNotification"
+	default:
+		p.API.LogWarn("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+		return
+	}
+
+	for _, assignee := range assignees {
+		userID := p.getGitHubToUserIDMapping(assignee.GetLogin())
+		if userID == "" {
+			continue
+		}
+
+		if author == assignee.GetLogin() {
+			continue
+		}
+		if event.Sender.GetLogin() == assignee.GetLogin() {
+			continue
+		}
+
+		if !p.permissionToRepo(userID, repoName) {
+			continue
+		}
+
+		assigneeID := p.getGitHubToUserIDMapping(assignee.GetLogin())
+		if assigneeID == "" {
+			continue
+		}
+
+		if p.senderMutedByReceiver(assigneeID, event.GetSender().GetLogin()) {
+			p.API.LogDebug("Commenter is muted, skipping notification")
+			continue
+		}
+
+		message, err := renderTemplate(templateName, event)
+		if err != nil {
+			p.API.LogWarn("Failed to render template", "error", err.Error())
+			continue
+		}
+		p.CreateBotDMPost(assigneeID, message, "custom_git_assignee")
+		p.sendRefreshEvent(assigneeID)
+	}
 }
 
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
