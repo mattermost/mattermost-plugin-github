@@ -335,7 +335,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	user, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	previouslySubscribed, previousSubscribedEvents, appErr := p.getSubscribedEvent(args, owner, repo)
+	previouslySubscribed, previousSubscribedEvents, appErr := p.getSubscribedEvent(args.ChannelId, owner, repo)
 	var previouslySubscribedEventMessage string
 	if appErr != nil {
 		return appErr.Error()
@@ -430,9 +430,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	return message
 }
-func (p *Plugin) getSubscribedEvent(args *model.CommandArgs, owner, repo string) (bool, Features, error) {
+func (p *Plugin) getSubscribedEvent(channelID string, owner, repo string) (bool, Features, error) {
 	var previousEvents Features
-	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
+	subs, err := p.GetSubscriptionsByChannel(channelID)
 	if err != nil {
 		return false, previousEvents, err
 	}
