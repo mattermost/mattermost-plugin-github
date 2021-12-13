@@ -178,11 +178,12 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
-func (p *Plugin) IsExcludedFromSubscription(repoName string, s *Subscription) bool {
-	exist, _ := ItemExists(p.GetExcludedNotificationRepos(*s), repoName)
+func IsExcludedFromSubscription(repoName string, s *Subscription) bool {
+	exist, _ := ItemExists(GetExcludedNotificationRepos(*s), repoName)
 
 	return exist
 }
+
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
@@ -276,7 +277,7 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	return nil
 }
 
-func (p *Plugin) GetExcludedNotificationRepos(s Subscription) []string {
+func GetExcludedNotificationRepos(s Subscription) []string {
 	return s.Flags.ExcludedRepos
 }
 
