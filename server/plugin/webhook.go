@@ -897,6 +897,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEvent) {
 	author := event.GetIssue().GetUser().GetLogin()
 	assignees := event.GetIssue().Assignees
+	repoName := event.GetRepo().GetFullName()
 
 	splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
 	if len(splitURL) < 2 {
@@ -923,6 +924,10 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 			continue
 		}
 		if event.Sender.GetLogin() == assignee.GetLogin() {
+			continue
+		}
+
+		if !p.permissionToRepo(userID, repoName) {
 			continue
 		}
 
