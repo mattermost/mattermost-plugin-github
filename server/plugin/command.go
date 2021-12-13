@@ -45,7 +45,11 @@ const (
 
 type Features string
 
-func (features Features) String() string {
+func (f Features) String() string {
+	return string(f)
+}
+
+func (features Features) ToString() string {
 	return "`" + strings.Join(strings.Split(string(features), ","), "`, `") + "`"
 }
 
@@ -270,7 +274,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	}
 	for _, sub := range subs {
 		subFlags := sub.Flags.String()
-		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
+		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features.String())
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
@@ -331,14 +335,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	user, _ := p.API.GetUser(args.UserId)
 	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	previouslySubscribed, previousSubscribedEvents, appErr := p.fetchSubscribedEvent(args, owner, repo)
+	previouslySubscribed, previousSubscribedEvents, appErr := p.getSubscribedEvent(args, owner, repo)
 	var previouslySubscribedEventMessage string
 	if appErr != nil {
 		return appErr.Error()
 	}
 
 	if previouslySubscribed {
-		previouslySubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.String())
+		previouslySubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.ToString())
 	}
 
 	if repo == "" {
@@ -346,7 +350,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.String())
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.ToString())
 
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
@@ -426,20 +430,21 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	return message
 }
-func (p *Plugin) fetchSubscribedEvent(args *model.CommandArgs, owner, repo string) (bool, Features, error) {
+func (p *Plugin) getSubscribedEvent(args *model.CommandArgs, owner, repo string) (bool, Features, error) {
 	var previousEvents Features
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
 		return false, previousEvents, err
 	}
 
-	if len(subs) == 0 {
-		return false, previousEvents, nil
-	}
-
 	for _, sub := range subs {
-		if sub.Repository == owner+"/"+repo {
-			previousEvents = Features(sub.Features)
+		label := repo
+		if owner != "" {
+			label = owner+"/"+repo 
+		}
+
+		if sub.Repository == label{
+			previousEvents = sub.Features
 			return true, previousEvents, nil
 		}
 	}

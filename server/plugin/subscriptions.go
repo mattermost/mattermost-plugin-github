@@ -47,7 +47,7 @@ func (s SubscriptionFlags) String() string {
 type Subscription struct {
 	ChannelID  string
 	CreatorID  string
-	Features   string
+	Features   Features
 	Flags      SubscriptionFlags
 	Repository string
 }
@@ -57,51 +57,51 @@ type Subscriptions struct {
 }
 
 func (s *Subscription) Pulls() bool {
-	return strings.Contains(s.Features, featurePulls)
+	return strings.Contains(s.Features.String(), featurePulls)
 }
 
 func (s *Subscription) PullsMerged() bool {
-	return strings.Contains(s.Features, "pulls_merged")
+	return strings.Contains(s.Features.String(), "pulls_merged")
 }
 
 func (s *Subscription) IssueCreations() bool {
-	return strings.Contains(s.Features, "issue_creations")
+	return strings.Contains(s.Features.String(), "issue_creations")
 }
 
 func (s *Subscription) Issues() bool {
-	return strings.Contains(s.Features, featureIssues)
+	return strings.Contains(s.Features.String(), featureIssues)
 }
 
 func (s *Subscription) Pushes() bool {
-	return strings.Contains(s.Features, "pushes")
+	return strings.Contains(s.Features.String(), "pushes")
 }
 
 func (s *Subscription) Creates() bool {
-	return strings.Contains(s.Features, "creates")
+	return strings.Contains(s.Features.String(), "creates")
 }
 
 func (s *Subscription) Deletes() bool {
-	return strings.Contains(s.Features, "deletes")
+	return strings.Contains(s.Features.String(), "deletes")
 }
 
 func (s *Subscription) IssueComments() bool {
-	return strings.Contains(s.Features, "issue_comments")
+	return strings.Contains(s.Features.String(), "issue_comments")
 }
 
 func (s *Subscription) PullReviews() bool {
-	return strings.Contains(s.Features, "pull_reviews")
+	return strings.Contains(s.Features.String(), "pull_reviews")
 }
 
 func (s *Subscription) Stars() bool {
-	return strings.Contains(s.Features, featureStars)
+	return strings.Contains(s.Features.String(), featureStars)
 }
 
 func (s *Subscription) Label() string {
-	if !strings.Contains(s.Features, "label:") {
+	if !strings.Contains(s.Features.String(), "label:") {
 		return ""
 	}
 
-	labelSplit := strings.Split(s.Features, "\"")
+	labelSplit := strings.Split(s.Features.String(), "\"")
 	if len(labelSplit) < 3 {
 		return ""
 	}
@@ -158,7 +158,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	sub := &Subscription{
 		ChannelID:  channelID,
 		CreatorID:  userID,
-		Features:   features,
+		Features:   Features(features),
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
 	}
