@@ -388,8 +388,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			UserId:    p.BotUserID,
 			Message:   subscriptionSuccess,
 		}
-
-		if _, err = p.API.CreatePost(post); err != nil {
+		_, err = p.API.CreatePost(post)
+		if err != nil {
 			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
 			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
@@ -399,7 +399,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return "--exclude feature currently support on organization level."
 	}
 
-	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscribeEvents, flags); err != nil {
+	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscribeEvents, flags); err != nil {
 		return err.Error()
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
