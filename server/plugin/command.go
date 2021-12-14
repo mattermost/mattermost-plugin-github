@@ -389,9 +389,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			Message:   subscriptionSuccess,
 		}
 
-		if _, err = p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
-			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, err.Error())
+		if _, appErr = p.API.CreatePost(post); err != nil {
+			p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
+			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, appErr.Error())
 		}
 		return subOrgMsg
 	}
