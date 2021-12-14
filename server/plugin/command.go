@@ -350,7 +350,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	if repo == "" {
-		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscribeEvents, flags); err != nil {
+		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscribeEvents, flags); err != nil {
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
@@ -364,7 +364,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
-				if err := p.StoreExcludedNotificationRepo(val); err != nil {
+				if err = p.StoreExcludedNotificationRepo(val); err != nil {
 					return err.Error()
 				}
 				if excludeMsg != "" {
@@ -389,7 +389,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			Message:   subscriptionSuccess,
 		}
 
-		if _, err := p.API.CreatePost(post); err != nil {
+		if _, err = p.API.CreatePost(post); err != nil {
 			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
 			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
