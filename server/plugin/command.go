@@ -388,8 +388,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			UserId:    p.BotUserID,
 			Message:   subscriptionSuccess,
 		}
-		_, err = p.API.CreatePost(post)
-		if err != nil {
+
+		if _, err = p.API.CreatePost(post); err != nil {
 			p.API.LogWarn("error while creating post", "post", post, "error", err.Error())
 			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
