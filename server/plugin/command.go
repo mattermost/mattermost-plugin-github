@@ -49,8 +49,8 @@ func (features Features) String() string {
 	return string(features)
 }
 
-func (features Features) ToString() string {
-	return "`" + strings.Join(strings.Split(string(features), ","), "`, `") + "`"
+func (features Features) FormattedString() string {
+	return "`" + strings.Join(strings.Split(features.String(), ","), "`, `") + "`"
 }
 
 func (features Features) ToSlice() []string {
@@ -293,7 +293,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	var subscribeEvents Features = "pulls,issues,creates,deletes"
+	subscribeEvents := Features("pulls,issues,creates,deletes")
 	flags := SubscriptionFlags{}
 	var excludeRepo string
 	if len(parameters) > 1 {
@@ -333,24 +333,28 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-	user, _ := p.API.GetUser(args.UserId)
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
-	previouslySubscribed, previousSubscribedEvents, appErr := p.getSubscribedEvent(args.ChannelId, owner, repo)
-	var previouslySubscribedEventMessage string
+	user, appErr := p.API.GetUser(args.UserId)
 	if appErr != nil {
 		return appErr.Error()
 	}
 
-	if previouslySubscribed {
-		previouslySubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.ToString())
+	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	previousSubscribedEvents, err := p.getSubscribedFeatures(args.ChannelId, owner, repo)
+	if err != nil {
+		return err.Error()
+	}
+
+	var previouslySubscribedEventMessage string
+	if previousSubscribedEvents != "" {
+		previouslySubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.FormattedString())
 	}
 
 	if repo == "" {
-		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, string(subscribeEvents), flags); err != nil {
+		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscribeEvents, flags); err != nil {
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.ToString())
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.FormattedString())
 
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
@@ -372,9 +376,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
 
-		subscriptionSuccess := fmt.Sprintf("Github subscription \"[%s](%s)\" was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.String())
+		subscriptionSuccess := fmt.Sprintf("A subscription to organization \"[%s](%s)\" was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.String())
 
-		if previouslySubscribed {
+		if previousSubscribedEvents != "" {
 			subscriptionSuccess += previouslySubscribedEventMessage
 			subOrgMsg += previouslySubscribedEventMessage
 		}
@@ -395,13 +399,13 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return "--exclude feature currently support on organization level."
 	}
 
-	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, string(subscribeEvents), flags); err != nil {
+	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscribeEvents, flags); err != nil {
 		return err.Error()
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Github subscription \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, subscribeEvents.String())
-	if previouslySubscribed {
+	msg := fmt.Sprintf("A subscription to repository \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, subscribeEvents.FormattedString())
+	if previousSubscribedEvents != "" {
 		msg += previouslySubscribedEventMessage
 	}
 
@@ -423,18 +427,18 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
-	message := fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.String())
-	if previouslySubscribed {
+	message := fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.FormattedString())
+	if previousSubscribedEvents != "" {
 		message += previouslySubscribedEventMessage
 	}
 
 	return message
 }
-func (p *Plugin) getSubscribedEvent(channelID string, owner, repo string) (bool, Features, error) {
-	var previousEvents Features
+func (p *Plugin) getSubscribedFeatures(channelID string, owner, repo string) (Features, error) {
+	var previousFeatures Features
 	subs, err := p.GetSubscriptionsByChannel(channelID)
 	if err != nil {
-		return false, previousEvents, err
+		return previousFeatures, err
 	}
 
 	for _, sub := range subs {
@@ -444,11 +448,11 @@ func (p *Plugin) getSubscribedEvent(channelID string, owner, repo string) (bool,
 		}
 
 		if sub.Repository == label {
-			previousEvents = sub.Features
-			return true, previousEvents, nil
+			previousFeatures = sub.Features
+			return previousFeatures, nil
 		}
 	}
-	return false, previousEvents, nil
+	return previousFeatures, nil
 }
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {

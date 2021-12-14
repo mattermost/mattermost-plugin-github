@@ -113,7 +113,7 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
 }
 
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
+func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID string, features Features, flags SubscriptionFlags) error {
 	if owner == "" {
 		return errors.Errorf("invalid repository")
 	}
@@ -158,7 +158,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	sub := &Subscription{
 		ChannelID:  channelID,
 		CreatorID:  userID,
-		Features:   Features(features),
+		Features:   features,
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
 	}
@@ -170,7 +170,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
+func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID string, features Features, flags SubscriptionFlags) error {
 	if org == "" {
 		return errors.New("invalid organization")
 	}
