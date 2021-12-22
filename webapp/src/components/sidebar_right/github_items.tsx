@@ -55,6 +55,7 @@ interface Item {
     id: number;
     title: string;
     created_at: string;
+    updated_at: string;
     html_url: string;
     repository_url?: string;
     user: User;
@@ -269,6 +270,7 @@ function GithubItems(props: GithubItemsProps) {
                     {milestone}
                     {item.reason ? (<>
                         {(item.created_at || userName || milestone) && (<br/>)}
+                        {item.updated_at && (formatTimeSince(item.updated_at) + ' ago')}{<br/>}
                         {notificationReasons[item.reason]}
                     </>) : null }
                 </div>

@@ -39,7 +39,7 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     render() {
-        const repoOptions = this.props.yourRepos.map((item) => ({value: item.name, label: item.full_name}));
+        const repoOptions = this.props.yourRepos.map((item) => ({value: item.full_name, label: item.full_name}));
 
         return (
             <div className={'form-group margin-bottom x3'}>
@@ -55,7 +55,7 @@ export default class GithubRepoSelector extends PureComponent {
                     theme={this.props.theme}
                     addValidate={this.props.addValidate}
                     removeValidate={this.props.removeValidate}
-                    value={repoOptions.find((option) => option.label === this.props.value)}
+                    value={repoOptions.find((option) => option.value === this.props.value)}
                 />
                 <div className={'help-text'}>
                     {'Returns GitHub repositories connected to the user account'} <br/>
