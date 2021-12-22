@@ -201,22 +201,42 @@ function GithubItems(props: GithubItemsProps) {
                 break;
             case 'pending':
                 status = (
-                    <span
-                        title={'Pending'}
-                        style={{...style.icon, ...style.iconPending}}
+                    <OverlayTrigger
+                        key='githubRHSPRPending'
+                        placement='top'
+                        overlay={
+                            <Tooltip id='githubRHSPRPendingTooltip'>
+                                {'Pending'}
+                            </Tooltip>
+                        }
                     >
-                        <DotIcon/>
-                    </span>
+                        <span
+                            aria-label={'Pending'}
+                            style={{...style.icon, ...style.iconPending}}
+                        >
+                            <DotIcon/>
+                        </span>
+                    </OverlayTrigger>
                 );
                 break;
             default:
                 status = (
-                    <span
-                        title={'Failed'}
-                        style={{...style.icon, ...style.iconFailed}}
+                    <OverlayTrigger
+                        key='githubRHSPRFailed'
+                        placement='top'
+                        overlay={
+                            <Tooltip id='githubRHSPRFailedTooltip'>
+                                {'Failed'}
+                            </Tooltip>
+                        }
                     >
-                        <CrossIcon/>
-                    </span>
+                        <span
+                            aria-label={'Failed'}
+                            style={{...style.icon, ...style.iconFailed}}
+                        >
+                            <CrossIcon/>
+                        </span>
+                    </OverlayTrigger>
                 );
             }
         }
