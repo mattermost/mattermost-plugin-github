@@ -554,7 +554,8 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 	if err != nil {
 		if repo == "" {
-			scopes, err := p.getOauthTokenScopes(userInfo.Token.AccessToken)
+			var scopes []string
+			scopes, err = p.getOauthTokenScopes(userInfo.Token.AccessToken)
 			if err != nil {
 				return err.Error()
 			}
@@ -634,7 +635,8 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 		}
 		if err != nil {
 			if repo == "" {
-				scopes, err := p.getOauthTokenScopes(userInfo.Token.AccessToken)
+				var scopes []string
+				scopes, err = p.getOauthTokenScopes(userInfo.Token.AccessToken)
 				if err != nil {
 					return err.Error()
 				}
