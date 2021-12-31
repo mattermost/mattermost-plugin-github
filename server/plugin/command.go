@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"unicode"
 
@@ -513,7 +514,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client) string {
+func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client, userInfo *GitHubUserInfo) string {
 	if len(parameters) < 1 {
 		return "Invalid parameter for add command, provide repo details in `owner[/repo]` format."
 	}
@@ -552,6 +553,16 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	ctx := context.Background()
 	githubHook, _, err := p.CreateHook(ctx, githubClient, owner, repo, hook)
 	if err != nil {
+		if repo == "" {
+			scopes, err := p.getOauthTokenScopes(userInfo.Token.AccessToken)
+			if err != nil {
+				return err.Error()
+			}
+
+			if exist, _ := findInSlice(scopes, string(github.ScopeAdminOrgHook)); !exist {
+				return "insufficient OAuth token scope.\nPlease use the command `github disconnect` and then `github connect` to get the new scope."
+			}
+		}
 		return err.Error()
 	}
 
@@ -569,8 +580,27 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *githubHook.ID)
 	return txt
 }
+func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
+	var scopes []string
+	req, err := http.NewRequest("HEAD", "https://api.github.com/users/codertocat", nil)
+	if err != nil {
+		return scopes, err
+	}
+	req.Header.Set("Authorization", "token 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")
 
-func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client) string {
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return scopes, err
+	}
+	defer resp.Body.Close()
+	for key, val := range resp.Header {
+		if key == "X-Oauth-Scopes" {
+			scopes = val
+		}
+	}
+	return scopes, nil
+}
+func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
 	}
@@ -603,6 +633,16 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
 		}
 		if err != nil {
+			if repo == "" {
+				scopes, err := p.getOauthTokenScopes(userInfo.Token.AccessToken)
+				if err != nil {
+					return err.Error()
+				}
+
+				if exist, _ := findInSlice(scopes, string(github.ScopeAdminOrgHook)); !exist {
+					return "insufficient OAuth token scope.\nPlease use the command `github disconnect` and then `github connect` to get the new scope."
+				}
+			}
 			return err.Error()
 		}
 		githubHookList = append(githubHookList, githubHooks...)
@@ -641,6 +681,15 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 	return txt
 }
 
+func findInSlice(slice []string, item string) (bool, int) {
+	for index, value := range slice {
+		if item == value {
+			return true, index
+		}
+	}
+	return false, -1
+}
+
 func (p *Plugin) handleWebhooks(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please provide a subcommand `add` or `view`."
@@ -651,9 +700,9 @@ func (p *Plugin) handleWebhooks(c *plugin.Context, args *model.CommandArgs, para
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	switch command {
 	case subCommandAdd:
-		return p.handleWebhookAdd(c, parameters, args, githubClient)
+		return p.handleWebhookAdd(c, parameters, args, githubClient, userInfo)
 	case subCommandView:
-		return p.handleWebhookList(c, parameters, args, githubClient)
+		return p.handleWebhookList(c, parameters, args, githubClient, userInfo)
 	default:
 		return fmt.Sprintf("Invalid subcommand `%s`.", command)
 	}
