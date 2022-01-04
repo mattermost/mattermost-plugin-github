@@ -232,18 +232,11 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	}
 
 	command := parameters[0]
-
-	if command == list {
-		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	}
-
-	if len(parameters) == 1 {
-		return "Please specify a repository"
-	}
-
 	parameters = parameters[1:]
 
 	switch {
+    case command == "list":
+		return p.handleSubscriptionsList(c, args, parameters, userInfo)
 	case command == "add":
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
 	case command == "delete":
@@ -286,6 +279,10 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Please specify a repository"
+	}
+
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
