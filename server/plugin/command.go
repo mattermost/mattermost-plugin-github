@@ -233,13 +233,13 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 
 	command := parameters[0]
 
-    if command == "list" {
+	if command == "list" {
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-    }
+	}
 
-    if len(parameters) == 1 {
-        return "Please specify a repository"
-    }
+	if len(parameters) == 1 {
+		return "Please specify a repository"
+	}
 
 	parameters = parameters[1:]
 
