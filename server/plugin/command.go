@@ -235,7 +235,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	parameters = parameters[1:]
 
 	switch {
-    case command == "list":
+	case command == "list":
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
 	case command == "add":
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
