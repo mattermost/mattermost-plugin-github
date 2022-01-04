@@ -30,6 +30,7 @@ type Configuration struct {
 	EnterpriseBaseURL           string
 	EnterpriseUploadURL         string
 	EnableCodePreview           string
+	EnableWebhookEventLogging   bool
 	UsePreregisteredApplication bool
 }
 

@@ -24,6 +24,7 @@ import (
 
 const (
 	githubTokenKey       = "_githubtoken"
+	githubOauthKey       = "githuboauthkey_"
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
@@ -314,6 +315,10 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
+}
+
+type ClientSafeSettings struct {
+	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
