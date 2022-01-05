@@ -601,6 +601,7 @@ func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
 	}
 	return scopes, nil
 }
+
 func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args *model.CommandArgs, githubClient *github.Client, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid parameter for list command, provide repo details in `owner[/repo]` format."
