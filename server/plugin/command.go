@@ -587,7 +587,7 @@ func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
 	if err != nil {
 		return scopes, err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("token %s",token))
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -596,7 +596,7 @@ func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
 	defer resp.Body.Close()
 	for key, val := range resp.Header {
 		if key == "X-Oauth-Scopes" {
-			scopes = strings.Split(val[0],",")
+			scopes = strings.Split(val[0], ",")
 		}
 	}
 	return scopes, nil
