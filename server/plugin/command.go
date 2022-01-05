@@ -561,7 +561,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 			}
 
 			if exist, _ := findInSlice(scopes, string(github.ScopeAdminOrgHook)); !exist {
-				return "insufficient OAuth token scope.\nPlease use the command `github disconnect` and then `github connect` to get the new scope."
+				return "insufficient OAuth token scope.\nPlease use the command `/github connect` to get the new scope."
 			}
 		}
 		return err.Error()
@@ -587,7 +587,7 @@ func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
 	if err != nil {
 		return scopes, err
 	}
-	req.Header.Set("Authorization", "token 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")
+	req.Header.Set("Authorization", fmt.Sprintf("token %s",token))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -596,7 +596,7 @@ func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
 	defer resp.Body.Close()
 	for key, val := range resp.Header {
 		if key == "X-Oauth-Scopes" {
-			scopes = val
+			scopes = strings.Split(val[0],",")
 		}
 	}
 	return scopes, nil
@@ -636,13 +636,14 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 		if err != nil {
 			if repo == "" {
 				var scopes []string
-				scopes, err = p.getOauthTokenScopes(userInfo.Token.AccessToken)
-				if err != nil {
-					return err.Error()
+				var scopeError error
+				scopes, scopeError = p.getOauthTokenScopes(userInfo.Token.AccessToken)
+				if scopeError != nil {
+					return scopeError.Error()
 				}
 
 				if exist, _ := findInSlice(scopes, string(github.ScopeAdminOrgHook)); !exist {
-					return "insufficient OAuth token scope.\nPlease use the command `github disconnect` and then `github connect` to get the new scope."
+					return "insufficient OAuth token scope.\nPlease use the command `/github connect` to get the new scope."
 				}
 			}
 			return err.Error()
