@@ -555,7 +555,7 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	if err != nil {
 		if repo == "" {
 			var scopes []string
-			scopes, err = p.getOauthTokenScopes(userInfo.Token.AccessToken)
+			scopes, err = p.getOauthTokenScopes(userInfo)
 			if err != nil {
 				return err.Error()
 			}
@@ -581,13 +581,13 @@ func (p *Plugin) handleWebhookAdd(_ *plugin.Context, parameters []string, args *
 	txt += fmt.Sprintf(" * [%s](%s%d)\n", label, hookURL, *githubHook.ID)
 	return txt
 }
-func (p *Plugin) getOauthTokenScopes(token string) ([]string, error) {
+func (p *Plugin) getOauthTokenScopes(userInfo *GitHubUserInfo) ([]string, error) {
 	var scopes []string
-	req, err := http.NewRequest("HEAD", "https://api.github.com/users/codertocat", nil)
+	req, err := http.NewRequest("HEAD", "https://api.github.com/users", nil)
 	if err != nil {
 		return scopes, err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", userInfo.Token.AccessToken))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -638,7 +638,7 @@ func (p *Plugin) handleWebhookList(_ *plugin.Context, parameters []string, args 
 			if repo == "" {
 				var scopes []string
 				var scopeError error
-				scopes, scopeError = p.getOauthTokenScopes(userInfo.Token.AccessToken)
+				scopes, scopeError = p.getOauthTokenScopes(userInfo)
 				if scopeError != nil {
 					return scopeError.Error()
 				}
