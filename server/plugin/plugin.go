@@ -16,6 +16,8 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
+	"github.com/mattermost/mattermost-plugin-api/experimental/freetextfetcher"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
@@ -80,6 +82,7 @@ func NewPlugin() *Plugin {
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
+		"get-started":   p.handleGetStarted,
 		"subscriptions": p.handleSubscriptions,
 		"subscribe":     p.handleSubscribe,
 		"unsubscribe":   p.handleUnsubscribe,
@@ -209,6 +212,9 @@ func (p *Plugin) registerChimeraURL() {
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
+	pluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id
+	freetextfetcher.GetManager().MessageHasBeenPosted(c, post, p.API, logger.New(p.API), p.BotUserID, pluginURL)
+
 	// If not enabled in config, ignore.
 	config := p.getConfiguration()
 	if config.EnableCodePreview == "disable" {

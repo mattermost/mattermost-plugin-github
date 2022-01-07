@@ -609,6 +609,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
+	getStarted := model.NewAutocompleteData("get-started", "", "Setup the GitHub plugin")
+	github.AddCommand(getStarted)
+
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
 	if config.EnablePrivateRepo {
 		if config.ConnectToPrivateByDefault {
