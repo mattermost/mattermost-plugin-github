@@ -20,6 +20,8 @@ import (
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	root "github.com/mattermost/mattermost-plugin-github"
 )
 
 const (
@@ -44,6 +46,10 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+)
+
+var (
+	Manifest model.Manifest = root.Manifest
 )
 
 type Plugin struct {

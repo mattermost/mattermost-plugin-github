@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-github
 
-go 1.12
+go 1.16
 
 require (
 	github.com/Masterminds/sprig/v3 v3.1.0
