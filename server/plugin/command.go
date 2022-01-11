@@ -38,11 +38,6 @@ var validFeatures = map[string]bool{
 	featureStars:         true,
 }
 
-const (
-	list      = "list"
-	deleteAll = "delete-all"
-)
-
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
@@ -181,7 +176,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	command := parameters[0]
 
 	switch {
-	case command == list:
+	case command == "list":
 		return p.handleMuteList(args, userInfo)
 	case command == "add":
 		if len(parameters) != 2 {
@@ -193,7 +188,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == deleteAll:
+	case command == "delete-all":
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
