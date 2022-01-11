@@ -522,6 +522,20 @@ func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+	command, action, parameters := parseCommand(args.Command)
+
+	if command != "/github" {
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "get-started" {
+		message := p.handleGetStarted(c, args, parameters)
+		if message != "" {
+			p.postCommandResponse(args, message)
+		}
+		return &model.CommandResponse{}, nil
+	}
+
 	config := p.getConfiguration()
 
 	if err := config.IsValid(); err != nil {
@@ -532,19 +546,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			text = "Error checking user's permissions"
 			p.API.LogWarn(text, "err", err.Error())
 		case isSysAdmin:
-			githubPluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
-			text = fmt.Sprintf("Before using this plugin, you will need to configure it by filling out the settings in the system console [here](%s). You can learn more about the setup process [here](%s).", githubPluginURL, "https://github.com/mattermost/mattermost-plugin-github#step-3-configure-the-plugin-in-mattermost")
+			text = "Before using this plugin, you will need to configure it by running `/github get-started`"
 		default:
 			text = "Please contact your system administrator to configure the GitHub plugin."
 		}
 
 		p.postCommandResponse(args, text)
-		return &model.CommandResponse{}, nil
-	}
-
-	command, action, parameters := parseCommand(args.Command)
-
-	if command != "/github" {
 		return &model.CommandResponse{}, nil
 	}
 
@@ -607,10 +614,16 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 }
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
-	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
+	if config.IsValid() != nil {
+		github := model.NewAutocompleteData("github", "[command]", "Available commands: get-started")
 
-	getStarted := model.NewAutocompleteData("get-started", "", "Setup the GitHub plugin")
-	github.AddCommand(getStarted)
+		getStarted := model.NewAutocompleteData("get-started", "", "Setup the GitHub plugin")
+		github.AddCommand(getStarted)
+
+		return github
+	}
+
+	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
 	if config.EnablePrivateRepo {

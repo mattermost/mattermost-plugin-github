@@ -56,6 +56,9 @@ var (
 
 type Plugin struct {
 	plugin.MattermostPlugin
+
+	client *pluginapi.Client
+
 	// githubPermalinkRegex is used to parse github permalinks in post messages.
 	githubPermalinkRegex *regexp.Regexp
 
@@ -82,7 +85,6 @@ func NewPlugin() *Plugin {
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
-		"get-started":   p.handleGetStarted,
 		"subscriptions": p.handleSubscriptions,
 		"subscribe":     p.handleSubscribe,
 		"unsubscribe":   p.handleUnsubscribe,
@@ -152,7 +154,27 @@ func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*
 	return client, nil
 }
 
+func (p *Plugin) setDefaultConfiguration() error {
+	config := p.getConfiguration()
+
+	changed, err := config.setDefaults()
+	if err != nil {
+		return err
+	}
+
+	if changed {
+		appErr := p.API.SavePluginConfig(config.toMap())
+		if appErr != nil {
+			return appErr
+		}
+	}
+
+	return nil
+}
+
 func (p *Plugin) OnActivate() error {
+	p.client = pluginapi.NewClient(p.API, p.Driver)
+
 	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
 		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
 	}
@@ -164,10 +186,14 @@ func (p *Plugin) OnActivate() error {
 			"If you are running on-prem disable the setting and use a custom application, otherwise set PluginSettings.ChimeraOAuthProxyURL")
 	}
 
+	err := p.setDefaultConfiguration()
+	if err != nil {
+		return errors.Wrap(err, "failed to set default configuration")
+	}
+
 	p.initializeAPI()
 
-	client := pluginapi.NewClient(p.API, p.Driver)
-	botID, err := client.Bot.EnsureBot(&model.Bot{
+	botID, err := p.client.Bot.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",

@@ -58,3 +58,68 @@ func TestIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestSetDefaults(t *testing.T) {
+	for _, testCase := range []struct {
+		description string
+		config      Configuration
+
+		shouldChange bool
+		outputCheck  func(*testing.T, *Configuration)
+		errMsg       string
+	}{
+		{
+			description: "noop",
+			config: Configuration{
+				EncryptionKey: "abcd",
+			},
+			shouldChange: false,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Equal(t, "abcd", c.EncryptionKey)
+			},
+		}, {
+			description: "set encryption key",
+			config: Configuration{
+				EncryptionKey: "",
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Len(t, c.EncryptionKey, 32)
+			},
+		}, {
+			description: "set webhook key",
+			config: Configuration{
+				WebhookSecret: "",
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Len(t, c.WebhookSecret, 32)
+			},
+		}, {
+			description: "set webhook and encryption key",
+			config: Configuration{
+				EncryptionKey: "",
+				WebhookSecret: "",
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Len(t, c.EncryptionKey, 32)
+				assert.Len(t, c.WebhookSecret, 32)
+			},
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			changed, err := testCase.config.setDefaults()
+
+			assert.Equal(t, testCase.shouldChange, changed)
+			testCase.outputCheck(t, &testCase.config)
+
+			if testCase.errMsg != "" {
+				require.Error(t, err)
+				assert.Equal(t, testCase.errMsg, err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

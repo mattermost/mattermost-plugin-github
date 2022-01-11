@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"reflect"
 	"strings"
 
@@ -34,6 +36,65 @@ type Configuration struct {
 	UsePreregisteredApplication bool
 }
 
+func (c *Configuration) toMap() map[string]interface{} {
+	return map[string]interface{}{
+		"connecttoprivatebydefault":   c.ConnectToPrivateByDefault,
+		"enablecodepreview":           c.EnableCodePreview,
+		"enableleftsidebar":           c.EnableLeftSidebar,
+		"enableprivaterepo":           c.EnablePrivateRepo,
+		"enablewebhookeventlogging":   c.EnableWebhookEventLogging,
+		"encryptionkey":               c.EncryptionKey,
+		"enterprisebaseurl":           c.EnterpriseBaseURL,
+		"enterpriseuploadurl":         c.EnterpriseUploadURL,
+		"githuboauthclientid":         c.GitHubOAuthClientID,
+		"githuboauthclientsecret":     c.GitHubOAuthClientSecret,
+		"githuborg":                   c.GitHubOrg,
+		"usepreregisteredapplication": c.UsePreregisteredApplication,
+		"webhooksecret":               c.WebhookSecret,
+	}
+}
+
+func getSecret() (string, error) {
+	b := make([]byte, 256)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	s := base64.RawStdEncoding.EncodeToString(b)
+
+	s = s[:32]
+
+	return s, nil
+}
+
+func (c *Configuration) setDefaults() (bool, error) {
+	changed := false
+
+	if !c.UsePreregisteredApplication {
+		if c.EncryptionKey == "" {
+			secret, err := getSecret()
+			if err != nil {
+				return false, err
+			}
+
+			c.EncryptionKey = secret
+			changed = true
+		}
+
+		if c.WebhookSecret == "" {
+			secret, err := getSecret()
+			if err != nil {
+				return false, err
+			}
+
+			c.WebhookSecret = secret
+			changed = true
+		}
+	}
+
+	return changed, nil
+}
+
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
 func (c *Configuration) Clone() *Configuration {
@@ -54,10 +115,6 @@ func (c *Configuration) IsValid() error {
 
 	if c.UsePreregisteredApplication && c.EnterpriseBaseURL != "" {
 		return errors.New("cannot use pre-registered application with GitHub enterprise")
-	}
-
-	if c.EncryptionKey == "" {
-		return errors.New("must have an encryption key")
 	}
 
 	return nil

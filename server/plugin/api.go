@@ -118,6 +118,7 @@ func (p *Plugin) initializeAPI() {
 
 	oauthRouter := p.router.PathPrefix("/oauth").Subrouter()
 	apiRouter := p.router.PathPrefix("/api/v1").Subrouter()
+	apiRouter.Use(p.checkConfigured)
 
 	p.router.HandleFunc("/webhook", p.handleWebhook).Methods(http.MethodPost)
 
@@ -159,6 +160,19 @@ func (p *Plugin) withRecovery(next http.Handler) http.Handler {
 					"stack", string(debug.Stack()))
 			}
 		}()
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (p *Plugin) checkConfigured(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		config := p.getConfiguration()
+
+		if err := config.IsValid(); err != nil {
+			http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
+			return
+		}
 
 		next.ServeHTTP(w, r)
 	})
@@ -248,13 +262,6 @@ func checkPluginRequest(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (p *Plugin) ServeHTTP(c *plugin.Context, w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
-
-	if err := config.IsValid(); err != nil {
-		http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 
 	p.router.ServeHTTP(w, r)
