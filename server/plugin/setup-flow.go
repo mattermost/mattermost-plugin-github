@@ -1,6 +1,8 @@
 package plugin
 
 import (
+	"fmt"
+
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
@@ -55,36 +57,38 @@ func (p *Plugin) handleGetStarted(c *plugin.Context, args *model.CommandArgs, pa
 		SkipSteps: 999,
 	}
 
-	step2Pretext := `**You should have:**
+	step1Text := ":wave: Welcome to GitHub for Mattermost! Finish integrating Mattermost and GitHub by loggin in into your GitHub account."
+
+	step2Text := `
+**You should have:**
 - You have a GitHub account.
 - You're a Mattermost System Admin.
 - You're running Mattermost v5.12 or higher.
-	`
-
-	step3Pretext := `##### :white_check_mark: Step 1: Register an OAuth Application in GitHub
-You must first register the Mattermost GitHub Plugin as an authorized OAuth app regardless of whether you're setting up the GitHub plugin as a system admin or a Mattermost user.`
-
-	step3Message := `
-1. Set the following values:
-	- Foo
-	- bar
-2. Submit
-3. Click **Generate a new client secret** and
 `
 
+	step3Pretext := `
+##### :white_check_mark: Step 1: Register an OAuth Application in GitHub
+You must first register the Mattermost GitHub Plugin as an authorized OAuth app regardless of whether you're setting up the GitHub plugin as a system admin or a Mattermost user.`
+
+	step3Message := fmt.Sprintf("" +
+		"1. Go to github.com/settings/applications/new to register an OAuth app.\n" +
+		"2. Set the following values:\n" +
+		"	- Application name: `Mattermost GitHub Plugin - <your company name>`\n" +
+		"	- Homepage URL: `https://github.com/mattermost/mattermost-plugin-github`\n" +
+		"	- Authorization callback URL: %v/oauth/complete \n" +
+		"3. Submit\n" +
+		"4. Click **Generate a new client secret** and and provide your GitHub password to continue.\n" +
+		pluginURL,
+	)
+
 	steps := []steps.Step{
-		steps.NewCustomStepBuilder("", "").WithButton(b1).WithButton(b2).WithPretext(":wave: Welcome to GitHub for Mattermost! Finish integrating Mattermost and GitHub by loggin in into your GitHub account.").Build(),
-		steps.NewCustomStepBuilder("", "").WithPretext(step2Pretext).Build(),
+		steps.NewCustomStepBuilder("", step1Text).WithButton(b1).WithButton(b2).Build(),
+		steps.NewCustomStepBuilder("", step2Text).Build(),
 		steps.NewCustomStepBuilder("", step3Message).
 			WithPretext(step3Pretext).
 			WithButton(steps.Button{
-				Name:      "Register",
+				Name:      "I have created the OAuth Application",
 				Style:     steps.Primary,
-				SkipSteps: 0,
-			}).
-			WithButton(steps.Button{
-				Name:      "Register",
-				Style:     steps.Default,
 				SkipSteps: 0,
 			}).
 			WithButton(steps.Button{
@@ -94,16 +98,15 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app 
 			}).
 			Build(),
 
-		//steps.NewEmptyStep("Some Title", "Some message"),
 		/*
-
 			steps.NewSimpleStep("Simple: Title", "Simple: Message", "property", "true", "false", "selected true", "selected false", 0, 1),
 			steps.NewFreetextStep("Freetext: Title", "Freetext: Message", "property", "/freetext", freeTextStore, validate, p.router, poster),
-		*/
 
-		//steps.NewEmptyStep("Some Title", "Some message"),
-		//steps.NewEmptyStep("Some Title2", "Some message2"),
-		//steps.NewEmptyStep("Some Title3", "Some message3"),
+			steps.NewEmptyStep("Some Title", "Some message"),
+			steps.NewEmptyStep("Some Title", "Some message"),
+			steps.NewEmptyStep("Some Title2", "Some message2"),
+			steps.NewEmptyStep("Some Title3", "Some message3"),
+		*/
 	}
 
 	f := flow.NewFlow(steps, "/flow", nil)
