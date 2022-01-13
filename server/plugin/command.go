@@ -39,10 +39,10 @@ var validFeatures = map[string]bool{
 }
 
 const (
+	deleteAll        = "delete-all"
 	subCommandList   = "list"
 	subCommandDelete = "delete"
 	subCommandAdd    = "add"
-	deleteAll        = "delete-all"
 )
 
 type Features string
