@@ -3,9 +3,6 @@ run:
   modules-download-mode: readonly
 
 linters-settings:
-  goconst:
-    min-len: 2
-    min-occurrences: 3
   gofmt:
     simplify: true
   goimports:
@@ -15,6 +12,8 @@ linters-settings:
   govet:
     check-shadowing: true
     enable-all: true
+    disable:
+      - fieldalignment
   misspell:
     locale: US
 
@@ -24,7 +23,6 @@ linters:
     - bodyclose
     - deadcode
     - errcheck
-    - goconst
     - gocritic
     - gofmt
     - goimports
@@ -33,7 +31,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - misspell
     - nakedret
     - staticcheck

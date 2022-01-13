@@ -13,13 +13,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v37/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	root "github.com/mattermost/mattermost-plugin-github"
 )
 
 const (
@@ -44,6 +46,10 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+)
+
+var (
+	Manifest model.Manifest = root.Manifest
 )
 
 type Plugin struct {

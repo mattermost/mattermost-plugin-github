@@ -11,9 +11,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v37/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
+)
+
+const (
+	actionOpened    = "opened"
+	actionClosed    = "closed"
+	actionReopened  = "reopened"
+	actionSubmitted = "submitted"
+	actionLabeled   = "labeled"
+	actionAssigned  = "assigned"
+
+	actionCreated = "created"
+	actionDeleted = "deleted"
+	actionEdited  = "edited"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -246,7 +259,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != "opened" && action != "labeled" && action != "closed" {
+	if action != actionOpened && action != actionLabeled && action != actionClosed {
 		return
 	}
 
@@ -279,7 +292,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != "closed" {
+		if sub.PullsMerged() && action != actionClosed {
 			continue
 		}
 
@@ -300,7 +313,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if action == "labeled" {
+		if action == actionLabeled {
 			if label != "" && label == eventLabel {
 				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
 				if err != nil {
@@ -314,11 +327,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 		}
 
-		if action == "opened" {
+		if action == actionOpened {
 			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
-		if action == "closed" {
+		if action == actionClosed {
 			post.Message = closedPRMessage
 		}
 
@@ -335,7 +348,7 @@ func (p *Plugin) sanitizeDescription(description string) string {
 }
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
-	if action != "opened" {
+	if action != actionOpened {
 		return
 	}
 
@@ -397,7 +410,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
 	timeDiff := time.Until(issue.GetCreatedAt()) * -1
-	if action == "labeled" && timeDiff.Seconds() < 4.00 {
+	if action == actionLabeled && timeDiff.Seconds() < 4.00 {
 		return
 	}
 
@@ -408,16 +421,16 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	issueTemplate := ""
 	switch action {
-	case "opened":
+	case actionOpened:
 		issueTemplate = "newIssue"
 
-	case "closed":
+	case actionClosed:
 		issueTemplate = "closedIssue"
 
-	case "reopened":
+	case actionReopened:
 		issueTemplate = "reopenedIssue"
 
-	case "labeled":
+	case actionLabeled:
 		issueTemplate = "issueLabelled"
 
 	default:
@@ -448,7 +461,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if sub.IssueCreations() && action != "opened" {
+		if sub.IssueCreations() && action != actionOpened {
 			continue
 		}
 
@@ -469,7 +482,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if action == "labeled" {
+		if action == actionLabeled {
 			if label == "" || label != eventLabel {
 				continue
 			}
@@ -617,7 +630,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		return
 	}
 
-	if event.GetAction() != "created" {
+	if event.GetAction() != actionCreated {
 		return
 	}
 
@@ -659,7 +672,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 			continue
 		}
 
-		if event.GetAction() == "created" {
+		if event.GetAction() == actionCreated {
 			post.Message = message
 		}
 
@@ -686,7 +699,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	action := event.GetAction()
-	if action != "submitted" {
+	if action != actionSubmitted {
 		return
 	}
 
@@ -801,7 +814,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
 	action := event.GetAction()
-	if action == "edited" || action == "deleted" {
+	if action == actionEdited || action == actionDeleted {
 		return
 	}
 
@@ -867,7 +880,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	}
 
 	action := event.GetAction()
-	if action == "edited" || action == "deleted" {
+	if action == actionEdited || action == actionDeleted {
 		return
 	}
 
@@ -989,7 +1002,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(requestedUserID, repoName) {
 			requestedUserID = ""
 		}
-	case "closed":
+	case actionClosed:
 		if author == sender {
 			return
 		}
@@ -997,7 +1010,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "reopened":
+	case actionReopened:
 		if author == sender {
 			return
 		}
@@ -1005,7 +1018,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "assigned":
+	case actionAssigned:
 		assignee := event.GetPullRequest().GetAssignee().GetLogin()
 		if assignee == sender {
 			return
@@ -1047,17 +1060,17 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	assigneeUserID := ""
 
 	switch event.GetAction() {
-	case "closed":
+	case actionClosed:
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "reopened":
+	case actionReopened:
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "assigned":
+	case actionAssigned:
 		assignee := event.GetAssignee().GetLogin()
 		if assignee == sender {
 			return
@@ -1098,7 +1111,7 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		return
 	}
 
-	if event.GetAction() != "submitted" {
+	if event.GetAction() != actionSubmitted {
 		return
 	}
 
