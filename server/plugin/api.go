@@ -420,6 +420,18 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		&model.WebsocketBroadcast{UserId: state.UserID},
 	)
 
+	isSysAdmin, err := p.isAuthorizedSysAdmin(c.UserID)
+	if err != nil {
+		p.API.LogWarn("Failed to check if user is System Admin", "err", err.Error())
+	}
+
+	if isSysAdmin {
+		err = p.flowManager.StartWebhookWizard(c.UserID)
+		if err != nil {
+			p.API.LogWarn("Failed start webhook wizard", "error", err.Error())
+		}
+	}
+
 	html := `
 			<!DOCTYPE html>
 			<html>

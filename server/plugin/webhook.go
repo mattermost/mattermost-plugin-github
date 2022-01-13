@@ -207,7 +207,9 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.getBaseURL())
 
 	if owner == "" {
 		return false

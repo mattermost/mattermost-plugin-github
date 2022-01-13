@@ -278,6 +278,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return "Please specify a repository."
 	}
 
+	config := p.getConfiguration()
+
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
@@ -320,18 +322,18 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
 
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	owner, repo := parseOwnerAndRepo(parameters[0], config.getBaseURL())
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
 		}
-		orgLink := p.getBaseURL() + owner
+		orgLink := config.getBaseURL() + owner
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s).", owner, orgLink)
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
 				val := strings.TrimSpace(value)
-				notificationOffRepoOwner, NotificationOffRepo := parseOwnerAndRepo(val, p.getBaseURL())
+				notificationOffRepoOwner, NotificationOffRepo := parseOwnerAndRepo(val, config.getBaseURL())
 				if notificationOffRepoOwner != owner {
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
@@ -355,7 +357,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 		return err.Error()
 	}
-	repoLink := p.getBaseURL() + owner + "/" + repo
+	repoLink := config.getBaseURL() + owner + "/" + repo
 
 	msg := fmt.Sprintf("Successfully subscribed to [%s](%s).", repo, repoLink)
 
@@ -506,6 +508,28 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
 	}
+}
+
+func (p *Plugin) handleGetStarted(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+	userID := args.UserId
+
+	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
+	if err != nil {
+		p.API.LogWarn("Failed to check if user is System Admin", "err", err.Error())
+
+		return "Error checking user's permissions"
+	}
+
+	if !isSysAdmin {
+		return "Only System Admins are allowed to setup the plugin."
+	}
+
+	err = p.flowManager.StartConfigurationWizard(userID)
+	if err != nil {
+		return errors.Wrap(err, "Failed to start configuration wizard").Error()
+	}
+
+	return ""
 }
 
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string

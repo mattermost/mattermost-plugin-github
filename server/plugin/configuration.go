@@ -54,7 +54,7 @@ func (c *Configuration) toMap() map[string]interface{} {
 	}
 }
 
-func getSecret() (string, error) {
+func generateSecret() (string, error) {
 	b := make([]byte, 256)
 	_, err := rand.Read(b)
 	if err != nil {
@@ -72,7 +72,7 @@ func (c *Configuration) setDefaults() (bool, error) {
 
 	if !c.UsePreregisteredApplication {
 		if c.EncryptionKey == "" {
-			secret, err := getSecret()
+			secret, err := generateSecret()
 			if err != nil {
 				return false, err
 			}
@@ -82,7 +82,7 @@ func (c *Configuration) setDefaults() (bool, error) {
 		}
 
 		if c.WebhookSecret == "" {
-			secret, err := getSecret()
+			secret, err := generateSecret()
 			if err != nil {
 				return false, err
 			}
@@ -93,6 +93,14 @@ func (c *Configuration) setDefaults() (bool, error) {
 	}
 
 	return changed, nil
+}
+
+func (c *Configuration) getBaseURL() string {
+	if c.EnterpriseBaseURL != "" {
+		return c.EnterpriseBaseURL
+	}
+
+	return "https://github.com/"
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if

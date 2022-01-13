@@ -17,7 +17,6 @@ import (
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
-	"github.com/mattermost/mattermost-plugin-api/experimental/freetextfetcher"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
@@ -72,6 +71,10 @@ type Plugin struct {
 	// configuration is the active plugin configuration. Consult getConfiguration and
 	// setConfiguration for usage.
 	configuration *Configuration
+
+	flowManager *FlowManager
+
+	log logger.Logger
 
 	router *mux.Router
 
@@ -174,6 +177,7 @@ func (p *Plugin) setDefaultConfiguration() error {
 
 func (p *Plugin) OnActivate() error {
 	p.client = pluginapi.NewClient(p.API, p.Driver)
+	p.log = logger.New(p.API)
 
 	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
 		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
@@ -218,6 +222,8 @@ func (p *Plugin) OnActivate() error {
 		return errors.Wrap(appErr, "couldn't set profile image")
 	}
 
+	p.flowManager = p.NewFlowManager()
+
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
 	go func() {
@@ -238,9 +244,6 @@ func (p *Plugin) registerChimeraURL() {
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
-	pluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id
-	freetextfetcher.GetManager().MessageHasBeenPosted(c, post, p.API, logger.New(p.API), p.BotUserID, pluginURL)
-
 	// If not enabled in config, ignore.
 	config := p.getConfiguration()
 	if config.EnableCodePreview == "disable" {
@@ -287,14 +290,14 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 		// means that asks scope for private repositories
 		repo = github.ScopeRepo
 	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
 
 	if config.UsePreregisteredApplication {
 		p.API.LogDebug("Using Chimera Proxy OAuth configuration")
 		return p.getOAuthConfigForChimeraApp(scopes)
 	}
 
-	baseURL := p.getBaseURL()
+	baseURL := config.getBaseURL()
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
 
@@ -551,7 +554,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
-	baseURL := p.getBaseURL()
+	baseURL := config.getBaseURL()
 
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
@@ -757,15 +760,6 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
-}
-
-func (p *Plugin) getBaseURL() string {
-	config := p.getConfiguration()
-	if config.EnterpriseBaseURL != "" {
-		return config.EnterpriseBaseURL
-	}
-
-	return "https://github.com/"
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,
