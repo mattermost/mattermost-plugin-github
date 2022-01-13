@@ -13,17 +13,20 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v37/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	root "github.com/mattermost/mattermost-plugin-github"
 )
 
 const (
 	githubTokenKey       = "_githubtoken"
+	githubOauthKey       = "githuboauthkey_"
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
@@ -43,6 +46,10 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+)
+
+var (
+	Manifest model.Manifest = root.Manifest
 )
 
 type Plugin struct {
@@ -314,6 +321,10 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
+}
+
+type ClientSafeSettings struct {
+	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
