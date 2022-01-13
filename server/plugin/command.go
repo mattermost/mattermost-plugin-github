@@ -427,7 +427,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
-	message := fmt.Sprintf("Successfully subscribed to [%s](%s) with events: %s.", repo, repoLink, subscribeEvents.FormattedString())
+	message := fmt.Sprintf("Successfully subscribed to [%s/%s](%s) with events: %s.", owner, repo, repoLink, subscribeEvents.FormattedString())
 	if previousSubscribedEvents != "" {
 		message += previouslySubscribedEventMessage
 	}
