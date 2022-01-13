@@ -39,8 +39,10 @@ var validFeatures = map[string]bool{
 }
 
 const (
-	list      = "list"
-	deleteAll = "delete-all"
+	subCommandList   = "list"
+	subCommandDelete = "delete"
+	subCommandAdd    = "add"
+	deleteAll        = "delete-all"
 )
 
 type Features string
@@ -195,19 +197,19 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	command := parameters[0]
 
 	switch {
-	case command == "list":
+	case command == subCommandList:
 		return p.handleMuteList(args, userInfo)
-	case command == "add":
+	case command == subCommandAdd:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleMuteAdd(args, parameters[1], userInfo)
-	case command == "delete":
+	case command == subCommandDelete:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == "delete-all":
+	case command == deleteAll:
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -233,7 +235,7 @@ func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, par
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
-	case len(parameters) == 1 && parameters[0] == "list":
+	case len(parameters) == 1 && parameters[0] == subCommandList:
 		return p.handleSubscriptionsList(c, args, parameters[1:], userInfo)
 	default:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
@@ -249,11 +251,11 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	parameters = parameters[1:]
 
 	switch {
-	case command == "list":
+	case command == subCommandList:
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	case command == "add":
+	case command == subCommandAdd:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
-	case command == "delete":
+	case command == subCommandDelete:
 		return p.handleUnsubscribe(c, args, parameters, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -720,10 +722,10 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: list, add, delete")
 
-	subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
+	subscribeList := model.NewAutocompleteData(subCommandList, "", "List the current channel subscriptions")
 	subscriptions.AddCommand(subscribeList)
 
-	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
+	subscriptionsAdd := model.NewAutocompleteData(subCommandAdd, "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
@@ -747,7 +749,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	}
 	subscriptions.AddCommand(subscriptionsAdd)
 
-	subscriptionsDelete := model.NewAutocompleteData("delete", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
+	subscriptionsDelete := model.NewAutocompleteData(subCommandDelete, "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
 	subscriptionsDelete.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
 	subscriptions.AddCommand(subscriptionsDelete)
 
@@ -758,20 +760,20 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
-	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided GitHub user")
+	muteAdd := model.NewAutocompleteData(subCommandList, "[github username]", "Mute notifications from the provided GitHub user")
 	muteAdd.AddTextArgument("GitHub user to mute", "[username]", "")
 	mute.AddCommand(muteAdd)
 
-	muteDelete := model.NewAutocompleteData("delete", "[github username]", "Unmute notifications from the provided GitHub user")
+	muteDelete := model.NewAutocompleteData(subCommandDelete, "[github username]", "Unmute notifications from the provided GitHub user")
 	muteDelete.AddTextArgument("GitHub user to unmute", "[username]", "")
 	mute.AddCommand(muteDelete)
 
 	github.AddCommand(mute)
 
-	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted GitHub users")
+	muteDeleteAll := model.NewAutocompleteData(deleteAll, "", "Unmute all muted GitHub users")
 	mute.AddCommand(muteDeleteAll)
 
-	muteList := model.NewAutocompleteData("list", "", "List muted GitHub users")
+	muteList := model.NewAutocompleteData(subCommandList, "", "List muted GitHub users")
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
