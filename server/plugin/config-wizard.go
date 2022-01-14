@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/go-github/v41/github"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
@@ -15,6 +16,11 @@ import (
 	"github.com/mattermost/mattermost-server/v6/model"
 )
 
+type PingBroker interface {
+	UnsubscribePings(ch <-chan *github.PingEvent)
+	SubscribePings() <-chan *github.PingEvent
+}
+
 type propertyStore struct {
 }
 
@@ -25,26 +31,31 @@ func (ps *propertyStore) SetProperty(userID, propertyName string, value interfac
 type FlowManager struct {
 	client           *pluginapi.Client
 	getConfiguration func() *Configuration
+	getGitHubClient  func(ctx context.Context, userID string) (*github.Client, error)
 	pluginURL        string
 
-	logger           logger.Logger
-	poster           poster.Poster
-	store            flow.Store
-	wizardController flow.Controller
-	webhokController flow.Controller
+	pingBroker PingBroker
+
+	logger                  logger.Logger
+	poster                  poster.Poster
+	store                   flow.Store
+	configurationController flow.Controller
+	webhokController        flow.Controller
 }
 
 func (p *Plugin) NewFlowManager() *FlowManager {
 	fm := &FlowManager{
 		client:           p.client,
-		logger:           p.log,
+		getConfiguration: p.getConfiguration,
+		getGitHubClient:  p.GetGitHubClient,
+		pingBroker:       p.webhookManager,
 		pluginURL:        *p.client.Configuration.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id,
+		logger:           p.log,
 		poster:           poster.NewPoster(&p.client.Post, p.BotUserID),
 		store:            flow.NewFlowStore(*p.client, "flow_store"),
-		getConfiguration: p.getConfiguration,
 	}
 
-	fm.wizardController = flow.NewFlowController(
+	fm.configurationController = flow.NewFlowController(
 		fm.logger,
 		p.router,
 		fm.poster,
@@ -212,8 +223,8 @@ Click [here](%s) to connect your account.`,
 		*/
 		step1,
 		step2,
-		//step3,
-		//step4,
+		// step3,
+		// step4,
 		step5,
 		step6,
 
@@ -234,7 +245,7 @@ Click [here](%s) to connect your account.`,
 }
 
 func (fm *FlowManager) StartConfigurationWizard(userID string) error {
-	err := fm.wizardController.Start(userID)
+	err := fm.configurationController.Start(userID)
 	if err != nil {
 		return err
 	}
@@ -242,7 +253,7 @@ func (fm *FlowManager) StartConfigurationWizard(userID string) error {
 	return nil
 }
 
-func (fm *FlowManager) submitEnterpriseConfig(submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
+func (fm *FlowManager) submitEnterpriseConfig(_ string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
 	errorList := map[string]string{}
 
 	baseURLRaw, ok := submission["base_url"]
@@ -289,7 +300,7 @@ func (fm *FlowManager) submitEnterpriseConfig(submission map[string]interface{})
 	return 0, nil, "", nil
 }
 
-func (fm *FlowManager) submitOAuthConfig(submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
+func (fm *FlowManager) submitOAuthConfig(_ string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
 	errorList := map[string]string{}
 
 	clientIDRaw, ok := submission["client_id"]
@@ -335,7 +346,7 @@ func (fm *FlowManager) submitOAuthConfig(submission map[string]interface{}) (int
 }
 
 func (fm *FlowManager) StartWebhookWizard(userID string) error {
-	err := fm.wizardController.Start(userID)
+	err := fm.webhokController.Start(userID)
 	if err != nil {
 		return err
 	}
@@ -346,7 +357,7 @@ func (fm *FlowManager) StartWebhookWizard(userID string) error {
 func (fm *FlowManager) getWebhookFlow() flow.Flow {
 	step1 := steps.NewCustomStepBuilder("", "Do you want to create a webhook?").
 		WithButton(steps.Button{
-			Name:  "Continue",
+			Name:  "Yes",
 			Style: steps.Primary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
@@ -355,12 +366,12 @@ func (fm *FlowManager) getWebhookFlow() flow.Flow {
 					SubmitLabel:      "Create",
 					Elements: []model.DialogElement{
 						{
-							DisplayName: "Repository or organization",
+							DisplayName: "Repository or organization name",
 							Name:        "repo_org",
 							Type:        "text",
 							SubType:     "text",
 							Placeholder: "mattermost/mattermost-server",
-							HelpText:    "For which repository or organization do you want to create a webhook?",
+							// HelpText:    "For which repository or organization do you want to create a webhook?",
 						},
 					},
 				},
@@ -379,15 +390,18 @@ func (fm *FlowManager) getWebhookFlow() flow.Flow {
 		}).
 		Build()
 
+	step2 := steps.NewEmptyStep("", ":tada: You can now use `/github subscriptions add` to subscribe any channel to your repository.")
+
 	steps := []steps.Step{
 		step1,
+		step2,
 	}
 	f := flow.NewFlow(steps, "/webhook", nil)
 
 	return f
 }
 
-func (fm *FlowManager) submitWebhook(submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
+func (fm *FlowManager) submitWebhook(userID string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
 	repoOrgRaw, ok := submission["repo_org"]
 	if !ok {
 		return 0, nil, "repo_org missing", nil
@@ -405,8 +419,8 @@ func (fm *FlowManager) submitWebhook(submission map[string]interface{}) (int, *s
 	webhookEvents := []string{"create", "delete", "issue_comment", "issues", "pull_request", "pull_request_review", "pull_request_review_comment", "push", "star"}
 
 	config := map[string]interface{}{
-		"content_type": "application/json",
-		"insecure_ssl": false,
+		"content_type": "json",
+		"insecure_ssl": "0",
 		"secret":       fm.getConfiguration().WebhookSecret,
 		"url":          fmt.Sprintf("%s/webhook", fm.pluginURL),
 	}
@@ -416,18 +430,38 @@ func (fm *FlowManager) submitWebhook(submission map[string]interface{}) (int, *s
 		Config: config,
 	}
 
-	var githubClient *github.Client // := p.githubConnectUser(ctx, userInfo)
+	ctx, cancel := context.WithTimeout(context.Background(), 28*time.Second) // HTTP request times out after 30 seconds
+	defer cancel()
+
+	client, apiErr := fm.getGitHubClient(ctx, userID)
+	if apiErr != nil {
+		return 0, nil, apiErr.Error(), nil
+	}
+
+	ch := fm.pingBroker.SubscribePings()
 
 	var err error
 	if repo == "" {
-		_, _, err = githubClient.Organizations.CreateHook(context.TODO(), org, hook)
+		hook, _, err = client.Organizations.CreateHook(ctx, org, hook)
 	} else {
-		_, _, err = githubClient.Repositories.CreateHook(context.TODO(), org, repo, hook)
+		hook, _, err = client.Repositories.CreateHook(ctx, org, repo, hook)
 	}
 
 	if err != nil {
-		return 0, nil, errors.Wrap(err, "Failed to create hook ").Error(), nil
+		return 0, nil, errors.Wrap(err, "Failed to create hook").Error(), nil
 	}
+
+	select {
+	case event := <-ch:
+		if *event.HookID == *hook.ID {
+			break
+		}
+		ctx.Deadline()
+	case <-ctx.Done():
+		return 0, nil, "Timed out waiting for webhook event. Please check if the webhook was corrected created.", nil
+	}
+
+	fm.pingBroker.UnsubscribePings(ch)
 
 	return 0, nil, "", nil
 }

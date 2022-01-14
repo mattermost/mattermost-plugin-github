@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/v41/github"
@@ -71,6 +72,65 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 	}
 }
 
+type webhookManager struct {
+	lock     sync.RWMutex // Protects closed and pingSubs
+	closed   bool
+	pingSubs []chan *github.PingEvent
+}
+
+func (wm *webhookManager) SubscribePings() <-chan *github.PingEvent {
+	wm.lock.Lock()
+	defer wm.lock.Unlock()
+
+	ch := make(chan *github.PingEvent, 1)
+	wm.pingSubs = append(wm.pingSubs, ch)
+
+	return ch
+}
+
+func (wm *webhookManager) UnsubscribePings(ch <-chan *github.PingEvent) {
+	wm.lock.Lock()
+	defer wm.lock.Unlock()
+
+	for i, sub := range wm.pingSubs {
+		if sub == ch {
+			close(sub)
+			wm.pingSubs = append(wm.pingSubs[:i], wm.pingSubs[i+1:]...)
+			break
+		}
+	}
+}
+
+func (wm *webhookManager) publishPing(event *github.PingEvent) {
+	wm.lock.Lock()
+	defer wm.lock.Unlock()
+
+	if wm.closed {
+		return
+	}
+
+	for _, sub := range wm.pingSubs {
+		// non-blocking send
+		select {
+		case sub <- event:
+		default:
+		}
+	}
+}
+
+func (wm *webhookManager) Close() {
+	wm.lock.Lock()
+	defer wm.lock.Unlock()
+
+	if !wm.closed {
+		wm.closed = true
+
+		for _, sub := range wm.pingSubs {
+			close(sub)
+		}
+	}
+}
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
@@ -83,7 +143,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	event, err := github.ParseWebHook(github.WebHookType(r), body)
 	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
 		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
@@ -113,6 +173,10 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	var handler func()
 
 	switch event := event.(type) {
+	case *github.PingEvent:
+		handler = func() {
+			p.webhookManager.publishPing(event)
+		}
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
 		if p.IsNotificationOff(*repo.FullName) {
@@ -191,11 +255,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if repo == nil || handler == nil {
+	if handler == nil {
 		return
 	}
 
-	if repo.GetPrivate() && !config.EnablePrivateRepo {
+	if repo != nil && repo.GetPrivate() && !config.EnablePrivateRepo {
 		return
 	}
 
@@ -343,11 +407,13 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
+
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
 	return strings.TrimSpace(policy.Sanitize(description))
 }
+
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != actionOpened {

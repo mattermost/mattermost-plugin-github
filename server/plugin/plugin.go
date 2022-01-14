@@ -76,6 +76,8 @@ type Plugin struct {
 
 	log logger.Logger
 
+	webhookManager *webhookManager
+
 	router *mux.Router
 
 	chimeraURL string
@@ -102,6 +104,15 @@ func NewPlugin() *Plugin {
 	}
 
 	return p
+}
+
+func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
+	userInfo, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	return p.githubConnectUser(ctx, userInfo), nil
 }
 
 func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
@@ -195,6 +206,7 @@ func (p *Plugin) OnActivate() error {
 		return errors.Wrap(err, "failed to set default configuration")
 	}
 
+	p.webhookManager = &webhookManager{}
 	p.initializeAPI()
 
 	botID, err := p.client.Bot.EnsureBot(&model.Bot{
@@ -232,6 +244,12 @@ func (p *Plugin) OnActivate() error {
 			p.API.LogDebug("failed to reset user tokens", "error", err.Error())
 		}
 	}()
+	return nil
+}
+
+func (p *Plugin) OnDeactivate() error {
+	p.webhookManager.Close()
+
 	return nil
 }
 
