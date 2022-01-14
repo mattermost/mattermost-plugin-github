@@ -39,10 +39,10 @@ var validFeatures = map[string]bool{
 }
 
 const (
-	deleteAll        = "delete-all"
-	subCommandList   = "list"
-	subCommandDelete = "delete"
-	subCommandAdd    = "add"
+	subCommandListDeleteAll = "delete-all"
+	subCommandList          = "list"
+	subCommandDelete        = "delete"
+	subCommandAdd           = "add"
 )
 
 type Features string
@@ -209,7 +209,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == deleteAll:
+	case command == subCommandListDeleteAll:
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -770,7 +770,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	github.AddCommand(mute)
 
-	muteDeleteAll := model.NewAutocompleteData(deleteAll, "", "Unmute all muted GitHub users")
+	muteDeleteAll := model.NewAutocompleteData(subCommandListDeleteAll, "", "Unmute all muted GitHub users")
 	mute.AddCommand(muteDeleteAll)
 
 	muteList := model.NewAutocompleteData(subCommandList, "", "List muted GitHub users")
