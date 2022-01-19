@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
+	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
@@ -76,6 +77,9 @@ type Plugin struct {
 
 	log logger.Logger
 
+	telemetryClient telemetry.Client
+	tracker         telemetry.Tracker
+
 	webhookManager *webhookManager
 
 	router *mux.Router
@@ -90,6 +94,7 @@ func NewPlugin() *Plugin {
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
+		"setup":         p.handleSetup,
 		"subscriptions": p.handleSubscriptions,
 		"subscribe":     p.handleSubscribe,
 		"unsubscribe":   p.handleUnsubscribe,
@@ -204,6 +209,11 @@ func (p *Plugin) OnActivate() error {
 	err := p.setDefaultConfiguration()
 	if err != nil {
 		return errors.Wrap(err, "failed to set default configuration")
+	}
+
+	p.telemetryClient, err = telemetry.NewRudderClient()
+	if err != nil {
+		p.API.LogWarn("Telemetry client not started", "error", err.Error())
 	}
 
 	p.webhookManager = &webhookManager{}

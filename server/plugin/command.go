@@ -510,6 +510,26 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
+func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid subscribe command. Available commands are 'list', 'add' and 'delete'." // TODO
+	}
+
+	command := parameters[0]
+	parameters = parameters[1:]
+
+	switch {
+	case command == "list":
+		return p.handleSubscriptionsList(c, args, parameters, userInfo)
+	case command == "add":
+		return p.handleSubscribesAdd(c, args, parameters, userInfo)
+	case command == "delete":
+		return p.handleUnsubscribe(c, args, parameters, userInfo)
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
+}
+
 func (p *Plugin) handleGetStarted(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
 
@@ -524,7 +544,7 @@ func (p *Plugin) handleGetStarted(c *plugin.Context, args *model.CommandArgs, pa
 		return "Only System Admins are allowed to setup the plugin."
 	}
 
-	err = p.flowManager.StartConfigurationWizard(userID)
+	err = p.flowManager.StartConfigurationWizard(userID, false)
 	if err != nil {
 		return errors.Wrap(err, "Failed to start configuration wizard").Error()
 	}
