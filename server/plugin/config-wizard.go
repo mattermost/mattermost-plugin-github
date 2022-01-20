@@ -3,9 +3,11 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/google/go-github/v41/github"
+	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
@@ -38,11 +40,14 @@ type FlowManager struct {
 	pingBroker PingBroker
 	tracker    telemetry.Tracker
 
-	logger                  logger.Logger
-	poster                  poster.Poster
-	store                   flow.Store
-	configurationController flow.Controller
-	webhokController        flow.Controller
+	logger logger.Logger
+	poster poster.Poster
+	store  flow.Store
+
+	oauthController        flow.Controller
+	webhokController       flow.Controller
+	announcementController flow.Controller
+	fullWizardController   flow.Controller
 }
 
 func (p *Plugin) NewFlowManager() *FlowManager {
@@ -58,33 +63,43 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		store:            flow.NewFlowStore(*p.client, "flow_store"),
 	}
 
-	fm.configurationController = flow.NewFlowController(
-		fm.logger,
-		p.router,
-		fm.poster,
-		&p.client.Frontend,
-		fm.pluginURL,
-		fm.getConfigurationFlow(),
-		fm.store,
-		&propertyStore{},
-	)
+	fm.oauthController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getOAuthSteps(), "/wizard", nil))
+	fm.webhokController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getWebhookSteps(), "/webhook", nil))
+	fm.announcementController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getAnnouncemenSteps(), "/announcement", nil))
 
-	fm.webhokController = flow.NewFlowController(
-		fm.logger,
-		p.router,
-		fm.poster,
-		&p.client.Frontend,
-		fm.pluginURL,
-		fm.getWebhookFlow(),
-		fm.store,
-		&propertyStore{},
-	)
+	allSteps := append(fm.getOAuthSteps(), append(fm.getWebhookSteps(), fm.getAnnouncemenSteps()...)...)
+	allSteps = append(allSteps, steps.NewEmptyStep("", ":tada: You successfully installed GitHub."))
+	fm.fullWizardController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(allSteps, "/full-wizzard", nil))
 
 	return fm
 }
 
+func (fm *FlowManager) newController(router *mux.Router, frontend *pluginapi.FrontendService, f flow.Flow) flow.Controller {
+	return flow.NewFlowController(
+		fm.logger,
+		router,
+		fm.poster,
+		frontend,
+		fm.pluginURL,
+		f,
+		fm.store,
+		&propertyStore{},
+	)
+}
+
+func (fm *FlowManager) cancelFlow(userID string) int {
+	_, err := fm.poster.DMWithAttachments(userID, &model.SlackAttachment{
+		Text: fmt.Sprintf("You can restart the wizard by running `/github setup`. Learn more about the plugin [here](%s)", Manifest.HomepageURL),
+	})
+	if err != nil {
+		fm.logger.WithError(err).Warnf("Failed to DM with cancel information")
+	}
+
+	return 999
+}
+
 func (fm *FlowManager) StartConfigurationWizard(userID string, fromInvite bool) error {
-	err := fm.configurationController.Start(userID)
+	err := fm.oauthController.Start(userID)
 	if err != nil {
 		return err
 	}
@@ -107,15 +122,15 @@ func (fm *FlowManager) trackCompleteConfigurationWizard(userID string) {
 	})
 }
 
-func (fm *FlowManager) getConfigurationFlow() flow.Flow {
+func (fm *FlowManager) getOAuthSteps() []steps.Step {
 	config := fm.getConfiguration()
 
-	welcomeText := ":wave: Welcome to GitHub for Mattermost! Finish integrating Mattermost and GitHub by loggin in into your GitHub account."
+	welcomeText := ":wave:  Welcome to GitHub for Mattermost! To begin using the integration, let’s complete the configuration. [Learn more](https://example.org)"
 	welcomeStep := steps.NewCustomStepBuilder("", welcomeText).
 		WithButton(steps.Button{
 			Name:  "Continue",
 			Style: steps.Primary,
-			OnClick: func() int {
+			OnClick: func(userID string) int {
 				if fm.getConfiguration().UsePreregisteredApplication {
 					return 2
 				}
@@ -124,11 +139,9 @@ func (fm *FlowManager) getConfigurationFlow() flow.Flow {
 			},
 		}).
 		WithButton(steps.Button{
-			Name:  "Not now",
-			Style: steps.Default,
-			OnClick: func() int {
-				return 999
-			},
+			Name:    "Not now",
+			Style:   steps.Default,
+			OnClick: fm.cancelFlow,
 		}).
 		Build()
 
@@ -137,8 +150,8 @@ func (fm *FlowManager) getConfigurationFlow() flow.Flow {
 		WithButton(steps.Button{
 			Name:  "I'll do it myself",
 			Style: steps.Primary,
-			OnClick: func() int {
-				return 2
+			OnClick: func(userID string) int {
+				return 1
 			},
 		}).
 		WithButton(steps.Button{
@@ -169,8 +182,8 @@ func (fm *FlowManager) getConfigurationFlow() flow.Flow {
 				},
 				OnDialogSubmit: fm.submitHandoverSelection,
 			},
-			OnClick: func() int {
-				return 999
+			OnClick: func(userID string) int {
+				return -1
 			},
 		}).
 		Build()
@@ -202,7 +215,7 @@ func (fm *FlowManager) getConfigurationFlow() flow.Flow {
 				},
 				OnDialogSubmit: fm.submitEnterpriseConfig,
 			},
-			OnClick: func() int {
+			OnClick: func(userID string) int {
 				return -1
 			},
 		}).
@@ -214,7 +227,8 @@ func (fm *FlowManager) getConfigurationFlow() flow.Flow {
 
 	requirementsText := `
 **You should have:**
-	- You have a GitHub account.`
+- GitHub account.
+[Learn more](https://example.org)`
 	requirementsStep := steps.NewCustomStepBuilder("", requirementsText).Build()
 
 	oauthPretext := `
@@ -242,7 +256,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 				Dialog: model.Dialog{
 					Title:            "TODO",
 					IntroductionText: "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret**.",
-					SubmitLabel:      "Continue",
+					SubmitLabel:      "Save & Continue",
 					Elements: []model.DialogElement{
 						{
 							DisplayName: "GitHub OAuth Client ID",
@@ -260,16 +274,14 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 				},
 				OnDialogSubmit: fm.submitOAuthConfig,
 			},
-			OnClick: func() int {
+			OnClick: func(userID string) int {
 				return -1
 			},
 		}).
 		WithButton(steps.Button{
-			Name:  "Cancel",
-			Style: steps.Danger,
-			OnClick: func() int {
-				return 999
-			},
+			Name:    "Cancel",
+			Style:   steps.Danger,
+			OnClick: fm.cancelFlow,
 		}).
 		Build()
 
@@ -279,7 +291,9 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 Click [here](%s) to connect your account.`,
 		connectURL,
 	)
-	conntectStep := steps.NewEmptyStep("", connectText)
+	conntectStep := steps.NewCustomStepBuilder("", connectText).
+		IsNotEmpty(). // The API handler will advance to the next step and complete the flow
+		Build()
 
 	steps := []steps.Step{
 		welcomeStep,
@@ -289,21 +303,9 @@ Click [here](%s) to connect your account.`,
 		requirementsStep,
 		oauthStep,
 		conntectStep,
-
-		/*
-
-			steps.NewFreetextStep("Freetext: Title", "Freetext: Message", "property", "/freetext", freeTextStore, validate, p.router, poster),
-
-			steps.NewEmptyStep("Some Title", "Some message"),
-			steps.NewEmptyStep("Some Title", "Some message"),
-			steps.NewEmptyStep("Some Title2", "Some message2"),
-			steps.NewEmptyStep("Some Title3", "Some message3"),
-		*/
 	}
 
-	f := flow.NewFlow(steps, "/wizard", nil)
-
-	return f
+	return steps
 }
 
 func (fm *FlowManager) submitHandoverSelection(userID string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
@@ -334,7 +336,7 @@ func (fm *FlowManager) submitHandoverSelection(userID string, submission map[str
 		return 0, nil, errors.Wrap(err, "failed send confirmation post").Error(), nil
 	}
 
-	return -1, nil, "", nil
+	return 999, nil, "", nil
 }
 
 func (fm *FlowManager) submitEnterpriseConfig(_ string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
@@ -454,8 +456,11 @@ func (fm *FlowManager) trackCompleteWebhookWizard(userID string) {
 	})
 }
 
-func (fm *FlowManager) getWebhookFlow() flow.Flow {
-	step1 := steps.NewCustomStepBuilder("", "Do you want to create a webhook?").
+func (fm *FlowManager) getWebhookSteps() []steps.Step {
+	questionPretext := `##### :white_check_mark: Step 2: Create a Webhook in GitHub
+As a system admin, you must create a webhook for each organization or repository you want to receive notifications for or subscribe to.	`
+	questionStep := steps.NewCustomStepBuilder("", "Do you want to create a webhook?").
+		WithPretext(questionPretext).
 		WithButton(steps.Button{
 			Name:  "Yes",
 			Style: steps.Primary,
@@ -477,28 +482,27 @@ func (fm *FlowManager) getWebhookFlow() flow.Flow {
 				},
 				OnDialogSubmit: fm.submitWebhook,
 			},
-			OnClick: func() int {
+			OnClick: func(userID string) int {
 				return -1
 			},
 		}).
 		WithButton(steps.Button{
 			Name:  "No",
 			Style: steps.Default,
-			OnClick: func() int {
-				return 999
+			OnClick: func(userID string) int {
+				return 1
 			},
 		}).
 		Build()
 
-	step2 := steps.NewEmptyStep("", ":tada: You can now use `/github subscriptions add` to subscribe any channel to your repository.")
+	confirmationStep := steps.NewEmptyStep("", ":tada: You can now use `/github subscriptions add` to subscribe any channel to your repository.")
 
 	steps := []steps.Step{
-		step1,
-		step2,
+		questionStep,
+		confirmationStep,
 	}
-	f := flow.NewFlow(steps, "/webhook", nil)
 
-	return f
+	return steps
 }
 
 func (fm *FlowManager) submitWebhook(userID string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
@@ -541,14 +545,22 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 	ch := fm.pingBroker.SubscribePings()
 
 	var err error
+	var resp *github.Response
+	var fullName string
 	if repo == "" {
-		hook, _, err = client.Organizations.CreateHook(ctx, org, hook)
+		fullName = org
+		hook, resp, err = client.Organizations.CreateHook(ctx, org, hook)
 	} else {
-		hook, _, err = client.Repositories.CreateHook(ctx, org, repo, hook)
+		fullName = org + "/" + repo
+		hook, resp, err = client.Repositories.CreateHook(ctx, org, repo, hook)
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, nil, fmt.Sprintf("It seems like you don't have access %s. Please ask an administrator of that repository to run /github setup webhook for you.", fullName), nil
 	}
 
 	if err != nil {
-		return 0, nil, errors.Wrap(err, "Failed to create hook").Error(), nil
+		return 0, nil, errors.Wrap(err, "failed to create hook").Error(), nil
 	}
 
 	select {
@@ -566,4 +578,124 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 	fm.trackCompleteWebhookWizard(userID)
 
 	return 0, nil, "", nil
+}
+
+func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
+	err := fm.announcementController.Start(userID)
+	if err != nil {
+		return err
+	}
+
+	fm.trackStartAnnouncementWizard(userID)
+
+	return nil
+}
+
+func (fm *FlowManager) getAnnouncemenSteps() []steps.Step {
+	defaultMessage := "Hi team,\n" +
+		"\n" +
+		"We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the slash commands section for details about how to use the plugin."
+	questionPretext := `##### :white_check_mark: Step 3: Notify your team`
+	questionStep := steps.NewCustomStepBuilder("", "Do you want to let your team know, that they can use GitHub integration?").
+		WithPretext(questionPretext).
+		WithButton(steps.Button{
+			Name:  "Yes",
+			Style: steps.Primary,
+			Dialog: &steps.Dialog{
+				Dialog: model.Dialog{
+					Title: "Notify your team",
+					//IntroductionText: "Into which channel do you want to send the ",
+					SubmitLabel: "Send message",
+					Elements: []model.DialogElement{
+						{
+							DisplayName: "Channel",
+							Name:        "channel_id",
+							Type:        "select",
+							DataSource:  "channels",
+						},
+						{
+							DisplayName: "Message",
+							Name:        "message",
+							Type:        "textarea",
+							Default:     defaultMessage,
+							HelpText:    "Edit a message to suit your requirements, and send it out.",
+						},
+					},
+				},
+				OnDialogSubmit: fm.submitChannelAnnouncement,
+			},
+			OnClick: func(userID string) int {
+				return -1
+			},
+		}).
+		WithButton(steps.Button{
+			Name:  "No",
+			Style: steps.Default,
+		}).
+		Build()
+
+	steps := []steps.Step{
+		questionStep,
+	}
+
+	return steps
+}
+
+func (fm *FlowManager) submitChannelAnnouncement(userID string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
+	channelIDRaw, ok := submission["channel_id"]
+	if !ok {
+		return 0, nil, "channel_id missing", nil
+	}
+	channelID, ok := channelIDRaw.(string)
+	if !ok {
+		return 0, nil, "channel_id is not a string", nil
+	}
+
+	channel, err := fm.client.Channel.Get(channelID)
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "failed to get channel").Error(), nil
+	}
+
+	messageRaw, ok := submission["message"]
+	if !ok {
+		return 0, nil, "message missing", nil
+	}
+	message, ok := messageRaw.(string)
+	if !ok {
+		return 0, nil, "message is not a string", nil
+	}
+
+	post := &model.Post{
+		UserId:    userID,
+		ChannelId: channel.Id,
+		Message:   message,
+	}
+	err = fm.client.Post.CreatePost(post)
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "failed to create post").Error(), nil
+	}
+
+	attachment := &model.SlackAttachment{
+		Text: fmt.Sprintf("Message to ~%s was sent.", channel.Name),
+	}
+	_, err = fm.poster.DMWithAttachments(userID, attachment)
+	if err != nil {
+		return 0, nil, errors.Wrap(err, "failed send confirmation post").Error(), nil
+	}
+
+	fm.trackCompletAnnouncementWizard(userID)
+
+	return 0, nil, "", nil
+}
+
+func (fm *FlowManager) trackStartAnnouncementWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("announcement_wizard_start", userID, map[string]interface{}{
+		"time": time.Now().UnixMilli(),
+	})
+}
+
+func (fm *FlowManager) trackCompletAnnouncementWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("announcement_wizard_complete", userID, map[string]interface{}{
+		"time": time.Now().UnixMilli(),
+	})
 }

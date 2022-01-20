@@ -379,32 +379,48 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		p.API.LogWarn("Failed to store GitHub user info mapping", "error", err.Error())
 	}
 
-	commandHelp, err := renderTemplate("helpText", p.getConfiguration())
-	if err != nil {
-		p.API.LogWarn("Failed to render help template", "error", err.Error())
-	}
-
 	// Post intro post
-	message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
-		"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
-		"##### Daily Reminders\n"+
-		"The first time you log in each day, you will get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n"+
-		"Turn off reminders with `/github settings reminders off`.\n\n"+
-		"##### Notifications\n"+
-		"When someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you, you'll get a post here about it.\n"+
-		"Turn off notifications with `/github settings notifications off`.\n\n"+
-		"##### Sidebar Buttons\n"+
-		"Check out the buttons in the left-hand sidebar of Mattermost.\n"+
-		"* The first button tells you how many pull requests you have submitted.\n"+
-		"* The second shows the number of PR that are awaiting your review.\n"+
-		"* The third shows the number of PR and issues your are assiged to.\n"+
-		"* The fourth tracks the number of unread messages you have.\n"+
-		"* The fifth will refresh the numbers.\n\n"+
-		"Click on them!\n\n"+
-		"##### Slash Commands\n"+
-		commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
 
-	p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
+	_, stepNumber, err := p.flowManager.fullWizardController.GetCurrentStep(c.UserID)
+	if err != nil {
+		p.log.WithError(err).Warnf("Failed to get current step")
+	} else {
+		if stepNumber != 0 {
+			err = p.flowManager.fullWizardController.NextStep(c.UserID, stepNumber, 0)
+			if err != nil {
+				p.API.LogWarn("Failed go to next step", "error", err.Error())
+			}
+		} else {
+			// Only post help message if no wizzard is running
+
+			var commandHelp string
+			commandHelp, err = renderTemplate("helpText", p.getConfiguration())
+			if err != nil {
+				p.API.LogWarn("Failed to render help template", "error", err.Error())
+			}
+
+			message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
+				"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
+				"##### Daily Reminders\n"+
+				"The first time you log in each day, you will get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n"+
+				"Turn off reminders with `/github settings reminders off`.\n\n"+
+				"##### Notifications\n"+
+				"When someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you, you'll get a post here about it.\n"+
+				"Turn off notifications with `/github settings notifications off`.\n\n"+
+				"##### Sidebar Buttons\n"+
+				"Check out the buttons in the left-hand sidebar of Mattermost.\n"+
+				"* The first button tells you how many pull requests you have submitted.\n"+
+				"* The second shows the number of PR that are awaiting your review.\n"+
+				"* The third shows the number of PR and issues your are assiged to.\n"+
+				"* The fourth tracks the number of unread messages you have.\n"+
+				"* The fifth will refresh the numbers.\n\n"+
+				"Click on them!\n\n"+
+				"##### Slash Commands\n"+
+				commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
+
+			p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
+		}
+	}
 
 	config := p.getConfiguration()
 
@@ -419,18 +435,6 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		},
 		&model.WebsocketBroadcast{UserId: state.UserID},
 	)
-
-	isSysAdmin, err := p.isAuthorizedSysAdmin(c.UserID)
-	if err != nil {
-		p.API.LogWarn("Failed to check if user is System Admin", "err", err.Error())
-	}
-
-	if isSysAdmin {
-		err = p.flowManager.StartWebhookWizard(c.UserID)
-		if err != nil {
-			p.API.LogWarn("Failed start webhook wizard", "error", err.Error())
-		}
-	}
 
 	html := `
 			<!DOCTYPE html>

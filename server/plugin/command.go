@@ -510,29 +510,8 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	if len(parameters) == 0 {
-		return "Invalid subscribe command. Available commands are 'list', 'add' and 'delete'." // TODO
-	}
-
-	command := parameters[0]
-	parameters = parameters[1:]
-
-	switch {
-	case command == "list":
-		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	case command == "add":
-		return p.handleSubscribesAdd(c, args, parameters, userInfo)
-	case command == "delete":
-		return p.handleUnsubscribe(c, args, parameters, userInfo)
-	default:
-		return fmt.Sprintf("Unknown subcommand %v", command)
-	}
-}
-
-func (p *Plugin) handleGetStarted(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
-
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {
 		p.API.LogWarn("Failed to check if user is System Admin", "err", err.Error())
@@ -544,9 +523,25 @@ func (p *Plugin) handleGetStarted(c *plugin.Context, args *model.CommandArgs, pa
 		return "Only System Admins are allowed to setup the plugin."
 	}
 
-	err = p.flowManager.StartConfigurationWizard(userID, false)
+	if len(parameters) == 0 {
+		err = p.flowManager.fullWizardController.Start(userID)
+	} else {
+		command := parameters[0]
+
+		switch {
+		case command == "oauth":
+			err = p.flowManager.StartConfigurationWizard(userID, false)
+		case command == "webhook":
+			err = p.flowManager.StartWebhookWizard(userID)
+		case command == "announcement":
+			err = p.flowManager.StartAnnouncementWizard(userID)
+		default:
+			return fmt.Sprintf("Unknown subcommand %v", command)
+		}
+	}
+
 	if err != nil {
-		return errors.Wrap(err, "Failed to start configuration wizard").Error()
+		return err.Error()
 	}
 
 	return ""
@@ -572,8 +567,8 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return &model.CommandResponse{}, nil
 	}
 
-	if action == "get-started" {
-		message := p.handleGetStarted(c, args, parameters)
+	if action == "setup" {
+		message := p.handleSetup(c, args, parameters)
 		if message != "" {
 			p.postCommandResponse(args, message)
 		}
@@ -659,9 +654,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	if config.IsValid() != nil {
-		github := model.NewAutocompleteData("github", "[command]", "Available commands: get-started")
+		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
 
-		getStarted := model.NewAutocompleteData("get-started", "", "Setup the GitHub plugin")
+		getStarted := model.NewAutocompleteData("setup", "", "Setup the GitHub plugin")
 		github.AddCommand(getStarted)
 
 		return github
@@ -781,6 +776,12 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
+
+	setup := model.NewAutocompleteData("setup", "[command]", "Available commands: oauth, webhook, announcement")
+	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Setup the OAuth2 Application in GitHub"))
+	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
+	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
+	github.AddCommand(setup)
 
 	return github
 }
