@@ -585,7 +585,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			text = "Error checking user's permissions"
 			p.API.LogWarn(text, "err", err.Error())
 		case isSysAdmin:
-			text = "Before using this plugin, you will need to configure it by running `/github get-started`"
+			text = "Before using this plugin, you will need to configure it by running `/github setup`"
 		default:
 			text = "Please contact your system administrator to configure the GitHub plugin."
 		}
