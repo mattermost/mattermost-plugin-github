@@ -44,10 +44,10 @@ type FlowManager struct {
 	poster poster.Poster
 	store  flow.Store
 
+	setupController        flow.Controller
 	oauthController        flow.Controller
 	webhokController       flow.Controller
 	announcementController flow.Controller
-	fullWizardController   flow.Controller
 }
 
 func (p *Plugin) NewFlowManager() *FlowManager {
@@ -63,13 +63,13 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		store:            flow.NewFlowStore(*p.client, "flow_store"),
 	}
 
+	setupSteps := append(fm.getOAuthSteps(), append(fm.getWebhookSteps(), fm.getAnnouncemenSteps()...)...)
+	setupSteps = append(setupSteps, steps.NewEmptyStep("", ":tada: You successfully installed GitHub.", fm.trackCompleteSetupWizard))
+	fm.setupController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(setupSteps, "/setup", nil))
+
 	fm.oauthController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getOAuthSteps(), "/wizard", nil))
 	fm.webhokController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getWebhookSteps(), "/webhook", nil))
 	fm.announcementController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getAnnouncemenSteps(), "/announcement", nil))
-
-	allSteps := append(fm.getOAuthSteps(), append(fm.getWebhookSteps(), fm.getAnnouncemenSteps()...)...)
-	allSteps = append(allSteps, steps.NewEmptyStep("", ":tada: You successfully installed GitHub."))
-	fm.fullWizardController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(allSteps, "/full-wizzard", nil))
 
 	return fm
 }
@@ -98,26 +98,49 @@ func (fm *FlowManager) cancelFlow(userID string) int {
 	return 999
 }
 
-func (fm *FlowManager) StartConfigurationWizard(userID string, fromInvite bool) error {
+func (fm *FlowManager) StartSetupWizard(userID string, fromInvite bool) error {
 	err := fm.oauthController.Start(userID)
 	if err != nil {
 		return err
 	}
 
-	fm.trackStartConfigurationWizard(userID, fromInvite)
+	fm.trackStartSetupWizard(userID, fromInvite)
 
 	return nil
 }
 
-func (fm *FlowManager) trackStartConfigurationWizard(userID string, fromInvite bool) {
-	_ = fm.tracker.TrackUserEvent("configuration_wizard_start", userID, map[string]interface{}{
+func (fm *FlowManager) trackStartSetupWizard(userID string, fromInvite bool) {
+	_ = fm.tracker.TrackUserEvent("setup_wizard_start", userID, map[string]interface{}{
 		"from_invite": fromInvite,
 		"time":        time.Now().UnixMilli(),
 	})
 }
 
-func (fm *FlowManager) trackCompleteConfigurationWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("configuration_wizard_complete", userID, map[string]interface{}{
+func (fm *FlowManager) trackCompleteSetupWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("setup_wizard_complete", userID, map[string]interface{}{
+		"time": time.Now().UnixMilli(),
+	})
+}
+
+func (fm *FlowManager) StartOauthWizard(userID string) error {
+	err := fm.oauthController.Start(userID)
+	if err != nil {
+		return err
+	}
+
+	fm.trackStartOauthizard(userID)
+
+	return nil
+}
+
+func (fm *FlowManager) trackStartOauthizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("oauthwizard_start", userID, map[string]interface{}{
+		"time": time.Now().UnixMilli(),
+	})
+}
+
+func (fm *FlowManager) trackCompleteOauthWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("oauth_wizard_complete", userID, map[string]interface{}{
 		"time": time.Now().UnixMilli(),
 	})
 }
@@ -323,7 +346,7 @@ func (fm *FlowManager) submitHandoverSelection(userID string, submission map[str
 		return 0, nil, errors.Wrap(err, "failed get user").Error(), nil
 	}
 
-	err = fm.StartConfigurationWizard(aider.Id, true)
+	err = fm.StartSetupWizard(aider.Id, true)
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "failed start configration wizzard").Error(), nil
 	}
@@ -428,7 +451,7 @@ func (fm *FlowManager) submitOAuthConfig(userID string, submission map[string]in
 		return 0, nil, errors.Wrap(err, "failed to save plugin config").Error(), nil
 	}
 
-	fm.trackCompleteConfigurationWizard(userID)
+	fm.trackCompleteOauthWizard(userID)
 
 	return 0, nil, "", nil
 }
@@ -495,7 +518,7 @@ As a system admin, you must create a webhook for each organization or repository
 		}).
 		Build()
 
-	confirmationStep := steps.NewEmptyStep("", ":tada: You can now use `/github subscriptions add` to subscribe any channel to your repository.")
+	confirmationStep := steps.NewEmptyStep("", ":tada: You can now use `/github subscriptions add` to subscribe any channel to your repository.", fm.trackCompleteWebhookWizard)
 
 	steps := []steps.Step{
 		questionStep,
@@ -574,8 +597,6 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 	}
 
 	fm.pingBroker.UnsubscribePings(ch)
-
-	fm.trackCompleteWebhookWizard(userID)
 
 	return 0, nil, "", nil
 }

@@ -381,12 +381,12 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	// Post intro post
 
-	_, stepNumber, err := p.flowManager.fullWizardController.GetCurrentStep(c.UserID)
+	_, stepNumber, err := p.flowManager.setupController.GetCurrentStep(c.UserID)
 	if err != nil {
 		p.log.WithError(err).Warnf("Failed to get current step")
 	} else {
 		if stepNumber != 0 {
-			err = p.flowManager.fullWizardController.NextStep(c.UserID, stepNumber, 0)
+			err = p.flowManager.setupController.NextStep(c.UserID, stepNumber, 0)
 			if err != nil {
 				p.API.LogWarn("Failed go to next step", "error", err.Error())
 			}

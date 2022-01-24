@@ -524,13 +524,13 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 	}
 
 	if len(parameters) == 0 {
-		err = p.flowManager.fullWizardController.Start(userID)
+		err = p.flowManager.StartSetupWizard(userID, false)
 	} else {
 		command := parameters[0]
 
 		switch {
 		case command == "oauth":
-			err = p.flowManager.StartConfigurationWizard(userID, false)
+			err = p.flowManager.StartOauthWizard(userID)
 		case command == "webhook":
 			err = p.flowManager.StartWebhookWizard(userID)
 		case command == "announcement":
