@@ -72,6 +72,7 @@ func TestSetDefaults(t *testing.T) {
 			description: "noop",
 			config: Configuration{
 				EncryptionKey: "abcd",
+				WebhookSecret: "efgh",
 			},
 			shouldChange: false,
 			outputCheck: func(t *testing.T, c *Configuration) {

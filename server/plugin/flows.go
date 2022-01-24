@@ -117,7 +117,7 @@ func (fm *FlowManager) trackStartSetupWizard(userID string, fromInvite bool) {
 	})
 }
 
-func (fm *FlowManager) trackCompleteSetupWizard(userID string) { // TODO: call this somewhere
+func (fm *FlowManager) trackCompleteSetupWizard(userID string) { //nolint:unused // TODO: call this somewhere
 	_ = fm.tracker.TrackUserEvent("setup_wizard_complete", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
