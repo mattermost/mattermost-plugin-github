@@ -295,7 +295,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	subscribeEvents := Features("pulls,issues,creates,deletes")
+	defaultEvents := Features("pulls,issues,creates,deletes")
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
