@@ -318,8 +318,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"
 		} else if len(optionList) == 1 {
-			subscribeEvents = Features(optionList[0])
-			fs := subscribeEvents.ToSlice()
+			defaultEvents = Features(optionList[0])
+			fs := defaultEvents.ToSlice()
 			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 				return "Feature list cannot contain both issue and issue_creations"
 			}
@@ -356,11 +356,11 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	if repo == "" {
-		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscribeEvents, flags); err != nil {
+		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, defaultEvents, flags); err != nil {
 			return err.Error()
 		}
 		orgLink := p.getBaseURL() + owner
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, subscribeEvents.FormattedString())
+		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, defaultEvents.FormattedString())
 
 		if flags.ExcludeOrgRepos {
 			var excludeMsg string
@@ -382,7 +382,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
 
-		subscriptionSuccess := fmt.Sprintf("A subscription to organization [%s](%s) was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.FormattedString())
+		subscriptionSuccess := fmt.Sprintf("A subscription to organization [%s](%s) was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, defaultEvents.FormattedString())
 
 		if previousSubscribedEvents != "" {
 			subscriptionSuccess += previouslySubscribedEventMessage
@@ -405,12 +405,12 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return "--exclude feature currently support on organization level."
 	}
 
-	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscribeEvents, flags); err != nil {
+	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, defaultEvents, flags); err != nil {
 		return err.Error()
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("A subscription to repository \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, subscribeEvents.FormattedString())
+	msg := fmt.Sprintf("A subscription to repository \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, defaultEvents.FormattedString())
 	if previousSubscribedEvents != "" {
 		msg += previouslySubscribedEventMessage
 	}
@@ -433,7 +433,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
-	message := fmt.Sprintf("A subscription to repository [%s/%s](%s) was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, subscribeEvents.FormattedString())
+	message := fmt.Sprintf("A subscription to repository [%s/%s](%s) was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, defaultEvents.FormattedString())
 	if previousSubscribedEvents != "" {
 		message += previouslySubscribedEventMessage
 	}
