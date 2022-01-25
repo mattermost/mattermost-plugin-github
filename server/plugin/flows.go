@@ -150,7 +150,7 @@ func (fm *FlowManager) getOAuthSteps() []steps.Step {
 	config := fm.getConfiguration()
 	usePreregisteredApplication := fm.getConfiguration().UsePreregisteredApplication
 
-	welcomePretext := ":wave: Welcome to GitHub inetegration!  [Learn more](https://example.org)"
+	welcomePretext := ":wave: Welcome to GitHub inetegration! [Learn more](https://github.com/mattermost/mattermost-plugin-github#readme)"
 
 	var welcomeText string
 	if usePreregisteredApplication {
@@ -217,7 +217,7 @@ Just a few more configuration steps to go!
 			Style: steps.Primary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
-					Title:            "TODO",
+					Title:            "Enterprise account",
 					IntroductionText: "Please enter the **Enterprise Base URL** and **Enterprise Upload URL**. Set these values to your GitHub Enterprise URLs, e.g. https://github.example.com. The Base and Upload URLs are often the same.",
 					SubmitLabel:      "Save & Continue",
 					Elements: []model.DialogElement{
@@ -291,8 +291,9 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 			Style: steps.Primary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
-					Title:       "GitHub Oauth values",
-					SubmitLabel: "Save & Continue",
+					Title:            "GitHub Oauth values",
+					IntroductionText: "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.",
+					SubmitLabel:      "Save & Continue",
 					Elements: []model.DialogElement{
 						{
 							DisplayName: "", // TODO: This will still show a *
@@ -515,17 +516,17 @@ Our final setup step requires a Mattermost System Admin to create a webhook for 
 			Style: steps.Primary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
-					Title:            "TODO",
-					IntroductionText: "For which repository or organization do you want to create a webhook?",
-					SubmitLabel:      "Create",
+					Title:       "Create Webhook",
+					SubmitLabel: "Create",
 					Elements: []model.DialogElement{
 						{
-							DisplayName: "Repository or organization name",
+
+							DisplayName: "", // TODO: This will still show a *
 							Name:        "repo_org",
 							Type:        "text",
 							SubType:     "text",
-							Placeholder: "mattermost/mattermost-server",
-							// HelpText:    "For which repository or organization do you want to create a webhook?",
+							Placeholder: "Repository or organization name, e.g. mattermost/mattermost-server",
+							HelpText:    "Specify repository or organization for which you want to create a webhook",
 						},
 					},
 				},
