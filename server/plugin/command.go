@@ -382,7 +382,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
 		}
 
-		subscriptionSuccess := fmt.Sprintf("A subscription to organization \"[%s](%s)\" was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.String())
+		subscriptionSuccess := fmt.Sprintf("A subscription to organization [%s](%s) was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, subscribeEvents.FormattedString())
 
 		if previousSubscribedEvents != "" {
 			subscriptionSuccess += previouslySubscribedEventMessage
@@ -433,7 +433,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
-	message := fmt.Sprintf("Successfully subscribed to [%s/%s](%s) with events: %s.", owner, repo, repoLink, subscribeEvents.FormattedString())
+	message := fmt.Sprintf("A subscription to repository [%s/%s](%s) was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, subscribeEvents.FormattedString())
 	if previousSubscribedEvents != "" {
 		message += previouslySubscribedEventMessage
 	}
