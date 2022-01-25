@@ -24,13 +24,6 @@ type PingBroker interface {
 	SubscribePings() <-chan *github.PingEvent
 }
 
-type propertyStore struct {
-}
-
-func (ps *propertyStore) SetProperty(userID, propertyName string, value interface{}) error {
-	return nil
-}
-
 type FlowManager struct {
 	client           *pluginapi.Client
 	getConfiguration func() *Configuration
@@ -60,16 +53,16 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		pluginURL:        *p.client.Configuration.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id,
 		logger:           p.log,
 		poster:           poster.NewPoster(&p.client.Post, p.BotUserID),
-		store:            flow.NewFlowStore(*p.client, "flow_store"),
+		store:            flow.NewFlowStore(&p.client.KV, "flow_store"),
 	}
 
-	setupSteps := append(fm.getOAuthSteps(), append(fm.getWebhookSteps(), fm.getAnnouncemenSteps()...)...)
-	setupSteps = append(setupSteps, steps.NewEmptyStep("", ":tada: You successfully installed GitHub."))
-	fm.setupController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(setupSteps, "/setup", nil))
+	setupSteps := append(fm.getOAuthSteps(), append(fm.getWebhookSteps(), fm.getAnnouncementSteps()...)...)
+	setupSteps = append(setupSteps, steps.NewEmptyStep("final", "", ":tada: You successfully installed GitHub."))
+	fm.setupController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow("setup", setupSteps, nil))
 
-	fm.oauthController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getOAuthSteps(), "/wizard", nil))
-	fm.webhokController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getWebhookSteps(), "/webhook", nil))
-	fm.announcementController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow(fm.getAnnouncemenSteps(), "/announcement", nil))
+	fm.oauthController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow("wizard", fm.getOAuthSteps(), nil))
+	fm.webhokController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow("webhook", fm.getWebhookSteps(), nil))
+	fm.announcementController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow("announcement", fm.getAnnouncementSteps(), nil))
 
 	return fm
 }
@@ -83,7 +76,6 @@ func (fm *FlowManager) newController(router *mux.Router, frontend *pluginapi.Fro
 		fm.pluginURL,
 		f,
 		fm.store,
-		&propertyStore{},
 	)
 }
 
@@ -150,7 +142,7 @@ func (fm *FlowManager) getOAuthSteps() []steps.Step {
 	config := fm.getConfiguration()
 	usePreregisteredApplication := fm.getConfiguration().UsePreregisteredApplication
 
-	welcomePretext := ":wave: Welcome to GitHub inetegration! [Learn more](https://github.com/mattermost/mattermost-plugin-github#readme)"
+	welcomePretext := ":wave: Welcome to GitHub integration! [Learn more](https://github.com/mattermost/mattermost-plugin-github#readme)"
 
 	var welcomeText string
 	if usePreregisteredApplication {
@@ -159,13 +151,14 @@ Just a few more configuration steps to go!
 - **Step 1:** Connect your GitHub account
 - **Step 2:** Create a webhook in GitHub`
 	} else {
-		welcomeText = `Just a few more configuration steps to go!
+		welcomeText = `
+Just a few more configuration steps to go!
 - **Step 1:** Register an OAuth application in GitHub and enter OAuth values.
 - **Step 2:** Connect your GitHub account
 - **Step 3:** Create a webhook in GitHub`
 	}
 
-	welcomeStep := steps.NewCustomStepBuilder("", welcomeText).
+	welcomeStep := steps.NewCustomStepBuilder("welcome", "", welcomeText).
 		WithPretext(welcomePretext).
 		WithButton(steps.Button{
 			Name:  "Continue",
@@ -181,7 +174,7 @@ Just a few more configuration steps to go!
 		Build()
 
 	handoverQuestionText := "Are you setting this GitHub integration up, or is someone else?"
-	handoverQuestionStep := steps.NewCustomStepBuilder("", handoverQuestionText).
+	handoverQuestionStep := steps.NewCustomStepBuilder("handoverQuestion", "", handoverQuestionText).
 		WithButton(steps.Button{
 			Name:  "I'll do it myself",
 			Style: steps.Primary,
@@ -211,7 +204,7 @@ Just a few more configuration steps to go!
 		Build()
 
 	enterpriseText := "Do you have GitHub Enterprise account?"
-	enterpriseStep := steps.NewCustomStepBuilder("", enterpriseText).
+	enterpriseStep := steps.NewCustomStepBuilder("enterprise", "", enterpriseText).
 		WithButton(steps.Button{
 			Name:  "Yes",
 			Style: steps.Primary,
@@ -271,7 +264,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		fm.pluginURL,
 	)
 
-	oauthInfoStep := steps.NewCustomStepBuilder("", oauthMessage).
+	oauthInfoStep := steps.NewCustomStepBuilder("oauthInfo", "", oauthMessage).
 		WithPretext(oauthPretext).
 		WithImage("public/new-oauth-application.png").
 		WithButton(steps.Button{
@@ -285,7 +278,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		}).
 		Build()
 
-	oauthInputStep := steps.NewCustomStepBuilder("", "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret**.").
+	oauthInputStep := steps.NewCustomStepBuilder("oauth-input", "", "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret**.").
 		WithButton(steps.Button{
 			Name:  "Continue",
 			Style: steps.Primary,
@@ -334,7 +327,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 	connectPretext := fmt.Sprintf("##### :white_check_mark: Step %d: Connect your GitHub account", stepNumber)
 	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginURL)
 	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
-	conntectStep := steps.NewCustomStepBuilder("", connectText).
+	conntectStep := steps.NewCustomStepBuilder("connect", "", connectText).
 		WithPretext(connectPretext).
 		IsNotEmpty(). // The API handler will advance to the next step and complete the flow
 		Build()
@@ -372,7 +365,7 @@ func (fm *FlowManager) submitHandoverSelection(userID string, submission map[str
 	}
 
 	attachment := &model.SlackAttachment{
-		Text: fmt.Sprintf("Github integration setup details have been sent to @%s", aider.Username),
+		Text: fmt.Sprintf("GitHub integration setup details have been sent to @%s", aider.Username),
 	}
 	_, err = fm.poster.DMWithAttachments(userID, attachment)
 	if err != nil {
@@ -509,7 +502,7 @@ func (fm *FlowManager) getWebhookSteps() []steps.Step {
 
 	questionPretext := fmt.Sprintf(`##### :white_check_mark: Step %d: Create a Webhook in GitHub
 Our final setup step requires a Mattermost System Admin to create a webhook for each GitHub organization or repository you want to receive notifications for, or want to subscribe to.`, stepNumber)
-	questionStep := steps.NewCustomStepBuilder("", "Do you want to create a Webhook?").
+	questionStep := steps.NewCustomStepBuilder("webhook-question", "", "Do you want to create a Webhook?").
 		WithPretext(questionPretext).
 		WithButton(steps.Button{
 			Name:  "Yes",
@@ -545,12 +538,12 @@ Our final setup step requires a Mattermost System Admin to create a webhook for 
 		}).
 		WithButton(steps.Button{
 			Name:    "Cancel setup",
-			Style:   steps.Default,
+			Style:   steps.Danger,
 			OnClick: fm.cancelFlow,
 		}).
 		Build()
 
-	confirmationStep := steps.NewEmptyStep("Success! :tada: You've successfully set up your Mattermost GitHub integration! ", "Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)")
+	confirmationStep := steps.NewEmptyStep("success", "Success! :tada: You've successfully set up your Mattermost GitHub integration! ", "Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)")
 
 	steps := []steps.Step{
 		questionStep,
@@ -651,11 +644,11 @@ func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
 	return nil
 }
 
-func (fm *FlowManager) getAnnouncemenSteps() []steps.Step {
+func (fm *FlowManager) getAnnouncementSteps() []steps.Step {
 	defaultMessage := "Hi team,\n" +
 		"\n" +
 		"We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the slash commands section for details about how to use the plugin."
-	questionStep := steps.NewCustomStepBuilder("", "Want to let your team know?").
+	questionStep := steps.NewCustomStepBuilder("announcement-question", "", "Want to let your team know?").
 		WithButton(steps.Button{
 			Name:  "Send Message",
 			Style: steps.Primary,

@@ -771,8 +771,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
 
-	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
-	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
+	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in GitHub, using the title if provided")
+	issueCreate.AddTextArgument("Title for the GitHub issue", "[title]", "")
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
