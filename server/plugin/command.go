@@ -321,6 +321,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		orgLink := p.getBaseURL() + owner
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s).", owner, orgLink)
 		if flags.ExcludeOrgRepos {
+			subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
+			if err != nil {
+				return err.Error()
+			}
 			var excludeMsg string
 			for _, value := range strings.Split(excludeRepo, ",") {
 				val := strings.TrimSpace(value)
@@ -329,6 +333,18 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
 				}
 				flags.ExcludedRepos = append(flags.ExcludedRepos, val)
+				if len(subs) != 0 {
+					for _, sub := range subs {
+						for _, excludedRepo := range flags.ExcludedRepos {
+							var subscribedRepo = strings.Trim(sub.Repository, "/")
+							if subscribedRepo == excludedRepo{
+								msg:= fmt.Sprintf("Failed to add subscription to %s organization with --exclude. The repository %s cannot be excluded as a subscription already exists. Please remove the existing subscription first.", owner, excludedRepo)
+								return msg
+							}
+						}
+					}
+				}
+				p.API.LogDebug("owner fired: ",owner)
 				if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 					return err.Error()
 				}
@@ -344,6 +360,15 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	if flags.ExcludeOrgRepos {
 		return "--exclude feature currently support on organization level."
+	}
+
+	repoMatch, err := p.getExcludedRepo(args)
+	if err != nil {
+		return err.Error()
+	}
+	if repoMatch == repo {
+		msg:= fmt.Sprintf("Failed to subscribe to %s repository. The repository is already excluded from subscriptions in this channel. Please remove the repository from the excluded list first.", repo)
+		return msg
 	}
 
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
@@ -773,4 +798,25 @@ func SliceContainsString(a []string, x string) bool {
 		}
 	}
 	return false
+}
+
+func (p *Plugin) getExcludedRepo(args *model.CommandArgs) (string, error) {
+	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
+	if err != nil {
+		return "", err
+	}
+
+	var repoMatch []string
+	if len(subs) != 0 {
+		for _, sub := range subs {
+			if len(sub.Flags.ExcludedRepos) > 0 {
+				repoMatch = strings.Split(strings.Trim(strings.Join(sub.Flags.ExcludedRepos, ", "), "/"),"/")
+			}
+		}
+		if len(repoMatch) <= 0 {
+			return "", nil
+		}
+		return repoMatch[1], nil
+	}
+	return "", nil
 }
