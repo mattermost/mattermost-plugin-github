@@ -57,7 +57,9 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 	}
 
 	setupSteps := append(fm.getOAuthSteps(), append(fm.getWebhookSteps(), fm.getAnnouncementSteps()...)...)
-	setupSteps = append(setupSteps, steps.NewEmptyStep("final", "", ":tada: You successfully installed GitHub."))
+	setupFinal := steps.NewEmptyStep("final", "", ":tada: You successfully installed GitHub.")
+	setupFinal.OnRender = fm.trackCompleteSetupWizard
+	setupSteps = append(setupSteps, setupFinal)
 	fm.setupController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow("setup", setupSteps, nil))
 
 	fm.oauthController = fm.newController(p.router, &p.client.Frontend, flow.NewFlow("wizard", fm.getOAuthSteps(), nil))
@@ -109,7 +111,7 @@ func (fm *FlowManager) trackStartSetupWizard(userID string, fromInvite bool) {
 	})
 }
 
-func (fm *FlowManager) trackCompleteSetupWizard(userID string) { //nolint:unused // TODO: call this somewhere
+func (fm *FlowManager) trackCompleteSetupWizard(userID string) {
 	_ = fm.tracker.TrackUserEvent("setup_wizard_complete", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
