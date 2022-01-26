@@ -92,7 +92,7 @@ func (fm *FlowManager) cancelFlow(userID string) int {
 }
 
 func (fm *FlowManager) StartSetupWizard(userID string, fromInvite bool) error {
-	err := fm.oauthController.Start(userID)
+	err := fm.setupController.Start(userID)
 	if err != nil {
 		return err
 	}

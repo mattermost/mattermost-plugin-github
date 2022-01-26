@@ -379,8 +379,6 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		p.API.LogWarn("Failed to store GitHub user info mapping", "error", err.Error())
 	}
 
-	// Post intro post
-
 	_, stepNumber, err := p.flowManager.setupController.GetCurrentStep(c.UserID)
 	if err != nil {
 		p.log.WithError(err).Warnf("Failed to get current step")
@@ -391,7 +389,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 				p.API.LogWarn("Failed go to next step", "error", err.Error())
 			}
 		} else {
-			// Only post help message if no wizzard is running
+			// Only post introduction  message if no wizzard is running
 
 			var commandHelp string
 			commandHelp, err = renderTemplate("helpText", p.getConfiguration())
