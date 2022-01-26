@@ -192,6 +192,7 @@ Just a few more configuration steps to go!
 							Name:        "aider",
 							Type:        "select",
 							DataSource:  "users",
+							Placeholder: "Search for people",
 						},
 					},
 				},
