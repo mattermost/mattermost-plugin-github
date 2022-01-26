@@ -400,7 +400,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
 				"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
 				"##### Daily Reminders\n"+
-				"The first time you log in each day, you will get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n"+
+				"The first time you log in each day, you'll get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n"+
 				"Turn off reminders with `/github settings reminders off`.\n\n"+
 				"##### Notifications\n"+
 				"When someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you, you'll get a post here about it.\n"+

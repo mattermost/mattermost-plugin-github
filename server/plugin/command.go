@@ -148,7 +148,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return fmt.Sprintf("`%v`", username) + " is now muted. You will no longer receive notifications for comments in your PRs and issues."
+	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
 func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
@@ -520,7 +520,7 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 	}
 
 	if !isSysAdmin {
-		return "Only System Admins are allowed to setup the plugin."
+		return "Only System Admins are allowed to set up the plugin."
 	}
 
 	if len(parameters) == 0 {
@@ -585,7 +585,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			text = "Error checking user's permissions"
 			p.API.LogWarn(text, "err", err.Error())
 		case isSysAdmin:
-			text = "Before using this plugin, you will need to configure it by running `/github setup`"
+			text = "Before using this plugin, you'll need to configure it by running `/github setup`"
 		default:
 			text = "Please contact your system administrator to configure the GitHub plugin."
 		}
@@ -656,7 +656,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	if config.IsValid() != nil {
 		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
 
-		getStarted := model.NewAutocompleteData("setup", "", "Setup the GitHub plugin")
+		getStarted := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
 		github.AddCommand(getStarted)
 
 		return github
@@ -778,7 +778,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(issue)
 
 	setup := model.NewAutocompleteData("setup", "[command]", "Available commands: oauth, webhook, announcement")
-	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Setup the OAuth2 Application in GitHub"))
+	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Set up the OAuth2 Application in GitHub"))
 	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
 	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
 	github.AddCommand(setup)
