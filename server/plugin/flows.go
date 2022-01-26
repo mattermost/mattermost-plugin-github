@@ -212,7 +212,7 @@ Just a few more configuration steps to go!
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:            "Enterprise account",
-					IntroductionText: "Please enter the **Enterprise Base URL** and **Enterprise Upload URL**. Set these values to your GitHub Enterprise URLs, e.g. https://github.example.com. The Base and Upload URLs are often the same.",
+					IntroductionText: "Enter an the **Enterprise Base URL** and **Enterprise Upload URL** by setting these values to match your GitHub Enterprise URL (Example: https://github.example.com). It's not necessary to have separate Base and Upload URLs.",
 					SubmitLabel:      "Save & Continue",
 					Elements: []model.DialogElement{
 						{
