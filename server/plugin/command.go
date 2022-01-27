@@ -337,14 +337,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 					for _, sub := range subs {
 						for _, excludedRepo := range flags.ExcludedRepos {
 							var subscribedRepo = strings.Trim(sub.Repository, "/")
-							if subscribedRepo == excludedRepo{
-								msg:= fmt.Sprintf("Failed to add subscription to %s organization with --exclude. The repository %s cannot be excluded as a subscription already exists. Please remove the existing subscription first.", owner, excludedRepo)
+							if subscribedRepo == excludedRepo {
+								msg := fmt.Sprintf("Failed to add subscription to %s organization with --exclude. The repository %s cannot be excluded as a subscription already exists. Please remove the existing subscription first.", owner, excludedRepo)
 								return msg
 							}
 						}
 					}
 				}
-				p.API.LogDebug("owner fired: ",owner)
+				p.API.LogDebug("owner fired: ", owner)
 				if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 					return err.Error()
 				}
@@ -367,11 +367,11 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return err.Error()
 	}
 	if repoMatch == repo {
-		msg:= fmt.Sprintf("Failed to subscribe to %s repository. The repository is already excluded from subscriptions in this channel. Please remove the repository from the excluded list first.", repo)
+		msg := fmt.Sprintf("Failed to subscribe to %s repository. The repository is already excluded from subscriptions in this channel. Please remove the repository from the excluded list first.", repo)
 		return msg
 	}
 
-	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
+	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 		return err.Error()
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
@@ -810,10 +810,10 @@ func (p *Plugin) getExcludedRepo(args *model.CommandArgs) (string, error) {
 	if len(subs) != 0 {
 		for _, sub := range subs {
 			if len(sub.Flags.ExcludedRepos) > 0 {
-				repoMatch = strings.Split(strings.Trim(strings.Join(sub.Flags.ExcludedRepos, ", "), "/"),"/")
+				repoMatch = strings.Split(strings.Trim(strings.Join(sub.Flags.ExcludedRepos, ", "), "/"), "/")
 			}
 		}
-		if len(repoMatch) <= 0 {
+		if len(repoMatch) == 0 {
 			return "", nil
 		}
 		return repoMatch[1], nil
