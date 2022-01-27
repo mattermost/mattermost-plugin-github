@@ -1,0 +1,48 @@
+{
+  "dependencies": {
+    "@testing-library/cypress": "7.0.6",
+    "authenticator": "^1.1.5",
+    "axios": "^0.21.1",
+    "axios-retry": "^3.1.9",
+    "cypress": "7.7.0",
+    "cypress-file-upload": "5.0.8",
+    "cypress-plugin-tab": "1.0.5",
+    "cypress-terminal-report": "3.2.2",
+    "cypress-wait-until": "1.7.1",
+    "localforage": "^1.9.0",
+    "lodash.mapkeys": "^4.6.0",
+    "lodash.xor": "^4.5.0",
+    "mattermost-redux": "^5.33.1",
+    "mocha-junit-reporter": "2.0.0",
+    "mochawesome": "^6.2.2",
+    "mochawesome-merge": "^4.2.0",
+    "mochawesome-report-generator": "^5.2.0",
+    "shelljs": "^0.8.5"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.171",
+    "@typescript-eslint/eslint-plugin": "4.28.4",
+    "babel-eslint": "10.1.0",
+    "cross-env": "^7.0.3",
+    "deepmerge": "^4.2.2",
+    "eslint": "7.30.0",
+    "eslint-plugin-cypress": "2.11.3",
+    "eslint-plugin-header": "3.1.1",
+    "eslint-plugin-import": "2.23.4",
+    "eslint-plugin-mattermost": "github:mattermost/eslint-plugin-mattermost#46ad99355644a719bf32082f472048f526605181",
+    "eslint-plugin-react": "7.24.0"
+  },
+  "scripts": {
+    "cypress:open": "cross-env TZ=Etc/UTC cypress open",
+    "cypress:run": "cross-env TZ=Etc/UTC cypress run",
+    "cypress:run:chrome": "cross-env TZ=Etc/UTC cypress run --browser chrome",
+    "cypress:run:firefox": "cross-env TZ=Etc/UTC cypress run --browser firefox",
+    "cypress:run:edge": "cross-env TZ=Etc/UTC cypress run --browser edge",
+    "cypress:run:electron": "cross-env TZ=Etc/UTC cypress run --browser electron",
+    "clean": "rm cypress/results/* || true",
+    "pretest": "npm run clean",
+    "test": "cross-env TZ=Etc/UTC cypress run",
+    "check": "eslint --ext .js . --quiet --cache",
+    "fix": "eslint --ext .js . --quiet --fix --cache"
+  }
+}

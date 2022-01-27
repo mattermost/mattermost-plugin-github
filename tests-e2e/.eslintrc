@@ -1,0 +1,58 @@
+{
+  "extends": [
+    "plugin:mattermost/react",
+    "plugin:cypress/recommended",
+    "plugin:react/recommended"
+  ],
+  "plugins": ["mattermost", "import", "cypress", "@typescript-eslint"],
+  "globals": {
+    "Cypress": true,
+    "cy": true
+  },
+  "settings": {
+    "react": { "version": "16" }
+  },
+  "rules": {
+    "import/no-unresolved": 2,
+    "comma-dangle": 0,
+    "dot-location": [
+      2,
+      "property"
+    ],
+    "import/order": [
+      "error",
+      {
+        "newlines-between": "always-and-inside-groups",
+        "groups": [
+          "builtin",
+          "external",
+          ["internal", "parent"],
+          "sibling",
+          "index"
+        ]
+      }
+    ],
+    "no-magic-numbers": [
+      1,
+      {
+        "ignore": [-1, 0, 1, 2],
+        "enforceConst": true,
+        "detectObjects": true
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["cypress/**"],
+      "rules": {
+        "cypress/no-unnecessary-waiting": 0,
+        "func-names": 0,
+        "import/no-unresolved": 0,
+        "max-nested-callbacks": 0,
+        "no-process-env": 0,
+        "no-unused-expressions": 0,
+        "max-lines": 0,
+      }
+    }
+  ]
+}
