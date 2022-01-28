@@ -652,25 +652,20 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
-	if config.GitHubOrg != "" {
-		exclude := []model.AutocompleteListItem{
-			{
-				HelpText: "notifications for these repos will be turned off",
-				Hint:     "(optional)",
-				Item:     "--exclude",
-			},
-		}
-		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude", true, exclude)
-		subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-		flags := []model.AutocompleteListItem{
-			{
-				HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has no effect)",
-				Hint:     "(optional)",
-				Item:     "--exclude-org-member",
-			},
-		}
-		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member ", false, flags)
-	}
+	// if config.GitHubOrg != "" {
+	subscriptionsAdd.AddNamedStaticListArgument("", "Currently supports --exclude and --exclude-org-member", true, []model.AutocompleteListItem{
+		{
+			HelpText: "notifications for these repos will be turned off",
+			Hint:     "(optional)",
+			Item:     "--exclude",
+		},
+		{
+			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has no effect)",
+			Hint:     "(optional)",
+			Item:     "--exclude-org-member",
+		},
+	})
+	// }
 	subscriptions.AddCommand(subscriptionsAdd)
 
 	subscriptionsDelete := model.NewAutocompleteData("delete", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
