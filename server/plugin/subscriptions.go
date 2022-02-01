@@ -179,7 +179,7 @@ func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, 
 }
 
 func IsExcludedFromSubscription(repoName string, s *Subscription) bool {
-	exist, _ := ItemExists(GetExcludedNotificationRepos(*s), repoName)
+	exist, _ := ItemExists(s.Flags.ExcludedRepos, repoName)
 
 	return exist
 }
@@ -275,10 +275,6 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	}
 
 	return nil
-}
-
-func GetExcludedNotificationRepos(s Subscription) []string {
-	return s.Flags.ExcludedRepos
 }
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
