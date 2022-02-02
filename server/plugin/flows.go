@@ -123,13 +123,13 @@ func (fm *FlowManager) StartOauthWizard(userID string) error {
 		return err
 	}
 
-	fm.trackStartOauthizard(userID)
+	fm.trackStartOauthWizard(userID)
 
 	return nil
 }
 
-func (fm *FlowManager) trackStartOauthizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("oauthwizard_start", userID, map[string]interface{}{
+func (fm *FlowManager) trackStartOauthWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("oauth_wizard_start", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
@@ -330,7 +330,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 	connectPretext := fmt.Sprintf("##### :white_check_mark: Step %d: Connect your GitHub account", stepNumber)
 	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginURL)
 	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
-	conntectStep := steps.NewCustomStepBuilder("connect", "", connectText).
+	conectStep := steps.NewCustomStepBuilder("connect", "", connectText).
 		WithPretext(connectPretext).
 		IsNotEmpty(). // The API handler will advance to the next step and complete the flow
 		Build()
@@ -341,7 +341,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		enterpriseStep,
 		oauthInfoStep,
 		oauthInputStep,
-		conntectStep,
+		conectStep,
 	}
 
 	return steps
@@ -607,16 +607,19 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 	var err error
 	var resp *github.Response
 	var fullName string
+	var repoOrOrg string
 	if repo == "" {
 		fullName = org
+		repoOrOrg = "organization"
 		hook, resp, err = client.Organizations.CreateHook(ctx, org, hook)
 	} else {
 		fullName = org + "/" + repo
+		repoOrOrg = "repository"
 		hook, resp, err = client.Repositories.CreateHook(ctx, org, repo, hook)
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		return 0, nil, fmt.Sprintf("It seems like you don't have access %s. Ask a system admin of that repository to run /github setup webhook for you.", fullName), nil
+		return 0, nil, fmt.Sprintf("It seems like you don't have privileges to create webhooks in %s. Ask a system admin of that %s to run /github setup webhook for you.", repoOrOrg, fullName), nil
 	}
 
 	if err != nil {

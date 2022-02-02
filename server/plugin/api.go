@@ -440,7 +440,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			p.API.LogWarn("Failed go to next step", "error", err.Error())
 		}
 	} else {
-		// Only post introduction  message if no wizzard is running
+		// Only post introduction message if no wizard is running
 
 		var commandHelp string
 		commandHelp, err = renderTemplate("helpText", p.getConfiguration())
