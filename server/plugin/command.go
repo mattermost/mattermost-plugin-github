@@ -778,6 +778,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	github.AddCommand(issue)
 
 	setup := model.NewAutocompleteData("setup", "[command]", "Available commands: oauth, webhook, announcement")
+	setup.RoleID = model.SystemAdminRoleId
 	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Set up the OAuth2 Application in GitHub"))
 	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
 	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
