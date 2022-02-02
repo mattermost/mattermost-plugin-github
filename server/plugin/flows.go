@@ -190,7 +190,7 @@ Just a few more configuration steps to go!
 					SubmitLabel: "Send",
 					Elements: []model.DialogElement{
 						{
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "To",
 							Name:        "aider",
 							Type:        "select",
 							DataSource:  "users",
@@ -219,18 +219,18 @@ Just a few more configuration steps to go!
 					Elements: []model.DialogElement{
 						{
 
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "Enterprise Base URL",
 							Name:        "base_url",
 							Type:        "text",
 							SubType:     "text",
-							Placeholder: "Enterprise Base URL",
+							Placeholder: "Enter Enterprise Base URL",
 						},
 						{
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "Enterprise Upload URL",
 							Name:        "upload_url",
 							Type:        "text",
 							SubType:     "text",
-							Placeholder: "Enterprise Upload URL",
+							Placeholder: "Enter Enterprise Upload URL",
 						},
 					},
 				},
@@ -292,18 +292,18 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 					SubmitLabel:      "Save & Continue",
 					Elements: []model.DialogElement{
 						{
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "GitHub OAuth Client ID",
 							Name:        "client_id",
 							Type:        "text",
 							SubType:     "text",
-							Placeholder: "GitHub OAuth Client ID",
+							Placeholder: "Enter GitHub OAuth Client ID",
 						},
 						{
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "GitHub OAuth Client ID",
 							Name:        "client_secret",
 							Type:        "text",
 							SubType:     "text",
-							Placeholder: "GitHub OAuth Client Secret",
+							Placeholder: "Enter GitHub OAuth Client Secret",
 						},
 					},
 				},
@@ -517,12 +517,12 @@ Our final setup step requires a Mattermost System Admin to create a webhook for 
 					Elements: []model.DialogElement{
 						{
 
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "GitHub repository or organization name",
 							Name:        "repo_org",
 							Type:        "text",
 							SubType:     "text",
-							Placeholder: "Repository or organization name, e.g. mattermost/mattermost-server",
-							HelpText:    "Specify repository or organization for which you want to create a webhook",
+							Placeholder: "Enter GitHub repository or organization name",
+							HelpText:    "Specify the GitHub repository or organization to connect to Mattermost. For example, mattermost/mattermost-server.",
 						},
 					},
 				},
@@ -658,7 +658,8 @@ func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
 func (fm *FlowManager) getAnnouncementSteps() []steps.Step {
 	defaultMessage := "Hi team,\n" +
 		"\n" +
-		"We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the slash commands section for details about how to use the plugin."
+		"We've set up the Mattermost GitHub plugin to enable notifications from GitHub in Mattermost. To get started, run the /github connect slash command from any channel within Mattermost to connect that channel with GitHub. See the [documentation](https://github.com/mattermost/mattermost-plugin-github/blob/master/README.md#slash-commands) for details on using the GitHub plugin."
+
 	questionStep := steps.NewCustomStepBuilder("announcement-question", "", "Want to let your team know?").
 		WithButton(steps.Button{
 			Name:  "Send Message",
@@ -669,14 +670,14 @@ func (fm *FlowManager) getAnnouncementSteps() []steps.Step {
 					SubmitLabel: "Send message",
 					Elements: []model.DialogElement{
 						{
-							DisplayName: "", // TODO: This will still show a *
+							DisplayName: "To",
 							Name:        "channel_id",
 							Type:        "select",
 							Placeholder: "Select channel",
 							DataSource:  "channels",
 						},
 						{
-							DisplayName: "",
+							DisplayName: "Message",
 							Name:        "message",
 							Type:        "textarea",
 							Default:     defaultMessage,
