@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -75,12 +76,14 @@ type Plugin struct {
 
 	flowManager *FlowManager
 
-	log logger.Logger
+	log    logger.Logger
+	poster poster.Poster
 
 	telemetryClient telemetry.Client
 	tracker         telemetry.Tracker
 
-	webhookManager *webhookManager
+	webhookBroker *WebhookBroker
+	oauthBroker   *OAuthBroker
 
 	router *mux.Router
 
@@ -215,7 +218,8 @@ func (p *Plugin) OnActivate() error {
 		p.API.LogWarn("Telemetry client not started", "error", err.Error())
 	}
 
-	p.webhookManager = &webhookManager{}
+	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
 	p.initializeAPI()
 
 	botID, err := p.client.Bot.EnsureBot(&model.Bot{
@@ -227,6 +231,8 @@ func (p *Plugin) OnActivate() error {
 		return errors.Wrap(err, "failed to ensure github bot")
 	}
 	p.BotUserID = botID
+
+	p.poster = poster.NewPoster(&p.client.Post, p.BotUserID)
 
 	bundlePath, err := p.API.GetBundlePath()
 	if err != nil {
@@ -257,9 +263,14 @@ func (p *Plugin) OnActivate() error {
 }
 
 func (p *Plugin) OnDeactivate() error {
-	p.webhookManager.Close()
+	p.webhookBroker.Close()
+	p.oauthBroker.Close()
 
 	return nil
+}
+
+func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
+	p.HandleClusterEvent(ev)
 }
 
 // registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.

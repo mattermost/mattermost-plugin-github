@@ -72,60 +72,73 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 	}
 }
 
-type webhookManager struct {
+// WebhookBroker is a message broker for webhook events.
+type WebhookBroker struct {
+	sendGitHubPingEvent func(event *github.PingEvent)
+
 	lock     sync.RWMutex // Protects closed and pingSubs
 	closed   bool
 	pingSubs []chan *github.PingEvent
 }
 
-func (wm *webhookManager) SubscribePings() <-chan *github.PingEvent {
-	wm.lock.Lock()
-	defer wm.lock.Unlock()
+func NewWebhookBroker(sendGitHubPingEvent func(event *github.PingEvent)) *WebhookBroker {
+	return &WebhookBroker{
+		sendGitHubPingEvent: sendGitHubPingEvent,
+	}
+}
+
+func (wb *WebhookBroker) SubscribePings() <-chan *github.PingEvent {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
 
 	ch := make(chan *github.PingEvent, 1)
-	wm.pingSubs = append(wm.pingSubs, ch)
+	wb.pingSubs = append(wb.pingSubs, ch)
 
 	return ch
 }
 
-func (wm *webhookManager) UnsubscribePings(ch <-chan *github.PingEvent) {
-	wm.lock.Lock()
-	defer wm.lock.Unlock()
+func (wb *WebhookBroker) UnsubscribePings(ch <-chan *github.PingEvent) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
 
-	for i, sub := range wm.pingSubs {
+	for i, sub := range wb.pingSubs {
 		if sub == ch {
 			close(sub)
-			wm.pingSubs = append(wm.pingSubs[:i], wm.pingSubs[i+1:]...)
+			wb.pingSubs = append(wb.pingSubs[:i], wb.pingSubs[i+1:]...)
 			break
 		}
 	}
 }
 
-func (wm *webhookManager) publishPing(event *github.PingEvent) {
-	wm.lock.Lock()
-	defer wm.lock.Unlock()
+func (wb *WebhookBroker) publishPing(event *github.PingEvent, fromCluster bool) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
 
-	if wm.closed {
+	if wb.closed {
 		return
 	}
 
-	for _, sub := range wm.pingSubs {
+	for _, sub := range wb.pingSubs {
 		// non-blocking send
 		select {
 		case sub <- event:
 		default:
 		}
 	}
+
+	if !fromCluster {
+		wb.sendGitHubPingEvent(event)
+	}
 }
 
-func (wm *webhookManager) Close() {
-	wm.lock.Lock()
-	defer wm.lock.Unlock()
+func (wb *WebhookBroker) Close() {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
 
-	if !wm.closed {
-		wm.closed = true
+	if !wb.closed {
+		wb.closed = true
 
-		for _, sub := range wm.pingSubs {
+		for _, sub := range wb.pingSubs {
 			close(sub)
 		}
 	}
@@ -151,7 +164,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	if config.EnableWebhookEventLogging {
 		bodyByte, appErr := json.Marshal(event)
 		if appErr != nil {
-			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
+			p.API.LogWarn("Error while Marshal Webhook Request", "error", appErr.Error())
 			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
 			return
 		}
@@ -175,7 +188,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	switch event := event.(type) {
 	case *github.PingEvent:
 		handler = func() {
-			p.webhookManager.publishPing(event)
+			p.webhookBroker.publishPing(event, false)
 		}
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()

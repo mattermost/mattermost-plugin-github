@@ -19,6 +19,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
+	"github.com/mattermost/mattermost-plugin-api/experimental/flow/steps"
 )
 
 const (
@@ -296,13 +297,48 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 
 	url := conf.AuthCodeURL(state.Token, oauth2.AccessTypeOffline)
 
+	ch := p.oauthBroker.SubscribeOAuthComplete(c.UserID)
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		var errorMsg string
+		select {
+		case err := <-ch:
+			if err != nil {
+				errorMsg = err.Error()
+			}
+		case <-ctx.Done():
+			errorMsg = "Timed out waiting for OAuth connection. Please check if the SiteURL is correct."
+		}
+
+		if errorMsg != "" {
+			_, err := p.poster.DMWithAttachments(c.UserID, &model.SlackAttachment{
+				Text:  fmt.Sprintf("There was an error connecting to your GitHub: `%s` Please double check your configuration.", errorMsg),
+				Color: string(steps.ColorDanger),
+			})
+			if err != nil {
+				p.log.WithError(err).Warnf("Failed to DM with cancel information")
+			}
+		}
+
+		p.oauthBroker.UnsubscribeOAuthComplete(c.UserID, ch)
+	}()
+
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
 func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, r *http.Request) {
+	var rErr error
+	defer func() {
+		p.oauthBroker.publishOAuthComplete(c.UserID, rErr, false)
+	}()
+
 	code := r.URL.Query().Get("code")
 	if len(code) == 0 {
-		http.Error(w, "missing authorization code", http.StatusBadRequest)
+		rErr = errors.New("missing authorization code")
+		http.Error(w, rErr.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -311,29 +347,37 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	storedState, appErr := p.API.KVGet(githubOauthKey + stateToken)
 	if appErr != nil {
 		p.API.LogWarn("Failed to get state token", "error", appErr.Error())
-		http.Error(w, "missing stored state", http.StatusBadRequest)
+
+		rErr = errors.Wrap(appErr, "missing stored state")
+		http.Error(w, rErr.Error(), http.StatusBadRequest)
 		return
 	}
 	var state OAuthState
+
 	if err := json.Unmarshal(storedState, &state); err != nil {
-		http.Error(w, "json unmarshal failed", http.StatusBadRequest)
+		rErr = errors.Wrap(err, "json unmarshal failed")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	appErr = p.API.KVDelete(githubOauthKey + stateToken)
 	if appErr != nil {
 		p.API.LogWarn("Failed to delete state token", "error", appErr.Error())
-		http.Error(w, "error deleting stored state", http.StatusBadRequest)
+
+		rErr = errors.Wrap(appErr, "error deleting stored state")
+		http.Error(w, rErr.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if state.Token != stateToken {
-		http.Error(w, "invalid state token", http.StatusBadRequest)
+		rErr = errors.New("invalid state token")
+		http.Error(w, rErr.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if state.UserID != c.UserID {
-		http.Error(w, "Not authorized, incorrect user", http.StatusUnauthorized)
+		rErr = errors.New("not authorized, incorrect user")
+		http.Error(w, rErr.Error(), http.StatusUnauthorized)
 		return
 	}
 
@@ -343,7 +387,9 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
 		p.API.LogWarn("Failed to exchange oauth code into token", "error", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		rErr = errors.Wrap(err, "Failed to exchange oauth code into token")
+		http.Error(w, rErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -351,7 +397,9 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		p.API.LogWarn("Failed to get authenticated GitHub user", "error", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		rErr = errors.Wrap(err, "failed to get authenticated GitHub user")
+		http.Error(w, rErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -371,7 +419,9 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	if err = p.storeGitHubUserInfo(userInfo); err != nil {
 		p.API.LogWarn("Failed to store GitHub user info", "error", err.Error())
-		http.Error(w, "Unable to connect user to GitHub", http.StatusInternalServerError)
+
+		rErr = errors.Wrap(err, "Unable to connect user to GitHub")
+		http.Error(w, rErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -381,44 +431,44 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	_, stepNumber, err := p.flowManager.setupController.GetCurrentStep(c.UserID)
 	if err != nil {
-		p.log.WithError(err).Warnf("Failed to get current step")
-	} else {
-		if stepNumber != 0 {
-			err = p.flowManager.setupController.NextStep(c.UserID, stepNumber, 0)
-			if err != nil {
-				p.API.LogWarn("Failed go to next step", "error", err.Error())
-			}
-		} else {
-			// Only post introduction  message if no wizzard is running
+		p.API.LogWarn("Failed to get current step", "error", err.Error())
+	}
 
-			var commandHelp string
-			commandHelp, err = renderTemplate("helpText", p.getConfiguration())
-			if err != nil {
-				p.API.LogWarn("Failed to render help template", "error", err.Error())
-			}
-
-			message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
-				"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
-				"##### Daily Reminders\n"+
-				"The first time you log in each day, you'll get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n"+
-				"Turn off reminders with `/github settings reminders off`.\n\n"+
-				"##### Notifications\n"+
-				"When someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you, you'll get a post here about it.\n"+
-				"Turn off notifications with `/github settings notifications off`.\n\n"+
-				"##### Sidebar Buttons\n"+
-				"Check out the buttons in the left-hand sidebar of Mattermost.\n"+
-				"It shows your Open PRs, PR that are awaiting your review, issues assigned to you, and all your unread messages you have in Github. \n"+
-				"* The first button tells you how many pull requests you have submitted.\n"+
-				"* The second shows the number of PR that are awaiting your review.\n"+
-				"* The third shows the number of PR and issues your are assiged to.\n"+
-				"* The fourth tracks the number of unread messages you have.\n"+
-				"* The fifth will refresh the numbers.\n\n"+
-				"Click on them!\n\n"+
-				"##### Slash Commands\n"+
-				commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
-
-			p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
+	if stepNumber != 0 {
+		err = p.flowManager.setupController.NextStep(c.UserID, stepNumber, 0)
+		if err != nil {
+			p.API.LogWarn("Failed go to next step", "error", err.Error())
 		}
+	} else {
+		// Only post introduction  message if no wizzard is running
+
+		var commandHelp string
+		commandHelp, err = renderTemplate("helpText", p.getConfiguration())
+		if err != nil {
+			p.API.LogWarn("Failed to render help template", "error", err.Error())
+		}
+
+		message := fmt.Sprintf("#### Welcome to the Mattermost GitHub Plugin!\n"+
+			"You've connected your Mattermost account to [%s](%s) on GitHub. Read about the features of this plugin below:\n\n"+
+			"##### Daily Reminders\n"+
+			"The first time you log in each day, you'll get a post right here letting you know what messages you need to read and what pull requests are awaiting your review.\n"+
+			"Turn off reminders with `/github settings reminders off`.\n\n"+
+			"##### Notifications\n"+
+			"When someone mentions you, requests your review, comments on or modifies one of your pull requests/issues, or assigns you, you'll get a post here about it.\n"+
+			"Turn off notifications with `/github settings notifications off`.\n\n"+
+			"##### Sidebar Buttons\n"+
+			"Check out the buttons in the left-hand sidebar of Mattermost.\n"+
+			"It shows your Open PRs, PR that are awaiting your review, issues assigned to you, and all your unread messages you have in Github. \n"+
+			"* The first button tells you how many pull requests you have submitted.\n"+
+			"* The second shows the number of PR that are awaiting your review.\n"+
+			"* The third shows the number of PR and issues your are assiged to.\n"+
+			"* The fourth tracks the number of unread messages you have.\n"+
+			"* The fifth will refresh the numbers.\n\n"+
+			"Click on them!\n\n"+
+			"##### Slash Commands\n"+
+			commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
+
+		p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
 	}
 
 	config := p.getConfiguration()

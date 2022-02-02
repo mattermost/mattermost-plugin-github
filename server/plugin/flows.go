@@ -33,7 +33,7 @@ type FlowManager struct {
 	pingBroker PingBroker
 	tracker    telemetry.Tracker
 
-	logger logger.Logger
+	log    logger.Logger
 	poster poster.Poster
 	store  flow.Store
 
@@ -48,11 +48,11 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		client:           p.client,
 		getConfiguration: p.getConfiguration,
 		getGitHubClient:  p.GetGitHubClient,
-		pingBroker:       p.webhookManager,
+		pingBroker:       p.webhookBroker,
 		tracker:          p.tracker,
 		pluginURL:        *p.client.Configuration.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id,
-		logger:           p.log,
-		poster:           poster.NewPoster(&p.client.Post, p.BotUserID),
+		log:              p.log,
+		poster:           p.poster,
 		store:            flow.NewFlowStore(&p.client.KV, "flow_store"),
 	}
 
@@ -71,7 +71,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 
 func (fm *FlowManager) newController(router *mux.Router, frontend *pluginapi.FrontendService, f flow.Flow) flow.Controller {
 	return flow.NewFlowController(
-		fm.logger,
+		fm.log,
 		router,
 		fm.poster,
 		frontend,
@@ -84,10 +84,10 @@ func (fm *FlowManager) newController(router *mux.Router, frontend *pluginapi.Fro
 func (fm *FlowManager) cancelFlow(userID string) int {
 	_, err := fm.poster.DMWithAttachments(userID, &model.SlackAttachment{
 		Text:  fmt.Sprintf("GitHub integration setup has stopped. Restart setup later by running `/github setup`. Learn more about the plugin [here](%s).", Manifest.HomepageURL),
-		Color: string(steps.Danger),
+		Color: string(steps.ColorDanger),
 	})
 	if err != nil {
-		fm.logger.WithError(err).Warnf("Failed to DM with cancel information")
+		fm.log.WithError(err).Warnf("Failed to DM with cancel information")
 	}
 
 	return 999
@@ -164,7 +164,7 @@ Just a few more configuration steps to go!
 		WithPretext(welcomePretext).
 		WithButton(steps.Button{
 			Name:  "Continue",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 			OnClick: func(userID string) int {
 				if usePreregisteredApplication {
 					return 4
@@ -179,11 +179,11 @@ Just a few more configuration steps to go!
 	handoverQuestionStep := steps.NewCustomStepBuilder("handoverQuestion", "", handoverQuestionText).
 		WithButton(steps.Button{
 			Name:  "I'll do it myself",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 		}).
 		WithButton(steps.Button{
 			Name:  "I need someone else",
-			Style: steps.Default,
+			Style: steps.ColorDefault,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:       "Send instructions to",
@@ -210,7 +210,7 @@ Just a few more configuration steps to go!
 	enterpriseStep := steps.NewCustomStepBuilder("enterprise", "", enterpriseText).
 		WithButton(steps.Button{
 			Name:  "Yes",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:            "Enterprise account",
@@ -242,11 +242,11 @@ Just a few more configuration steps to go!
 		}).
 		WithButton(steps.Button{
 			Name:  "No",
-			Style: steps.Default,
+			Style: steps.ColorDefault,
 		}).
 		WithButton(steps.Button{
 			Name:    "Cancel setup",
-			Style:   steps.Danger,
+			Style:   steps.ColorDanger,
 			OnClick: fm.cancelFlow,
 		}).
 		Build()
@@ -272,11 +272,11 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		WithImage("public/new-oauth-application.png").
 		WithButton(steps.Button{
 			Name:  "Continue",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 		}).
 		WithButton(steps.Button{
 			Name:    "Cancel setup",
-			Style:   steps.Danger,
+			Style:   steps.ColorDanger,
 			OnClick: fm.cancelFlow,
 		}).
 		Build()
@@ -284,7 +284,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 	oauthInputStep := steps.NewCustomStepBuilder("oauth-input", "", "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret**.").
 		WithButton(steps.Button{
 			Name:  "Continue",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:            "GitHub Oauth values",
@@ -315,7 +315,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		}).
 		WithButton(steps.Button{
 			Name:    "Cancel setup",
-			Style:   steps.Danger,
+			Style:   steps.ColorDanger,
 			OnClick: fm.cancelFlow,
 		}).
 		Build()
@@ -509,7 +509,7 @@ Our final setup step requires a Mattermost System Admin to create a webhook for 
 		WithPretext(questionPretext).
 		WithButton(steps.Button{
 			Name:  "Yes",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:       "Create Webhook",
@@ -534,16 +534,24 @@ Our final setup step requires a Mattermost System Admin to create a webhook for 
 		}).
 		WithButton(steps.Button{
 			Name:  "No",
-			Style: steps.Default,
+			Style: steps.ColorDefault,
 			OnClick: func(userID string) int {
 				return 1
 			},
 		}).
 		WithButton(steps.Button{
 			Name:    "Cancel setup",
-			Style:   steps.Danger,
+			Style:   steps.ColorDanger,
 			OnClick: fm.cancelFlow,
 		}).
+		Build()
+
+	warnText := "The GitHub plugin uses a webhook to connect a GitHub account to Mattermost to listen for incoming GitHub events." +
+		"You can't subscribe a channel to a repository for notifications until webhooks are configured.\n" +
+		"Restart setup later by running `/github setup webhook`"
+
+	warnStep := steps.NewCustomStepBuilder("warning", "", warnText).
+		WithColor(steps.ColorDanger).
 		Build()
 
 	confirmationStep := steps.NewEmptyStep("success", "Success! :tada: You've successfully set up your Mattermost GitHub integration! ", "Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)")
@@ -551,6 +559,7 @@ Our final setup step requires a Mattermost System Admin to create a webhook for 
 	steps := []steps.Step{
 		questionStep,
 		confirmationStep,
+		warnStep,
 	}
 
 	return steps
@@ -624,7 +633,6 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 		if *event.HookID == *hook.ID {
 			break
 		}
-		ctx.Deadline()
 	case <-ctx.Done():
 		return 0, nil, "Timed out waiting for webhook event. Please check if the webhook was corrected created.", nil
 	}
@@ -633,7 +641,7 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 
 	fm.trackCompleteWebhookWizard(userID)
 
-	return 0, nil, "", nil
+	return 1, nil, "", nil
 }
 
 func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
@@ -654,7 +662,7 @@ func (fm *FlowManager) getAnnouncementSteps() []steps.Step {
 	questionStep := steps.NewCustomStepBuilder("announcement-question", "", "Want to let your team know?").
 		WithButton(steps.Button{
 			Name:  "Send Message",
-			Style: steps.Primary,
+			Style: steps.ColorPrimary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:       "Notify your team",
@@ -684,7 +692,7 @@ func (fm *FlowManager) getAnnouncementSteps() []steps.Step {
 		}).
 		WithButton(steps.Button{
 			Name:  "Not now",
-			Style: steps.Default,
+			Style: steps.ColorDefault,
 		}).
 		Build()
 

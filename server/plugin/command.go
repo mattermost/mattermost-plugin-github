@@ -514,7 +514,7 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {
-		p.API.LogWarn("Failed to check if user is System Admin", "err", err.Error())
+		p.API.LogWarn("Failed to check if user is System Admin", "error", err.Error())
 
 		return "Error checking user's permissions"
 	}
@@ -583,7 +583,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		switch {
 		case err != nil:
 			text = "Error checking user's permissions"
-			p.API.LogWarn(text, "err", err.Error())
+			p.API.LogWarn(text, "error", err.Error())
 		case isSysAdmin:
 			text = "Before using this plugin, you'll need to configure it by running `/github setup`"
 		default:
