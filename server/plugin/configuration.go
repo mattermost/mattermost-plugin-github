@@ -71,26 +71,24 @@ func generateSecret() (string, error) {
 func (c *Configuration) setDefaults() (bool, error) {
 	changed := false
 
-	if !c.UsePreregisteredApplication {
-		if c.EncryptionKey == "" {
-			secret, err := generateSecret()
-			if err != nil {
-				return false, err
-			}
-
-			c.EncryptionKey = secret
-			changed = true
+	if c.EncryptionKey == "" {
+		secret, err := generateSecret()
+		if err != nil {
+			return false, err
 		}
 
-		if c.WebhookSecret == "" {
-			secret, err := generateSecret()
-			if err != nil {
-				return false, err
-			}
+		c.EncryptionKey = secret
+		changed = true
+	}
 
-			c.WebhookSecret = secret
-			changed = true
+	if c.WebhookSecret == "" {
+		secret, err := generateSecret()
+		if err != nil {
+			return false, err
 		}
+
+		c.WebhookSecret = secret
+		changed = true
 	}
 
 	return changed, nil
@@ -139,9 +137,7 @@ func (p *Plugin) getConfiguration() *Configuration {
 	if p.configuration == nil {
 		return &Configuration{}
 	}
-	p.configuration.GitHubOrg = strings.TrimSpace(p.configuration.GitHubOrg)
-	p.configuration.GitHubOAuthClientID = strings.TrimSpace(p.configuration.GitHubOAuthClientID)
-	p.configuration.GitHubOAuthClientSecret = strings.TrimSpace(p.configuration.GitHubOAuthClientSecret)
+
 	return p.configuration
 }
 
@@ -180,6 +176,15 @@ func (p *Plugin) OnConfigurationChange() error {
 	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
+
+	// Ensure EnterpriseBaseURL and EnterpriseUploadURL end with a slash
+	configuration.EnterpriseBaseURL = strings.TrimRight(configuration.EnterpriseBaseURL, "/") + "/"
+	configuration.EnterpriseUploadURL = strings.TrimRight(configuration.EnterpriseUploadURL, "/") + "/"
+
+	// Trim spaces around org and OAuth credentials
+	configuration.GitHubOrg = strings.TrimSpace(configuration.GitHubOrg)
+	configuration.GitHubOAuthClientID = strings.TrimSpace(configuration.GitHubOAuthClientID)
+	configuration.GitHubOAuthClientSecret = strings.TrimSpace(configuration.GitHubOAuthClientSecret)
 
 	p.setConfiguration(configuration)
 
