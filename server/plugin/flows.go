@@ -144,17 +144,17 @@ func (fm *FlowManager) getOAuthSteps() []steps.Step {
 	config := fm.getConfiguration()
 	usePreregisteredApplication := fm.getConfiguration().UsePreregisteredApplication
 
-	welcomePretext := ":wave: Welcome to GitHub integration! [Learn more](https://github.com/mattermost/mattermost-plugin-github#readme)"
+	welcomePretext := ":wave: Welcome to your GitHub integration! [Learn more](https://github.com/mattermost/mattermost-plugin-github#readme)"
 
 	var welcomeText string
 	if usePreregisteredApplication {
 		welcomeText = `
-Just a few more configuration steps to go!
+Just a few configuration steps to go!
 - **Step 1:** Connect your GitHub account
 - **Step 2:** Create a webhook in GitHub`
 	} else {
 		welcomeText = `
-Just a few more configuration steps to go!
+Just a few configuration steps to go!
 - **Step 1:** Register an OAuth application in GitHub and enter OAuth values.
 - **Step 2:** Connect your GitHub account
 - **Step 3:** Create a webhook in GitHub`
@@ -206,7 +206,7 @@ Just a few more configuration steps to go!
 		}).
 		Build()
 
-	enterpriseText := "Do you have GitHub Enterprise account?"
+	enterpriseText := "Do you have a GitHub Enterprise account?"
 	enterpriseStep := steps.NewCustomStepBuilder("enterprise", "", enterpriseText).
 		WithButton(steps.Button{
 			Name:  "Yes",
@@ -214,8 +214,8 @@ Just a few more configuration steps to go!
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
 					Title:            "Enterprise account",
-					IntroductionText: "Enter an the **Enterprise Base URL** and **Enterprise Upload URL** by setting these values to match your GitHub Enterprise URL (Example: https://github.example.com). It's not necessary to have separate Base and Upload URLs.",
-					SubmitLabel:      "Save & Continue",
+					IntroductionText: "Enter an **Enterprise Base URL** and **Enterprise Upload URL** by setting these values to match your GitHub Enterprise URL (Example: https://github.example.com). It's not necessary to have separate Base and Upload URLs.",
+					SubmitLabel:      "Save & continue",
 					Elements: []model.DialogElement{
 						{
 
@@ -260,7 +260,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"	- Application name: `Mattermost GitHub Plugin - <your company name>`\n"+
 		"	- Homepage URL: `https://github.com/mattermost/mattermost-plugin-github`\n"+
 		"	- Authorization callback URL: `%s/oauth/complete`\n"+
-		"3. Select submit\n"+
+		"3. Select Submit\n"+
 		"4. Select **Generate a new client secret**.\n"+
 		"5. Enter your **GitHub password**.",
 		config.getBaseURL(),
@@ -289,7 +289,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 				Dialog: model.Dialog{
 					Title:            "GitHub Oauth values",
 					IntroductionText: "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.",
-					SubmitLabel:      "Save & Continue",
+					SubmitLabel:      "Save & continue",
 					Elements: []model.DialogElement{
 						{
 							DisplayName: "GitHub OAuth Client ID",
@@ -364,7 +364,7 @@ func (fm *FlowManager) submitHandoverSelection(userID string, submission map[str
 
 	err = fm.StartSetupWizard(aider.Id, true)
 	if err != nil {
-		return 0, nil, errors.Wrap(err, "failed start configration wizzard").Error(), nil
+		return 0, nil, errors.Wrap(err, "failed start configuration wizard").Error(), nil
 	}
 
 	attachment := &model.SlackAttachment{
@@ -504,15 +504,15 @@ func (fm *FlowManager) getWebhookSteps() []steps.Step {
 	}
 
 	questionPretext := fmt.Sprintf(`##### :white_check_mark: Step %d: Create a Webhook in GitHub
-Our final setup step requires a Mattermost System Admin to create a webhook for each GitHub organization or repository you want to receive notifications for, or want to subscribe to.`, stepNumber)
-	questionStep := steps.NewCustomStepBuilder("webhook-question", "", "Do you want to create a Webhook?").
+The final setup step requires a Mattermost System Admin to create a webhook for each GitHub organization or repository to receive notifications for, or want to subscribe to.`, stepNumber)
+	questionStep := steps.NewCustomStepBuilder("webhook-question", "", "Do you want to create a webhook?").
 		WithPretext(questionPretext).
 		WithButton(steps.Button{
 			Name:  "Yes",
 			Style: steps.ColorPrimary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
-					Title:       "Create Webhook",
+					Title:       "Create webhook",
 					SubmitLabel: "Create",
 					Elements: []model.DialogElement{
 						{
@@ -616,7 +616,7 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		return 0, nil, fmt.Sprintf("It seems like you don't have access %s. Please ask an administrator of that repository to run /github setup webhook for you.", fullName), nil
+		return 0, nil, fmt.Sprintf("It seems like you don't have access %s. Ask a system admin of that repository to run /github setup webhook for you.", fullName), nil
 	}
 
 	if err != nil {
@@ -634,7 +634,7 @@ func (fm *FlowManager) submitWebhook(userID string, submission map[string]interf
 			break
 		}
 	case <-ctx.Done():
-		return 0, nil, "Timed out waiting for webhook event. Please check if the webhook was corrected created.", nil
+		return 0, nil, "Timed out waiting for webhook event. Please check if the webhook was correctly created.", nil
 	}
 
 	fm.pingBroker.UnsubscribePings(ch)
