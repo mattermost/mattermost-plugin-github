@@ -262,7 +262,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"	- Authorization callback URL: `%s/oauth/complete`\n"+
 		"3. Select Submit\n"+
 		"4. Select **Generate a new client secret**.\n"+
-		"5. Enter your **GitHub password**.",
+		"5. Enter your **GitHub password**. (if prompted)",
 		config.getBaseURL(),
 		fm.pluginURL,
 	)
