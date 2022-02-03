@@ -191,7 +191,7 @@ Just a few configuration steps to go!
 					Elements: []model.DialogElement{
 						{
 							DisplayName: "To",
-							Name:        "aider",
+							Name:        "delegate",
 							Type:        "select",
 							DataSource:  "users",
 							Placeholder: "Search for people",
@@ -348,27 +348,27 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 }
 
 func (fm *FlowManager) submitHandoverSelection(userID string, submission map[string]interface{}) (int, *steps.Attachment, string, map[string]string) {
-	aiderIDRaw, ok := submission["aider"]
+	delegateIDRaw, ok := submission["delegate"]
 	if !ok {
-		return 0, nil, "aider missing", nil
+		return 0, nil, "delegate missing", nil
 	}
-	aiderID, ok := aiderIDRaw.(string)
+	delegateID, ok := delegateIDRaw.(string)
 	if !ok {
-		return 0, nil, "aider is not a string", nil
+		return 0, nil, "delegate is not a string", nil
 	}
 
-	aider, err := fm.client.User.Get(aiderID)
+	delegate, err := fm.client.User.Get(delegateID)
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "failed get user").Error(), nil
 	}
 
-	err = fm.StartSetupWizard(aider.Id, true)
+	err = fm.StartSetupWizard(delegate.Id, true)
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "failed start configuration wizard").Error(), nil
 	}
 
 	attachment := &model.SlackAttachment{
-		Text: fmt.Sprintf("GitHub integration setup details have been sent to @%s", aider.Username),
+		Text: fmt.Sprintf("GitHub integration setup details have been sent to @%s", delegate.Username),
 	}
 	_, err = fm.poster.DMWithAttachments(userID, attachment)
 	if err != nil {
