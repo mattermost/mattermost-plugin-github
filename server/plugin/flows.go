@@ -186,7 +186,7 @@ Just a few configuration steps to go!
 			Style: steps.ColorDefault,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
-					Title:       "Send instructions to",
+					Title:       "Send instructions",
 					SubmitLabel: "Send",
 					Elements: []model.DialogElement{
 						{
