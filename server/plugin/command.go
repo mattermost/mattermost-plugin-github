@@ -524,7 +524,7 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 	}
 
 	if len(parameters) == 0 {
-		err = p.flowManager.StartSetupWizard(userID, false)
+		err = p.flowManager.StartSetupWizard(userID, "")
 	} else {
 		command := parameters[0]
 

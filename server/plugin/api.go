@@ -19,7 +19,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
-	"github.com/mattermost/mattermost-plugin-api/experimental/flow/steps"
+	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
 )
 
 const (
@@ -300,7 +300,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 	ch := p.oauthBroker.SubscribeOAuthComplete(c.UserID)
 
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cancel()
 
 		var errorMsg string
@@ -316,7 +316,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		if errorMsg != "" {
 			_, err := p.poster.DMWithAttachments(c.UserID, &model.SlackAttachment{
 				Text:  fmt.Sprintf("There was an error connecting to your GitHub: `%s` Please double check your configuration.", errorMsg),
-				Color: string(steps.ColorDanger),
+				Color: string(flow.ColorDanger),
 			})
 			if err != nil {
 				p.log.WithError(err).Warnf("Failed to DM with cancel information")
@@ -429,18 +429,20 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		p.API.LogWarn("Failed to store GitHub user info mapping", "error", err.Error())
 	}
 
-	_, stepNumber, err := p.flowManager.setupController.GetCurrentStep(c.UserID)
+	flow := p.flowManager.setupFlow.ForUser(c.UserID)
+
+	stepName, err := flow.GetCurrentStep()
 	if err != nil {
 		p.API.LogWarn("Failed to get current step", "error", err.Error())
 	}
 
-	if stepNumber != 0 {
-		err = p.flowManager.setupController.NextStep(c.UserID, stepNumber, 0)
+	if stepName == stepOAuthConnect {
+		err = flow.Go(stepWebhookQuestion)
 		if err != nil {
 			p.API.LogWarn("Failed go to next step", "error", err.Error())
 		}
 	} else {
-		// Only post introduction message if no wizard is running
+		// Only post introduction message if no setup wizard is running
 
 		var commandHelp string
 		commandHelp, err = renderTemplate("helpText", p.getConfiguration())

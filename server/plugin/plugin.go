@@ -280,7 +280,7 @@ func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error 
 		return nil
 	}
 
-	return p.flowManager.StartSetupWizard(event.UserId, false)
+	return p.flowManager.StartSetupWizard(event.UserId, "")
 }
 
 func (p *Plugin) OnSendDailyTelemetry() {
