@@ -287,7 +287,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 			Style: steps.ColorPrimary,
 			Dialog: &steps.Dialog{
 				Dialog: model.Dialog{
-					Title:            "GitHub Oauth values",
+					Title:            "GitHub OAuth values",
 					IntroductionText: "Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret** you copied in a previous step.",
 					SubmitLabel:      "Save & continue",
 					Elements: []model.DialogElement{
