@@ -102,6 +102,21 @@ func (c *Configuration) getBaseURL() string {
 	return "https://github.com/"
 }
 
+func (c *Configuration) sanitize() {
+	// Ensure EnterpriseBaseURL and EnterpriseUploadURL end with a slash
+	if c.EnterpriseBaseURL != "" {
+		c.EnterpriseBaseURL = strings.TrimRight(c.EnterpriseBaseURL, "/") + "/"
+	}
+	if c.EnterpriseUploadURL != "" {
+		c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/") + "/"
+	}
+
+	// Trim spaces around org and OAuth credentials
+	c.GitHubOrg = strings.TrimSpace(c.GitHubOrg)
+	c.GitHubOAuthClientID = strings.TrimSpace(c.GitHubOAuthClientID)
+	c.GitHubOAuthClientSecret = strings.TrimSpace(c.GitHubOAuthClientSecret)
+}
+
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
 func (c *Configuration) Clone() *Configuration {
@@ -177,14 +192,7 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
 
-	// Ensure EnterpriseBaseURL and EnterpriseUploadURL end with a slash
-	configuration.EnterpriseBaseURL = strings.TrimRight(configuration.EnterpriseBaseURL, "/") + "/"
-	configuration.EnterpriseUploadURL = strings.TrimRight(configuration.EnterpriseUploadURL, "/") + "/"
-
-	// Trim spaces around org and OAuth credentials
-	configuration.GitHubOrg = strings.TrimSpace(configuration.GitHubOrg)
-	configuration.GitHubOAuthClientID = strings.TrimSpace(configuration.GitHubOAuthClientID)
-	configuration.GitHubOAuthClientSecret = strings.TrimSpace(configuration.GitHubOAuthClientSecret)
+	configuration.sanitize()
 
 	p.setConfiguration(configuration)
 
