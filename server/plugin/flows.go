@@ -417,7 +417,12 @@ func (fm *FlowManager) submitEnterpriseConfig(_ string, submission map[string]in
 	config.EnterpriseBaseURL = baseURL
 	config.EnterpriseUploadURL = uploadURL
 
-	err = fm.client.Configuration.SavePluginConfig(config.toMap())
+	configMap, err := config.ToMap()
+	if err != nil {
+		return 0, nil, err.Error(), nil
+	}
+
+	err = fm.client.Configuration.SavePluginConfig(configMap)
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "failed to save plugin config").Error(), nil
 	}
@@ -462,7 +467,12 @@ func (fm *FlowManager) submitOAuthConfig(userID string, submission map[string]in
 	config.GitHubOAuthClientID = clientID
 	config.GitHubOAuthClientSecret = clientSecret
 
-	err := fm.client.Configuration.SavePluginConfig(config.toMap())
+	configMap, err := config.ToMap()
+	if err != nil {
+		return 0, nil, err.Error(), nil
+	}
+
+	err = fm.client.Configuration.SavePluginConfig(configMap)
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "failed to save plugin config").Error(), nil
 	}
