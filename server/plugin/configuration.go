@@ -55,7 +55,7 @@ func (c *Configuration) toMap() map[string]interface{} {
 	}
 }
 
-func (c *Configuration) setDefaults() (bool, error) {
+func (c *Configuration) setDefaults(isCloud bool) (bool, error) {
 	changed := false
 
 	if c.EncryptionKey == "" {
@@ -75,6 +75,11 @@ func (c *Configuration) setDefaults() (bool, error) {
 		}
 
 		c.WebhookSecret = secret
+		changed = true
+	}
+
+	if isCloud && !c.UsePreregisteredApplication && !c.IsOAuthConfigured() {
+		c.UsePreregisteredApplication = true
 		changed = true
 	}
 
@@ -98,6 +103,11 @@ func (c *Configuration) sanitize() {
 	c.GitHubOrg = strings.TrimSpace(c.GitHubOrg)
 	c.GitHubOAuthClientID = strings.TrimSpace(c.GitHubOAuthClientID)
 	c.GitHubOAuthClientSecret = strings.TrimSpace(c.GitHubOAuthClientSecret)
+}
+
+func (c *Configuration) IsOAuthConfigured() bool {
+	return (c.GitHubOAuthClientID != "" && c.GitHubOAuthClientSecret != "") ||
+		c.UsePreregisteredApplication
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if

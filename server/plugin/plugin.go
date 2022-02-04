@@ -178,7 +178,7 @@ func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*
 func (p *Plugin) setDefaultConfiguration() error {
 	config := p.getConfiguration()
 
-	changed, err := config.setDefaults()
+	changed, err := config.setDefaults(pluginapi.IsCloud(p.API.GetLicense()))
 	if err != nil {
 		return err
 	}
