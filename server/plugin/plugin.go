@@ -278,6 +278,10 @@ func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error 
 	return p.flowManager.StartSetupWizard(event.UserId, false)
 }
 
+func (p *Plugin) OnSendDailyTelemetry() {
+	p.SendDailyTelemetry()
+}
+
 func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
 	p.HandleClusterEvent(ev)
 }
