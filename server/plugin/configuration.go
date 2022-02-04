@@ -3,6 +3,7 @@ package plugin
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"reflect"
 	"strings"
 
@@ -37,22 +38,18 @@ type Configuration struct {
 	UsePreregisteredApplication bool
 }
 
-func (c *Configuration) toMap() map[string]interface{} {
-	return map[string]interface{}{
-		"connecttoprivatebydefault":   c.ConnectToPrivateByDefault,
-		"enablecodepreview":           c.EnableCodePreview,
-		"enableleftsidebar":           c.EnableLeftSidebar,
-		"enableprivaterepo":           c.EnablePrivateRepo,
-		"enablewebhookeventlogging":   c.EnableWebhookEventLogging,
-		"encryptionkey":               c.EncryptionKey,
-		"enterprisebaseurl":           c.EnterpriseBaseURL,
-		"enterpriseuploadurl":         c.EnterpriseUploadURL,
-		"githuboauthclientid":         c.GitHubOAuthClientID,
-		"githuboauthclientsecret":     c.GitHubOAuthClientSecret,
-		"githuborg":                   c.GitHubOrg,
-		"usepreregisteredapplication": c.UsePreregisteredApplication,
-		"webhooksecret":               c.WebhookSecret,
+func (c *Configuration) ToMap() (map[string]interface{}, error) {
+	var out map[string]interface{}
+	data, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
 	}
+	err = json.Unmarshal(data, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 func (c *Configuration) setDefaults(isCloud bool) (bool, error) {

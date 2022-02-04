@@ -184,7 +184,12 @@ func (p *Plugin) setDefaultConfiguration() error {
 	}
 
 	if changed {
-		appErr := p.API.SavePluginConfig(config.toMap())
+		configMap, err := config.ToMap()
+		if err != nil {
+			return err
+		}
+
+		appErr := p.API.SavePluginConfig(configMap)
 		if appErr != nil {
 			return appErr
 		}
