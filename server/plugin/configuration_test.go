@@ -147,7 +147,7 @@ func TestSetDefaults(t *testing.T) {
 				GitHubOAuthClientID:         "some id",
 				GitHubOAuthClientSecret:     "some secret",
 			},
-			shouldChange: true,
+			shouldChange: false,
 			outputCheck: func(t *testing.T, c *Configuration) {
 				assert.Equal(t, "abcd", c.EncryptionKey)
 				assert.Equal(t, "efgh", c.WebhookSecret)
