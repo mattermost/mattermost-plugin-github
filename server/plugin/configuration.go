@@ -55,19 +55,6 @@ func (c *Configuration) toMap() map[string]interface{} {
 	}
 }
 
-func generateSecret() (string, error) {
-	b := make([]byte, 256)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	s := base64.RawStdEncoding.EncodeToString(b)
-
-	s = s[:32]
-
-	return s, nil
-}
-
 func (c *Configuration) setDefaults() (bool, error) {
 	changed := false
 
@@ -96,7 +83,7 @@ func (c *Configuration) setDefaults() (bool, error) {
 
 func (c *Configuration) getBaseURL() string {
 	if c.EnterpriseBaseURL != "" {
-		return c.EnterpriseBaseURL
+		return c.EnterpriseBaseURL + "/"
 	}
 
 	return "https://github.com/"
@@ -104,12 +91,8 @@ func (c *Configuration) getBaseURL() string {
 
 func (c *Configuration) sanitize() {
 	// Ensure EnterpriseBaseURL and EnterpriseUploadURL end with a slash
-	if c.EnterpriseBaseURL != "" {
-		c.EnterpriseBaseURL = strings.TrimRight(c.EnterpriseBaseURL, "/") + "/"
-	}
-	if c.EnterpriseUploadURL != "" {
-		c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/") + "/"
-	}
+	c.EnterpriseBaseURL = strings.TrimRight(c.EnterpriseBaseURL, "/")
+	c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/")
 
 	// Trim spaces around org and OAuth credentials
 	c.GitHubOrg = strings.TrimSpace(c.GitHubOrg)
@@ -216,4 +199,17 @@ func (p *Plugin) OnConfigurationChange() error {
 	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
 
 	return nil
+}
+
+func generateSecret() (string, error) {
+	b := make([]byte, 256)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	s := base64.RawStdEncoding.EncodeToString(b)
+
+	s = s[:32]
+
+	return s, nil
 }
