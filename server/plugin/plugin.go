@@ -269,6 +269,15 @@ func (p *Plugin) OnDeactivate() error {
 	return nil
 }
 
+func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
+	// Don't start wizard if OAuth is configured
+	if p.getConfiguration().IsOAuthConfigured() {
+		return nil
+	}
+
+	return p.flowManager.StartSetupWizard(event.UserId, false)
+}
+
 func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
 	p.HandleClusterEvent(ev)
 }
