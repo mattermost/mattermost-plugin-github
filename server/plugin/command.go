@@ -656,8 +656,9 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	if config.IsValid() != nil {
 		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
 
-		getStarted := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
-		github.AddCommand(getStarted)
+		setup := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
+		setup.RoleID = model.SystemAdminRoleId
+		github.AddCommand(setup)
 
 		return github
 	}
