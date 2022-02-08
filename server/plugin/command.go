@@ -577,7 +577,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	config := p.getConfiguration()
 
-	if err := config.IsValid(); err != nil {
+	if validationErr := config.IsValid(); validationErr != nil {
 		isSysAdmin, err := p.isAuthorizedSysAdmin(args.UserId)
 		var text string
 		switch {
@@ -585,9 +585,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			text = "Error checking user's permissions"
 			p.API.LogWarn(text, "error", err.Error())
 		case isSysAdmin:
-			text = "Before using this plugin, you'll need to configure it by running `/github setup`"
+			text = fmt.Sprintf("Before using this plugin, you'll need to configure it by running `/github setup`: %s", validationErr.Error())
 		default:
-			text = "Please contact your system administrator to configure the GitHub plugin."
+			text = "Please contact your system administrator to correctly configure the GitHub plugin."
 		}
 
 		p.postCommandResponse(args, text)
@@ -653,7 +653,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 }
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
-	if config.IsValid() != nil {
+	if !config.IsOAuthConfigured() {
 		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
 
 		setup := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")

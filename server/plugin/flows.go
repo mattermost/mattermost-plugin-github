@@ -54,6 +54,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 
 	fm.setupFlow = fm.newFlow("setup").WithSteps(
 		fm.stepWelcome(),
+
 		fm.stepDelegateQuestion(),
 		fm.stepDelegateConfirmation(),
 		fm.stepDelegateComplete(),
@@ -65,7 +66,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 
 		fm.stepWebhookQuestion(),
 		fm.stepWebhookWarning(),
-		fm.stepConfirmationStep(),
+		fm.stepWebhookConfirmation(),
 
 		fm.stepAnnouncementQuestion(),
 		fm.stepAnnouncementConfirmation(),
@@ -716,7 +717,7 @@ func (fm *FlowManager) stepWebhookWarning() flow.Step {
 		Next("")
 }
 
-func (fm *FlowManager) stepConfirmationStep() flow.Step {
+func (fm *FlowManager) stepWebhookConfirmation() flow.Step {
 	return flow.NewStep(stepWebhookConfirmation).
 		WithTitle("Success! :tada: You've successfully set up your Mattermost GitHub integration! ").
 		WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)").
