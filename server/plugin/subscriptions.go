@@ -191,6 +191,7 @@ func (p *Plugin) IsNotificationOff(repoName string) bool {
 
 	return exist
 }
+
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
@@ -322,6 +323,7 @@ func (p *Plugin) StoreExcludedNotificationRepo(s string) error {
 
 	return nil
 }
+
 func (p *Plugin) EnableNotificationTurnedOffRepo(s string) error {
 	var repoNames, err = p.GetExcludedNotificationRepos()
 	if err != nil {
@@ -344,6 +346,7 @@ func (p *Plugin) EnableNotificationTurnedOffRepo(s string) error {
 
 	return nil
 }
+
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
 	name = strings.ToLower(name)

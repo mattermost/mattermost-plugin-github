@@ -313,6 +313,31 @@ func (fm *FlowManager) stepDelegateQuestion() flow.Step {
 		})
 }
 
+func (fm *FlowManager) submitDelegateSelection(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
+	delegateIDRaw, ok := submitted["delegate"]
+	if !ok {
+		return "", nil, nil, errors.New("delegate missing")
+	}
+	delegateID, ok := delegateIDRaw.(string)
+	if !ok {
+		return "", nil, nil, errors.New("delegate is not a string")
+	}
+
+	delegate, err := fm.client.User.Get(delegateID)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err, "failed get user")
+	}
+
+	err = fm.StartSetupWizard(delegate.Id, f.UserID)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err, "failed start configuration wizard")
+	}
+
+	return stepDelegateConfirmation, flow.State{
+		"Delegated": delegate.GetDisplayName(model.ShowNicknameFullName),
+	}, nil, nil
+}
+
 func (fm *FlowManager) stepDelegateConfirmation() flow.Step {
 	return flow.NewStep(stepDelegateConfirmation).
 		WithText("GitHub integration setup details have been sent to @{{.Delegated}}").
@@ -367,6 +392,60 @@ func (fm *FlowManager) stepEnterprise() flow.Step {
 			OnClick: flow.Goto(stepOAuthInfo),
 		}).
 		WithButton(cancelButton())
+}
+
+func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
+	errorList := map[string]string{}
+
+	baseURLRaw, ok := submitted["base_url"]
+	if !ok {
+		return "", nil, nil, errors.New("base_url missing")
+	}
+	baseURL, ok := baseURLRaw.(string)
+	if !ok {
+		return "", nil, nil, errors.New("base_url is not a string")
+	}
+
+	err := isValidURL(baseURL)
+	if err != nil {
+		errorList["base_url"] = err.Error()
+	}
+
+	uploadURLRaw, ok := submitted["upload_url"]
+	if !ok {
+		return "", nil, nil, errors.New("upload_url missing")
+	}
+	uploadURL, ok := uploadURLRaw.(string)
+	if !ok {
+		return "", nil, nil, errors.New("upload_url is not a string")
+	}
+
+	err = isValidURL(uploadURL)
+	if err != nil {
+		errorList["upload_url"] = err.Error()
+	}
+
+	if len(errorList) != 0 {
+		return "", nil, errorList, nil
+	}
+
+	config := fm.getConfiguration()
+	config.EnterpriseBaseURL = baseURL
+	config.EnterpriseUploadURL = uploadURL
+
+	configMap, err := config.ToMap()
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	err = fm.client.Configuration.SavePluginConfig(configMap)
+	if err != nil {
+		return "", nil, nil, errors.Wrap(err, "failed to save plugin config")
+	}
+
+	return "", flow.State{
+		keyBaseURL: config.getBaseURL(),
+	}, nil, nil
 }
 
 func (fm *FlowManager) stepOAuthInfo() flow.Step {
@@ -425,96 +504,6 @@ func (fm *FlowManager) stepOAuthInput() flow.Step {
 		WithButton(cancelButton())
 }
 
-func (fm *FlowManager) stepOAuthConnect() flow.Step {
-	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your GitHub account"
-	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginURL)
-	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
-	return flow.NewStep(stepOAuthConnect).
-		WithText(connectText).
-		WithPretext(connectPretext).
-		OnRender(func(f *flow.Flow) { fm.trackCompleteOauthWizard(f.UserID) })
-	// The API handler will advance to the next step and complete the flow
-}
-
-func (fm *FlowManager) submitDelegateSelection(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
-	delegateIDRaw, ok := submitted["delegate"]
-	if !ok {
-		return "", nil, nil, errors.New("delegate missing")
-	}
-	delegateID, ok := delegateIDRaw.(string)
-	if !ok {
-		return "", nil, nil, errors.New("delegate is not a string")
-	}
-
-	delegate, err := fm.client.User.Get(delegateID)
-	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "failed get user")
-	}
-
-	err = fm.StartSetupWizard(delegate.Id, f.UserID)
-	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "failed start configuration wizard")
-	}
-
-	return stepDelegateConfirmation, flow.State{
-		"Delegated": delegate.GetDisplayName(model.ShowNicknameFullName),
-	}, nil, nil
-}
-
-func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
-	errorList := map[string]string{}
-
-	baseURLRaw, ok := submitted["base_url"]
-	if !ok {
-		return "", nil, nil, errors.New("base_url missing")
-	}
-	baseURL, ok := baseURLRaw.(string)
-	if !ok {
-		return "", nil, nil, errors.New("base_url is not a string")
-	}
-
-	err := isValidURL(baseURL)
-	if err != nil {
-		errorList["base_url"] = err.Error()
-	}
-
-	uploadURLRaw, ok := submitted["upload_url"]
-	if !ok {
-		return "", nil, nil, errors.New("upload_url missing")
-	}
-	uploadURL, ok := uploadURLRaw.(string)
-	if !ok {
-		return "", nil, nil, errors.New("upload_url is not a string")
-	}
-
-	err = isValidURL(uploadURL)
-	if err != nil {
-		errorList["upload_url"] = err.Error()
-	}
-
-	if len(errorList) != 0 {
-		return "", nil, errorList, nil
-	}
-
-	config := fm.getConfiguration()
-	config.EnterpriseBaseURL = baseURL
-	config.EnterpriseUploadURL = uploadURL
-
-	configMap, err := config.ToMap()
-	if err != nil {
-		return "", nil, nil, err
-	}
-
-	err = fm.client.Configuration.SavePluginConfig(configMap)
-	if err != nil {
-		return "", nil, nil, errors.Wrap(err, "failed to save plugin config")
-	}
-
-	return "", flow.State{
-		keyBaseURL: config.getBaseURL(),
-	}, nil, nil
-}
-
 func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
 	errorList := map[string]string{}
 
@@ -563,6 +552,17 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 	}
 
 	return "", nil, nil, nil
+}
+
+func (fm *FlowManager) stepOAuthConnect() flow.Step {
+	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your GitHub account"
+	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginURL)
+	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
+	return flow.NewStep(stepOAuthConnect).
+		WithText(connectText).
+		WithPretext(connectPretext).
+		OnRender(func(f *flow.Flow) { fm.trackCompleteOauthWizard(f.UserID) })
+	// The API handler will advance to the next step and complete the flow
 }
 
 func (fm *FlowManager) StartWebhookWizard(userID string) error {
@@ -621,25 +621,6 @@ The final setup step requires a Mattermost System Admin to create a webhook for 
 			Color:   flow.ColorDefault,
 			OnClick: flow.Goto(stepWebhookWarning),
 		})
-}
-
-func (fm *FlowManager) stepWebhookWarning() flow.Step {
-	warnText := "The GitHub plugin uses a webhook to connect a GitHub account to Mattermost to listen for incoming GitHub events. " +
-		"You can't subscribe a channel to a repository for notifications until webhooks are configured.\n" +
-		"Restart setup later by running `/github setup webhook`"
-
-	return flow.NewStep(stepWebhookWarning).
-		WithText(warnText).
-		WithColor(flow.ColorDanger).
-		Next("")
-}
-
-func (fm *FlowManager) stepConfirmationStep() flow.Step {
-	return flow.NewStep(stepWebhookConfirmation).
-		WithTitle("Success! :tada: You've successfully set up your Mattermost GitHub integration! ").
-		WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)").
-		OnRender(func(f *flow.Flow) { fm.trackCompleteWebhookWizard(f.UserID) }).
-		Next("")
 }
 
 func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
@@ -724,6 +705,25 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 	return stepWebhookConfirmation, nil, nil, nil
 }
 
+func (fm *FlowManager) stepWebhookWarning() flow.Step {
+	warnText := "The GitHub plugin uses a webhook to connect a GitHub account to Mattermost to listen for incoming GitHub events. " +
+		"You can't subscribe a channel to a repository for notifications until webhooks are configured.\n" +
+		"Restart setup later by running `/github setup webhook`"
+
+	return flow.NewStep(stepWebhookWarning).
+		WithText(warnText).
+		WithColor(flow.ColorDanger).
+		Next("")
+}
+
+func (fm *FlowManager) stepConfirmationStep() flow.Step {
+	return flow.NewStep(stepWebhookConfirmation).
+		WithTitle("Success! :tada: You've successfully set up your Mattermost GitHub integration! ").
+		WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)").
+		OnRender(func(f *flow.Flow) { fm.trackCompleteWebhookWizard(f.UserID) }).
+		Next("")
+}
+
 func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
 	state := fm.getBaseState()
 
@@ -788,13 +788,6 @@ func (fm *FlowManager) stepAnnouncementQuestion() flow.Step {
 		})
 }
 
-func (fm *FlowManager) stepAnnouncementConfirmation() flow.Step {
-	return flow.NewStep(stepAnnouncementConfirmation).
-		WithText("Message to ~{{ .ChannelName }} was sent.").
-		Next("").
-		OnRender(func(f *flow.Flow) { fm.trackCompletAnnouncementWizard(f.UserID) })
-}
-
 func (fm *FlowManager) submitChannelAnnouncement(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
 	channelIDRaw, ok := submitted["channel_id"]
 	if !ok {
@@ -832,6 +825,13 @@ func (fm *FlowManager) submitChannelAnnouncement(f *flow.Flow, submitted map[str
 	return stepAnnouncementConfirmation, flow.State{
 		"ChannelName": channel.Name,
 	}, nil, nil
+}
+
+func (fm *FlowManager) stepAnnouncementConfirmation() flow.Step {
+	return flow.NewStep(stepAnnouncementConfirmation).
+		WithText("Message to ~{{ .ChannelName }} was sent.").
+		Next("").
+		OnRender(func(f *flow.Flow) { fm.trackCompletAnnouncementWizard(f.UserID) })
 }
 
 func printGithubErrorResponse(err *github.ErrorResponse) error {
