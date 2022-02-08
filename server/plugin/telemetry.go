@@ -20,14 +20,14 @@ func (p *Plugin) SendDailyTelemetry() {
 	}
 
 	_ = p.tracker.TrackEvent("stats", map[string]interface{}{
-		"connected_user_count": connectedUserCount,
-		"is_oauth_configured":  config.IsOAuthConfigured(),
-		"is_enterprise":        config.EnterpriseBaseURL != "" || config.EnterpriseUploadURL != "",
-
+		"connected_user_count":          connectedUserCount,
+		"is_oauth_configured":           config.IsOAuthConfigured(),
+		"is_sass":                       config.IsSASS(),
 		"is_organization_locked":        config.GitHubOrg != "",
 		"enable_private_repo":           config.EnablePrivateRepo,
 		"enable_code_preview":           config.EnableCodePreview,
 		"connect_to_private_by_default": config.ConnectToPrivateByDefault,
+		"Use_preregistered_application": config.UsePreregisteredApplication,
 	})
 }
 

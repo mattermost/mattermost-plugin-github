@@ -107,6 +107,11 @@ func (c *Configuration) IsOAuthConfigured() bool {
 		c.UsePreregisteredApplication
 }
 
+// IsSASS return if SASS GitHub at https://github.com is used
+func (c *Configuration) IsSASS() bool {
+	return c.EnterpriseBaseURL == "" && c.EnterpriseUploadURL == ""
+}
+
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
 func (c *Configuration) Clone() *Configuration {
@@ -127,6 +132,10 @@ func (c *Configuration) IsValid() error {
 
 	if c.UsePreregisteredApplication && c.EnterpriseBaseURL != "" {
 		return errors.New("cannot use pre-registered application with GitHub enterprise")
+	}
+
+	if c.EncryptionKey == "" {
+		return errors.New("must have an encryption key")
 	}
 
 	return nil

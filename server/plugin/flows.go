@@ -737,6 +737,18 @@ func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
 	return nil
 }
 
+func (fm *FlowManager) trackStartAnnouncementWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("announcement_wizard_start", userID, map[string]interface{}{
+		"time": model.GetMillis(),
+	})
+}
+
+func (fm *FlowManager) trackCompletAnnouncementWizard(userID string) {
+	_ = fm.tracker.TrackUserEvent("announcement_wizard_complete", userID, map[string]interface{}{
+		"time": model.GetMillis(),
+	})
+}
+
 func (fm *FlowManager) stepAnnouncementQuestion() flow.Step {
 	defaultMessage := "Hi team,\n" +
 		"\n" +
@@ -820,18 +832,6 @@ func (fm *FlowManager) submitChannelAnnouncement(f *flow.Flow, submitted map[str
 	return stepAnnouncementConfirmation, flow.State{
 		"ChannelName": channel.Name,
 	}, nil, nil
-}
-
-func (fm *FlowManager) trackStartAnnouncementWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("announcement_wizard_start", userID, map[string]interface{}{
-		"time": model.GetMillis(),
-	})
-}
-
-func (fm *FlowManager) trackCompletAnnouncementWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("announcement_wizard_complete", userID, map[string]interface{}{
-		"time": model.GetMillis(),
-	})
 }
 
 func printGithubErrorResponse(err *github.ErrorResponse) error {

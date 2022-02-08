@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,7 +15,6 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -57,15 +55,7 @@ var (
 
 type Plugin struct {
 	plugin.MattermostPlugin
-
 	client *pluginapi.Client
-
-	// githubPermalinkRegex is used to parse github permalinks in post messages.
-	githubPermalinkRegex *regexp.Regexp
-
-	BotUserID string
-
-	CommandHandlers map[string]CommandHandleFunc
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -74,20 +64,24 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *Configuration
 
-	flowManager *FlowManager
+	chimeraURL string
 
-	log    logger.Logger
-	poster poster.Poster
+	router *mux.Router
 
 	telemetryClient telemetry.Client
 	tracker         telemetry.Tracker
 
+	BotUserID   string
+	poster      poster.Poster
+	flowManager *FlowManager
+
+	CommandHandlers map[string]CommandHandleFunc
+
+	// githubPermalinkRegex is used to parse github permalinks in post messages.
+	githubPermalinkRegex *regexp.Regexp
+
 	webhookBroker *WebhookBroker
 	oauthBroker   *OAuthBroker
-
-	router *mux.Router
-
-	chimeraURL string
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -200,10 +194,15 @@ func (p *Plugin) setDefaultConfiguration() error {
 
 func (p *Plugin) OnActivate() error {
 	p.client = pluginapi.NewClient(p.API, p.Driver)
-	p.log = logger.New(p.API)
 
-	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
-		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
+	siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil || *siteURL == "" {
+		return errors.New("siteURL is not set. Please set it and restart the plugin")
+	}
+
+	err := p.setDefaultConfiguration()
+	if err != nil {
+		return errors.Wrap(err, "failed to set default configuration")
 	}
 
 	p.registerChimeraURL()
@@ -213,10 +212,7 @@ func (p *Plugin) OnActivate() error {
 			"If you are running on-prem disable the setting and use a custom application, otherwise set PluginSettings.ChimeraOAuthProxyURL")
 	}
 
-	err := p.setDefaultConfiguration()
-	if err != nil {
-		return errors.Wrap(err, "failed to set default configuration")
-	}
+	p.initializeAPI()
 
 	p.telemetryClient, err = telemetry.NewRudderClient()
 	if err != nil {
@@ -225,35 +221,18 @@ func (p *Plugin) OnActivate() error {
 
 	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
 	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
-	p.initializeAPI()
 
 	botID, err := p.client.Bot.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
-	})
+	}, pluginapi.ProfileImagePath(filepath.Join("assets", "profile.png")))
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure github bot")
 	}
 	p.BotUserID = botID
 
 	p.poster = poster.NewPoster(&p.client.Post, p.BotUserID)
-
-	bundlePath, err := p.API.GetBundlePath()
-	if err != nil {
-		return errors.Wrap(err, "couldn't get bundle path")
-	}
-
-	profileImage, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "profile.png"))
-	if err != nil {
-		return errors.Wrap(err, "couldn't read profile image")
-	}
-
-	appErr := p.API.SetProfileImage(botID, profileImage)
-	if appErr != nil {
-		return errors.Wrap(appErr, "couldn't set profile image")
-	}
-
 	p.flowManager = p.NewFlowManager()
 
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
