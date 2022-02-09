@@ -352,6 +352,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    * Defaults to `pulls,issues,creates,deletes`\n" +
 		"  * `flags` currently supported:\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
+		"    * `--title-only` - notifications will be delievered with titles only (for example, the body of a pull request will not be displayed)\n" +
 		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
 		"* `/github me` - Display the connected GitHub account\n" +
 		"* `/github settings [setting] [value]` - Update your user settings\n" +

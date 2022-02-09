@@ -15,16 +15,20 @@ import (
 const (
 	SubscriptionsKey     = "subscriptions"
 	excludeOrgMemberFlag = "exclude-org-member"
+	titleOnlyFlag        = "title-only"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
+	TitleOnly         bool
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string) {
 	switch flag { // nolint:gocritic // It's expected that more flags get added.
 	case excludeOrgMemberFlag:
 		s.ExcludeOrgMembers = true
+	case titleOnlyFlag:
+		s.TitleOnly = true
 	}
 }
 
@@ -33,6 +37,11 @@ func (s SubscriptionFlags) String() string {
 
 	if s.ExcludeOrgMembers {
 		flag := "--" + excludeOrgMemberFlag
+		flags = append(flags, flag)
+	}
+
+	if s.TitleOnly {
+		flag := "--" + titleOnlyFlag
 		flags = append(flags, flag)
 	}
 
