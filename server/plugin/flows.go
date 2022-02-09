@@ -459,7 +459,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"	- Application name: `Mattermost GitHub Plugin - <your company name>`\n"+
 		"	- Homepage URL: `https://github.com/mattermost/mattermost-plugin-github`\n"+
 		"	- Authorization callback URL: `%s/oauth/complete`\n"+
-		"3. Select Submit\n"+
+		"3. Select **Register application**\n"+
 		"4. Select **Generate a new client secret**.\n"+
 		"5. Enter your **GitHub password**. (if prompted)",
 		fm.pluginURL,
