@@ -23,19 +23,19 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	GitHubOrg                   string
-	GitHubOAuthClientID         string
-	GitHubOAuthClientSecret     string
-	WebhookSecret               string
-	EnableLeftSidebar           bool
-	EnablePrivateRepo           bool
-	ConnectToPrivateByDefault   bool
-	EncryptionKey               string
-	EnterpriseBaseURL           string
-	EnterpriseUploadURL         string
-	EnableCodePreview           string
-	EnableWebhookEventLogging   bool
-	UsePreregisteredApplication bool
+	GitHubOrg                   string `json:"githuborg"`
+	GitHubOAuthClientID         string `json:"githuboauthclientid"`
+	GitHubOAuthClientSecret     string `json:"githuboauthclientsecret"`
+	WebhookSecret               string `json:"webhooksecret"`
+	EnableLeftSidebar           bool   `json:"enableleftsidebar"`
+	EnablePrivateRepo           bool   `json:"enableprivaterepo"`
+	ConnectToPrivateByDefault   bool   `json:"connecttoprivatebydefault"`
+	EncryptionKey               string `json:"encryptionkey"`
+	EnterpriseBaseURL           string `json:"enterprisebaseurl"`
+	EnterpriseUploadURL         string `json:"enterpriseuploadurl"`
+	EnableCodePreview           string `json:"enablecodepreview"`
+	EnableWebhookEventLogging   bool   `json:"enablewebhookeventlogging"`
+	UsePreregisteredApplication bool   `json:"usepreregisteredapplication"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {
