@@ -334,16 +334,6 @@ func getToDoDisplayText(baseURL, title, url, notifType string) string {
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
 }
 
-// ItemExists check if the element exist in the passed array
-func ItemExists(array []string, item string) (bool, int) {
-	for i := 0; i < len(array); i++ {
-		if array[i] == item {
-			return true, i
-		}
-	}
-	return false, -1
-}
-
 // isValidURL checks if a given URL is a valid URL with a host and a http or http scheme.
 func isValidURL(rawURL string) error {
 	u, err := url.ParseRequestURI(rawURL)
