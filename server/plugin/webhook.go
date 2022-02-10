@@ -9,11 +9,25 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/google/go-github/v37/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
+)
+
+const (
+	actionOpened    = "opened"
+	actionClosed    = "closed"
+	actionReopened  = "reopened"
+	actionSubmitted = "submitted"
+	actionLabeled   = "labeled"
+	actionAssigned  = "assigned"
+
+	actionCreated = "created"
+	actionDeleted = "deleted"
+	actionEdited  = "edited"
 )
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -58,6 +72,78 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 	}
 }
 
+// WebhookBroker is a message broker for webhook events.
+type WebhookBroker struct {
+	sendGitHubPingEvent func(event *github.PingEvent)
+
+	lock     sync.RWMutex // Protects closed and pingSubs
+	closed   bool
+	pingSubs []chan *github.PingEvent
+}
+
+func NewWebhookBroker(sendGitHubPingEvent func(event *github.PingEvent)) *WebhookBroker {
+	return &WebhookBroker{
+		sendGitHubPingEvent: sendGitHubPingEvent,
+	}
+}
+
+func (wb *WebhookBroker) SubscribePings() <-chan *github.PingEvent {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	ch := make(chan *github.PingEvent, 1)
+	wb.pingSubs = append(wb.pingSubs, ch)
+
+	return ch
+}
+
+func (wb *WebhookBroker) UnsubscribePings(ch <-chan *github.PingEvent) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	for i, sub := range wb.pingSubs {
+		if sub == ch {
+			close(sub)
+			wb.pingSubs = append(wb.pingSubs[:i], wb.pingSubs[i+1:]...)
+			break
+		}
+	}
+}
+
+func (wb *WebhookBroker) publishPing(event *github.PingEvent, fromCluster bool) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	if wb.closed {
+		return
+	}
+
+	for _, sub := range wb.pingSubs {
+		// non-blocking send
+		select {
+		case sub <- event:
+		default:
+		}
+	}
+
+	if !fromCluster {
+		wb.sendGitHubPingEvent(event)
+	}
+}
+
+func (wb *WebhookBroker) Close() {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	if !wb.closed {
+		wb.closed = true
+
+		for _, sub := range wb.pingSubs {
+			close(sub)
+		}
+	}
+}
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
@@ -70,7 +156,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	event, err := github.ParseWebHook(github.WebHookType(r), body)
 	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
 		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
@@ -78,7 +164,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	if config.EnableWebhookEventLogging {
 		bodyByte, appErr := json.Marshal(event)
 		if appErr != nil {
-			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
+			p.API.LogWarn("Error while Marshal Webhook Request", "error", appErr.Error())
 			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
 			return
 		}
@@ -100,6 +186,10 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	var handler func()
 
 	switch event := event.(type) {
+	case *github.PingEvent:
+		handler = func() {
+			p.webhookBroker.publishPing(event, false)
+		}
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
 		handler = func() {
@@ -119,6 +209,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
 			p.handleCommentAuthorNotification(event)
+			p.handleCommentAssigneeNotification(event)
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
@@ -153,11 +244,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if repo == nil || handler == nil {
+	if handler == nil {
 		return
 	}
 
-	if repo.GetPrivate() && !config.EnablePrivateRepo {
+	if repo != nil && repo.GetPrivate() && !config.EnablePrivateRepo {
 		return
 	}
 
@@ -169,7 +260,9 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.getBaseURL())
 
 	if owner == "" {
 		return false
@@ -221,7 +314,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != "opened" && action != "labeled" && action != "closed" {
+	if action != actionOpened && action != actionLabeled && action != actionClosed {
 		return
 	}
 
@@ -258,7 +351,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != "closed" {
+		if sub.PullsMerged() && action != actionClosed {
 			continue
 		}
 
@@ -279,7 +372,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if action == "labeled" {
+		if action == actionLabeled {
 			if label != "" && label == eventLabel {
 				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
 				if err != nil {
@@ -293,11 +386,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 		}
 
-		if action == "opened" {
+		if action == actionOpened {
 			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
-		if action == "closed" {
+		if action == actionClosed {
 			post.Message = closedPRMessage
 		}
 
@@ -307,14 +400,16 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
+
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
 	return strings.TrimSpace(policy.Sanitize(description))
 }
+
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
-	if action != "opened" {
+	if action != actionOpened {
 		return
 	}
 
@@ -376,7 +471,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
 	timeDiff := time.Until(issue.GetCreatedAt()) * -1
-	if action == "labeled" && timeDiff.Seconds() < 4.00 {
+	if action == actionLabeled && timeDiff.Seconds() < 4.00 {
 		return
 	}
 
@@ -387,16 +482,16 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	issueTemplate := ""
 	switch action {
-	case "opened":
+	case actionOpened:
 		issueTemplate = "newIssue"
 
-	case "closed":
+	case actionClosed:
 		issueTemplate = "closedIssue"
 
-	case "reopened":
+	case actionReopened:
 		issueTemplate = "reopenedIssue"
 
-	case "labeled":
+	case actionLabeled:
 		issueTemplate = "issueLabelled"
 
 	default:
@@ -431,7 +526,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if sub.IssueCreations() && action != "opened" {
+		if sub.IssueCreations() && action != actionOpened {
 			continue
 		}
 
@@ -452,7 +547,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if action == "labeled" {
+		if action == actionLabeled {
 			if label == "" || label != eventLabel {
 				continue
 			}
@@ -612,7 +707,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		return
 	}
 
-	if event.GetAction() != "created" {
+	if event.GetAction() != actionCreated {
 		return
 	}
 
@@ -658,7 +753,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 			continue
 		}
 
-		if event.GetAction() == "created" {
+		if event.GetAction() == actionCreated {
 			post.Message = message
 		}
 
@@ -685,7 +780,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	action := event.GetAction()
-	if action != "submitted" {
+	if action != actionSubmitted {
 		return
 	}
 
@@ -808,7 +903,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
 	action := event.GetAction()
-	if action == "edited" || action == "deleted" {
+	if action == actionEdited || action == actionDeleted {
 		return
 	}
 
@@ -874,7 +969,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	}
 
 	action := event.GetAction()
-	if action == "edited" || action == "deleted" {
+	if action == actionEdited || action == actionDeleted {
 		return
 	}
 
@@ -918,6 +1013,63 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	p.sendRefreshEvent(authorUserID)
 }
 
+func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEvent) {
+	author := event.GetIssue().GetUser().GetLogin()
+	assignees := event.GetIssue().Assignees
+	repoName := event.GetRepo().GetFullName()
+
+	splitURL := strings.Split(event.GetIssue().GetHTMLURL(), "/")
+	if len(splitURL) < 2 {
+		return
+	}
+	var templateName string
+	switch splitURL[len(splitURL)-2] {
+	case "pull":
+		templateName = "commentAssigneePullRequestNotification"
+	case "issues":
+		templateName = "commentAssigneeIssueNotification"
+	default:
+		p.API.LogWarn("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+		return
+	}
+
+	for _, assignee := range assignees {
+		userID := p.getGitHubToUserIDMapping(assignee.GetLogin())
+		if userID == "" {
+			continue
+		}
+
+		if author == assignee.GetLogin() {
+			continue
+		}
+		if event.Sender.GetLogin() == assignee.GetLogin() {
+			continue
+		}
+
+		if !p.permissionToRepo(userID, repoName) {
+			continue
+		}
+
+		assigneeID := p.getGitHubToUserIDMapping(assignee.GetLogin())
+		if assigneeID == "" {
+			continue
+		}
+
+		if p.senderMutedByReceiver(assigneeID, event.GetSender().GetLogin()) {
+			p.API.LogDebug("Commenter is muted, skipping notification")
+			continue
+		}
+
+		message, err := renderTemplate(templateName, event)
+		if err != nil {
+			p.API.LogWarn("Failed to render template", "error", err.Error())
+			continue
+		}
+		p.CreateBotDMPost(assigneeID, message, "custom_git_assignee")
+		p.sendRefreshEvent(assigneeID)
+	}
+}
+
 func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	author := event.GetPullRequest().GetUser().GetLogin()
 	sender := event.GetSender().GetLogin()
@@ -939,7 +1091,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(requestedUserID, repoName) {
 			requestedUserID = ""
 		}
-	case "closed":
+	case actionClosed:
 		if author == sender {
 			return
 		}
@@ -947,7 +1099,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "reopened":
+	case actionReopened:
 		if author == sender {
 			return
 		}
@@ -955,7 +1107,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "assigned":
+	case actionAssigned:
 		assignee := event.GetPullRequest().GetAssignee().GetLogin()
 		if assignee == sender {
 			return
@@ -997,17 +1149,17 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	assigneeUserID := ""
 
 	switch event.GetAction() {
-	case "closed":
+	case actionClosed:
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "reopened":
+	case actionReopened:
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case "assigned":
+	case actionAssigned:
 		assignee := event.GetAssignee().GetLogin()
 		if assignee == sender {
 			return
@@ -1048,7 +1200,7 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		return
 	}
 
-	if event.GetAction() != "submitted" {
+	if event.GetAction() != actionSubmitted {
 		return
 	}
 

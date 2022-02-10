@@ -173,6 +173,7 @@ func TestGetToken(t *testing.T) {
 		})
 	}
 }
+
 func TestGetConfig(t *testing.T) {
 	httpTestJSON := testutils.HTTPTest{
 		T:       t,

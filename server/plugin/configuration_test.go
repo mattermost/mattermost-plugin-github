@@ -58,3 +58,116 @@ func TestIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestSetDefaults(t *testing.T) {
+	for _, testCase := range []struct {
+		description string
+		isCloud     bool
+		config      Configuration
+
+		shouldChange bool
+		outputCheck  func(*testing.T, *Configuration)
+		errMsg       string
+	}{
+		{
+			description: "noop",
+			config: Configuration{
+				EncryptionKey: "abcd",
+				WebhookSecret: "efgh",
+			},
+			shouldChange: false,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Equal(t, "abcd", c.EncryptionKey)
+				assert.Equal(t, "efgh", c.WebhookSecret)
+			},
+		}, {
+			description: "set encryption key",
+			config: Configuration{
+				EncryptionKey: "",
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Len(t, c.EncryptionKey, 32)
+			},
+		}, {
+			description: "set webhook key",
+			config: Configuration{
+				WebhookSecret: "",
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Len(t, c.WebhookSecret, 32)
+			},
+		}, {
+			description: "set webhook and encryption key",
+			config: Configuration{
+				EncryptionKey: "",
+				WebhookSecret: "",
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Len(t, c.EncryptionKey, 32)
+				assert.Len(t, c.WebhookSecret, 32)
+			},
+		}, {
+			description: "Should not set UsePreregisteredApplication in on-prem",
+			isCloud:     false,
+			config: Configuration{
+				EncryptionKey:               "abcd",
+				WebhookSecret:               "efgh",
+				UsePreregisteredApplication: false,
+			},
+			shouldChange: false,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Equal(t, "abcd", c.EncryptionKey)
+				assert.Equal(t, "efgh", c.WebhookSecret)
+			},
+		}, {
+			description: "Should set UsePreregisteredApplication in cloud if no OAuth secret is configured",
+			isCloud:     true,
+			config: Configuration{
+				EncryptionKey:               "abcd",
+				WebhookSecret:               "efgh",
+				UsePreregisteredApplication: false,
+			},
+			shouldChange: true,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Equal(t, "abcd", c.EncryptionKey)
+				assert.Equal(t, "efgh", c.WebhookSecret)
+
+				assert.True(t, c.UsePreregisteredApplication)
+			},
+		}, {
+			description: "Should set not UsePreregisteredApplication in cloud if OAuth secret is configured",
+			isCloud:     true,
+			config: Configuration{
+				EncryptionKey:               "abcd",
+				WebhookSecret:               "efgh",
+				UsePreregisteredApplication: false,
+				GitHubOAuthClientID:         "some id",
+				GitHubOAuthClientSecret:     "some secret",
+			},
+			shouldChange: false,
+			outputCheck: func(t *testing.T, c *Configuration) {
+				assert.Equal(t, "abcd", c.EncryptionKey)
+				assert.Equal(t, "efgh", c.WebhookSecret)
+
+				assert.False(t, c.UsePreregisteredApplication)
+			},
+		},
+	} {
+		t.Run(testCase.description, func(t *testing.T) {
+			changed, err := testCase.config.setDefaults(testCase.isCloud)
+
+			assert.Equal(t, testCase.shouldChange, changed)
+			testCase.outputCheck(t, &testCase.config)
+
+			if testCase.errMsg != "" {
+				require.Error(t, err)
+				assert.Equal(t, testCase.errMsg, err.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}

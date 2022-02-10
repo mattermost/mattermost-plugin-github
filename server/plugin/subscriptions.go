@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/go-github/v37/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/pkg/errors"
 )
 
@@ -28,8 +28,6 @@ func (s *SubscriptionFlags) AddFlag(flag string) {
 	switch flag { // nolint:gocritic // It's expected that more flags get added.
 	case excludeOrgMemberFlag:
 		s.ExcludeOrgMembers = true
-	case excludeOrgReposFlag:
-		s.ExcludeOrgRepos = true
 	}
 }
 
@@ -183,7 +181,6 @@ func IsExcludedFromSubscription(repoName string, s *Subscription) bool {
 
 	return exist
 }
-
 func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
 	subs, err := p.GetSubscriptions()
@@ -315,7 +312,9 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	owner, repo := parseOwnerAndRepo(repo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
 	if owner == "" && repo == "" {
 		return errors.New("invalid repository")
 	}
