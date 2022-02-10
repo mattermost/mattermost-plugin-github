@@ -92,7 +92,6 @@ func (c *Configuration) getBaseURL() string {
 }
 
 func (c *Configuration) sanitize() {
-	// Ensure EnterpriseBaseURL and EnterpriseUploadURL end with a slash
 	c.EnterpriseBaseURL = strings.TrimRight(c.EnterpriseBaseURL, "/")
 	c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/")
 
