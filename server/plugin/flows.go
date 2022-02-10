@@ -475,7 +475,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 
 func (fm *FlowManager) stepOAuthInput() flow.Step {
 	return flow.NewStep(stepOAuthInput).
-		WithText("Please enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret**.").
+		WithText("Click the Continue button below to open a dialog to enter the **GitHub OAuth Client ID** and **GitHub OAuth Client Secret**.").
 		WithButton(flow.Button{
 			Name:  "Continue",
 			Color: flow.ColorPrimary,
