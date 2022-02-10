@@ -88,7 +88,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 	fm.webhokFlow = fm.newFlow("webhook").WithSteps(
 		fm.stepWebhookQuestion(),
 		flow.NewStep(stepWebhookConfirmation).
-			WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)").
+			WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://github.com/mattermost/mattermost-plugin-github#slash-commands)").
 			Terminal(),
 
 		fm.stepCancel("setup webhook"),
@@ -721,7 +721,7 @@ func (fm *FlowManager) stepWebhookWarning() flow.Step {
 func (fm *FlowManager) stepWebhookConfirmation() flow.Step {
 	return flow.NewStep(stepWebhookConfirmation).
 		WithTitle("Success! :tada: You've successfully set up your Mattermost GitHub integration! ").
-		WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://example.org)").
+		WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://github.com/mattermost/mattermost-plugin-github#slash-commands)").
 		OnRender(func(f *flow.Flow) { fm.trackCompleteWebhookWizard(f.UserID) }).
 		Next("")
 }
