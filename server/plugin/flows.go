@@ -433,6 +433,7 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 	config := fm.getConfiguration()
 	config.EnterpriseBaseURL = baseURL
 	config.EnterpriseUploadURL = uploadURL
+	config.sanitize()
 
 	configMap, err := config.ToMap()
 	if err != nil {
