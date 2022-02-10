@@ -304,7 +304,9 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	owner, repo := parseOwnerAndRepo(repo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
 	if owner == "" && repo == "" {
 		return errors.New("invalid repository")
 	}

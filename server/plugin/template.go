@@ -328,10 +328,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
 		"{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}}" +
 		"  * `private` is optional. If used, read access to your private repositories will be requested." +
-		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
+		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
 		"{{else}}" +
 		"  * Read access to your private repositories will be requested." +
-		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
+		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
 		"{{end}}{{end}}" +
 		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
 		"* `/github help` - Display Slash Command help text\n" +
@@ -357,7 +357,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github settings [setting] [value]` - Update your user settings\n" +
 		"  * `setting` can be `notifications` or `reminders`\n" +
 		"  * `value` can be `on` or `off`\n" +
-		"* `/github mute` - Managed muted GitHub users. You will not receive notifications for comments in your PRs and issues from those users.\n" +
+		"* `/github mute` - Managed muted GitHub users. You'll not receive notifications for comments in your PRs and issues from those users.\n" +
 		"  * `/github mute list` - list your muted GitHub users\n" +
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +

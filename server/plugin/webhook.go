@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/v41/github"
@@ -71,6 +72,78 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 	}
 }
 
+// WebhookBroker is a message broker for webhook events.
+type WebhookBroker struct {
+	sendGitHubPingEvent func(event *github.PingEvent)
+
+	lock     sync.RWMutex // Protects closed and pingSubs
+	closed   bool
+	pingSubs []chan *github.PingEvent
+}
+
+func NewWebhookBroker(sendGitHubPingEvent func(event *github.PingEvent)) *WebhookBroker {
+	return &WebhookBroker{
+		sendGitHubPingEvent: sendGitHubPingEvent,
+	}
+}
+
+func (wb *WebhookBroker) SubscribePings() <-chan *github.PingEvent {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	ch := make(chan *github.PingEvent, 1)
+	wb.pingSubs = append(wb.pingSubs, ch)
+
+	return ch
+}
+
+func (wb *WebhookBroker) UnsubscribePings(ch <-chan *github.PingEvent) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	for i, sub := range wb.pingSubs {
+		if sub == ch {
+			close(sub)
+			wb.pingSubs = append(wb.pingSubs[:i], wb.pingSubs[i+1:]...)
+			break
+		}
+	}
+}
+
+func (wb *WebhookBroker) publishPing(event *github.PingEvent, fromCluster bool) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	if wb.closed {
+		return
+	}
+
+	for _, sub := range wb.pingSubs {
+		// non-blocking send
+		select {
+		case sub <- event:
+		default:
+		}
+	}
+
+	if !fromCluster {
+		wb.sendGitHubPingEvent(event)
+	}
+}
+
+func (wb *WebhookBroker) Close() {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	if !wb.closed {
+		wb.closed = true
+
+		for _, sub := range wb.pingSubs {
+			close(sub)
+		}
+	}
+}
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
@@ -83,7 +156,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	event, err := github.ParseWebHook(github.WebHookType(r), body)
 	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
 		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
@@ -91,7 +164,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	if config.EnableWebhookEventLogging {
 		bodyByte, appErr := json.Marshal(event)
 		if appErr != nil {
-			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
+			p.API.LogWarn("Error while Marshal Webhook Request", "error", appErr.Error())
 			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
 			return
 		}
@@ -113,6 +186,10 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	var handler func()
 
 	switch event := event.(type) {
+	case *github.PingEvent:
+		handler = func() {
+			p.webhookBroker.publishPing(event, false)
+		}
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
 		handler = func() {
@@ -167,11 +244,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if repo == nil || handler == nil {
+	if handler == nil {
 		return
 	}
 
-	if repo.GetPrivate() && !config.EnablePrivateRepo {
+	if repo != nil && repo.GetPrivate() && !config.EnablePrivateRepo {
 		return
 	}
 
@@ -183,7 +260,9 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.getBaseURL())
 
 	if owner == "" {
 		return false
@@ -317,11 +396,13 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
+
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
 	return strings.TrimSpace(policy.Sanitize(description))
 }
+
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != actionOpened {
