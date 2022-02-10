@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -333,12 +334,20 @@ func getToDoDisplayText(baseURL, title, url, notifType string) string {
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
 }
 
-// ItemExists check if the element exist in the passed array
-func ItemExists(array []string, item string) (bool, int) {
-	for i := 0; i < len(array); i++ {
-		if array[i] == item {
-			return true, i
-		}
+// isValidURL checks if a given URL is a valid URL with a host and a http or http scheme.
+func isValidURL(rawURL string) error {
+	u, err := url.ParseRequestURI(rawURL)
+	if err != nil {
+		return err
 	}
-	return false, -1
+
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return errors.Errorf("URL schema must either be %q or %q", "http", "https")
+	}
+
+	if u.Host == "" {
+		return errors.New("URL must contain a host")
+	}
+
+	return nil
 }
