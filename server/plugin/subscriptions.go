@@ -117,6 +117,10 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
 }
 
+func (s *Subscription) RenderTitleOnly() bool {
+	return s.Flags.TitleOnly
+}
+
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
 		return errors.Errorf("invalid repository")

@@ -182,13 +182,15 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
-#### {{.GetPullRequest.GetTitle}}
-##### {{template "eventRepoPullRequest" .}}
-#new-pull-request by {{template "user" .GetSender}}
-{{- template "labels" dict "Labels" .GetPullRequest.Labels "RepositoryURL" .GetRepo.GetHTMLURL  }}
-{{- template "assignee" .GetPullRequest }}
+#### {{.Event.GetPullRequest.GetTitle}}
+##### {{template "eventRepoPullRequest" .Event}}
+#new-pull-request by {{template "user" .Event.GetSender}}
+{{- if not .Config.TitleOnly -}}
+{{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
+{{- template "assignee" .Event.GetPullRequest }}
 
-{{.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{- end }}
 `))
 
 	template.Must(masterTemplate.New("closedPR").Funcs(funcMap).Parse(`
@@ -209,27 +211,29 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{.GetPullRequest.GetBody | trimBody | quote | replaceAllGitHubUsernames}}`))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
-#### {{.GetIssue.GetTitle}}
-##### {{template "eventRepoIssue" .}}
-#new-issue by {{template "user" .GetSender}}
-{{- template "labels" dict "Labels" .GetIssue.Labels "RepositoryURL" .GetRepo.GetHTMLURL  }}
-{{- template "assignee" .GetIssue }}
+#### {{.Event.GetIssue.GetTitle}}
+##### {{template "eventRepoIssue" .Event}}
+#new-issue by {{template "user" .Event.GetSender}}
+{{- if not .Config.TitleOnly -}}
+{{- template "labels" dict "Labels" .Event.GetIssue.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
+{{- template "assignee" .Event.GetIssue }}
 
-{{.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{.Event.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{- end}}
 `))
 
 	template.Must(masterTemplate.New("closedIssue").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} Issue {{template "issue" .GetIssue}} closed by {{template "user" .GetSender}}.
+{{template "repo" .Event.GetRepo}} Issue {{template "issue" .Event.GetIssue}} closed by {{template "user" .Event.GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("issueLabelled").Funcs(funcMap).Parse(`
-#### {{.GetIssue.GetTitle}}
-##### {{template "eventRepoIssue" .}}
-#issue-labeled ` + "`{{.GetLabel.GetName}}`" + ` by {{template "user" .GetSender}}.
+#### {{.Event.GetIssue.GetTitle}}
+##### {{template "eventRepoIssue" .Event}}
+#issue-labeled ` + "`{{.Event.GetLabel.GetName}}`" + ` by {{template "user" .Event.GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("reopenedIssue").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} Issue {{template "issue" .GetIssue}} reopened by {{template "user" .GetSender}}.
+{{template "repo" .Event.GetRepo}} Issue {{template "issue" .Event.GetIssue}} reopened by {{template "user" .Event.GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
