@@ -112,7 +112,7 @@ func (fm *FlowManager) doneStep() flow.Step {
 func (fm *FlowManager) onDone(f *flow.Flow) {
 	fm.trackCompleteSetupWizard(f.UserID)
 
-	delegatedFrom := f.State.GetString(keyDelegatedFrom)
+	delegatedFrom := f.GetState().GetString(keyDelegatedFrom)
 	if delegatedFrom != "" {
 		err := fm.setupFlow.ForUser(delegatedFrom).Go(stepDelegateComplete)
 		fm.client.Log.Warn("failed start configuration wizard for delegate", "error", err)
@@ -287,7 +287,7 @@ func (fm *FlowManager) stepDelegateQuestion() flow.Step {
 			Name:  "I'll do it myself",
 			Color: flow.ColorPrimary,
 			OnClick: func(f *flow.Flow) (flow.Name, flow.State, error) {
-				if f.State.GetBool(keyUsePreregisteredApplication) {
+				if f.GetState().GetBool(keyUsePreregisteredApplication) {
 					return stepOAuthConnect, nil, nil
 				}
 
