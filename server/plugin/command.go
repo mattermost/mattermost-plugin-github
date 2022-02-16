@@ -410,7 +410,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	repoLink := p.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("A subscription to repository \"[%s](%s)\", was added to this channel by @%v, with events: %s", repo, repoLink, user.Username, defaultEvents.FormattedString())
+	msg := fmt.Sprintf("A subscription to repository \"[%s/%s](%s)\", was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, defaultEvents.FormattedString())
 	if previousSubscribedEvents != "" {
 		msg += previouslySubscribedEventMessage
 	}
