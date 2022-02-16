@@ -169,7 +169,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return fmt.Sprintf("`%v`", username) + " is now muted. You will no longer receive notifications for comments in your PRs and issues."
+	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
 func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
@@ -283,14 +283,6 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 		txt += "\n"
 	}
 
-	excludeRepos, err := p.GetExcludedNotificationRepos()
-	if err != nil {
-		return err.Error()
-	}
-	for _, repo := range excludeRepos {
-		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(repo, "/"), "notification : disabled")
-		txt += "\n"
-	}
 	return txt
 }
 
@@ -299,22 +291,21 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
+	config := p.getConfiguration()
+	baseURL := config.getBaseURL()
 
 	flags := SubscriptionFlags{}
-	var excludeRepo string
 	if len(parameters) > 1 {
 		var optionList []string
 
 		for _, element := range parameters[1:] {
-			switch {
-			case isFlag(element):
+			if isFlag(element) {
 				flags.AddFlag(parseFlag(element))
-			case flags.ExcludeOrgRepos && excludeRepo == "":
-				excludeRepo = element
-			default:
+			} else {
 				optionList = append(optionList, element)
 			}
 		}
+
 		if len(optionList) > 1 {
 			return "Just one list of features is allowed"
 		} else if len(optionList) == 1 {
@@ -344,7 +335,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return appErr.Error()
 	}
 
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
 	previousSubscribedEvents, err := p.getSubscribedFeatures(args.ChannelId, owner, repo)
 	if err != nil {
 		return err.Error()
@@ -359,29 +350,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, defaultEvents, flags); err != nil {
 			return err.Error()
 		}
-		orgLink := p.getBaseURL() + owner
+		orgLink := baseURL + owner
 		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, defaultEvents.FormattedString())
-
-		if flags.ExcludeOrgRepos {
-			var excludeMsg string
-			for _, value := range strings.Split(excludeRepo, ",") {
-				val := strings.TrimSpace(value)
-				notificationOffRepoOwner, NotificationOffRepo := parseOwnerAndRepo(val, p.getBaseURL())
-				if notificationOffRepoOwner != owner {
-					return fmt.Sprintf("--exclude repository  %s is not of subscribed organization .", NotificationOffRepo)
-				}
-				if err = p.StoreExcludedNotificationRepo(val); err != nil {
-					return err.Error()
-				}
-				if excludeMsg != "" {
-					excludeMsg += fmt.Sprintf(" and [%s](%s)", NotificationOffRepo, orgLink+"/"+NotificationOffRepo)
-					continue
-				}
-				excludeMsg += fmt.Sprintf("[%s](%s)", NotificationOffRepo, orgLink+"/"+NotificationOffRepo)
-			}
-			subOrgMsg += "\n\n" + fmt.Sprintf("Notifications are disabled for %s", excludeMsg)
-		}
-
 		subscriptionSuccess := fmt.Sprintf("A subscription to organization [%s](%s) was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, defaultEvents.FormattedString())
 
 		if previousSubscribedEvents != "" {
@@ -401,14 +371,11 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		}
 		return subOrgMsg
 	}
-	if flags.ExcludeOrgRepos {
-		return "--exclude feature currently support on organization level."
-	}
 
 	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, defaultEvents, flags); err != nil {
 		return err.Error()
 	}
-	repoLink := p.getBaseURL() + owner + "/" + repo
+	repoLink := config.getBaseURL() + owner + "/" + repo
 
 	msg := fmt.Sprintf("A subscription to repository \"[%s/%s](%s)\", was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, defaultEvents.FormattedString())
 	if previousSubscribedEvents != "" {
@@ -440,6 +407,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	return message
 }
+
 func (p *Plugin) getSubscribedFeatures(channelID string, owner, repo string) (Features, error) {
 	var previousFeatures Features
 	subs, err := p.GetSubscriptionsByChannel(channelID)
@@ -467,10 +435,6 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 
 	repo := parameters[0]
 
-	if err := p.EnableNotificationTurnedOffRepo(repo); err != nil {
-		p.API.LogWarn("Failed to unsubscribe while removing repo from disable notification list", "repo", repo, "error", err.Error())
-		return "Encountered an error trying to remove from notify disabled list. Please try again."
-	}
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
 		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
@@ -599,6 +563,43 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
+func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+	userID := args.UserId
+	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
+	if err != nil {
+		p.API.LogWarn("Failed to check if user is System Admin", "error", err.Error())
+
+		return "Error checking user's permissions"
+	}
+
+	if !isSysAdmin {
+		return "Only System Admins are allowed to set up the plugin."
+	}
+
+	if len(parameters) == 0 {
+		err = p.flowManager.StartSetupWizard(userID, "")
+	} else {
+		command := parameters[0]
+
+		switch {
+		case command == "oauth":
+			err = p.flowManager.StartOauthWizard(userID)
+		case command == "webhook":
+			err = p.flowManager.StartWebhookWizard(userID)
+		case command == "announcement":
+			err = p.flowManager.StartAnnouncementWizard(userID)
+		default:
+			return fmt.Sprintf("Unknown subcommand %v", command)
+		}
+	}
+
+	if err != nil {
+		return err.Error()
+	}
+
+	return ""
+}
+
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
@@ -613,29 +614,36 @@ func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
+	command, action, parameters := parseCommand(args.Command)
+
+	if command != "/github" {
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "setup" {
+		message := p.handleSetup(c, args, parameters)
+		if message != "" {
+			p.postCommandResponse(args, message)
+		}
+		return &model.CommandResponse{}, nil
+	}
+
 	config := p.getConfiguration()
 
-	if err := config.IsValid(); err != nil {
+	if validationErr := config.IsValid(); validationErr != nil {
 		isSysAdmin, err := p.isAuthorizedSysAdmin(args.UserId)
 		var text string
 		switch {
 		case err != nil:
 			text = "Error checking user's permissions"
-			p.API.LogWarn(text, "err", err.Error())
+			p.API.LogWarn(text, "error", err.Error())
 		case isSysAdmin:
-			githubPluginURL := *p.API.GetConfig().ServiceSettings.SiteURL + "/admin_console/plugins/plugin_github"
-			text = fmt.Sprintf("Before using this plugin, you will need to configure it by filling out the settings in the system console [here](%s). You can learn more about the setup process [here](%s).", githubPluginURL, "https://github.com/mattermost/mattermost-plugin-github#step-3-configure-the-plugin-in-mattermost")
+			text = fmt.Sprintf("Before using this plugin, you'll need to configure it by running `/github setup`: %s", validationErr.Error())
 		default:
-			text = "Please contact your system administrator to configure the GitHub plugin."
+			text = "Please contact your system administrator to correctly configure the GitHub plugin."
 		}
 
 		p.postCommandResponse(args, text)
-		return &model.CommandResponse{}, nil
-	}
-
-	command, action, parameters := parseCommand(args.Command)
-
-	if command != "/github" {
 		return &model.CommandResponse{}, nil
 	}
 
@@ -698,6 +706,16 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 }
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
+	if !config.IsOAuthConfigured() {
+		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
+
+		setup := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
+		setup.RoleID = model.SystemAdminRoleId
+		github.AddCommand(setup)
+
+		return github
+	}
+
 	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
@@ -729,23 +747,12 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
-		exclude := []model.AutocompleteListItem{
-			{
-				HelpText: "notifications for these repos will be turned off",
-				Hint:     "(optional)",
-				Item:     "--exclude",
-			},
-		}
-		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude", true, exclude)
-		subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-		flags := []model.AutocompleteListItem{
-			{
-				HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has no effect)",
-				Hint:     "(optional)",
-				Item:     "--exclude-org-member",
-			},
-		}
-		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member ", false, flags)
+		flags := []model.AutocompleteListItem{{
+			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
+			Hint:     "(optional)",
+			Item:     "--exclude-org-member",
+		}}
+		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
 	}
 	subscriptions.AddCommand(subscriptionsAdd)
 
@@ -807,11 +814,18 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
 
-	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
-	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
+	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in GitHub, using the title if provided")
+	issueCreate.AddTextArgument("Title for the GitHub issue", "[title]", "")
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
+
+	setup := model.NewAutocompleteData("setup", "[command]", "Available commands: oauth, webhook, announcement")
+	setup.RoleID = model.SystemAdminRoleId
+	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Set up the OAuth2 Application in GitHub"))
+	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
+	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
+	github.AddCommand(setup)
 
 	return github
 }
