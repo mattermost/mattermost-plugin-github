@@ -496,7 +496,7 @@ func (fm *FlowManager) stepOAuthInput() flow.Step {
 						DisplayName: "GitHub OAuth Client Secret",
 						Name:        "client_secret",
 						Type:        "text",
-						SubType:     "password",
+						SubType:     "text",
 						Placeholder: "Enter GitHub OAuth Client Secret",
 					},
 				},
