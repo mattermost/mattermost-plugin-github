@@ -111,6 +111,12 @@ func (c *Configuration) IsSASS() bool {
 	return c.EnterpriseBaseURL == "" && c.EnterpriseUploadURL == ""
 }
 
+func (c *Configuration) ClientSafeSettings() map[string]interface{} {
+	return map[string]interface{}{
+		"left_sidebar_enabled": c.EnableLeftSidebar,
+	}
+}
+
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
 func (c *Configuration) Clone() *Configuration {

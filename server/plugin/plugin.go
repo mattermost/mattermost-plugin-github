@@ -393,10 +393,6 @@ type UserSettings struct {
 	Notifications         bool   `json:"notifications"`
 }
 
-type ClientSafeSettings struct {
-	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
-}
-
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 	config := p.getConfiguration()
 
