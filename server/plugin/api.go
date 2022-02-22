@@ -75,6 +75,10 @@ type HTTPHandlerFuncWithUserContext func(c *UserContext, w http.ResponseWriter, 
 // ResponseType indicates type of response returned by api
 type ResponseType string
 
+type Settings struct {
+	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
+}
+
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
@@ -129,6 +133,8 @@ func (p *Plugin) initializeAPI() {
 	oauthRouter.HandleFunc("/complete", p.checkAuth(p.attachContext(p.completeConnectUserToGitHub), ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/connected", p.attachContext(p.getConnected)).Methods(http.MethodGet)
+
+	apiRouter.HandleFunc("/settings", p.checkAuth(p.getSettings, ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/user", p.checkAuth(p.attachContext(p.getGitHubUser), ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/todo", p.checkAuth(p.attachUserContext(p.postToDo), ResponseTypeJSON)).Methods(http.MethodPost)
@@ -555,20 +561,18 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	config := p.getConfiguration()
 
 	type ConnectedResponse struct {
-		Connected         bool               `json:"connected"`
-		GitHubUsername    string             `json:"github_username"`
-		GitHubClientID    string             `json:"github_client_id"`
-		EnterpriseBaseURL string             `json:"enterprise_base_url,omitempty"`
-		Organization      string             `json:"organization"`
-		UserSettings      *UserSettings      `json:"user_settings"`
-		PluginSettings    ClientSafeSettings `json:"plugin_settings"`
+		Connected         bool          `json:"connected"`
+		GitHubUsername    string        `json:"github_username"`
+		GitHubClientID    string        `json:"github_client_id"`
+		EnterpriseBaseURL string        `json:"enterprise_base_url,omitempty"`
+		Organization      string        `json:"organization"`
+		Settings          *UserSettings `json:"settings"`
 	}
 
 	resp := &ConnectedResponse{
 		Connected:         false,
 		EnterpriseBaseURL: config.EnterpriseBaseURL,
 		Organization:      config.GitHubOrg,
-		PluginSettings:    p.getPluginSettings(),
 	}
 
 	if c.UserID == "" {
@@ -585,7 +589,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	resp.Connected = true
 	resp.GitHubUsername = info.GitHubUsername
 	resp.GitHubClientID = config.GitHubOAuthClientID
-	resp.UserSettings = info.Settings
+	resp.Settings = info.Settings
 
 	if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
 		lastPostAt := info.LastToDoPostAt
@@ -637,12 +641,12 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	p.writeJSON(w, resp)
 }
 
-func (p *Plugin) getPluginSettings() ClientSafeSettings {
-	pluginSettings := ClientSafeSettings{
+func (p *Plugin) getSettings(w http.ResponseWriter, _ *http.Request) {
+	resp := Settings{
 		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
 	}
 
-	return pluginSettings
+	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Request) {
