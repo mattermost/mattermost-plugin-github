@@ -334,7 +334,6 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if appErr != nil {
 		return appErr.Error()
 	}
-
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
 	previousSubscribedEvents, err := p.getSubscribedFeatures(args.ChannelId, owner, repo)
 	if err != nil {
@@ -351,12 +350,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			return err.Error()
 		}
 		orgLink := baseURL + owner
-		var subOrgMsg = fmt.Sprintf("Successfully subscribed to organization [%s](%s) with events: %s.", owner, orgLink, defaultEvents.FormattedString())
 		subscriptionSuccess := fmt.Sprintf("A subscription to organization [%s](%s) was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, defaultEvents.FormattedString())
 
 		if previousSubscribedEvents != "" {
 			subscriptionSuccess += previouslySubscribedEventMessage
-			subOrgMsg += previouslySubscribedEventMessage
 		}
 
 		post := &model.Post{
@@ -369,7 +366,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
 			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, appErr.Error())
 		}
-		return subOrgMsg
+		return ""
 	}
 
 	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, defaultEvents, flags); err != nil {
@@ -400,12 +397,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
 	}
 
-	message := fmt.Sprintf("A subscription to repository [%s/%s](%s) was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, defaultEvents.FormattedString())
-	if previousSubscribedEvents != "" {
-		message += previouslySubscribedEventMessage
-	}
-
-	return message
+	return ""
 }
 
 func (p *Plugin) getSubscribedFeatures(channelID string, owner, repo string) (Features, error) {
@@ -434,13 +426,58 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	}
 
 	repo := parameters[0]
+	config := p.getConfiguration()
+	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
+	if owner == "" && repo == "" {
+		return "invalid repository"
+	}
 
-	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
+	if err := p.Unsubscribe(args.ChannelId, repo, owner); err != nil {
 		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
-	return fmt.Sprintf("Successfully unsubscribed from %s.", repo)
+	baseURL := config.getBaseURL()
+	user, appErr := p.API.GetUser(args.UserId)
+	if appErr != nil {
+		p.API.LogWarn("error while fetching user details", "error", appErr.Error())
+		return fmt.Sprintf("error while fetching user details: %s", appErr.Error())
+	}
+
+	unsubscriptionMessage := ""
+	if repo != "" {
+		orgLink := baseURL + owner
+		unsubscriptionMessage = fmt.Sprintf("Unsubscribed from organization [%s](%s)  on this channel was done by @%v", owner, orgLink, user.Username)
+		post := &model.Post{
+			ChannelId: args.ChannelId,
+			UserId:    p.BotUserID,
+			Message:   unsubscriptionMessage,
+		}
+
+		if _, appErr := p.API.CreatePost(post); appErr != nil {
+			p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
+			return fmt.Sprintf("%s Though there was an error creating the public post: %s", unsubscriptionMessage, appErr.Error())
+		}
+
+		return ""
+	}
+
+	repoLink := baseURL + owner + "/" + repo
+	unsubscriptionMessage = fmt.Sprintf("Unsubscribed from repositories [%s](%s) on this channel was done by @%v", owner, repoLink, user.Username)
+	post := &model.Post{
+		ChannelId: args.ChannelId,
+		UserId:    p.BotUserID,
+		Message:   unsubscriptionMessage,
+	}
+
+	if _, appErr := p.API.CreatePost(post); appErr != nil {
+		p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
+		return fmt.Sprintf("%s Though there was an error creating the public post: %s", unsubscriptionMessage, appErr.Error())
+	}
+
+	return ""
 }
 
 func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {

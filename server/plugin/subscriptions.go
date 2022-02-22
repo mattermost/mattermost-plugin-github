@@ -303,17 +303,7 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	return subsToReturn
 }
 
-func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	config := p.getConfiguration()
-
-	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
-	if owner == "" && repo == "" {
-		return errors.New("invalid repository")
-	}
-
-	owner = strings.ToLower(owner)
-	repo = strings.ToLower(repo)
-
+func (p *Plugin) Unsubscribe(channelID string, repo, owner string) error {
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()
