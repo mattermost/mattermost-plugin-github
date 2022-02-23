@@ -44,7 +44,6 @@ func (ob *OAuthBroker) UnsubscribeOAuthComplete(userID string, ch <-chan error) 
 
 	for i, sub := range ob.oauthCompleteSubs[userID] {
 		if sub == ch {
-			close(sub)
 			ob.oauthCompleteSubs[userID] = append(ob.oauthCompleteSubs[userID][:i], ob.oauthCompleteSubs[userID][i+1:]...)
 			break
 		}
