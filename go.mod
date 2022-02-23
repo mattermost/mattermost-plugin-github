@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v41 v41.0.0
 	github.com/gorilla/mux v1.8.0
-	github.com/mattermost/mattermost-plugin-api v0.0.25-0.20220211190716-3a2a7cd9324a
+	github.com/mattermost/mattermost-plugin-api v0.0.25
 	github.com/mattermost/mattermost-server/v6 v6.3.0
 	github.com/microcosm-cc/bluemonday v1.0.18
 	github.com/pkg/errors v0.9.1
