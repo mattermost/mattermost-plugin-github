@@ -58,13 +58,11 @@ func (ob *OAuthBroker) publishOAuthComplete(userID string, err error, fromCluste
 		return
 	}
 
-	for _, userSubs := range ob.oauthCompleteSubs {
-		for _, sub := range userSubs {
-			// non-blocking send
-			select {
-			case sub <- err:
-			default:
-			}
+	for _, userSub := range ob.oauthCompleteSubs[userID] {
+		// non-blocking send
+		select {
+		case userSub <- err:
+		default:
 		}
 	}
 
