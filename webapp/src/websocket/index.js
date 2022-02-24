@@ -42,6 +42,19 @@ export function handleDisconnect(store) {
     };
 }
 
+export function handleConfigurationUpdate(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+
+        store.dispatch({
+            type: ActionTypes.RECEIVED_CONFIGURATION,
+            data: {...msg.data},
+        });
+    };
+}
+
 export function handleReconnect(store, reminder = false) {
     return async () => {
         const {data} = await getConnected(reminder)(store.dispatch, store.getState);
