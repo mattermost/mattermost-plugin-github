@@ -36,7 +36,7 @@ export function handleDisconnect(store) {
                 github_username: '',
                 github_client_id: '',
                 user_settings: {},
-                plugin_settings: {},
+                configuration: {},
             },
         });
     };

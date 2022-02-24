@@ -111,7 +111,7 @@ func (c *Configuration) IsSASS() bool {
 	return c.EnterpriseBaseURL == "" && c.EnterpriseUploadURL == ""
 }
 
-func (c *Configuration) ClientSafeSettings() map[string]interface{} {
+func (c *Configuration) ClientConfiguration() map[string]interface{} {
 	return map[string]interface{}{
 		"left_sidebar_enabled": c.EnableLeftSidebar,
 	}
