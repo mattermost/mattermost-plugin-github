@@ -6,7 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -147,7 +147,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
 	signature := r.Header.Get("X-Hub-Signature")
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
