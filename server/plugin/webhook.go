@@ -6,7 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,6 +18,9 @@ import (
 )
 
 const (
+	// MaxWebhookRequestSize is the maxium size of a webhook request body.
+	MaxWebhookRequestSize = 1024 * 1024 * 5
+
 	actionOpened    = "opened"
 	actionClosed    = "closed"
 	actionReopened  = "reopened"
@@ -147,10 +150,22 @@ func (wb *WebhookBroker) Close() {
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
-	signature := r.Header.Get("X-Hub-Signature")
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(io.LimitReader(r.Body, MaxWebhookRequestSize))
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
+		return
+	}
+
+	signature := r.Header.Get("X-Hub-Signature")
+	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
+	if err != nil {
+		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	if !valid {
+		http.Error(w, "Not authorized", http.StatusUnauthorized)
 		return
 	}
 
@@ -169,17 +184,6 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
-	}
-	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
-	if err != nil {
-		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-
-	if !valid {
-		http.Error(w, "Not authorized", http.StatusUnauthorized)
-		return
 	}
 
 	var repo *github.Repository
