@@ -484,6 +484,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			"github_client_id":    config.GitHubOAuthClientID,
 			"enterprise_base_url": config.EnterpriseBaseURL,
 			"organization":        config.GitHubOrg,
+			"configuration":       config.ClientConfiguration(),
 		},
 		&model.WebsocketBroadcast{UserId: state.UserID},
 	)
@@ -555,20 +556,20 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	config := p.getConfiguration()
 
 	type ConnectedResponse struct {
-		Connected         bool               `json:"connected"`
-		GitHubUsername    string             `json:"github_username"`
-		GitHubClientID    string             `json:"github_client_id"`
-		EnterpriseBaseURL string             `json:"enterprise_base_url,omitempty"`
-		Organization      string             `json:"organization"`
-		UserSettings      *UserSettings      `json:"user_settings"`
-		PluginSettings    ClientSafeSettings `json:"plugin_settings"`
+		Connected           bool                   `json:"connected"`
+		GitHubUsername      string                 `json:"github_username"`
+		GitHubClientID      string                 `json:"github_client_id"`
+		EnterpriseBaseURL   string                 `json:"enterprise_base_url,omitempty"`
+		Organization        string                 `json:"organization"`
+		UserSettings        *UserSettings          `json:"user_settings"`
+		ClientConfiguration map[string]interface{} `json:"configuration"`
 	}
 
 	resp := &ConnectedResponse{
-		Connected:         false,
-		EnterpriseBaseURL: config.EnterpriseBaseURL,
-		Organization:      config.GitHubOrg,
-		PluginSettings:    p.getPluginSettings(),
+		Connected:           false,
+		EnterpriseBaseURL:   config.EnterpriseBaseURL,
+		Organization:        config.GitHubOrg,
+		ClientConfiguration: p.getConfiguration().ClientConfiguration(),
 	}
 
 	if c.UserID == "" {
@@ -635,14 +636,6 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	}
 
 	p.writeJSON(w, resp)
-}
-
-func (p *Plugin) getPluginSettings() ClientSafeSettings {
-	pluginSettings := ClientSafeSettings{
-		LeftSidebarEnabled: p.getConfiguration().EnableLeftSidebar,
-	}
-
-	return pluginSettings
 }
 
 func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Request) {
