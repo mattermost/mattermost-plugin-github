@@ -350,7 +350,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			return err.Error()
 		}
 		orgLink := baseURL + owner
-		subscriptionSuccess := fmt.Sprintf("A subscription to organization [%s](%s) was added to this channel by @%v, with events: %s", owner, orgLink, user.Username, defaultEvents.FormattedString())
+		subscriptionSuccess := fmt.Sprintf("%s subscribed this channel to [%s](%s) with the following events: %s.", user.Username, owner, orgLink, defaultEvents.FormattedString())
 
 		if previousSubscribedEvents != "" {
 			subscriptionSuccess += previouslySubscribedEventMessage
@@ -374,7 +374,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 	repoLink := config.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("A subscription to repository \"[%s/%s](%s)\", was added to this channel by @%v, with events: %s", owner, repo, repoLink, user.Username, defaultEvents.FormattedString())
+	msg := fmt.Sprintf("%s subscribed this channel to [%s/%s](%s) with the following events: ", user.Username, owner, repo, repoLink, defaultEvents.FormattedString())
 	if previousSubscribedEvents != "" {
 		msg += previouslySubscribedEventMessage
 	}
@@ -449,7 +449,7 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	unsubscriptionMessage := ""
 	if repo != "" {
 		orgLink := baseURL + owner
-		unsubscriptionMessage = fmt.Sprintf("Unsubscribed from organization [%s](%s)  on this channel was done by @%v", owner, orgLink, user.Username)
+		unsubscriptionMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s](%s)", user.Username, owner, orgLink)
 		post := &model.Post{
 			ChannelId: args.ChannelId,
 			UserId:    p.BotUserID,
