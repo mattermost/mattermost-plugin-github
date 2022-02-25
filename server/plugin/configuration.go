@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
+	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
 
@@ -106,9 +107,15 @@ func (c *Configuration) IsOAuthConfigured() bool {
 		c.UsePreregisteredApplication
 }
 
-// IsSASS return if SASS GitHub at https://github.com is used
+// IsSASS return if SASS GitHub at https://github.com is used.
 func (c *Configuration) IsSASS() bool {
 	return c.EnterpriseBaseURL == "" && c.EnterpriseUploadURL == ""
+}
+
+func (c *Configuration) ClientConfiguration() map[string]interface{} {
+	return map[string]interface{}{
+		"left_sidebar_enabled": c.EnableLeftSidebar,
+	}
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -192,6 +199,8 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	configuration.sanitize()
 
+	p.sendWebsocketEventIfNeeded(p.getConfiguration(), configuration)
+
 	p.setConfiguration(configuration)
 
 	command, err := p.getCommand(configuration)
@@ -214,6 +223,19 @@ func (p *Plugin) OnConfigurationChange() error {
 	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
 
 	return nil
+}
+
+func (p *Plugin) sendWebsocketEventIfNeeded(oldConfig, newConfig *Configuration) {
+	// If the plugin just started, oldConfig is the zero value.
+	// Hence, an unnecessary websocket event is sent.
+	// Given that oldConfig is never nil, that case is hard to catch.
+	if !reflect.DeepEqual(oldConfig.ClientConfiguration(), newConfig.ClientConfiguration()) {
+		p.API.PublishWebSocketEvent(
+			WSEventConfigUpdate,
+			newConfig.ClientConfiguration(),
+			&model.WebsocketBroadcast{},
+		)
+	}
 }
 
 func generateSecret() (string, error) {

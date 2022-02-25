@@ -31,10 +31,14 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	wsEventConnect     = "connect"
-	wsEventDisconnect  = "disconnect"
-	wsEventRefresh     = "refresh"
-	wsEventCreateIssue = "createIssue"
+	wsEventConnect    = "connect"
+	wsEventDisconnect = "disconnect"
+	// WSEventConfigUpdate is the WebSocket event to update the configurations on webapp.
+	WSEventConfigUpdate = "config_update"
+	wsEventRefresh      = "refresh"
+	wsEventCreateIssue  = "createIssue"
+
+	WSEventRefresh = "refresh"
 
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
@@ -391,10 +395,6 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
-}
-
-type ClientSafeSettings struct {
-	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
