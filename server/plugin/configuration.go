@@ -199,7 +199,7 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	configuration.sanitize()
 
-	p.sendWebsocketEventIfneeded(p.getConfiguration(), configuration)
+	p.sendWebsocketEventIfNeeded(p.getConfiguration(), configuration)
 
 	p.setConfiguration(configuration)
 
@@ -225,9 +225,9 @@ func (p *Plugin) OnConfigurationChange() error {
 	return nil
 }
 
-func (p *Plugin) sendWebsocketEventIfneeded(oldConfig, newConfig *Configuration) {
+func (p *Plugin) sendWebsocketEventIfNeeded(oldConfig, newConfig *Configuration) {
 	// If the plugin just started, oldConfig is the zero value.
-	// Hence, an unnecessary websocket event is send.
+	// Hence, an unnecessary websocket event is sent.
 	// Given that oldConfig is never nil, that case is hard to catch.
 	if !reflect.DeepEqual(oldConfig.ClientConfiguration(), newConfig.ClientConfiguration()) {
 		p.API.PublishWebSocketEvent(

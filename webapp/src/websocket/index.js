@@ -50,7 +50,7 @@ export function handleConfigurationUpdate(store) {
 
         store.dispatch({
             type: ActionTypes.RECEIVED_CONFIGURATION,
-            data: {...msg.data},
+            data: msg.data,
         });
     };
 }
