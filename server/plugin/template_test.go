@@ -376,7 +376,7 @@ func TestPullRequestLabelledTemplate(t *testing.T) {
 
 func TestPullRequestLabelledCollapsedTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) labeled ` + "`label-name`" + ` by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("pullRequestLabelledCollapsed", &github.PullRequestEvent{
