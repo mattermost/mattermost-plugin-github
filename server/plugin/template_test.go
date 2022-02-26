@@ -311,6 +311,20 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 	})
 }
 
+func TestNewPRCollapsedMessageTemplate(t *testing.T) {
+	expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) opened by [panda](https://github.com/panda).
+`
+
+	actual, err := renderTemplate("newPRCollapsed", &github.PullRequestEvent{
+		Repo:        &repo,
+		PullRequest: &pullRequest,
+		Sender:      &user,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
 func TestClosedPRMessageTemplate(t *testing.T) {
 	t.Run("merged", func(t *testing.T) {
 		expected := `
@@ -349,6 +363,23 @@ func TestPullRequestLabelledTemplate(t *testing.T) {
 `
 
 	actual, err := renderTemplate("pullRequestLabelled", &github.PullRequestEvent{
+		Repo:        &repo,
+		PullRequest: &pullRequest,
+		Label: &github.Label{
+			Name: sToP("label-name"),
+		},
+		Sender: &user,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
+func TestPullRequestLabelledCollapsedTemplate(t *testing.T) {
+	expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
+`
+
+	actual, err := renderTemplate("pullRequestLabelledCollapsed", &github.PullRequestEvent{
 		Repo:        &repo,
 		PullRequest: &pullRequest,
 		Label: &github.Label{
@@ -439,6 +470,20 @@ git-get-head sounds like a great feature we should support
 	})
 }
 
+func TestNewIssueCollapsedTemplate(t *testing.T) {
+	expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) opened by [panda](https://github.com/panda).
+`
+
+	actual, err := renderTemplate("newIssueCollapsed", &github.IssuesEvent{
+		Repo:   &repo,
+		Issue:  &issue,
+		Sender: &user,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
 func TestClosedIssueTemplate(t *testing.T) {
 	expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
@@ -475,6 +520,23 @@ func TestIssueLabelledTemplate(t *testing.T) {
 `
 
 	actual, err := renderTemplate("issueLabelled", &github.IssuesEvent{
+		Repo:  &repo,
+		Issue: &issue,
+		Label: &github.Label{
+			Name: sToP("label-name"),
+		},
+		Sender: &user,
+	})
+	require.NoError(t, err)
+	require.Equal(t, expected, actual)
+}
+
+func TestIssueLabelledCollapsedTemplate(t *testing.T) {
+	expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
+`
+
+	actual, err := renderTemplate("issueLabelledCollapsed", &github.IssuesEvent{
 		Repo:  &repo,
 		Issue: &issue,
 		Label: &github.Label{

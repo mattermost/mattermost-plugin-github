@@ -6,33 +6,49 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v41/github"
 	"github.com/pkg/errors"
 )
 
-const (
-	SubscriptionsKey     = "subscriptions"
-	excludeOrgMemberFlag = "exclude-org-member"
-)
+const SubscriptionsKey = "subscriptions"
 
 type SubscriptionFlags struct {
-	ExcludeOrgMembers bool
+	ExcludeOrgMembers     bool
+	CollapseNotifications bool
 }
 
-func (s *SubscriptionFlags) AddFlag(flag string) {
+func (f *SubscriptionFlags) AddFlag(flag, optionString string) string {
+	option, err := strconv.ParseBool(optionString)
+	if err != nil || optionString == "" {
+		return "Please use the correct format for flags. For example: `--collapsed true`. Valid flags include " + validFlagsString()
+	}
+
 	switch flag { // nolint:gocritic // It's expected that more flags get added.
 	case excludeOrgMemberFlag:
-		s.ExcludeOrgMembers = true
+		f.ExcludeOrgMembers = option
+
+	case collapseNotificationsFlag:
+		f.CollapseNotifications = option
+
+	default:
+		return "Please use the correct format for flags. For example: `--collapsed true`. Valid flags include " + validFlagsString()
 	}
+
+	return ""
 }
 
-func (s SubscriptionFlags) String() string {
+func (f SubscriptionFlags) String() string {
 	flags := []string{}
 
-	if s.ExcludeOrgMembers {
+	if f.ExcludeOrgMembers {
 		flag := "--" + excludeOrgMemberFlag
+		flags = append(flags, flag)
+	}
+	if f.CollapseNotifications {
+		flag := "--" + collapseNotificationsFlag
 		flags = append(flags, flag)
 	}
 
@@ -106,6 +122,10 @@ func (s *Subscription) Label() string {
 
 func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
+}
+
+func (s *Subscription) CollapseNotifications() bool {
+	return s.Flags.CollapseNotifications
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {

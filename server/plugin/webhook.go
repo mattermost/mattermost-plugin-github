@@ -327,19 +327,42 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	newPRMessage, err := renderTemplate("newPR", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.API.LogWarn("Failed to render newPRCollapsed template", "error", err.Error())
 		return
+	}
+
+	newPRCollapsedMessage, err := renderTemplate("newPRCollapsed", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render newPRCollapsed template", "error", err.Error())
+		return
+	}
+
+	pullRequestLabelledMessage := ""
+	pullRequestLabelledCollapsedMessage := ""
+	if action == "labeled" {
+		pullRequestLabelledMessage, err = renderTemplate("pullRequestLabelled", event)
+		if err != nil {
+			p.API.LogWarn("Failed to render template", "error", err.Error())
+			return
+		}
+
+		pullRequestLabelledCollapsedMessage, err = renderTemplate("pullRequestLabelledCollapsed", event)
+		if err != nil {
+			p.API.LogWarn("Failed to render template", "error", err.Error())
+			return
+		}
 	}
 
 	closedPRMessage, err := renderTemplate("closedPR", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.API.LogWarn("Failed to render closedPR template", "error", err.Error())
 		return
 	}
 
 	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_pr",
+		UserId:  p.BotUserID,
+		Type:    "custom_git_pr",
+		Message: "",
 	}
 
 	for _, sub := range subs {
@@ -347,7 +370,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != actionClosed {
+		if sub.PullsMerged() && action != "closed" {
 			continue
 		}
 
@@ -355,39 +378,43 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		label := sub.Label()
+		subscribedLabel := sub.Label()
 
 		contained := false
 		for _, v := range labels {
-			if v == label {
+			if v == subscribedLabel {
 				contained = true
 			}
 		}
 
-		if !contained && label != "" {
+		if !contained && subscribedLabel != "" {
 			continue
 		}
 
-		if action == actionLabeled {
-			if label != "" && label == eventLabel {
-				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
-				if err != nil {
-					p.API.LogWarn("Failed to render template", "error", err.Error())
-					return
+		switch action {
+		case "labeled":
+			if sub.Label() == eventLabel {
+				if sub.CollapseNotifications() {
+					post.Message = pullRequestLabelledCollapsedMessage
+				} else {
+					post.Message = pullRequestLabelledMessage
 				}
-
-				post.Message = pullRequestLabelledMessage
 			} else {
 				continue
 			}
-		}
 
-		if action == actionOpened {
-			post.Message = p.sanitizeDescription(newPRMessage)
-		}
+		case "opened":
+			if sub.CollapseNotifications() {
+				post.Message = p.sanitizeDescription(newPRCollapsedMessage)
+			} else {
+				post.Message = p.sanitizeDescription(newPRMessage)
+			}
 
-		if action == actionClosed {
+		case "closed":
 			post.Message = closedPRMessage
+
+		default:
+			return
 		}
 
 		post.ChannelId = sub.ChannelID
@@ -476,35 +503,46 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		return
 	}
 
-	issueTemplate := ""
-	switch action {
-	case actionOpened:
-		issueTemplate = "newIssue"
-
-	case actionClosed:
-		issueTemplate = "closedIssue"
-
-	case actionReopened:
-		issueTemplate = "reopenedIssue"
-
-	case actionLabeled:
-		issueTemplate = "issueLabelled"
-
-	default:
-		return
-	}
-
-	renderedMessage, err := renderTemplate(issueTemplate, event)
+	newIssueMessage, err := renderTemplate("newIssue", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.API.LogWarn("Failed to render newIssueMessage template", "error", err.Error())
 		return
 	}
-	renderedMessage = p.sanitizeDescription(renderedMessage)
+
+	newIssueCollapsedMessage, err := renderTemplate("newIssueCollapsed", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render newIssueCollapsed template", "error", err.Error())
+		return
+	}
+
+	closedIssueMessage, err := renderTemplate("closedIssue", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render closedIssue template", "error", err.Error())
+		return
+	}
+
+	reopenedIssueMessage, err := renderTemplate("reopenedIssue", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render reopenedIssue template", "error", err.Error())
+		return
+	}
+
+	issueLabelledMessage, err := renderTemplate("issueLabelled", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render issueLabelled template", "error", err.Error())
+		return
+	}
+
+	issueLabelledCollapsedMessage, err := renderTemplate("issueLabelledCollapsed", event)
+	if err != nil {
+		p.API.LogWarn("Failed to render issueLabelled template", "error", err.Error())
+		return
+	}
 
 	post := &model.Post{
 		UserId:  p.BotUserID,
 		Type:    "custom_git_issue",
-		Message: renderedMessage,
+		Message: "",
 	}
 
 	eventLabel := event.GetLabel().GetName()
@@ -543,6 +581,31 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			if label == "" || label != eventLabel {
 				continue
 			}
+		}
+
+		switch action {
+		case "opened":
+			if sub.CollapseNotifications() {
+				post.Message = newIssueCollapsedMessage
+			} else {
+				post.Message = newIssueMessage
+			}
+
+		case "labeled":
+			if sub.CollapseNotifications() {
+				post.Message = issueLabelledCollapsedMessage
+			} else {
+				post.Message = issueLabelledMessage
+			}
+
+		case "closed":
+			post.Message = closedIssueMessage
+
+		case "reopened":
+			post.Message = reopenedIssueMessage
+
+		default:
+			return
 		}
 
 		post.ChannelId = sub.ChannelID

@@ -148,7 +148,8 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
    /github subscriptions add mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
    ```
   - The following flags are supported:
-     - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
+     - `--exclude-org-member [true/false]`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
+     - `--collapsed [true/false]`: All notifications about events from the plugin will be collapsed and save space if set to true. The default is false, which shows large, informational messages for notifications, taking up more space.
    
 * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review.
 * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders.
