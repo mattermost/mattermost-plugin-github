@@ -18,9 +18,6 @@ import (
 )
 
 const (
-	// MaxWebhookRequestSize is the maxium size of a webhook request body.
-	MaxWebhookRequestSize = 1024 * 1024 * 5
-
 	actionOpened    = "opened"
 	actionClosed    = "closed"
 	actionReopened  = "reopened"
@@ -150,7 +147,7 @@ func (wb *WebhookBroker) Close() {
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, MaxWebhookRequestSize))
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
