@@ -3,14 +3,14 @@
 
 import {connect} from 'react-redux';
 
-import {pluginSettings} from '../../selectors';
+import {configuration} from '../../selectors';
 
 import SidebarHeader from './sidebar_header.jsx';
 
 function mapStateToProps(state) {
     const members = state.entities.teams.myMembers || {};
 
-    const sidebarEnabled = pluginSettings(state).left_sidebar_enabled;
+    const sidebarEnabled = configuration(state).left_sidebar_enabled;
     const show = sidebarEnabled && Object.keys(members).length <= 1;
 
     return {

@@ -13,7 +13,7 @@ import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
 import Client from './client';
 import {getConnected, setShowRHSAction} from './actions';
-import {handleConnect, handleDisconnect, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
+import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 import {getServerRoute} from './selectors';
 import {id as pluginId} from './manifest';
 
@@ -42,6 +42,7 @@ class PluginClass {
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_config_update`, handleConfigurationUpdate(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateIssueModal(store));
         registry.registerReconnectHandler(handleReconnect(store));
