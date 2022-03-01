@@ -164,7 +164,7 @@ const (
 	stepCancel  flow.Name = "cancel"
 
 	keyDelegatedFrom               = "DelegatedFrom"
-	keyDelegatedTo                 = "DelgatedTo"
+	keyDelegatedTo                 = "DelegatedTo"
 	keyBaseURL                     = "BaseURL"
 	keyUsePreregisteredApplication = "UsePreregisteredApplication"
 	keyIsOAuthConfigured           = "IsOAuthConfigured"
@@ -342,9 +342,9 @@ func (fm *FlowManager) submitDelegateSelection(f *flow.Flow, submitted map[strin
 
 func (fm *FlowManager) stepDelegateConfirmation() flow.Step {
 	return flow.NewStep(stepDelegateConfirmation).
-		WithText("GitHub integration setup details have been sent to @{{ .DelgatedTo }}").
+		WithText("GitHub integration setup details have been sent to @{{ .DelegatedTo }}").
 		WithButton(flow.Button{
-			Name:     "Waiting for @{{ .DelgatedTo }}...",
+			Name:     "Waiting for @{{ .DelegatedTo }}...",
 			Color:    flow.ColorDefault,
 			Disabled: true,
 		}).
@@ -353,7 +353,7 @@ func (fm *FlowManager) stepDelegateConfirmation() flow.Step {
 
 func (fm *FlowManager) stepDelegateComplete() flow.Step {
 	return flow.NewStep(stepDelegateComplete).
-		WithText("@{{ .DelgatedTo }} completed configuring the integration.").
+		WithText("@{{ .DelegatedTo }} completed configuring the integration.").
 		Next(stepDone)
 }
 
