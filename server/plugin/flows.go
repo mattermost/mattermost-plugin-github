@@ -172,7 +172,7 @@ const (
 
 func cancelButton() flow.Button {
 	return flow.Button{
-		Name:    "Cancel",
+		Name:    "Cancel setup",
 		Color:   flow.ColorDanger,
 		OnClick: flow.Goto(stepCancel),
 	}
@@ -470,7 +470,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 	return flow.NewStep(stepOAuthInfo).
 		WithPretext(oauthPretext).
 		WithText(oauthMessage).
-		WithImage(fm.pluginURL, "public/new-oauth-application.png").
+		WithImage("public/new-oauth-application.png").
 		WithButton(continueButton("")).
 		WithButton(cancelButton())
 }
@@ -694,13 +694,16 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 		return "", nil, nil, errors.Wrap(err, "failed to create hook")
 	}
 
-	select {
-	case event := <-ch:
-		if *event.HookID == *hook.ID {
-			break
+	var found bool
+	for !found {
+		select {
+		case event, ok := <-ch:
+			if ok && event != nil && *event.HookID == *hook.ID {
+				found = true
+			}
+		case <-ctx.Done():
+			return "", nil, nil, errors.New("timed out waiting for webhook event. Please check if the webhook was correctly created")
 		}
-	case <-ctx.Done():
-		return "", nil, nil, errors.New("timed out waiting for webhook event. Please check if the webhook was correctly created")
 	}
 
 	fm.pingBroker.UnsubscribePings(ch)

@@ -949,8 +949,8 @@ github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d h1:/RJ/UV7M5c7L2TQ
 github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d/go.mod h1:HLbgMEI5K131jpxGazJ97AxfPDt31osq36YS1oxFQPQ=
 github.com/mattermost/logr/v2 v2.0.15 h1:+WNbGcsc3dBao65eXlceB6dTILNJRIrvubnsTl3zBew=
 github.com/mattermost/logr/v2 v2.0.15/go.mod h1:mpPp935r5dIkFDo2y9Q87cQWhFR/4xXpNh0k/y8Hmwg=
-github.com/mattermost/mattermost-plugin-api v0.0.25-0.20220211190716-3a2a7cd9324a h1:ng2Y2ESXBY9K3eOjjsz+uIjFkda3ZXrjLOzofckPKl8=
-github.com/mattermost/mattermost-plugin-api v0.0.25-0.20220211190716-3a2a7cd9324a/go.mod h1:MM+tZ+36Obm9jqcveoxY2RFbwLaZKZUgR1zUlc0UBYw=
+github.com/mattermost/mattermost-plugin-api v0.0.26 h1:h43yUMkRbAmcFYtqbeUdIxxMKp6kRZUebVI6F9ezZpU=
+github.com/mattermost/mattermost-plugin-api v0.0.26/go.mod h1:MM+tZ+36Obm9jqcveoxY2RFbwLaZKZUgR1zUlc0UBYw=
 github.com/mattermost/mattermost-server/v6 v6.0.0-20220210052000-0d67995eb491 h1:OsIVqOSO2Dn6XNYKBHKbcFzDQIL5qwrocJwWTbTLAS8=
 github.com/mattermost/mattermost-server/v6 v6.0.0-20220210052000-0d67995eb491/go.mod h1:5iM6uoWoD+Ywp/497R+iCP2cBt5dTpn8d96kX+EPwFA=
 github.com/mattermost/rsc v0.0.0-20160330161541-bbaefb05eaa0/go.mod h1:nV5bfVpT//+B1RPD2JvRnxbkLmJEYXmRaaVl15fsXjs=

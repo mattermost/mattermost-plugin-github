@@ -64,6 +64,6 @@ func (p *Plugin) HandleClusterEvent(ev model.PluginClusterEvent) {
 
 		p.oauthBroker.publishOAuthComplete(event.UserID, event.Err, true)
 	default:
-		p.API.LogWarn("unknown cluset event", "id", ev.Id)
+		p.API.LogWarn("unknown cluster event", "id", ev.Id)
 	}
 }

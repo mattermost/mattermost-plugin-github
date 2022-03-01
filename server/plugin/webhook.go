@@ -103,7 +103,6 @@ func (wb *WebhookBroker) UnsubscribePings(ch <-chan *github.PingEvent) {
 
 	for i, sub := range wb.pingSubs {
 		if sub == ch {
-			close(sub)
 			wb.pingSubs = append(wb.pingSubs[:i], wb.pingSubs[i+1:]...)
 			break
 		}
