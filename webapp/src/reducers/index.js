@@ -57,10 +57,12 @@ function userSettings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, 
     }
 }
 
-function pluginSettings(state = {left_sidebar_enabled: true}, action) {
+function configuration(state = {left_sidebar_enabled: true}, action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        return action.data.plugin_settings;
+        return action.data.configuration;
+    case ActionTypes.RECEIVED_CONFIGURATION:
+        return action.data;
     default:
         return state;
     }
@@ -234,7 +236,7 @@ export default combineReducers({
     organization,
     username,
     userSettings,
-    pluginSettings,
+    configuration,
     clientId,
     reviews,
     reviewsDetails,
