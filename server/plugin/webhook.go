@@ -327,7 +327,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	newPRMessage, err := renderTemplate("newPR", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render newPRCollapsed template", "error", err.Error())
+		p.API.LogWarn("Failed to render newPR template", "error", err.Error())
 		return
 	}
 
