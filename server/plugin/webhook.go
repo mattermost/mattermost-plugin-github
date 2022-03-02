@@ -342,7 +342,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	if action == "labeled" {
 		pullRequestLabelledMessage, err = renderTemplate("pullRequestLabelled", event)
 		if err != nil {
-			p.API.LogWarn("Failed to render template", "error", err.Error())
+			p.API.LogWarn("Failed to render pullRequestLabelled template", "error", err.Error())
 			return
 		}
 
