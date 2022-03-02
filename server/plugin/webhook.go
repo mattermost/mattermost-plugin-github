@@ -348,7 +348,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		pullRequestLabelledCollapsedMessage, err = renderTemplate("pullRequestLabelledCollapsed", event)
 		if err != nil {
-			p.API.LogWarn("Failed to render template", "error", err.Error())
+			p.API.LogWarn("Failed to render pullRequestLabelledCollapsed template", "error", err.Error())
 			return
 		}
 	}
