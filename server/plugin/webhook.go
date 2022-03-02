@@ -392,7 +392,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		switch action {
-		case "labeled":
+		case actionLabeled:
 			if sub.Label() == eventLabel {
 				if sub.CollapseNotifications() {
 					post.Message = pullRequestLabelledCollapsedMessage
