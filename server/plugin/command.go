@@ -465,7 +465,7 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	}
 
 	repoLink := baseURL + owner + "/" + repo
-	unsubscriptionMessage = fmt.Sprintf("Unsubscribed from repositories [%s/%s](%s) on this channel was done by @%v", owner, repo, repoLink, user.Username)
+	unsubscriptionMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s/%s](%s)", user.Username, owner, repo, repoLink)
 	post := &model.Post{
 		ChannelId: args.ChannelId,
 		UserId:    p.BotUserID,
