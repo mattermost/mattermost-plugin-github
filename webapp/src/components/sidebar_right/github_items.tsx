@@ -5,10 +5,10 @@ import * as React from 'react';
 
 import * as CSS from 'csstype';
 
-import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
+import {Badge, OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {Theme} from 'mattermost-redux/types/preferences';
-import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
+import {changeOpacity, makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
+import {GitPullRequestIcon, IconProps, IssueOpenedIcon} from '@primer/octicons-react';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -115,14 +115,17 @@ function GithubItems(props: GithubItemsProps) {
             };
 
             let icon;
+            let title;
             if (item.pullRequest) {
                 // item is a pull request
                 icon = <GitPullRequestIcon {...iconProps}/>;
+                title = 'Pull Request';
             } else {
                 icon = <IssueOpenedIcon {...iconProps}/>;
+                title = 'Issue';
             }
             number = (
-                <strong>
+                <strong title={title} >
                     <span style={{...style.icon}}>
                         {icon}
                     </span>
@@ -166,6 +169,7 @@ function GithubItems(props: GithubItemsProps) {
         if (item.milestone) {
             milestone = (
                 <span
+                    title={'Milestone'}
                     style={
                         {
                             ...style.milestoneIcon,
@@ -186,13 +190,54 @@ function GithubItems(props: GithubItemsProps) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<span style={{...style.icon, ...style.iconSucess}}><TickIcon/></span>);
+                status = (
+                    <span
+                        title={'Success'}
+                        style={{...style.icon, ...style.iconSucess}}
+                    >
+                        <TickIcon/>
+                    </span>
+                );
                 break;
             case 'pending':
-                status = (<span style={{...style.icon, ...style.iconPending}}><DotIcon/></span>);
+                status = (
+                    <OverlayTrigger
+                        key='githubRHSPRPending'
+                        placement='top'
+                        overlay={
+                            <Tooltip id='githubRHSPRPendingTooltip'>
+                                {'Pending'}
+                            </Tooltip>
+                        }
+                    >
+                        <span
+                            aria-label={'Pending'}
+                            style={{...style.icon, ...style.iconPending}}
+                        >
+                            <DotIcon/>
+                        </span>
+                    </OverlayTrigger>
+                );
                 break;
             default:
-                status = (<span style={{...style.icon, ...style.iconFailed}}><CrossIcon/></span>);
+                status = (
+                    <OverlayTrigger
+                        key='githubRHSPRFailed'
+                        placement='top'
+                        overlay={
+                            <Tooltip id='githubRHSPRFailedTooltip'>
+                                {'Failed'}
+                            </Tooltip>
+                        }
+                    >
+                        <span
+                            aria-label={'Failed'}
+                            style={{...style.icon, ...style.iconFailed}}
+                        >
+                            <CrossIcon/>
+                        </span>
+                    </OverlayTrigger>
+                );
             }
         }
 
