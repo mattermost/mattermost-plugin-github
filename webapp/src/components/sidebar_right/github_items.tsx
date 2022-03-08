@@ -5,10 +5,10 @@ import * as React from 'react';
 
 import * as CSS from 'csstype';
 
-import {Badge, OverlayTrigger, Tooltip} from 'react-bootstrap';
+import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {Theme} from 'mattermost-redux/types/preferences';
-import {changeOpacity, makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
-import {GitPullRequestIcon, IconProps, IssueOpenedIcon} from '@primer/octicons-react';
+import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
