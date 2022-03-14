@@ -31,6 +31,9 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
+	mm34646MutexKey = "mm34646_token_reset_mutex"
+	mm34646DoneKey  = "mm34646_token_reset_done"
+
 	wsEventConnect    = "connect"
 	wsEventDisconnect = "disconnect"
 	// WSEventConfigUpdate is the WebSocket event to update the configurations on webapp.
@@ -121,17 +124,7 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 }
 
 func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
-	access := info.Token.AccessToken
-	config := p.getConfiguration()
-	updated, err := p.forceResetUserTokenMM34646(ctx, config, *info)
-	if err == nil {
-		access = updated
-	} else {
-		p.API.LogInfo("Failed to refresh access token", "error", err.Error())
-	}
-
 	tok := *info.Token
-	tok.AccessToken = access
 	return p.githubConnectToken(tok)
 }
 
@@ -242,9 +235,9 @@ func (p *Plugin) OnActivate() error {
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
 	go func() {
-		err := p.forceResetAllMM34646()
-		if err != nil {
-			p.API.LogDebug("failed to reset user tokens", "error", err.Error())
+		resetErr := p.forceResetAllMM34646()
+		if resetErr != nil {
+			p.API.LogDebug("failed to reset user tokens", "error", resetErr.Error())
 		}
 	}()
 	return nil
