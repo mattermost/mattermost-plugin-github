@@ -7,8 +7,8 @@ import {ClientError} from 'mattermost-redux/client/client4';
 import {id as pluginId} from '../manifest';
 
 export default class Client {
-    constructor() {
-        this.url = `/plugins/${pluginId}/api/v1`;
+    setServerRoute(url) {
+        this.url = url + `/plugins/${pluginId}/api/v1`;
     }
 
     getConnected = async (reminder = false) => {
@@ -77,10 +77,6 @@ export default class Client {
 
     getPullRequest = async (owner, repo, prNumber) => {
         return this.doGet(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
-    }
-
-    getSettings = async () => {
-        return this.doGet(`${this.url}/settings`);
     }
 
     doGet = async (url, body, headers = {}) => {

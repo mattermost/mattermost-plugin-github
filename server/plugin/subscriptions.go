@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/pkg/errors"
 )
 
@@ -55,6 +55,10 @@ func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features, featurePulls)
 }
 
+func (s *Subscription) PullsMerged() bool {
+	return strings.Contains(s.Features, "pulls_merged")
+}
+
 func (s *Subscription) IssueCreations() bool {
 	return strings.Contains(s.Features, "issue_creations")
 }
@@ -83,6 +87,10 @@ func (s *Subscription) PullReviews() bool {
 	return strings.Contains(s.Features, "pull_reviews")
 }
 
+func (s *Subscription) Stars() bool {
+	return strings.Contains(s.Features, featureStars)
+}
+
 func (s *Subscription) Label() string {
 	if !strings.Contains(s.Features, "label:") {
 		return ""
@@ -104,6 +112,9 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	if owner == "" {
 		return errors.Errorf("invalid repository")
 	}
+
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
 
 	if err := p.checkOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
@@ -257,6 +268,7 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
+	name = strings.ToLower(name)
 	org := strings.Split(name, "/")[0]
 	subs, err := p.GetSubscriptions()
 	if err != nil {
@@ -292,10 +304,16 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	owner, repo := parseOwnerAndRepo(repo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
 	if owner == "" && repo == "" {
 		return errors.New("invalid repository")
 	}
+
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
+
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()

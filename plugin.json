@@ -4,14 +4,16 @@
     "description": "GitHub plugin for Mattermost.",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
     "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
-    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.0.1",
+    "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.1.0",
     "icon_path": "assets/icon.svg",
-    "version": "2.0.1",
-    "min_server_version": "5.25.0",
+    "version": "2.1.0",
+    "min_server_version": "6.5.0",
     "server": {
       "executables": {
           "linux-amd64": "server/dist/plugin-linux-amd64",
+          "linux-arm64": "server/dist/plugin-linux-arm64",
           "darwin-amd64": "server/dist/plugin-darwin-amd64",
+          "darwin-arm64": "server/dist/plugin-darwin-arm64",
           "windows-amd64": "server/dist/plugin-windows-amd64.exe"
       }
     },
@@ -21,6 +23,13 @@
     "settings_schema": {
         "header": "The GitHub plugin for Mattermost allows users to subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common GitHub actions - directly from Mattermost. \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration).",
         "settings": [
+            {
+                "key": "UsePreregisteredApplication",
+                "display_name": "Use Preregistered OAuth Application:",
+                "type": "bool",
+                "help_text": "When true, instructs the plugin to use the preregistered GitHub OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with GitHub enterprise. **This setting is intended to be used with Mattermost Cloud instances only.**",
+                "default": false
+            },
             {
                 "key": "GitHubOAuthClientID",
                 "display_name": "GitHub OAuth Client ID:",
@@ -102,6 +111,13 @@
                         "value": "disable"
                     }
                 ]
+            },
+            {
+                "key": "EnableWebhookEventLogging",
+                "display_name": "Enable Webhook Event Logging:",
+                "type": "bool",
+                "help_text": "Allow the plugin to log the webhook event. The log level needs to be set to DEBUG.",
+                "default": false
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

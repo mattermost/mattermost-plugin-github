@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -13,41 +12,54 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v31/github"
+	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
+	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	root "github.com/mattermost/mattermost-plugin-github"
 )
 
 const (
 	githubTokenKey       = "_githubtoken"
+	githubOauthKey       = "githuboauthkey_"
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	wsEventConnect     = "connect"
-	wsEventDisconnect  = "disconnect"
-	wsEventRefresh     = "refresh"
-	wsEventCreateIssue = "createIssue"
+	wsEventConnect    = "connect"
+	wsEventDisconnect = "disconnect"
+	// WSEventConfigUpdate is the WebSocket event to update the configurations on webapp.
+	WSEventConfigUpdate = "config_update"
+	wsEventRefresh      = "refresh"
+	wsEventCreateIssue  = "createIssue"
+
+	WSEventRefresh = "refresh"
 
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
 	settingReminders     = "reminders"
 	settingOn            = "on"
 	settingOff           = "off"
+	settingOnChange      = "on-change"
 
 	notificationReasonSubscribed = "subscribed"
+	dailySummary                 = "_dailySummary"
+
+	chimeraGitHubAppIdentifier = "plugin-github"
+)
+
+var (
+	Manifest model.Manifest = root.Manifest
 )
 
 type Plugin struct {
 	plugin.MattermostPlugin
-	// githubPermalinkRegex is used to parse github permalinks in post messages.
-	githubPermalinkRegex *regexp.Regexp
-
-	BotUserID string
-
-	CommandHandlers map[string]CommandHandleFunc
+	client *pluginapi.Client
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -56,7 +68,24 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *Configuration
 
+	chimeraURL string
+
 	router *mux.Router
+
+	telemetryClient telemetry.Client
+	tracker         telemetry.Tracker
+
+	BotUserID   string
+	poster      poster.Poster
+	flowManager *FlowManager
+
+	CommandHandlers map[string]CommandHandleFunc
+
+	// githubPermalinkRegex is used to parse github permalinks in post messages.
+	githubPermalinkRegex *regexp.Regexp
+
+	webhookBroker *WebhookBroker
+	oauthBroker   *OAuthBroker
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -82,7 +111,31 @@ func NewPlugin() *Plugin {
 	return p
 }
 
-func (p *Plugin) githubConnect(token oauth2.Token) *github.Client {
+func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
+	userInfo, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		return nil, apiErr
+	}
+
+	return p.githubConnectUser(ctx, userInfo), nil
+}
+
+func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
+	access := info.Token.AccessToken
+	config := p.getConfiguration()
+	updated, err := p.forceResetUserTokenMM34646(ctx, config, *info)
+	if err == nil {
+		access = updated
+	} else {
+		p.API.LogInfo("Failed to refresh access token", "error", err.Error())
+	}
+
+	tok := *info.Token
+	tok.AccessToken = access
+	return p.githubConnectToken(tok)
+}
+
+func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
 	config := p.getConfiguration()
 
 	client, err := GetGitHubClient(token, config)
@@ -98,8 +151,12 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(context.Background(), ts)
 
+	return getGitHubClient(tc, config)
+}
+
+func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*github.Client, error) {
 	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
-		return github.NewClient(tc), nil
+		return github.NewClient(authenticatedClient), nil
 	}
 
 	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
@@ -108,7 +165,7 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	uploadURL, _ := url.Parse(config.EnterpriseUploadURL)
 	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
 
-	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), tc)
+	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), authenticatedClient)
 	if err != nil {
 		return nil, err
 	}
@@ -116,47 +173,113 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 	return client, nil
 }
 
-func (p *Plugin) OnActivate() error {
+func (p *Plugin) setDefaultConfiguration() error {
 	config := p.getConfiguration()
 
-	if err := config.IsValid(); err != nil {
-		return errors.Wrap(err, "invalid config")
+	changed, err := config.setDefaults(pluginapi.IsCloud(p.API.GetLicense()))
+	if err != nil {
+		return err
 	}
 
-	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
-		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
+	if changed {
+		configMap, err := config.ToMap()
+		if err != nil {
+			return err
+		}
+
+		appErr := p.API.SavePluginConfig(configMap)
+		if appErr != nil {
+			return appErr
+		}
+	}
+
+	return nil
+}
+
+func (p *Plugin) OnActivate() error {
+	p.client = pluginapi.NewClient(p.API, p.Driver)
+
+	siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil || *siteURL == "" {
+		return errors.New("siteURL is not set. Please set it and restart the plugin")
+	}
+
+	err := p.setDefaultConfiguration()
+	if err != nil {
+		return errors.Wrap(err, "failed to set default configuration")
+	}
+
+	p.registerChimeraURL()
+	if p.getConfiguration().UsePreregisteredApplication && p.chimeraURL == "" {
+		return errors.New("cannot use pre-registered application if Chimera URL is not set or empty. " +
+			"For now using pre-registered application is intended for Cloud instances only. " +
+			"If you are running on-prem disable the setting and use a custom application, otherwise set PluginSettings.ChimeraOAuthProxyURL")
 	}
 
 	p.initializeAPI()
 
-	botID, err := p.Helpers.EnsureBot(&model.Bot{
+	p.telemetryClient, err = telemetry.NewRudderClient()
+	if err != nil {
+		p.API.LogWarn("Telemetry client not started", "error", err.Error())
+	}
+
+	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
+
+	botID, err := p.client.Bot.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
-	})
+	}, pluginapi.ProfileImagePath(filepath.Join("assets", "profile.png")))
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure github bot")
 	}
 	p.BotUserID = botID
 
-	bundlePath, err := p.API.GetBundlePath()
-	if err != nil {
-		return errors.Wrap(err, "couldn't get bundle path")
-	}
-
-	profileImage, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "profile.png"))
-	if err != nil {
-		return errors.Wrap(err, "couldn't read profile image")
-	}
-
-	appErr := p.API.SetProfileImage(botID, profileImage)
-	if appErr != nil {
-		return errors.Wrap(appErr, "couldn't set profile image")
-	}
+	p.poster = poster.NewPoster(&p.client.Post, p.BotUserID)
+	p.flowManager = p.NewFlowManager()
 
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
+	go func() {
+		err := p.forceResetAllMM34646()
+		if err != nil {
+			p.API.LogDebug("failed to reset user tokens", "error", err.Error())
+		}
+	}()
 	return nil
+}
+
+func (p *Plugin) OnDeactivate() error {
+	p.webhookBroker.Close()
+	p.oauthBroker.Close()
+
+	return nil
+}
+
+func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
+	// Don't start wizard if OAuth is configured
+	if p.getConfiguration().IsOAuthConfigured() {
+		return nil
+	}
+
+	return p.flowManager.StartSetupWizard(event.UserId, "")
+}
+
+func (p *Plugin) OnSendDailyTelemetry() {
+	p.SendDailyTelemetry()
+}
+
+func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
+	p.HandleClusterEvent(ev)
+}
+
+// registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.
+func (p *Plugin) registerChimeraURL() {
+	chimeraURLSetting := p.API.GetConfig().PluginSettings.ChimeraOAuthProxyURL
+	if chimeraURLSetting != nil {
+		p.chimeraURL = *chimeraURLSetting
+	}
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
@@ -170,7 +293,9 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 
-	shouldProcessMessage, err := p.Helpers.ShouldProcessMessage(post)
+	client := pluginapi.NewClient(p.API, p.Driver)
+
+	shouldProcessMessage, err := client.Post.ShouldProcessMessage(post)
 	if err != nil {
 		p.API.LogError("Error while checking if the message should be processed", "error", err.Error())
 		return nil, ""
@@ -189,7 +314,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 		return nil, ""
 	}
 	// TODO: make this part of the Plugin struct and reuse it.
-	ghClient := p.githubConnect(*info.Token)
+	ghClient := p.githubConnectUser(context.Background(), info)
 
 	replacements := p.getReplacements(msg)
 	post.Message = p.makeReplacements(msg, replacements, ghClient)
@@ -199,23 +324,52 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	config := p.getConfiguration()
 
-	baseURL := p.getBaseURL()
+	repo := github.ScopePublicRepo
+	if config.EnablePrivateRepo && privateAllowed {
+		// means that asks scope for private repositories
+		repo = github.ScopeRepo
+	}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
+
+	if config.UsePreregisteredApplication {
+		p.API.LogDebug("Using Chimera Proxy OAuth configuration")
+		return p.getOAuthConfigForChimeraApp(scopes)
+	}
+
+	baseURL := config.getBaseURL()
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
 
 	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
 
-	repo := github.ScopePublicRepo
-	if config.EnablePrivateRepo && privateAllowed {
-		// means that asks scope for private repositories
-		repo = github.ScopeRepo
-	}
-
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)},
+		Scopes:       scopes,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:   authURL.String(),
+			TokenURL:  tokenURL.String(),
+			AuthStyle: oauth2.AuthStyleInHeader,
+		},
+	}
+}
+
+func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
+	baseURL := fmt.Sprintf("%s/v1/github/%s", p.chimeraURL, chimeraGitHubAppIdentifier)
+	authURL, _ := url.Parse(baseURL)
+	tokenURL, _ := url.Parse(baseURL)
+
+	authURL.Path = path.Join(authURL.Path, "oauth", "authorize")
+	tokenURL.Path = path.Join(tokenURL.Path, "oauth", "token")
+
+	redirectURL, _ := url.Parse(fmt.Sprintf("%s/plugins/github/oauth/complete", *p.API.GetConfig().ServiceSettings.SiteURL))
+
+	return &oauth2.Config{
+		ClientID:     "placeholder",
+		ClientSecret: "placeholder",
+		Scopes:       scopes,
+		RedirectURL:  redirectURL.String(),
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   authURL.String(),
 			TokenURL:  tokenURL.String(),
@@ -231,12 +385,16 @@ type GitHubUserInfo struct {
 	LastToDoPostAt      int64
 	Settings            *UserSettings
 	AllowedPrivateRepos bool
+
+	// MM34646ResetTokenDone is set for a user whose token has been reset for MM-34646.
+	MM34646ResetTokenDone bool
 }
 
 type UserSettings struct {
-	SidebarButtons string `json:"sidebar_buttons"`
-	DailyReminder  bool   `json:"daily_reminder"`
-	Notifications  bool   `json:"notifications"`
+	SidebarButtons        string `json:"sidebar_buttons"`
+	DailyReminder         bool   `json:"daily_reminder"`
+	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
+	Notifications         bool   `json:"notifications"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
@@ -376,19 +534,62 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	}
 }
 
-func (p *Plugin) PostToDo(info *GitHubUserInfo) {
-	text, err := p.GetToDo(context.Background(), info.GitHubUsername, p.githubConnect(*info.Token))
+func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error) {
+	previousSummary, err := p.GetDailySummaryText(userID)
 	if err != nil {
-		p.API.LogWarn("Failed to get todo text", "userID", info.UserID, "error", err.Error())
-		return
+		return false, err
+	}
+	if previousSummary == text {
+		return true, nil
 	}
 
+	return false, nil
+}
+
+func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
+	if err := p.API.KVSet(userID+dailySummary, []byte(summaryText)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
+	summaryByte, err := p.API.KVGet(userID + dailySummary)
+	if err != nil {
+		return "", err
+	}
+
+	return string(summaryByte), nil
+}
+
+func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
+	ctx := context.Background()
+	text, err := p.GetToDo(ctx, info.GitHubUsername, p.githubConnectUser(ctx, info))
+	if err != nil {
+		return err
+	}
+
+	if info.Settings.DailyReminderOnChange {
+		isSameSummary, err := p.CheckIfDuplicateDailySummary(userID, text)
+		if err != nil {
+			return err
+		}
+		if isSameSummary {
+			return nil
+		}
+		err = p.StoreDailySummaryText(userID, text)
+		if err != nil {
+			return err
+		}
+	}
 	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
+	return nil
 }
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
-	baseURL := p.getBaseURL()
+	baseURL := config.getBaseURL()
 
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
@@ -500,7 +701,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
-	githubClient := p.githubConnect(*info.Token)
+	githubClient := p.githubConnectUser(ctx, info)
 	config := p.getConfiguration()
 
 	query := getReviewSearchQuery(username, config.GitHubOrg)
@@ -560,7 +761,7 @@ func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
 	configOrg := strings.TrimSpace(config.GitHubOrg)
-	if configOrg != "" && configOrg != org {
+	if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
 		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
 	}
 
@@ -594,15 +795,6 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
-}
-
-func (p *Plugin) getBaseURL() string {
-	config := p.getConfiguration()
-	if config.EnterpriseBaseURL != "" {
-		return config.EnterpriseBaseURL
-	}
-
-	return "https://github.com/"
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,

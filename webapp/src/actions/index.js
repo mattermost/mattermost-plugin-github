@@ -33,7 +33,7 @@ function checkAndHandleNotConnected(data) {
                     connected: false,
                     github_username: '',
                     github_client_id: '',
-                    settings: {},
+                    user_settings: {},
                 },
             });
             return false;
@@ -417,14 +417,4 @@ export function attachCommentToIssue(payload) {
         });
         return {data};
     };
-}
-
-export async function getSettings() {
-    let data;
-    try {
-        data = await Client.getSettings();
-    } catch (error) {
-        return {error};
-    }
-    return {data};
 }

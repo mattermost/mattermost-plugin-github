@@ -22,7 +22,14 @@ export function handleConnect(store) {
 
         store.dispatch({
             type: ActionTypes.RECEIVED_CONNECTED,
-            data: {...msg.data, settings: {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true}},
+            data: {
+                ...msg.data,
+                user_settings: {
+                    sidebar_buttons: Constants.SETTING_BUTTONS_TEAM,
+                    daily_reminder: true,
+                    ...msg.data.user_settings,
+                },
+            },
         });
     };
 }
@@ -35,8 +42,22 @@ export function handleDisconnect(store) {
                 connected: false,
                 github_username: '',
                 github_client_id: '',
-                settings: {},
+                user_settings: {},
+                configuration: {},
             },
+        });
+    };
+}
+
+export function handleConfigurationUpdate(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+
+        store.dispatch({
+            type: ActionTypes.RECEIVED_CONFIGURATION,
+            data: msg.data,
         });
     };
 }

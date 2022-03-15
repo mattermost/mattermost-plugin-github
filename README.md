@@ -93,7 +93,7 @@ As a system admin, you must create a webhook for each organization you want to r
    - **Content Type:** `application/json`
    - **Secret:** the webhook secret you copied previously.
 6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?".
-7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`.
+7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`, `Stars`.
 7. Hit **Add Webhook** to save it.
 
 If you have multiple organizations, repeat the process starting from step 3 to create a webhook for each organization.
@@ -141,7 +141,7 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 ## Slash Commands
 
 * __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
-* __Subscribe to a respository__ - Use `/github subscriptions add` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
+* __Subscribe to a repository__ - Use `/github subscriptions add` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
    ```

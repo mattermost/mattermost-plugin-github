@@ -6,10 +6,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v31/github"
 	"github.com/mattermost/mattermost-plugin-api/experimental/command"
-	"github.com/mattermost/mattermost-server/v5/model"
-	"github.com/mattermost/mattermost-server/v5/plugin"
+	"github.com/mattermost/mattermost-server/v6/model"
+	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 )
 
@@ -17,28 +16,27 @@ const (
 	featureIssueCreation = "issue_creations"
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
+	featurePullsMerged   = "pulls_merged"
 	featurePushes        = "pushes"
 	featureCreates       = "creates"
 	featureDeletes       = "deletes"
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
+	featureStars         = "stars"
 )
 
 var validFeatures = map[string]bool{
 	featureIssueCreation: true,
 	featureIssues:        true,
 	featurePulls:         true,
+	featurePullsMerged:   true,
 	featurePushes:        true,
 	featureCreates:       true,
 	featureDeletes:       true,
 	featureIssueComments: true,
 	featurePullReviews:   true,
+	featureStars:         true,
 }
-
-const (
-	list      = "list"
-	deleteAll = "delete-all"
-)
 
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
@@ -93,10 +91,6 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 		Message:   text,
 	}
 	_ = p.API.SendEphemeralPost(args.UserId, post)
-}
-
-func (p *Plugin) getGithubClient(userInfo *GitHubUserInfo) *github.Client {
-	return p.githubConnect(*userInfo.Token)
 }
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
@@ -154,7 +148,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
 		return "Error occurred saving list of muted users"
 	}
-	return fmt.Sprintf("`%v`", username) + " is now muted. You will no longer receive notifications for comments in your PRs and issues."
+	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
 func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
@@ -182,7 +176,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	command := parameters[0]
 
 	switch {
-	case command == list:
+	case command == "list":
 		return p.handleMuteList(args, userInfo)
 	case command == "add":
 		if len(parameters) != 2 {
@@ -194,7 +188,7 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == deleteAll:
+	case command == "delete-all":
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -272,6 +266,12 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Please specify a repository."
+	}
+
+	config := p.getConfiguration()
+
 	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
 
@@ -294,6 +294,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 				return "Feature list cannot contain both issue and issue_creations"
 			}
+			if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+				return "Feature list cannot contain both pulls and pulls_merged"
+			}
 			ok, ifs := validateFeatures(fs)
 			if !ok {
 				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
@@ -306,9 +309,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	ctx := context.Background()
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(ctx, userInfo)
 
-	owner, repo := parseOwnerAndRepo(parameters[0], p.getBaseURL())
+	owner, repo := parseOwnerAndRepo(parameters[0], config.getBaseURL())
 	if repo == "" {
 		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()
@@ -320,8 +323,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 		return err.Error()
 	}
+	repoLink := config.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to %s.", repo)
+	msg := fmt.Sprintf("Successfully subscribed to [%s](%s).", repo, repoLink)
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
@@ -354,18 +358,19 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 }
 
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
 		p.API.LogWarn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
 	}
+
 	return text
 }
 
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
-	githubClient := p.getGithubClient(userInfo)
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
 	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
 	if err != nil {
 		return "Encountered an error getting your GitHub profile."
@@ -391,20 +396,38 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	}
 
 	setting := parameters[0]
-	if setting != settingNotifications && setting != settingReminders {
-		return "Unknown setting."
-	}
+	settingValue := parameters[1]
 
-	strValue := parameters[1]
-	value := false
-	if strValue == settingOn {
-		value = true
-	} else if strValue != settingOff {
-		return "Invalid value. Accepted values are: \"on\" or \"off\"."
+	switch setting {
+	case settingNotifications:
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.Notifications = true
+		case settingOff:
+			userInfo.Settings.Notifications = false
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\"."
+		}
+	case settingReminders:
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.DailyReminder = true
+			userInfo.Settings.DailyReminderOnChange = false
+		case settingOff:
+			userInfo.Settings.DailyReminder = false
+			userInfo.Settings.DailyReminderOnChange = false
+		case settingOnChange:
+			userInfo.Settings.DailyReminder = true
+			userInfo.Settings.DailyReminderOnChange = true
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
+		}
+	default:
+		return "Unknown setting " + setting
 	}
 
 	if setting == settingNotifications {
-		if value {
+		if userInfo.Settings.Notifications {
 			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
 			if err != nil {
 				p.API.LogWarn("Failed to store GitHub to userID mapping",
@@ -421,10 +444,6 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 					"error", err.Error())
 			}
 		}
-
-		userInfo.Settings.Notifications = value
-	} else if setting == settingReminders {
-		userInfo.Settings.DailyReminder = value
 	}
 
 	err := p.storeGitHubUserInfo(userInfo)
@@ -453,12 +472,87 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
+func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+	userID := args.UserId
+	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
+	if err != nil {
+		p.API.LogWarn("Failed to check if user is System Admin", "error", err.Error())
+
+		return "Error checking user's permissions"
+	}
+
+	if !isSysAdmin {
+		return "Only System Admins are allowed to set up the plugin."
+	}
+
+	if len(parameters) == 0 {
+		err = p.flowManager.StartSetupWizard(userID, "")
+	} else {
+		command := parameters[0]
+
+		switch {
+		case command == "oauth":
+			err = p.flowManager.StartOauthWizard(userID)
+		case command == "webhook":
+			err = p.flowManager.StartWebhookWizard(userID)
+		case command == "announcement":
+			err = p.flowManager.StartAnnouncementWizard(userID)
+		default:
+			return fmt.Sprintf("Unknown subcommand %v", command)
+		}
+	}
+
+	if err != nil {
+		return err.Error()
+	}
+
+	return ""
+}
+
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
+
+func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
+	user, appErr := p.API.GetUser(userID)
+	if appErr != nil {
+		return false, appErr
+	}
+	if !strings.Contains(user.Roles, "system_admin") {
+		return false, nil
+	}
+	return true, nil
+}
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
 	command, action, parameters := parseCommand(args.Command)
 
 	if command != "/github" {
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "setup" {
+		message := p.handleSetup(c, args, parameters)
+		if message != "" {
+			p.postCommandResponse(args, message)
+		}
+		return &model.CommandResponse{}, nil
+	}
+
+	config := p.getConfiguration()
+
+	if validationErr := config.IsValid(); validationErr != nil {
+		isSysAdmin, err := p.isAuthorizedSysAdmin(args.UserId)
+		var text string
+		switch {
+		case err != nil:
+			text = "Error checking user's permissions"
+			p.API.LogWarn(text, "error", err.Error())
+		case isSysAdmin:
+			text = fmt.Sprintf("Before using this plugin, you'll need to configure it by running `/github setup`: %s", validationErr.Error())
+		default:
+			text = "Please contact your system administrator to correctly configure the GitHub plugin."
+		}
+
+		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
 
@@ -521,6 +615,16 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 }
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
+	if !config.IsOAuthConfigured() {
+		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
+
+		setup := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
+		setup.RoleID = model.SystemAdminRoleId
+		github.AddCommand(setup)
+
+		return github
+	}
+
 	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
@@ -550,7 +654,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
 	if config.GitHubOrg != "" {
 		flags := []model.AutocompleteListItem{{
 			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
@@ -589,31 +693,48 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
-	setting := []model.AutocompleteListItem{{
-		HelpText: "Turn notifications on/off",
-		Item:     "notifications",
-	}, {
-		HelpText: "Turn reminders on/off",
-		Item:     "reminders",
-	}}
-	settings.AddStaticListArgument("Setting to update", true, setting)
-	value := []model.AutocompleteListItem{{
-		HelpText: "Turn setting on",
+
+	settingNotifications := model.NewAutocompleteData("notifications", "", "Turn notifications on/off")
+	settingValue := []model.AutocompleteListItem{{
+		HelpText: "Turn notifications on",
 		Item:     "on",
 	}, {
-		HelpText: "Turn setting off",
+		HelpText: "Turn notifications off",
 		Item:     "off",
 	}}
-	settings.AddStaticListArgument("", true, value)
+	settingNotifications.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(settingNotifications)
+
+	remainderNotifications := model.NewAutocompleteData("reminders", "", "Turn notifications on/off")
+	settingValue = []model.AutocompleteListItem{{
+		HelpText: "Turn reminders on",
+		Item:     "on",
+	}, {
+		HelpText: "Turn reminders off",
+		Item:     "off",
+	}, {
+		HelpText: "Turn reminders on, but only get reminders if any changes have occurred since the previous day's reminder",
+		Item:     settingOnChange,
+	}}
+	remainderNotifications.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(remainderNotifications)
+
 	github.AddCommand(settings)
 
 	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
 
-	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in Github, using the title if provided")
-	issueCreate.AddTextArgument("Title for the Github issue", "[title]", "")
+	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in GitHub, using the title if provided")
+	issueCreate.AddTextArgument("Title for the GitHub issue", "[title]", "")
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
+
+	setup := model.NewAutocompleteData("setup", "[command]", "Available commands: oauth, webhook, announcement")
+	setup.RoleID = model.SystemAdminRoleId
+	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Set up the OAuth2 Application in GitHub"))
+	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
+	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
+	github.AddCommand(setup)
 
 	return github
 }

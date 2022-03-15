@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mattermost/mattermost-server/v5/plugin"
-	"github.com/mattermost/mattermost-server/v5/plugin/plugintest"
+	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -173,6 +173,7 @@ func TestGetToken(t *testing.T) {
 		})
 	}
 }
+
 func TestGetConfig(t *testing.T) {
 	httpTestJSON := testutils.HTTPTest{
 		T:       t,
@@ -184,6 +185,9 @@ func TestGetConfig(t *testing.T) {
 		Encoder: testutils.EncodeString,
 	}
 
+	authorizedHeader := http.Header{}
+	authorizedHeader.Add("Mattermost-Plugin-ID", "somePluginId")
+
 	config := &Configuration{
 		GitHubOrg:               "mockOrg",
 		GitHubOAuthClientID:     "mockID",
@@ -194,7 +198,6 @@ func TestGetConfig(t *testing.T) {
 	for name, test := range map[string]struct {
 		httpTest         testutils.HTTPTest
 		request          testutils.Request
-		context          *plugin.Context
 		expectedResponse testutils.ExpectedResponse
 	}{
 		"not authorized": {
@@ -204,20 +207,20 @@ func TestGetConfig(t *testing.T) {
 				URL:    "/api/v1/config",
 				Body:   nil,
 			},
-			context: &plugin.Context{},
 			expectedResponse: testutils.ExpectedResponse{
 				StatusCode:   http.StatusUnauthorized,
 				ResponseType: testutils.ContentTypePlain,
 				Body:         "Not authorized\n",
 			},
-		}, "authorized": {
+		},
+		"authorized": {
 			httpTest: httpTestJSON,
 			request: testutils.Request{
 				Method: http.MethodGet,
 				URL:    "/api/v1/config",
+				Header: authorizedHeader,
 				Body:   nil,
 			},
-			context: &plugin.Context{SourcePluginId: "somePluginId"},
 			expectedResponse: testutils.ExpectedResponse{
 				StatusCode:   http.StatusOK,
 				ResponseType: testutils.ContentTypeJSON,
@@ -235,7 +238,7 @@ func TestGetConfig(t *testing.T) {
 			req := test.httpTest.CreateHTTPRequest(test.request)
 			rr := httptest.NewRecorder()
 
-			p.ServeHTTP(test.context, rr, req)
+			p.ServeHTTP(&plugin.Context{}, rr, req)
 
 			test.httpTest.CompareHTTPResponse(rr, test.expectedResponse)
 		})

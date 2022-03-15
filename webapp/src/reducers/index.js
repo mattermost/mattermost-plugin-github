@@ -48,10 +48,21 @@ function username(state = '', action) {
     }
 }
 
-function settings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true, notifications: true}, action) {
+function userSettings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true, notifications: true}, action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        return action.data.settings;
+        return action.data.user_settings;
+    default:
+        return state;
+    }
+}
+
+function configuration(state = {left_sidebar_enabled: true}, action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_CONNECTED:
+        return action.data.configuration;
+    case ActionTypes.RECEIVED_CONFIGURATION:
+        return action.data;
     default:
         return state;
     }
@@ -224,7 +235,8 @@ export default combineReducers({
     enterpriseURL,
     organization,
     username,
-    settings,
+    userSettings,
+    configuration,
     clientId,
     reviews,
     reviewsDetails,

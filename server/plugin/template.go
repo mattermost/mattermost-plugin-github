@@ -280,6 +280,16 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 `))
 
+	template.Must(masterTemplate.New("commentAssigneePullRequestNotification").Funcs(funcMap).Parse(`
+{{template "user" .GetSender}} commented on pull request you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
+{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+`))
+
+	template.Must(masterTemplate.New("commentAssigneeIssueNotification").Funcs(funcMap).Parse(`
+{{template "user" .GetSender}} commented on issue you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
+{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+`))
+
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueFullLinkWithTitle" .}}:
 {{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
@@ -318,10 +328,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
 		"{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}}" +
 		"  * `private` is optional. If used, read access to your private repositories will be requested." +
-		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
+		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
 		"{{else}}" +
 		"  * Read access to your private repositories will be requested." +
-		"If these repositories send webhook events to this Mattermost server, you will be notified of changes to those repositories.\n" +
+		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
 		"{{end}}{{end}}" +
 		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
 		"* `/github help` - Display Slash Command help text\n" +
@@ -331,6 +341,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `features` is a comma-delimited list of one or more the following:\n" +
 		"    * `issues` - includes new and closed issues\n" +
 		"    * `pulls` - includes new and closed pull requests\n" +
+		"    * `pulls_merged` - includes merged pull requests only\n" +
 		"    * `pushes` - includes pushes\n" +
 		"    * `creates` - includes branch and tag creations\n" +
 		"    * `deletes` - includes branch and tag deletions\n" +
@@ -346,11 +357,18 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github settings [setting] [value]` - Update your user settings\n" +
 		"  * `setting` can be `notifications` or `reminders`\n" +
 		"  * `value` can be `on` or `off`\n" +
-		"* `/github mute` - Managed muted GitHub users. You will not receive notifications for comments in your PRs and issues from those users.\n" +
+		"* `/github mute` - Managed muted GitHub users. You'll not receive notifications for comments in your PRs and issues from those users.\n" +
 		"  * `/github mute list` - list your muted GitHub users\n" +
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
 		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+
+	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}}
+{{- if eq .GetAction "created" }} starred
+{{- else }} unstarred
+{{- end }} by {{template "user" .GetSender}}
+It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
