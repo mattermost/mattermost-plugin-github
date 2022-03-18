@@ -146,6 +146,7 @@ function GithubItems(props: GithubItemsProps) {
                 <a
                     href={item.html_url}
                     target='_blank'
+                    aria-label={titleText}
                     rel='noopener noreferrer'
                     style={style.itemTitle}
                 >
@@ -170,6 +171,8 @@ function GithubItems(props: GithubItemsProps) {
             milestone = (
                 <span
                     title={'Milestone'}
+                    aria-label={item.milestone.title}
+                    role={'note'}
                     style={
                         {
                             ...style.milestoneIcon,
@@ -193,6 +196,8 @@ function GithubItems(props: GithubItemsProps) {
                 status = (
                     <span
                         title={'Success'}
+                        aria-label={'Success'}
+                        role={'note'}
                         style={{...style.icon, ...style.iconSucess}}
                     >
                         <TickIcon/>
@@ -205,13 +210,12 @@ function GithubItems(props: GithubItemsProps) {
                         key='githubRHSPRPending'
                         placement='top'
                         overlay={
-                            <Tooltip id='githubRHSPRPendingTooltip'>
+                            <Tooltip id='githubRHSPRPendingTooltip' aria-label={'Pending'} role={'note'}>
                                 {'Pending'}
                             </Tooltip>
                         }
                     >
                         <span
-                            aria-label={'Pending'}
                             style={{...style.icon, ...style.iconPending}}
                         >
                             <DotIcon/>
@@ -225,13 +229,12 @@ function GithubItems(props: GithubItemsProps) {
                         key='githubRHSPRFailed'
                         placement='top'
                         overlay={
-                            <Tooltip id='githubRHSPRFailedTooltip'>
+                            <Tooltip id='githubRHSPRFailedTooltip' aria-label={'Failed'} role={'note'}>
                                 {'Failed'}
                             </Tooltip>
                         }
                     >
                         <span
-                            aria-label={'Failed'}
                             style={{...style.icon, ...style.iconFailed}}
                         >
                             <CrossIcon/>
@@ -248,7 +251,7 @@ function GithubItems(props: GithubItemsProps) {
                     key='githubRHSPRMergeableIndicator'
                     placement='top'
                     overlay={
-                        <Tooltip id='githubRHSPRMergeableTooltip'>
+                        <Tooltip id='githubRHSPRMergeableTooltip' aria-label={'This pull request has conflicts that must be resolved'}>
                             {'This pull request has conflicts that must be resolved'}
                         </Tooltip>
                     }
@@ -358,6 +361,8 @@ function getGithubLabels(labels: Label[]) {
         return (
             <Badge
                 key={label.id}
+                aria-label={label.name}
+                role={'note'}
                 style={{...itemStyle, ...{backgroundColor: `#${label.color}`, color: getLabelFontColor(label.color)}}}
             >{label.name}</Badge>
         );
@@ -430,6 +435,8 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
             <OverlayTrigger
                 key='changesRequestedDot'
                 placement='bottom'
+                aria-label={'Changes Requested'}
+                role={'note'}
                 overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
             >
                 <span style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></span>
