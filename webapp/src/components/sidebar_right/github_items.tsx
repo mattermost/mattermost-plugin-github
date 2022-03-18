@@ -210,7 +210,10 @@ function GithubItems(props: GithubItemsProps) {
                         key='githubRHSPRPending'
                         placement='top'
                         overlay={
-                            <Tooltip id='githubRHSPRPendingTooltip' aria-label={'Pending'} role={'note'}>
+                            <Tooltip 
+                            id='githubRHSPRPendingTooltip' 
+                            aria-label={'Pending'} 
+                            role={'note'}>
                                 {'Pending'}
                             </Tooltip>
                         }
@@ -229,7 +232,10 @@ function GithubItems(props: GithubItemsProps) {
                         key='githubRHSPRFailed'
                         placement='top'
                         overlay={
-                            <Tooltip id='githubRHSPRFailedTooltip' aria-label={'Failed'} role={'note'}>
+                            <Tooltip 
+                            id='githubRHSPRFailedTooltip' 
+                            aria-label={'Failed'} 
+                            role={'note'}>
                                 {'Failed'}
                             </Tooltip>
                         }
@@ -251,7 +257,9 @@ function GithubItems(props: GithubItemsProps) {
                     key='githubRHSPRMergeableIndicator'
                     placement='top'
                     overlay={
-                        <Tooltip id='githubRHSPRMergeableTooltip' aria-label={'This pull request has conflicts that must be resolved'}>
+                        <Tooltip 
+                        id='githubRHSPRMergeableTooltip'
+                        aria-label={'This pull request has conflicts that must be resolved'}>
                             {'This pull request has conflicts that must be resolved'}
                         </Tooltip>
                     }
