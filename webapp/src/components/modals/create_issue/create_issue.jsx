@@ -105,7 +105,18 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoChange = (repo) => this.setState({repo});
+    handleRepoChange = (repo) => {
+        const fieldsToReset = {
+            repo: repo,
+            issueTitle: '',
+            issueDescription: '',
+            labels: [],
+            assignees: [],
+            milestone: null,
+            showErrors: false,
+        }
+        this.setState(fieldsToReset);
+    };
 
     handleLabelsChange = (labels) => this.setState({labels});
 
