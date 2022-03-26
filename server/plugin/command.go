@@ -340,9 +340,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return err.Error()
 	}
 
-	var previouslySubscribedEventMessage string
+	var previousSubscribedEventMessage string
 	if previousSubscribedEvents != "" {
-		previouslySubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.FormattedString())
+		previousSubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.FormattedString())
 	}
 
 	if repo == "" {
@@ -353,7 +353,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		subscriptionSuccess := fmt.Sprintf("@%v subscribed this channel to [%s](%s) with the following events: %s.", user.Username, owner, orgLink, defaultEvents.FormattedString())
 
 		if previousSubscribedEvents != "" {
-			subscriptionSuccess += previouslySubscribedEventMessage
+			subscriptionSuccess += previousSubscribedEventMessage
 		}
 
 		post := &model.Post{
@@ -364,7 +364,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 		if _, appErr = p.API.CreatePost(post); appErr != nil {
 			p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
-			return fmt.Sprintf("%s Though there was an error creating the public post: %s", subscriptionSuccess, appErr.Error())
+			return fmt.Sprintf("%s error creating the public post: %s", subscriptionSuccess, appErr.Error())
 		}
 		return ""
 	}
@@ -376,7 +376,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	msg := fmt.Sprintf("@%v subscribed this channel to [%s/%s](%s) with the following events: %s", user.Username, owner, repo, repoLink, defaultEvents.FormattedString())
 	if previousSubscribedEvents != "" {
-		msg += previouslySubscribedEventMessage
+		msg += previousSubscribedEventMessage
 	}
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
@@ -394,7 +394,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	if _, appErr := p.API.CreatePost(post); appErr != nil {
 		p.API.LogWarn("error while creating post", "post", post, "error", appErr.Error())
-		return fmt.Sprintf("%s Though there was an error creating the public post: %s", msg, appErr.Error())
+		return fmt.Sprintf("%s error creating the public post: %s", msg, appErr.Error())
 	}
 
 	return ""
@@ -804,7 +804,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
-	muteAdd := model.NewAutocompleteData(subCommandList, "[github username]", "Mute notifications from the provided GitHub user")
+	muteAdd := model.NewAutocompleteData(subCommandAdd, "[github username]", "Mute notifications from the provided GitHub user")
 	muteAdd.AddTextArgument("GitHub user to mute", "[username]", "")
 	mute.AddCommand(muteAdd)
 
