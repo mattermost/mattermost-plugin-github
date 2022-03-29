@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v41/github"
@@ -408,6 +409,8 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 		return "", nil, nil, errors.New("base_url is not a string")
 	}
 
+	baseURL = strings.TrimSpace(baseURL)
+
 	err := isValidURL(baseURL)
 	if err != nil {
 		errorList["base_url"] = err.Error()
@@ -421,6 +424,8 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 	if !ok {
 		return "", nil, nil, errors.New("upload_url is not a string")
 	}
+
+	uploadURL = strings.TrimSpace(uploadURL)
 
 	err = isValidURL(uploadURL)
 	if err != nil {
@@ -519,6 +524,8 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 		return "", nil, nil, errors.New("client_id is not a string")
 	}
 
+	clientID = strings.TrimSpace(clientID)
+
 	if len(clientID) != 20 {
 		errorList["client_id"] = "Client ID should be 20 characters long"
 	}
@@ -531,6 +538,8 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 	if !ok {
 		return "", nil, nil, errors.New("client_secret is not a string")
 	}
+
+	clientSecret = strings.TrimSpace(clientSecret)
 
 	if len(clientSecret) != 40 {
 		errorList["client_secret"] = "Client Secret should be 40 characters long"
@@ -635,6 +644,8 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 	if !ok {
 		return "", nil, nil, errors.New("repo_org is not a string")
 	}
+
+	repoOrg = strings.TrimSpace(repoOrg)
 
 	config := fm.getConfiguration()
 
