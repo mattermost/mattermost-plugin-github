@@ -182,7 +182,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
-{{- if eq .Config.Style "collapsed" -}}
+{{ if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
@@ -215,7 +215,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{.GetPullRequest.GetBody | trimBody | quote | replaceAllGitHubUsernames}}`))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
-{{- if eq .Config.Style "collapsed" -}}
+{{ if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}.
 {{- else -}}
 #### {{.Event.GetIssue.GetTitle}}
@@ -364,7 +364,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    * Defaults to `pulls,issues,creates,deletes`\n" +
 		"  * `flags` currently supported:\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
-		"    * `--title-only` - notifications will be delievered with titles only (for example, the body of a pull request will not be displayed)\n" +
+		"    * `--render-style` - notifications will be delievered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +
 		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
 		"* `/github me` - Display the connected GitHub account\n" +
 		"* `/github settings [setting] [value]` - Update your user settings\n" +

@@ -276,12 +276,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	flags := SubscriptionFlags{}
 
 	if len(parameters) > 1 {
-		features := parameters[1]
-		if isFlag(features) {
-			return "First parameter must be the comma-separated list of features"
+		var flagParams []string
+		if isFlag(parameters[1]) {
+			flagParams = parameters[1:]
+		} else {
+			features = parameters[1]
+			flagParams = parameters[2:]
 		}
 
-		flagParams := parameters[2:]
 		if len(flagParams)%2 != 0 {
 			return "Please use the correct format for flags: --<name> <value>"
 		}
@@ -292,7 +294,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			if !isFlag(flag) {
 				return "Please use the correct format for flags: --<name> <value>"
 			}
-			flags.AddFlag(parseFlag(flag), value)
+			if err := flags.AddFlag(parseFlag(flag), value); err != nil {
+				return fmt.Sprintf("Unsupported value for flag %s", flag)
+			}
 		}
 
 		fs := strings.Split(features, ",")
@@ -674,7 +678,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd.AddNamedStaticListArgument("render-style", "Determine the rendering style of various notifications.", false, []model.AutocompleteListItem{
 		{
 			Item:     "default",
-			HelpText: "The default rendering style for all notifications (includes all information). Can be ommitted.",
+			HelpText: "The default rendering style for all notifications (includes all information). Can be omitted.",
 		},
 		{
 			Item:     "skip-body",

@@ -321,6 +321,46 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+
+	t.Run("with collapsed render style", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was opened by [panda](https://github.com/panda).
+`
+
+		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
+			Event: &github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequest,
+				Sender:      &user,
+			},
+			Config: RenderConfig{
+				Style: "collapsed",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with skip-body render style", func(t *testing.T) {
+		expected := `
+#### Leverage git-get-head
+##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by [panda](https://github.com/panda)
+`
+
+		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
+			Event: &github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequest,
+				Sender:      &user,
+			},
+			Config: RenderConfig{
+				Style: "skip-body",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestClosedPRMessageTemplate(t *testing.T) {
@@ -458,6 +498,46 @@ git-get-head sounds like a great feature we should support
 			},
 			nil,
 		))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with collapsed render style", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) opened by [panda](https://github.com/panda).
+`
+
+		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
+			Event: &github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issue,
+				Sender: &user,
+			},
+			Config: RenderConfig{
+				Style: "collapsed",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with skip-body render style", func(t *testing.T) {
+		expected := `
+#### Implement git-get-head
+##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by [panda](https://github.com/panda)
+`
+
+		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
+			Event: &github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issue,
+				Sender: &user,
+			},
+			Config: RenderConfig{
+				Style: "skip-body",
+			},
+		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
