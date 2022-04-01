@@ -182,14 +182,18 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
+{{- if eq .Config.Style "collapsed" -}}
+{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+{{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
 #new-pull-request by {{template "user" .Event.GetSender}}
-{{- if not .Config.TitleOnly -}}
+{{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
 
 {{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{- end -}}
 {{- end }}
 `))
 
@@ -211,15 +215,19 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{.GetPullRequest.GetBody | trimBody | quote | replaceAllGitHubUsernames}}`))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
+{{- if eq .Config.Style "collapsed" -}}
+{{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}.
+{{- else -}}
 #### {{.Event.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .Event}}
 #new-issue by {{template "user" .Event.GetSender}}
-{{- if not .Config.TitleOnly -}}
+{{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetIssue.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetIssue }}
 
 {{.Event.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
-{{- end}}
+{{- end -}}
+{{- end }}
 `))
 
 	template.Must(masterTemplate.New("closedIssue").Funcs(funcMap).Parse(`

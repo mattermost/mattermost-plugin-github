@@ -33,7 +33,7 @@ const (
 // RenderConfig holds various configuration options to be used in a template
 // for redering an event.
 type RenderConfig struct {
-	TitleOnly bool
+	Style string
 }
 
 // EventWithRenderConfig holds an event along with configuration options for
@@ -78,10 +78,15 @@ func signBody(secret, body []byte) ([]byte, error) {
 // GetEventWithRenderConfig wraps any github Event into an EventWithRenderConfig
 // which also contains per-subscription configuration options.
 func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
+	style := ""
+	if sub != nil {
+		style = sub.RenderStyle()
+	}
+
 	return &EventWithRenderConfig{
 		Event: event,
 		Config: RenderConfig{
-			TitleOnly: sub != nil && sub.RenderTitleOnly(),
+			Style: style,
 		},
 	}
 }
