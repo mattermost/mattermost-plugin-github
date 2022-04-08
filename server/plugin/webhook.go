@@ -895,9 +895,22 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		Message: message,
 		Type:    "custom_git_mention",
 	}
+	assignees := event.GetIssue().Assignees
 
 	for _, username := range mentionedUsernames {
 		// Don't notify user of their own comment
+		assigneeMentioned := false
+		for _, assignee := range assignees {
+			if username == *assignee.Login {
+				assigneeMentioned = true
+				break
+			}
+		}
+
+		if assigneeMentioned {
+			continue
+		}
+
 		if username == event.GetSender().GetLogin() {
 			continue
 		}
