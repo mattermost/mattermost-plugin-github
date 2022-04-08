@@ -25,7 +25,7 @@ type SubscriptionFlags struct {
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
-	switch flag { // nolint:gocritic // It's expected that more flags get added.
+	switch flag {
 	case excludeOrgMemberFlag:
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {

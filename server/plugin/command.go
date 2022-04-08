@@ -663,6 +663,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
 			{
@@ -675,18 +676,19 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 			},
 		})
 	}
+
 	subscriptionsAdd.AddNamedStaticListArgument("render-style", "Determine the rendering style of various notifications.", false, []model.AutocompleteListItem{
 		{
 			Item:     "default",
-			HelpText: "The default rendering style for all notifications (includes all information). Can be omitted.",
+			HelpText: "The default rendering style for all notifications (includes all information).",
 		},
 		{
 			Item:     "skip-body",
-			HelpText: "Skips the body part of various long notifications that have a body (e.g. new PRs and new Issues).",
+			HelpText: "Skips the body part of various long notifications that have a body (e.g. new PRs and new issues).",
 		},
 		{
 			Item:     "collapsed",
-			HelpText: "Notifications come in a one line format, without enlarged fonts or advanced layouts.",
+			HelpText: "Notifications come in a one-line format, without enlarged fonts or advanced layouts.",
 		},
 	})
 
