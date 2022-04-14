@@ -172,6 +172,7 @@ function GithubItems(props: GithubItemsProps) {
                 <span
                     title={'Milestone'}
                     aria-label={item.milestone.title}
+                    role={'note'}
                     style={
                         {
                             ...style.milestoneIcon,
@@ -442,13 +443,18 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
     }
 
     if (changesRequested > 0) {
+        // there are two conflicting rules so decided to choose one over the other on line 456
+
+        const changedRequestedText = 'Changes Requested';
         changes = (
             <OverlayTrigger
                 key='changesRequestedDot'
                 placement='bottom'
-                aria-label={'Changes Requested'}
-                role={'note'}
-                overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
+                overlay={<Tooltip
+                    id='changesRequestedTooltip'
+                    aria-label={changedRequestedText}
+                // eslint-disable-next-line react/jsx-closing-bracket-location
+                >{'Changes Requested'}</Tooltip>}
             >
                 <span style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></span>
             </OverlayTrigger>
