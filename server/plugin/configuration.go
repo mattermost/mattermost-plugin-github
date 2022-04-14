@@ -1,9 +1,14 @@
 package plugin
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"reflect"
 	"strings"
 
+	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
+	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
 
@@ -19,19 +24,98 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	GitHubOrg                   string
-	GitHubOAuthClientID         string
-	GitHubOAuthClientSecret     string
-	WebhookSecret               string
-	EnableLeftSidebar           bool
-	EnablePrivateRepo           bool
-	ConnectToPrivateByDefault   bool
-	EncryptionKey               string
-	EnterpriseBaseURL           string
-	EnterpriseUploadURL         string
-	EnableCodePreview           string
-	EnableWebhookEventLogging   bool
-	UsePreregisteredApplication bool
+	GitHubOrg                   string `json:"githuborg"`
+	GitHubOAuthClientID         string `json:"githuboauthclientid"`
+	GitHubOAuthClientSecret     string `json:"githuboauthclientsecret"`
+	WebhookSecret               string `json:"webhooksecret"`
+	EnableLeftSidebar           bool   `json:"enableleftsidebar"`
+	EnablePrivateRepo           bool   `json:"enableprivaterepo"`
+	ConnectToPrivateByDefault   bool   `json:"connecttoprivatebydefault"`
+	EncryptionKey               string `json:"encryptionkey"`
+	EnterpriseBaseURL           string `json:"enterprisebaseurl"`
+	EnterpriseUploadURL         string `json:"enterpriseuploadurl"`
+	EnableCodePreview           string `json:"enablecodepreview"`
+	EnableWebhookEventLogging   bool   `json:"enablewebhookeventlogging"`
+	UsePreregisteredApplication bool   `json:"usepreregisteredapplication"`
+}
+
+func (c *Configuration) ToMap() (map[string]interface{}, error) {
+	var out map[string]interface{}
+	data, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, &out)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (c *Configuration) setDefaults(isCloud bool) (bool, error) {
+	changed := false
+
+	if c.EncryptionKey == "" {
+		secret, err := generateSecret()
+		if err != nil {
+			return false, err
+		}
+
+		c.EncryptionKey = secret
+		changed = true
+	}
+
+	if c.WebhookSecret == "" {
+		secret, err := generateSecret()
+		if err != nil {
+			return false, err
+		}
+
+		c.WebhookSecret = secret
+		changed = true
+	}
+
+	if isCloud && !c.UsePreregisteredApplication && !c.IsOAuthConfigured() {
+		c.UsePreregisteredApplication = true
+		changed = true
+	}
+
+	return changed, nil
+}
+
+func (c *Configuration) getBaseURL() string {
+	if c.EnterpriseBaseURL != "" {
+		return c.EnterpriseBaseURL + "/"
+	}
+
+	return "https://github.com/"
+}
+
+func (c *Configuration) sanitize() {
+	c.EnterpriseBaseURL = strings.TrimRight(c.EnterpriseBaseURL, "/")
+	c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/")
+
+	// Trim spaces around org and OAuth credentials
+	c.GitHubOrg = strings.TrimSpace(c.GitHubOrg)
+	c.GitHubOAuthClientID = strings.TrimSpace(c.GitHubOAuthClientID)
+	c.GitHubOAuthClientSecret = strings.TrimSpace(c.GitHubOAuthClientSecret)
+}
+
+func (c *Configuration) IsOAuthConfigured() bool {
+	return (c.GitHubOAuthClientID != "" && c.GitHubOAuthClientSecret != "") ||
+		c.UsePreregisteredApplication
+}
+
+// IsSASS return if SASS GitHub at https://github.com is used.
+func (c *Configuration) IsSASS() bool {
+	return c.EnterpriseBaseURL == "" && c.EnterpriseUploadURL == ""
+}
+
+func (c *Configuration) ClientConfiguration() map[string]interface{} {
+	return map[string]interface{}{
+		"left_sidebar_enabled": c.EnableLeftSidebar,
+	}
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
@@ -73,9 +157,7 @@ func (p *Plugin) getConfiguration() *Configuration {
 	if p.configuration == nil {
 		return &Configuration{}
 	}
-	p.configuration.GitHubOrg = strings.TrimSpace(p.configuration.GitHubOrg)
-	p.configuration.GitHubOAuthClientID = strings.TrimSpace(p.configuration.GitHubOAuthClientID)
-	p.configuration.GitHubOAuthClientSecret = strings.TrimSpace(p.configuration.GitHubOAuthClientSecret)
+
 	return p.configuration
 }
 
@@ -115,6 +197,10 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
 
+	configuration.sanitize()
+
+	p.sendWebsocketEventIfNeeded(p.getConfiguration(), configuration)
+
 	p.setConfiguration(configuration)
 
 	command, err := p.getCommand(configuration)
@@ -127,5 +213,40 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to register command")
 	}
 
+	enableDiagnostics := false
+	if config := p.API.GetConfig(); config != nil {
+		if configValue := config.LogSettings.EnableDiagnostics; configValue != nil {
+			enableDiagnostics = *configValue
+		}
+	}
+
+	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
+
 	return nil
+}
+
+func (p *Plugin) sendWebsocketEventIfNeeded(oldConfig, newConfig *Configuration) {
+	// If the plugin just started, oldConfig is the zero value.
+	// Hence, an unnecessary websocket event is sent.
+	// Given that oldConfig is never nil, that case is hard to catch.
+	if !reflect.DeepEqual(oldConfig.ClientConfiguration(), newConfig.ClientConfiguration()) {
+		p.API.PublishWebSocketEvent(
+			WSEventConfigUpdate,
+			newConfig.ClientConfiguration(),
+			&model.WebsocketBroadcast{},
+		)
+	}
+}
+
+func generateSecret() (string, error) {
+	b := make([]byte, 256)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	s := base64.RawStdEncoding.EncodeToString(b)
+
+	s = s[:32]
+
+	return s, nil
 }

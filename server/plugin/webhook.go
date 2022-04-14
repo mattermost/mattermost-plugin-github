@@ -6,9 +6,10 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-github/v41/github"
@@ -71,32 +72,87 @@ func ConvertPushEventRepositoryToRepository(pushRepo *github.PushEventRepository
 	}
 }
 
+// WebhookBroker is a message broker for webhook events.
+type WebhookBroker struct {
+	sendGitHubPingEvent func(event *github.PingEvent)
+
+	lock     sync.RWMutex // Protects closed and pingSubs
+	closed   bool
+	pingSubs []chan *github.PingEvent
+}
+
+func NewWebhookBroker(sendGitHubPingEvent func(event *github.PingEvent)) *WebhookBroker {
+	return &WebhookBroker{
+		sendGitHubPingEvent: sendGitHubPingEvent,
+	}
+}
+
+func (wb *WebhookBroker) SubscribePings() <-chan *github.PingEvent {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	ch := make(chan *github.PingEvent, 1)
+	wb.pingSubs = append(wb.pingSubs, ch)
+
+	return ch
+}
+
+func (wb *WebhookBroker) UnsubscribePings(ch <-chan *github.PingEvent) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	for i, sub := range wb.pingSubs {
+		if sub == ch {
+			wb.pingSubs = append(wb.pingSubs[:i], wb.pingSubs[i+1:]...)
+			break
+		}
+	}
+}
+
+func (wb *WebhookBroker) publishPing(event *github.PingEvent, fromCluster bool) {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	if wb.closed {
+		return
+	}
+
+	for _, sub := range wb.pingSubs {
+		// non-blocking send
+		select {
+		case sub <- event:
+		default:
+		}
+	}
+
+	if !fromCluster {
+		wb.sendGitHubPingEvent(event)
+	}
+}
+
+func (wb *WebhookBroker) Close() {
+	wb.lock.Lock()
+	defer wb.lock.Unlock()
+
+	if !wb.closed {
+		wb.closed = true
+
+		for _, sub := range wb.pingSubs {
+			close(sub)
+		}
+	}
+}
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
 
-	signature := r.Header.Get("X-Hub-Signature")
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}
 
-	event, err := github.ParseWebHook(github.WebHookType(r), body)
-	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error)
-		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
-		return
-	}
-
-	if config.EnableWebhookEventLogging {
-		bodyByte, appErr := json.Marshal(event)
-		if appErr != nil {
-			p.API.LogWarn("Error while Marshal Webhook Request", "err", appErr.Error())
-			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
-			return
-		}
-		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
-	}
+	signature := r.Header.Get("X-Hub-Signature")
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
 		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
@@ -109,15 +165,33 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	event, err := github.ParseWebHook(github.WebHookType(r), body)
+	if err != nil {
+		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
+		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
+		return
+	}
+
+	if config.EnableWebhookEventLogging {
+		bodyByte, appErr := json.Marshal(event)
+		if appErr != nil {
+			p.API.LogWarn("Error while Marshal Webhook Request", "error", appErr.Error())
+			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
+			return
+		}
+		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
+	}
+
 	var repo *github.Repository
 	var handler func()
 
 	switch event := event.(type) {
+	case *github.PingEvent:
+		handler = func() {
+			p.webhookBroker.publishPing(event, false)
+		}
 	case *github.PullRequestEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPullRequestEvent(event)
 			p.handlePullRequestNotification(event)
@@ -125,18 +199,12 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.IssuesEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postIssueEvent(event)
 			p.handleIssueNotification(event)
 		}
 	case *github.IssueCommentEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postIssueCommentEvent(event)
 			p.handleCommentMentionNotification(event)
@@ -145,42 +213,27 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	case *github.PullRequestReviewEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
 		}
 	case *github.PushEvent:
 		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postPushEvent(event)
 		}
 	case *github.CreateEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postCreateEvent(event)
 		}
 	case *github.DeleteEvent:
 		repo = event.GetRepo()
-		if p.IsNotificationOff(*repo.FullName) {
-			return
-		}
 		handler = func() {
 			p.postDeleteEvent(event)
 		}
@@ -191,11 +244,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if repo == nil || handler == nil {
+	if handler == nil {
 		return
 	}
 
-	if repo.GetPrivate() && !config.EnablePrivateRepo {
+	if repo != nil && repo.GetPrivate() && !config.EnablePrivateRepo {
 		return
 	}
 
@@ -207,7 +260,9 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, p.getBaseURL())
+	config := p.getConfiguration()
+
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.getBaseURL())
 
 	if owner == "" {
 		return false
@@ -341,11 +396,13 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 	}
 }
+
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
 	return strings.TrimSpace(policy.Sanitize(description))
 }
+
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	if action != actionOpened {
