@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,6 +15,8 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
+	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
@@ -30,10 +31,17 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	wsEventConnect     = "connect"
-	wsEventDisconnect  = "disconnect"
-	wsEventRefresh     = "refresh"
-	wsEventCreateIssue = "createIssue"
+	mm34646MutexKey = "mm34646_token_reset_mutex"
+	mm34646DoneKey  = "mm34646_token_reset_done"
+
+	wsEventConnect    = "connect"
+	wsEventDisconnect = "disconnect"
+	// WSEventConfigUpdate is the WebSocket event to update the configurations on webapp.
+	WSEventConfigUpdate = "config_update"
+	wsEventRefresh      = "refresh"
+	wsEventCreateIssue  = "createIssue"
+
+	WSEventRefresh = "refresh"
 
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
@@ -54,12 +62,7 @@ var (
 
 type Plugin struct {
 	plugin.MattermostPlugin
-	// githubPermalinkRegex is used to parse github permalinks in post messages.
-	githubPermalinkRegex *regexp.Regexp
-
-	BotUserID string
-
-	CommandHandlers map[string]CommandHandleFunc
+	client *pluginapi.Client
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -68,9 +71,24 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *Configuration
 
+	chimeraURL string
+
 	router *mux.Router
 
-	chimeraURL string
+	telemetryClient telemetry.Client
+	tracker         telemetry.Tracker
+
+	BotUserID   string
+	poster      poster.Poster
+	flowManager *FlowManager
+
+	CommandHandlers map[string]CommandHandleFunc
+
+	// githubPermalinkRegex is used to parse github permalinks in post messages.
+	githubPermalinkRegex *regexp.Regexp
+
+	webhookBroker *WebhookBroker
+	oauthBroker   *OAuthBroker
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -96,18 +114,17 @@ func NewPlugin() *Plugin {
 	return p
 }
 
-func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
-	access := info.Token.AccessToken
-	config := p.getConfiguration()
-	updated, err := p.forceResetUserTokenMM34646(ctx, config, *info)
-	if err == nil {
-		access = updated
-	} else {
-		p.API.LogInfo("Failed to refresh access token", "error", err.Error())
+func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
+	userInfo, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		return nil, apiErr
 	}
 
+	return p.githubConnectUser(ctx, userInfo), nil
+}
+
+func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
 	tok := *info.Token
-	tok.AccessToken = access
 	return p.githubConnectToken(tok)
 }
 
@@ -149,9 +166,40 @@ func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*
 	return client, nil
 }
 
+func (p *Plugin) setDefaultConfiguration() error {
+	config := p.getConfiguration()
+
+	changed, err := config.setDefaults(pluginapi.IsCloud(p.API.GetLicense()))
+	if err != nil {
+		return err
+	}
+
+	if changed {
+		configMap, err := config.ToMap()
+		if err != nil {
+			return err
+		}
+
+		appErr := p.API.SavePluginConfig(configMap)
+		if appErr != nil {
+			return appErr
+		}
+	}
+
+	return nil
+}
+
 func (p *Plugin) OnActivate() error {
-	if p.API.GetConfig().ServiceSettings.SiteURL == nil {
-		return errors.New("siteURL is not set. Please set a siteURL and restart the plugin")
+	p.client = pluginapi.NewClient(p.API, p.Driver)
+
+	siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil || *siteURL == "" {
+		return errors.New("siteURL is not set. Please set it and restart the plugin")
+	}
+
+	err := p.setDefaultConfiguration()
+	if err != nil {
+		return errors.Wrap(err, "failed to set default configuration")
 	}
 
 	p.registerChimeraURL()
@@ -163,41 +211,60 @@ func (p *Plugin) OnActivate() error {
 
 	p.initializeAPI()
 
-	client := pluginapi.NewClient(p.API, p.Driver)
-	botID, err := client.Bot.EnsureBot(&model.Bot{
+	p.telemetryClient, err = telemetry.NewRudderClient()
+	if err != nil {
+		p.API.LogWarn("Telemetry client not started", "error", err.Error())
+	}
+
+	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
+
+	botID, err := p.client.Bot.EnsureBot(&model.Bot{
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
-	})
+	}, pluginapi.ProfileImagePath(filepath.Join("assets", "profile.png")))
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure github bot")
 	}
 	p.BotUserID = botID
 
-	bundlePath, err := p.API.GetBundlePath()
-	if err != nil {
-		return errors.Wrap(err, "couldn't get bundle path")
-	}
-
-	profileImage, err := ioutil.ReadFile(filepath.Join(bundlePath, "assets", "profile.png"))
-	if err != nil {
-		return errors.Wrap(err, "couldn't read profile image")
-	}
-
-	appErr := p.API.SetProfileImage(botID, profileImage)
-	if appErr != nil {
-		return errors.Wrap(appErr, "couldn't set profile image")
-	}
+	p.poster = poster.NewPoster(&p.client.Post, p.BotUserID)
+	p.flowManager = p.NewFlowManager()
 
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
 	go func() {
-		err := p.forceResetAllMM34646()
-		if err != nil {
-			p.API.LogDebug("failed to reset user tokens", "error", err.Error())
+		resetErr := p.forceResetAllMM34646()
+		if resetErr != nil {
+			p.API.LogDebug("failed to reset user tokens", "error", resetErr.Error())
 		}
 	}()
 	return nil
+}
+
+func (p *Plugin) OnDeactivate() error {
+	p.webhookBroker.Close()
+	p.oauthBroker.Close()
+
+	return nil
+}
+
+func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
+	// Don't start wizard if OAuth is configured
+	if p.getConfiguration().IsOAuthConfigured() {
+		return nil
+	}
+
+	return p.flowManager.StartSetupWizard(event.UserId, "")
+}
+
+func (p *Plugin) OnSendDailyTelemetry() {
+	p.SendDailyTelemetry()
+}
+
+func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
+	p.HandleClusterEvent(ev)
 }
 
 // registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.
@@ -255,14 +322,14 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 		// means that asks scope for private repositories
 		repo = github.ScopeRepo
 	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg)}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
 
 	if config.UsePreregisteredApplication {
 		p.API.LogDebug("Using Chimera Proxy OAuth configuration")
 		return p.getOAuthConfigForChimeraApp(scopes)
 	}
 
-	baseURL := p.getBaseURL()
+	baseURL := config.getBaseURL()
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
 
@@ -321,10 +388,6 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
-}
-
-type ClientSafeSettings struct {
-	LeftSidebarEnabled bool `json:"left_sidebar_enabled"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
@@ -519,7 +582,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
-	baseURL := p.getBaseURL()
+	baseURL := config.getBaseURL()
 
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
 	if err != nil {
@@ -725,15 +788,6 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
-}
-
-func (p *Plugin) getBaseURL() string {
-	config := p.getConfiguration()
-	if config.EnterpriseBaseURL != "" {
-		return config.EnterpriseBaseURL
-	}
-
-	return "https://github.com/"
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,

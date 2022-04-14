@@ -19,4 +19,4 @@ export const getServerRoute = (state) => {
     return basePath;
 };
 
-export const pluginSettings = (state) => getPluginState(state).pluginSettings;
+export const configuration = (state) => getPluginState(state).configuration;
