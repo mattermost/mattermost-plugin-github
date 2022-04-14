@@ -172,7 +172,6 @@ function GithubItems(props: GithubItemsProps) {
                 <span
                     title={'Milestone'}
                     aria-label={item.milestone.title}
-                    role={'note'}
                     style={
                         {
                             ...style.milestoneIcon,
