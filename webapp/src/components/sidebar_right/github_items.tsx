@@ -170,7 +170,7 @@ function GithubItems(props: GithubItemsProps) {
         if (item.milestone) {
             milestone = (
                 <span
-                    title={'Milestone'}
+                    title={item.milestone.title}
                     aria-label={item.milestone.title}
                     role={'note'}
                     style={
@@ -443,8 +443,6 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
     }
 
     if (changesRequested > 0) {
-        // there are two conflicting rules so decided to choose one over the other on line 456
-
         const changedRequestedText = 'Changes Requested';
         changes = (
             <OverlayTrigger
