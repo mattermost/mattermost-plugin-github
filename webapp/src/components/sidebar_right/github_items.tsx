@@ -450,11 +450,14 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
             <OverlayTrigger
                 key='changesRequestedDot'
                 placement='bottom'
-                overlay={<Tooltip
-                    id='changesRequestedTooltip'
-                    aria-label={changedRequestedText}
-                // eslint-disable-next-line react/jsx-closing-bracket-location
-                >{'Changes Requested'}</Tooltip>}
+                overlay={
+                    <Tooltip
+                        id='changesRequestedTooltip'
+                        aria-label={changedRequestedText}
+                    >
+                        {'Changes Requested'}
+                    </Tooltip>
+                }
             >
                 <span style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></span>
             </OverlayTrigger>
