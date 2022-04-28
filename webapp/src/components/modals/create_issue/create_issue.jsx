@@ -115,7 +115,12 @@ export default class CreateIssueModal extends PureComponent {
             milestone: null,
             showErrors: false,
         };
-        this.setState(fieldsToReset);
+        this.setState({
+            ...initialState,
+            repo,
+            issueTitle: this.state.issueTitle,
+            issueDescription: this.state.issueDescription,
+        });
     };
 
     handleLabelsChange = (labels) => this.setState({labels});
