@@ -276,13 +276,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	flags := SubscriptionFlags{}
 
 	if len(parameters) > 1 {
-		var flagParams []string
-		if isFlag(parameters[1]) {
-			flagParams = parameters[1:]
-		} else {
-			features = parameters[1]
-			flagParams = parameters[2:]
-		}
+		flagParams := parameters[1:]
 
 		if len(flagParams)%2 != 0 {
 			return "Please use the correct format for flags: --<name> <value>"
@@ -294,7 +288,13 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			if !isFlag(flag) {
 				return "Please use the correct format for flags: --<name> <value>"
 			}
-			if err := flags.AddFlag(parseFlag(flag), value); err != nil {
+			parsedFlag := parseFlag(flag)
+
+			if parsedFlag == FeaturesFlag {
+				features = value
+				continue
+			}
+			if err := flags.AddFlag(parsedFlag, value); err != nil {
 				return fmt.Sprintf("Unsupported value for flag %s", flag)
 			}
 		}
@@ -662,7 +662,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{

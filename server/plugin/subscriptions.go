@@ -17,6 +17,7 @@ const (
 	SubscriptionsKey     = "subscriptions"
 	excludeOrgMemberFlag = "exclude-org-member"
 	renderStyleFlag      = "render-style"
+	FeaturesFlag         = "features"
 )
 
 type SubscriptionFlags struct {
