@@ -290,7 +290,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 			parsedFlag := parseFlag(flag)
 
-			if parsedFlag == FeaturesFlag {
+			if parsedFlag == flagFeatures {
 				features = value
 				continue
 			}

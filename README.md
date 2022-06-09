@@ -145,9 +145,10 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
    ```
-   /github subscriptions add mattermost/mattermost-server issues,pulls,issue_comments,label:"Help Wanted"
+   /github subscriptions add mattermost/mattermost-server --features issues,pulls,issue_comments,label:"Help Wanted"
    ```
   - The following flags are supported:
+     - `--features`: comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:"labelname". Defaults to pulls,issues,creates,deletes.
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
      - `--render-style`: notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported 
      values are `collapsed`, `skip-body` or `default` (same as omitting the flag).

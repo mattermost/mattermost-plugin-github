@@ -349,20 +349,20 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"* `/github help` - Display Slash Command help text\n" +
 		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
 		"* `/github subscriptions list` - Will list the current channel subscriptions\n" +
-		"* `/github subscriptions add owner[/repo] [features] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
-		"  * `features` is a comma-delimited list of one or more the following:\n" +
-		"    * `issues` - includes new and closed issues\n" +
-		"    * `pulls` - includes new and closed pull requests\n" +
-		"    * `pulls_merged` - includes merged pull requests only\n" +
-		"    * `pushes` - includes pushes\n" +
-		"    * `creates` - includes branch and tag creations\n" +
-		"    * `deletes` - includes branch and tag deletions\n" +
-		"    * `issue_comments` - includes new issue comments\n" +
-		"    * `issue_creations` - includes new issues only \n" +
-		"    * `pull_reviews` - includes pull request reviews\n" +
-		"    * `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
-		"    * Defaults to `pulls,issues,creates,deletes`\n" +
+		"* `/github subscriptions add owner[/repo] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
 		"  * `flags` currently supported:\n" +
+		"	 * `--features` - a comma-delimited list of one or more of the following:\n" +
+		"    	* `issues` - includes new and closed issues\n" +
+		"    	* `pulls` - includes new and closed pull requests\n" +
+		"    	* `pulls_merged` - includes merged pull requests only\n" +
+		"    	* `pushes` - includes pushes\n" +
+		"    	* `creates` - includes branch and tag creations\n" +
+		"    	* `deletes` - includes branch and tag deletions\n" +
+		"    	* `issue_comments` - includes new issue comments\n" +
+		"    	* `issue_creations` - includes new issues only \n" +
+		"    	* `pull_reviews` - includes pull request reviews\n" +
+		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
+		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"    * `--render-style` - notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +
 		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +

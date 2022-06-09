@@ -15,9 +15,9 @@ import (
 
 const (
 	SubscriptionsKey     = "subscriptions"
-	excludeOrgMemberFlag = "exclude-org-member"
-	renderStyleFlag      = "render-style"
-	FeaturesFlag         = "features"
+	flagExcludeOrgMember = "exclude-org-member"
+	flagRenderStyle      = "render-style"
+	flagFeatures         = "features"
 )
 
 type SubscriptionFlags struct {
@@ -27,13 +27,13 @@ type SubscriptionFlags struct {
 
 func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
 	switch flag {
-	case excludeOrgMemberFlag:
+	case flagExcludeOrgMember:
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {
 			return err
 		}
 		s.ExcludeOrgMembers = parsed
-	case renderStyleFlag:
+	case flagRenderStyle:
 		s.RenderStyle = value
 	}
 
@@ -44,12 +44,12 @@ func (s SubscriptionFlags) String() string {
 	flags := []string{}
 
 	if s.ExcludeOrgMembers {
-		flag := "--" + excludeOrgMemberFlag + " true"
+		flag := "--" + flagExcludeOrgMember + " true"
 		flags = append(flags, flag)
 	}
 
 	if s.RenderStyle != "" {
-		flag := "--" + renderStyleFlag + " " + s.RenderStyle
+		flag := "--" + flagRenderStyle + " " + s.RenderStyle
 		flags = append(flags, flag)
 	}
 
