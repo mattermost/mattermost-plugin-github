@@ -451,6 +451,7 @@ func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 
 // getGitHubToUsernameMapping maps a GitHub username to the corresponding Mattermost username, if any.
 func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
+	p.API.LogDebug("<>/<> 3: calling GetUser", "user_id", p.getGitHubToUserIDMapping(githubUsername))
 	user, _ := p.API.GetUser(p.getGitHubToUserIDMapping(githubUsername))
 	if user == nil {
 		return ""
@@ -473,6 +474,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		p.API.LogWarn("Failed to delete github token from KV store", "userID", userID, "error", appErr.Error())
 	}
 
+	p.API.LogDebug("<>/<> 4: calling GetUser", "user_id", userID)
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		p.API.LogWarn("Failed to get user props", "userID", userID, "error", appErr.Error())
@@ -800,6 +802,7 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 			return "", apiEr
 		}
 
+		p.API.LogDebug("<>/<> 5: calling GetUser", "user_id", mmUserID)
 		user, appEr := p.API.GetUser(mmUserID)
 		if appEr != nil {
 			return "", appEr

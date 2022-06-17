@@ -512,6 +512,7 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
+	p.API.LogDebug("<>/<> 2: calling GetUser", "user_id", userID)
 	user, appErr := p.API.GetUser(userID)
 	if appErr != nil {
 		return false, appErr

@@ -1333,6 +1333,7 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 	*ghIssue.Body = ghIssue.GetBody() + mmMessage
 
+	p.API.LogDebug("<>/<> 1: calling GetUser", "user_id", c.UserID)
 	currentUser, appErr := p.API.GetUser(c.UserID)
 	if appErr != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
