@@ -2,18 +2,10 @@
 # See here for details: https://circleci.com/developer/orbs/licensing
 version: 2.1
 
-orbs:
-  aws-s3: circleci/aws-s3@1.0.16
-
-executors:
-  default:
-    docker:
-      - image: circleci/golang:1.18.0-node
-
 jobs:
   build:
-    executor:
-      name: default
+    docker:
+      - image: cimg/go:1.18-node.
     steps:
       - checkout
       - run:
