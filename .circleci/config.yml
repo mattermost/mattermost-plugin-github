@@ -3,6 +3,11 @@ version: 2.1
 orbs:
   plugin-ci: mattermost/plugin-ci@volatile
 
+executors:
+  default:
+    docker:
+      - image: cimg/go:1.18.3
+      
 workflows:
   version: 2
   nightly:
