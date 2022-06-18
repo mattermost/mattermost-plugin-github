@@ -2,10 +2,16 @@
 # See here for details: https://circleci.com/developer/orbs/licensing
 version: 2.1
 
+executors:
+  default:
+    docker:
+      - image: cimg/go:1.18.3-node
+
+
 jobs:
   build:
-    docker:
-      - image: cimg/go:1.18-node.
+    executor:
+      name: default
     steps:
       - checkout
       - run:
