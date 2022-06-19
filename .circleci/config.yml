@@ -5,8 +5,7 @@ version: 2.1
 executors:
   default:
     docker:
-      - image: cimg/go:1.18.3-node
-
+      - image: cimg/go:1.18.3-node:
 
 jobs:
   build:
@@ -14,6 +13,14 @@ jobs:
       name: default
     steps:
       - checkout
+      - run:
+          name: "Update Node.js and npm"
+          command: |
+            curl -sSL "https://nodejs.org/dist/v14.17.3/node-v14.17.3-linux-x64.tar.xz" | sudo tar --strip-components=2 -xJ -C /usr/local/bin/ node-v14.17.3-linux-x64/bin/node
+            curl https://www.npmjs.com/install.sh | sudo bash
+      - run:
+          name: Check current version of node
+          command: node -v
       - run:
           name: Building Plugin Bundle
           command: make dist
