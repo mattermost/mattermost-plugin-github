@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v41/github"
@@ -112,7 +113,7 @@ func (fm *FlowManager) doneStep() flow.Step {
 func (fm *FlowManager) onDone(f *flow.Flow) {
 	fm.trackCompleteSetupWizard(f.UserID)
 
-	delegatedFrom := f.State.GetString(keyDelegatedFrom)
+	delegatedFrom := f.GetState().GetString(keyDelegatedFrom)
 	if delegatedFrom != "" {
 		err := fm.setupFlow.ForUser(delegatedFrom).Go(stepDelegateComplete)
 		fm.client.Log.Warn("failed start configuration wizard for delegate", "error", err)
@@ -164,6 +165,7 @@ const (
 	stepCancel  flow.Name = "cancel"
 
 	keyDelegatedFrom               = "DelegatedFrom"
+	keyDelegatedTo                 = "DelegatedTo"
 	keyBaseURL                     = "BaseURL"
 	keyUsePreregisteredApplication = "UsePreregisteredApplication"
 	keyIsOAuthConfigured           = "IsOAuthConfigured"
@@ -171,7 +173,7 @@ const (
 
 func cancelButton() flow.Button {
 	return flow.Button{
-		Name:    "Cancel",
+		Name:    "Cancel setup",
 		Color:   flow.ColorDanger,
 		OnClick: flow.Goto(stepCancel),
 	}
@@ -287,7 +289,7 @@ func (fm *FlowManager) stepDelegateQuestion() flow.Step {
 			Name:  "I'll do it myself",
 			Color: flow.ColorPrimary,
 			OnClick: func(f *flow.Flow) (flow.Name, flow.State, error) {
-				if f.State.GetBool(keyUsePreregisteredApplication) {
+				if f.GetState().GetBool(keyUsePreregisteredApplication) {
 					return stepOAuthConnect, nil, nil
 				}
 
@@ -335,15 +337,15 @@ func (fm *FlowManager) submitDelegateSelection(f *flow.Flow, submitted map[strin
 	}
 
 	return stepDelegateConfirmation, flow.State{
-		"Delegated": delegate.GetDisplayName(model.ShowNicknameFullName),
+		keyDelegatedTo: delegate.Username,
 	}, nil, nil
 }
 
 func (fm *FlowManager) stepDelegateConfirmation() flow.Step {
 	return flow.NewStep(stepDelegateConfirmation).
-		WithText("GitHub integration setup details have been sent to @{{.Delegated}}").
+		WithText("GitHub integration setup details have been sent to @{{ .DelegatedTo }}").
 		WithButton(flow.Button{
-			Name:     "Waiting for @{{ .Delegated }}...",
+			Name:     "Waiting for @{{ .DelegatedTo }}...",
 			Color:    flow.ColorDefault,
 			Disabled: true,
 		}).
@@ -352,7 +354,7 @@ func (fm *FlowManager) stepDelegateConfirmation() flow.Step {
 
 func (fm *FlowManager) stepDelegateComplete() flow.Step {
 	return flow.NewStep(stepDelegateComplete).
-		WithText("~{{.Delegated}} completed configuring the integration.").
+		WithText("@{{ .DelegatedTo }} completed configuring the integration.").
 		Next(stepDone)
 }
 
@@ -407,6 +409,8 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 		return "", nil, nil, errors.New("base_url is not a string")
 	}
 
+	baseURL = strings.TrimSpace(baseURL)
+
 	err := isValidURL(baseURL)
 	if err != nil {
 		errorList["base_url"] = err.Error()
@@ -420,6 +424,8 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 	if !ok {
 		return "", nil, nil, errors.New("upload_url is not a string")
 	}
+
+	uploadURL = strings.TrimSpace(uploadURL)
 
 	err = isValidURL(uploadURL)
 	if err != nil {
@@ -469,7 +475,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 	return flow.NewStep(stepOAuthInfo).
 		WithPretext(oauthPretext).
 		WithText(oauthMessage).
-		WithImage(fm.pluginURL, "public/new-oauth-application.png").
+		WithImage("public/new-oauth-application.png").
 		WithButton(continueButton("")).
 		WithButton(cancelButton())
 }
@@ -496,7 +502,7 @@ func (fm *FlowManager) stepOAuthInput() flow.Step {
 						DisplayName: "GitHub OAuth Client Secret",
 						Name:        "client_secret",
 						Type:        "text",
-						SubType:     "password",
+						SubType:     "text",
 						Placeholder: "Enter GitHub OAuth Client Secret",
 					},
 				},
@@ -518,6 +524,8 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 		return "", nil, nil, errors.New("client_id is not a string")
 	}
 
+	clientID = strings.TrimSpace(clientID)
+
 	if len(clientID) != 20 {
 		errorList["client_id"] = "Client ID should be 20 characters long"
 	}
@@ -530,6 +538,8 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 	if !ok {
 		return "", nil, nil, errors.New("client_secret is not a string")
 	}
+
+	clientSecret = strings.TrimSpace(clientSecret)
 
 	if len(clientSecret) != 40 {
 		errorList["client_secret"] = "Client Secret should be 40 characters long"
@@ -635,6 +645,8 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 		return "", nil, nil, errors.New("repo_org is not a string")
 	}
 
+	repoOrg = strings.TrimSpace(repoOrg)
+
 	config := fm.getConfiguration()
 
 	org, repo := parseOwnerAndRepo(repoOrg, config.getBaseURL())
@@ -693,13 +705,16 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 		return "", nil, nil, errors.Wrap(err, "failed to create hook")
 	}
 
-	select {
-	case event := <-ch:
-		if *event.HookID == *hook.ID {
-			break
+	var found bool
+	for !found {
+		select {
+		case event, ok := <-ch:
+			if ok && event != nil && *event.HookID == *hook.ID {
+				found = true
+			}
+		case <-ctx.Done():
+			return "", nil, nil, errors.New("timed out waiting for webhook event. Please check if the webhook was correctly created")
 		}
-	case <-ctx.Done():
-		return "", nil, nil, errors.New("timed out waiting for webhook event. Please check if the webhook was correctly created")
 	}
 
 	fm.pingBroker.UnsubscribePings(ch)
