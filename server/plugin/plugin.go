@@ -89,6 +89,8 @@ type Plugin struct {
 
 	webhookBroker *WebhookBroker
 	oauthBroker   *OAuthBroker
+
+	emojiMap map[string]string
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -109,6 +111,17 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
+	}
+
+	p.emojiMap = map[string]string{
+		"+1":       "+1",
+		"-1":       "-1",
+		"laughing": "laugh",
+		"confused": "confused",
+		"heart":    "heart",
+		"tada":     "hooray",
+		"rocket":   "rocket",
+		"eyes":     "eyes",
 	}
 
 	return p
@@ -248,6 +261,86 @@ func (p *Plugin) OnDeactivate() error {
 	p.oauthBroker.Close()
 
 	return nil
+}
+
+func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reaction) {
+	githubEmoji := p.emojiMap[reaction.EmojiName]
+	if githubEmoji == "" {
+		return
+	}
+	post, error := p.client.Post.GetPost(reaction.PostId)
+	if error != nil {
+		p.API.LogError("Invalid post id. Addition of reaction failed.")
+		return
+	}
+
+	repo := post.GetProp("gh_repo")
+	if repo == nil {
+		p.API.LogDebug("Required prop is not present. This post is not created by this plugin, hence ignoring")
+		return
+	}
+
+	orgRepo := strings.Split(repo.(string), "/")
+	// strange that gh_object_id is always returned as float64, without type casting it throws an error
+	id := int(post.GetProp("gh_object_id").(float64))
+
+	info, appErr := p.getGitHubUserInfo(reaction.UserId)
+	if appErr != nil {
+		if appErr.ID != apiErrorIDNotConnected {
+			p.API.LogError("Error in getting user info", "error", appErr.Message)
+		}
+	}
+	ghClient := p.githubConnectUser(context.Background(), info)
+
+	_, _, error = ghClient.Reactions.CreateIssueCommentReaction(context.Background(), orgRepo[0], orgRepo[1], int64(id), githubEmoji)
+	if error != nil {
+		p.API.LogError("Error found while creating issue comment reaction", error)
+	}
+}
+
+func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.Reaction) {
+	githubEmoji := p.emojiMap[reaction.EmojiName]
+	if githubEmoji == "" {
+		return
+	}
+	post, error := p.client.Post.GetPost(reaction.PostId)
+	if error != nil {
+		p.API.LogError("Invalid post id. Removal of reaction failed.")
+		return
+	}
+
+	repo := post.GetProp("gh_repo")
+	if repo == nil {
+		p.API.LogDebug("Required prop is not present. This post is not created by this plugin, hence ignoring")
+		return
+	}
+
+	orgRepo := strings.Split(repo.(string), "/")
+	// strange that gh_object_id is always returned as float64, without type casting it throws an error
+	id := int(post.GetProp("gh_object_id").(float64))
+
+	info, appErr := p.getGitHubUserInfo(reaction.UserId)
+	if appErr != nil {
+		if appErr.ID != apiErrorIDNotConnected {
+			p.API.LogError("Error in getting user info", "error", appErr.Message)
+		}
+	}
+	ghClient := p.githubConnectUser(context.Background(), info)
+
+	reactions, _, error := ghClient.Reactions.ListIssueCommentReactions(context.Background(), orgRepo[0], orgRepo[1], int64(id), &github.ListOptions{})
+
+	if error == nil {
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				// delete this reaction
+				_, error = ghClient.Reactions.DeleteIssueCommentReaction(context.Background(), orgRepo[0], orgRepo[1], int64(id), reactionObj.GetID())
+				if error != nil {
+					p.API.LogError("Error found while removing issue comment reaction")
+				}
+				return
+			}
+		}
+	}
 }
 
 func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
