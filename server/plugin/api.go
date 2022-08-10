@@ -27,7 +27,7 @@ const (
 	// TokenTTL is the OAuth token expiry duration in seconds
 	TokenTTL = 10 * 60
 
-	requestTimeout = 5 * time.Second
+	requestTimeout = 30 * time.Second
 )
 
 type OAuthState struct {
