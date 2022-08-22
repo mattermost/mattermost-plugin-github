@@ -276,35 +276,43 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	flags := SubscriptionFlags{}
 
 	if len(parameters) > 1 {
-		var optionList []string
+		flagParams := parameters[1:]
 
-		for _, element := range parameters[1:] {
-			if isFlag(element) {
-				flags.AddFlag(parseFlag(element))
-			} else {
-				optionList = append(optionList, element)
+		if len(flagParams)%2 != 0 {
+			return "Please use the correct format for flags: --<name> <value>"
+		}
+		for i := 0; i < len(flagParams); i += 2 {
+			flag := flagParams[i]
+			value := flagParams[i+1]
+
+			if !isFlag(flag) {
+				return "Please use the correct format for flags: --<name> <value>"
+			}
+			parsedFlag := parseFlag(flag)
+
+			if parsedFlag == flagFeatures {
+				features = value
+				continue
+			}
+			if err := flags.AddFlag(parsedFlag, value); err != nil {
+				return fmt.Sprintf("Unsupported value for flag %s", flag)
 			}
 		}
 
-		if len(optionList) > 1 {
-			return "Just one list of features is allowed"
-		} else if len(optionList) == 1 {
-			features = optionList[0]
-			fs := strings.Split(features, ",")
-			if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
-				return "Feature list cannot contain both issue and issue_creations"
+		fs := strings.Split(features, ",")
+		if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+			return "Feature list cannot contain both issue and issue_creations"
+		}
+		if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+			return "Feature list cannot contain both pulls and pulls_merged"
+		}
+		ok, ifs := validateFeatures(fs)
+		if !ok {
+			msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
+			if len(ifs) == 0 {
+				msg = "Feature list must have \"pulls\" or \"issues\" when using a label."
 			}
-			if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
-				return "Feature list cannot contain both pulls and pulls_merged"
-			}
-			ok, ifs := validateFeatures(fs)
-			if !ok {
-				msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
-				if len(ifs) == 0 {
-					msg = "Feature list must have \"pulls\" or \"issues\" when using a label."
-				}
-				return msg
-			}
+			return msg
 		}
 	}
 
@@ -654,17 +662,37 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddTextArgument("Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "[features] (optional)", `/[^,-\s]+(,[^,-\s]+)*/`)
-	if config.GitHubOrg != "" {
-		flags := []model.AutocompleteListItem{{
-			HelpText: "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)",
-			Hint:     "(optional)",
-			Item:     "--exclude-org-member",
-		}}
-		subscriptionsAdd.AddStaticListArgument("Currently supports --exclude-org-member", false, flags)
-	}
-	subscriptions.AddCommand(subscriptionsAdd)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
+	if config.GitHubOrg != "" {
+		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
+			{
+				Item:     "true",
+				HelpText: "Exclude posts from members of the configured organization",
+			},
+			{
+				Item:     "false",
+				HelpText: "Include posts from members of the configured organization",
+			},
+		})
+	}
+
+	subscriptionsAdd.AddNamedStaticListArgument("render-style", "Determine the rendering style of various notifications.", false, []model.AutocompleteListItem{
+		{
+			Item:     "default",
+			HelpText: "The default rendering style for all notifications (includes all information).",
+		},
+		{
+			Item:     "skip-body",
+			HelpText: "Skips the body part of various long notifications that have a body (e.g. new PRs and new issues).",
+		},
+		{
+			Item:     "collapsed",
+			HelpText: "Notifications come in a one-line format, without enlarged fonts or advanced layouts.",
+		},
+	})
+
+	subscriptions.AddCommand(subscriptionsAdd)
 	subscriptionsDelete := model.NewAutocompleteData("delete", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
 	subscriptionsDelete.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
 	subscriptions.AddCommand(subscriptionsDelete)

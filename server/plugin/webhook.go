@@ -30,6 +30,19 @@ const (
 	actionEdited  = "edited"
 )
 
+// RenderConfig holds various configuration options to be used in a template
+// for redering an event.
+type RenderConfig struct {
+	Style string
+}
+
+// EventWithRenderConfig holds an event along with configuration options for
+// rendering.
+type EventWithRenderConfig struct {
+	Event  interface{}
+	Config RenderConfig
+}
+
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
 	const signaturePrefix = "sha1="
 	const signatureLength = 45
@@ -60,6 +73,22 @@ func signBody(secret, body []byte) ([]byte, error) {
 	}
 
 	return computed.Sum(nil), nil
+}
+
+// GetEventWithRenderConfig wraps any github Event into an EventWithRenderConfig
+// which also contains per-subscription configuration options.
+func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
+	style := ""
+	if sub != nil {
+		style = sub.RenderStyle()
+	}
+
+	return &EventWithRenderConfig{
+		Event: event,
+		Config: RenderConfig{
+			Style: style,
+		},
+	}
 }
 
 // Hack to convert from github.PushEventRepository to github.Repository
@@ -325,12 +354,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		labels[i] = v.GetName()
 	}
 
-	newPRMessage, err := renderTemplate("newPR", event)
-	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
-		return
-	}
-
 	closedPRMessage, err := renderTemplate("closedPR", event)
 	if err != nil {
 		p.API.LogWarn("Failed to render template", "error", err.Error())
@@ -383,6 +406,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == actionOpened {
+			newPRMessage, err := renderTemplate("newPR", GetEventWithRenderConfig(event, sub))
+			if err != nil {
+				p.API.LogWarn("Failed to render template", "error", err.Error())
+				return
+			}
+
 			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
@@ -494,19 +523,6 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		return
 	}
 
-	renderedMessage, err := renderTemplate(issueTemplate, event)
-	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
-		return
-	}
-	renderedMessage = p.sanitizeDescription(renderedMessage)
-
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_issue",
-		Message: renderedMessage,
-	}
-
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(issue.Labels))
 	for i, v := range issue.Labels {
@@ -524,6 +540,19 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
+		}
+
+		renderedMessage, err := renderTemplate(issueTemplate, GetEventWithRenderConfig(event, sub))
+		if err != nil {
+			p.API.LogWarn("Failed to render template", "error", err.Error())
+			return
+		}
+		renderedMessage = p.sanitizeDescription(renderedMessage)
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Type:    "custom_git_issue",
+			Message: renderedMessage,
 		}
 
 		label := sub.Label()

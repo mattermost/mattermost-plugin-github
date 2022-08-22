@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-github/v41/github"
@@ -14,25 +15,41 @@ import (
 
 const (
 	SubscriptionsKey     = "subscriptions"
-	excludeOrgMemberFlag = "exclude-org-member"
+	flagExcludeOrgMember = "exclude-org-member"
+	flagRenderStyle      = "render-style"
+	flagFeatures         = "features"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
+	RenderStyle       string
 }
 
-func (s *SubscriptionFlags) AddFlag(flag string) {
-	switch flag { // nolint:gocritic // It's expected that more flags get added.
-	case excludeOrgMemberFlag:
-		s.ExcludeOrgMembers = true
+func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
+	switch flag {
+	case flagExcludeOrgMember:
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		s.ExcludeOrgMembers = parsed
+	case flagRenderStyle:
+		s.RenderStyle = value
 	}
+
+	return nil
 }
 
 func (s SubscriptionFlags) String() string {
 	flags := []string{}
 
 	if s.ExcludeOrgMembers {
-		flag := "--" + excludeOrgMemberFlag
+		flag := "--" + flagExcludeOrgMember + " true"
+		flags = append(flags, flag)
+	}
+
+	if s.RenderStyle != "" {
+		flag := "--" + flagRenderStyle + " " + s.RenderStyle
 		flags = append(flags, flag)
 	}
 
@@ -106,6 +123,10 @@ func (s *Subscription) Label() string {
 
 func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
+}
+
+func (s *Subscription) RenderStyle() string {
+	return s.Flags.RenderStyle
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {

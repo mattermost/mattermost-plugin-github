@@ -239,11 +239,14 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
-			Repo:        &repo,
-			PullRequest: &pullRequest,
-			Sender:      &user,
-		})
+		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+			&github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequest,
+				Sender:      &user,
+			},
+			nil,
+		))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -259,11 +262,14 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
-			Repo:        &repo,
-			PullRequest: &pullRequestWithMentions,
-			Sender:      &user,
-		})
+		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+			&github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequestWithMentions,
+				Sender:      &user,
+			},
+			nil,
+		))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	}))
@@ -280,11 +286,14 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
-			Repo:        &repo,
-			PullRequest: &pullRequestWithLabelAndAssignee,
-			Sender:      &user,
-		})
+		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+			&github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequestWithLabelAndAssignee,
+				Sender:      &user,
+			},
+			nil,
+		))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -301,10 +310,53 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", &github.PullRequestEvent{
-			Repo:        &repo,
-			PullRequest: &pullRequestWithMultipleLabelsAndAssignees,
-			Sender:      &user,
+		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+			&github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequestWithMultipleLabelsAndAssignees,
+				Sender:      &user,
+			},
+			nil,
+		))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with collapsed render style", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was opened by [panda](https://github.com/panda).
+`
+
+		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
+			Event: &github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequest,
+				Sender:      &user,
+			},
+			Config: RenderConfig{
+				Style: "collapsed",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with skip-body render style", func(t *testing.T) {
+		expected := `
+#### Leverage git-get-head
+##### [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42)
+#new-pull-request by [panda](https://github.com/panda)
+`
+
+		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
+			Event: &github.PullRequestEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequest,
+				Sender:      &user,
+			},
+			Config: RenderConfig{
+				Style: "skip-body",
+			},
 		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
@@ -370,11 +422,14 @@ func TestNewIssueTemplate(t *testing.T) {
 git-get-head sounds like a great feature we should support
 `
 
-		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
-			Repo:   &repo,
-			Issue:  &issue,
-			Sender: &user,
-		})
+		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+			&github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issue,
+				Sender: &user,
+			},
+			nil,
+		))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -389,11 +444,14 @@ git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
 `
 
-		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
-			Repo:   &repo,
-			Issue:  &issueWithMentions,
-			Sender: &user,
-		})
+		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+			&github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issueWithMentions,
+				Sender: &user,
+			},
+			nil,
+		))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	}))
@@ -409,11 +467,14 @@ Assignees: [panda](https://github.com/panda)
 git-get-head sounds like a great feature we should support
 `
 
-		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
-			Repo:   &repo,
-			Issue:  &issueWithLabelAndAssignee,
-			Sender: &user,
-		})
+		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+			&github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issueWithLabelAndAssignee,
+				Sender: &user,
+			},
+			nil,
+		))
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -429,10 +490,53 @@ Assignees: [panda](https://github.com/panda), [panda](https://github.com/panda)
 git-get-head sounds like a great feature we should support
 `
 
-		actual, err := renderTemplate("newIssue", &github.IssuesEvent{
-			Repo:   &repo,
-			Issue:  &issueWithMultipleLabelsAndAssignee,
-			Sender: &user,
+		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+			&github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issueWithMultipleLabelsAndAssignee,
+				Sender: &user,
+			},
+			nil,
+		))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with collapsed render style", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) opened by [panda](https://github.com/panda).
+`
+
+		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
+			Event: &github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issue,
+				Sender: &user,
+			},
+			Config: RenderConfig{
+				Style: "collapsed",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with skip-body render style", func(t *testing.T) {
+		expected := `
+#### Implement git-get-head
+##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
+#new-issue by [panda](https://github.com/panda)
+`
+
+		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
+			Event: &github.IssuesEvent{
+				Repo:   &repo,
+				Issue:  &issue,
+				Sender: &user,
+			},
+			Config: RenderConfig{
+				Style: "skip-body",
+			},
 		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
@@ -444,11 +548,14 @@ func TestClosedIssueTemplate(t *testing.T) {
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("closedIssue", &github.IssuesEvent{
-		Repo:   &repo,
-		Issue:  &issue,
-		Sender: &user,
-	})
+	actual, err := renderTemplate("closedIssue", GetEventWithRenderConfig(
+		&github.IssuesEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+		},
+		nil,
+	))
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
@@ -458,11 +565,14 @@ func TestReopenedIssueTemplate(t *testing.T) {
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) reopened by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("reopenedIssue", &github.IssuesEvent{
-		Repo:   &repo,
-		Issue:  &issue,
-		Sender: &user,
-	})
+	actual, err := renderTemplate("reopenedIssue", GetEventWithRenderConfig(
+		&github.IssuesEvent{
+			Repo:   &repo,
+			Issue:  &issue,
+			Sender: &user,
+		},
+		nil,
+	))
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
@@ -474,14 +584,17 @@ func TestIssueLabelledTemplate(t *testing.T) {
 #issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("issueLabelled", &github.IssuesEvent{
-		Repo:  &repo,
-		Issue: &issue,
-		Label: &github.Label{
-			Name: sToP("label-name"),
+	actual, err := renderTemplate("issueLabelled", GetEventWithRenderConfig(
+		&github.IssuesEvent{
+			Repo:  &repo,
+			Issue: &issue,
+			Label: &github.Label{
+				Name: sToP("label-name"),
+			},
+			Sender: &user,
 		},
-		Sender: &user,
-	})
+		nil,
+	))
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
