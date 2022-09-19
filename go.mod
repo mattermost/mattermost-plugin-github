@@ -7,7 +7,7 @@ require (
 	github.com/google/go-github/v41 v41.0.0
 	github.com/gorilla/mux v1.8.0
 	github.com/mattermost/mattermost-plugin-api v0.0.27
-	github.com/mattermost/mattermost-server/v6 v6.5.0
+	github.com/mattermost/mattermost-server/v6 v6.5.2
 	github.com/microcosm-cc/bluemonday v1.0.18
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
