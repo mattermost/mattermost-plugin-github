@@ -3,7 +3,7 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -57,7 +57,7 @@ func TestGetConfiguration(t *testing.T) {
 		require.NoError(t, err)
 
 		pluginAPI := &plugintest.API{}
-		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(b)})
+		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(b)})
 		defer pluginAPI.AssertExpectations(t)
 
 		client := NewPluginClient(pluginAPI)
@@ -91,7 +91,7 @@ func TestGetToken(t *testing.T) {
 		require.NoError(t, err)
 
 		pluginAPI := &plugintest.API{}
-		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: http.StatusOK, Body: ioutil.NopCloser(b)})
+		pluginAPI.On("PluginHTTP", mock.AnythingOfType("*http.Request")).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(b)})
 		defer pluginAPI.AssertExpectations(t)
 
 		client := NewPluginClient(pluginAPI)
