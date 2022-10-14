@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,7 +47,7 @@ func TestWithRecovery(t *testing.T) {
 	resp := w.Result()
 	if resp.Body != nil {
 		defer resp.Body.Close()
-		_, err := io.Copy(ioutil.Discard, resp.Body)
+		_, err := io.Copy(io.Discard, resp.Body)
 		require.NoError(t, err)
 	}
 }

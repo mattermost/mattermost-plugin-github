@@ -142,7 +142,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if flags.ExcludeOrgMembers && !p.isOrganizationLocked() {
-		return errors.Errorf("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
+		return errors.New("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
 	}
 
 	var err error
