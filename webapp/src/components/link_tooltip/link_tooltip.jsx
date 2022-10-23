@@ -86,6 +86,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
     if (data) {
         let date = new Date(data.created_at);
         date = date.toDateString();
+
         return (
             <div className='github-tooltip'>
                 <div
@@ -156,9 +157,9 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                             key={idx}
                                             className='label mr-1'
                                             title={label.description}
-                                            style={{backgroundColor: '#' + label.color}}
+                                            style={{backgroundColor: '#' + label.color, color: getLabelFontColor(label.color)}}
                                         >
-                                            <span style={{color: getLabelFontColor(label.color)}}>{label.name}</span>
+                                            <span>{label.name}</span>
                                         </span>
                                     );
                                 })}
