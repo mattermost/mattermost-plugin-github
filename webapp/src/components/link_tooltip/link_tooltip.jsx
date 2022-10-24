@@ -86,6 +86,14 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
     if (data) {
         let date = new Date(data.created_at);
         date = date.toDateString();
+
+        let userName = '';
+        if (data.user) {
+            userName = data.user.login;
+        } else if (data.owner) {
+            userName = data.owner.login;
+        }
+
         return (
             <div className='github-tooltip'>
                 <div
@@ -97,7 +105,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                             {data.repo}
                         </span>
                         {' on '}
-                        <span>{date}</span>
+                        <span>{date + ' by ' + userName}</span>
                     </div>
 
                     <div className='body d-flex mt-2'>
