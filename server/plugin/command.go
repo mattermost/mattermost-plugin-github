@@ -531,9 +531,18 @@ func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	command, action, parameters := parseCommand(args.Command)
+	cmd, action, parameters := parseCommand(args.Command)
 
-	if command != "/github" {
+	if cmd != "/github" {
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "about" {
+		text, err := command.BuildInfo(Manifest)
+		if err != nil {
+			text = errors.Wrap(err, "failed to get build info").Error()
+		}
+		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
 
@@ -624,16 +633,19 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	if !config.IsOAuthConfigured() {
-		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
+		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup, about")
 
 		setup := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
 		setup.RoleID = model.SystemAdminRoleId
 		github.AddCommand(setup)
 
+		about := command.BuildInfoAutocomplete("about")
+		github.AddCommand(about)
+
 		return github
 	}
 
-	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
+	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings, about")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
 	if config.EnablePrivateRepo {
@@ -763,6 +775,9 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
 	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
 	github.AddCommand(setup)
+
+	about := command.BuildInfoAutocomplete("about")
+	github.AddCommand(about)
 
 	return github
 }
