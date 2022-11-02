@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v41 v41.0.0
 	github.com/gorilla/mux v1.8.0
-	github.com/mattermost/mattermost-plugin-api v0.1.0
+	github.com/mattermost/mattermost-plugin-api v0.1.1
 	// mmgoget: github.com/mattermost/mattermost-server/v6@v7.4.0 is replaced by -> github.com/mattermost/mattermost-server/v6@8cb6718a9b
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221012175353-8cb6718a9bcc
 	github.com/microcosm-cc/bluemonday v1.0.19
