@@ -28,7 +28,7 @@ const (
 	TokenTTL = 10 * 60
 
 	requestTimeout       = 30 * time.Second
-	oauthCompleteTimeout = 5 * time.Minute
+	oauthCompleteTimeout = 2 * time.Minute
 )
 
 type OAuthState struct {
