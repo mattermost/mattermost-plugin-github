@@ -197,3 +197,45 @@ func TestParseCommand(t *testing.T) {
 		})
 	}
 }
+
+func TestCheckConflictingFeatures(t *testing.T) {
+	type output struct {
+		valid               bool
+		conflictingFeatures []string
+	}
+	tests := []struct {
+		name string
+		args []string
+		want output
+	}{
+		{
+			name: "no conflicts",
+			args: []string{"creates", "pushes", "issue_comments"},
+			want: output{true, nil},
+		},
+		{
+			name: "conflict with issue and issue creation",
+			args: []string{"pulls", "issues", "issue_creations"},
+			want: output{false, []string{"issues", "issue_creations"}},
+		},
+		{
+			name: "conflict with pulls and pulls created",
+			args: []string{"pulls", "issues", "new_pulls"},
+			want: output{false, []string{"pulls", "new_pulls"}},
+		},
+		{
+			name: "conflict with pulls and pulls merged",
+			args: []string{"pulls", "pushes", "pulls_merged"},
+			want: output{false, []string{"pulls", "pulls_merged"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ok, fs := checkFeatureConflict(tt.args)
+			got := output{ok, fs}
+			errMsg := fmt.Sprintf("checkFeatureConflict() = %v, want %v", got, tt.want)
+			assert.EqualValues(t, tt.want, got, errMsg)
+		})
+	}
+}

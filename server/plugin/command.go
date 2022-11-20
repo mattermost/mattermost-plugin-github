@@ -18,6 +18,7 @@ const (
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePullsMerged   = "pulls_merged"
+	featurePullsCreated  = "new_pulls"
 	featurePushes        = "pushes"
 	featureCreates       = "creates"
 	featureDeletes       = "deletes"
@@ -35,6 +36,7 @@ var validFeatures = map[string]bool{
 	featureIssues:        true,
 	featurePulls:         true,
 	featurePullsMerged:   true,
+	featurePullsCreated:  true,
 	featurePushes:        true,
 	featureCreates:       true,
 	featureDeletes:       true,
@@ -84,6 +86,21 @@ func validateFeatures(features []string) (bool, []string) {
 		valid = false
 	}
 	return valid, invalidFeatures
+}
+
+// checkFeatureConflict returns false when given features
+// cannot be added together along with a list of the conflicting features.
+func checkFeatureConflict(fs []string) (bool, []string) {
+	if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+		return false, []string{featureIssues, featureIssueCreation}
+	}
+	if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+		return false, []string{featurePulls, featurePullsMerged}
+	}
+	if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsCreated) {
+		return false, []string{featurePulls, featurePullsCreated}
+	}
+	return true, nil
 }
 
 func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
@@ -383,12 +400,16 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		}
 
 		fs := subscriptionEvents.ToSlice()
-		if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
-			return "Feature list cannot contain both issue and issue_creations"
+
+		ok, conflictingFs := checkFeatureConflict(fs)
+
+		if !ok {
+			if len(conflictingFs) == 2 {
+				return fmt.Sprintf("Feature list cannot contain both %s and %s", conflictingFs[0], conflictingFs[1])
+			}
+			return fmt.Sprintf("Conflicting feature(s) provided: %s", strings.Join(conflictingFs, ","))
 		}
-		if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
-			return "Feature list cannot contain both pulls and pulls_merged"
-		}
+
 		ok, ifs := validateFeatures(fs)
 		if !ok {
 			msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))

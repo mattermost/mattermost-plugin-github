@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	SubscriptionsKey      = "subscriptions"
-	flagExcludeOrgMember  = "exclude-org-member"
-	flagRenderStyle       = "render-style"
-	flagFeatures          = "features"
+	SubscriptionsKey     = "subscriptions"
+	flagExcludeOrgMember = "exclude-org-member"
+	flagRenderStyle      = "render-style"
+	flagFeatures         = "features"
 	flagExcludeRepository = "exclude"
 )
 
@@ -81,6 +81,10 @@ type Subscriptions struct {
 
 func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features.String(), featurePulls)
+}
+
+func (s *Subscription) PullsCreated() bool {
+	return strings.Contains(s.Features.String(), featurePullsCreated)
 }
 
 func (s *Subscription) PullsMerged() bool {
