@@ -72,8 +72,12 @@ func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features, featurePulls)
 }
 
+func (s *Subscription) PullsCreated() bool {
+	return strings.Contains(s.Features, featurePullsCreated)
+}
+
 func (s *Subscription) PullsMerged() bool {
-	return strings.Contains(s.Features, "pulls_merged")
+	return strings.Contains(s.Features, featurePullsMerged)
 }
 
 func (s *Subscription) IssueCreations() bool {
