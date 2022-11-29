@@ -18,7 +18,7 @@ const (
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePullsMerged   = "pulls_merged"
-	featurePullsCreated  = "new_pulls"
+	featurePullsCreated  = "pulls_new"
 	featurePushes        = "pushes"
 	featureCreates       = "creates"
 	featureDeletes       = "deletes"
