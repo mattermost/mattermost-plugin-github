@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  plugin-ci: mattermost/plugin-ci@volatile
+  plugin-ci: mattermost/plugin-ci@0.2.0
 
 workflows:
   version: 2
