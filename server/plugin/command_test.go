@@ -220,8 +220,8 @@ func TestCheckConflictingFeatures(t *testing.T) {
 		},
 		{
 			name: "conflict with pulls and pulls created",
-			args: []string{"pulls", "issues", "pulls_new"},
-			want: output{false, []string{"pulls", "pulls_new"}},
+			args: []string{"pulls", "issues", "pulls_created"},
+			want: output{false, []string{"pulls", "pulls_created"}},
 		},
 		{
 			name: "conflict with pulls and pulls merged",
