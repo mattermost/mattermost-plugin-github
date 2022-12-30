@@ -77,15 +77,6 @@ function clientId(state = '', action) {
     }
 }
 
-function reviews(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_REVIEWS:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
 function reviewsDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REVIEWS_DETAILS:
@@ -95,9 +86,9 @@ function reviewsDetails(state = [], action) {
     }
 }
 
-function yourPrs(state = [], action) {
+function sidebarContent(state = [], action) {
     switch (action.type) {
-    case ActionTypes.RECEIVED_YOUR_PRS:
+    case ActionTypes.RECEIVED_SIDEBAR_CONTENT:
         return action.data;
     default:
         return state;
@@ -122,27 +113,9 @@ function yourPrsDetails(state = [], action) {
     }
 }
 
-function yourAssignments(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_YOUR_ASSIGNMENTS:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
 function mentions(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_MENTIONS:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
-function unreads(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_UNREADS:
         return action.data;
     default:
         return state;
@@ -238,14 +211,10 @@ export default combineReducers({
     userSettings,
     configuration,
     clientId,
-    reviews,
     reviewsDetails,
-    yourPrs,
     yourRepos,
     yourPrsDetails,
-    yourAssignments,
     mentions,
-    unreads,
     githubUsers,
     rhsPluginAction,
     rhsState,
@@ -253,4 +222,5 @@ export default combineReducers({
     createIssueModal,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
+    sidebarContent,
 });

@@ -38,10 +38,10 @@ function mapPrsToDetails(prs, details) {
 function mapStateToProps(state) {
     return {
         username: state[`plugins-${pluginId}`].username,
-        reviews: mapPrsToDetails(state[`plugins-${pluginId}`].reviews, state[`plugins-${pluginId}`].reviewsDetails),
-        yourPrs: mapPrsToDetails(state[`plugins-${pluginId}`].yourPrs, state[`plugins-${pluginId}`].yourPrsDetails),
-        yourAssignments: state[`plugins-${pluginId}`].yourAssignments,
-        unreads: state[`plugins-${pluginId}`].unreads,
+        reviews: mapPrsToDetails(state[`plugins-${pluginId}`].sidebarContent.reviews, state[`plugins-${pluginId}`].reviewsDetails),
+        yourPrs: mapPrsToDetails(state[`plugins-${pluginId}`].sidebarContent.prs, state[`plugins-${pluginId}`].yourPrsDetails),
+        yourAssignments: state[`plugins-${pluginId}`].sidebarContent.assignments,
+        unreads: state[`plugins-${pluginId}`].sidebarContent.unreads,
         enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
         org: state[`plugins-${pluginId}`].organization,
         rhsState: state[`plugins-${pluginId}`].rhsState,

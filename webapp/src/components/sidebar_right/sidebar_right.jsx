@@ -111,27 +111,27 @@ export default class SidebarRight extends React.PureComponent {
         switch (this.props.rhsState) {
         case RHSStates.PRS:
 
-            githubItems = this.props.yourPrs;
+            githubItems = this.props.yourPrs || [];
             title = 'Your Open Pull Requests';
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + this.props.username + '+archived%3Afalse' + orgQuery;
 
             break;
         case RHSStates.REVIEWS:
 
-            githubItems = this.props.reviews;
+            githubItems = this.props.reviews || [];
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+review-requested%3A' + this.props.username + '+archived%3Afalse' + orgQuery;
             title = 'Pull Requests Needing Review';
 
             break;
         case RHSStates.UNREADS:
 
-            githubItems = this.props.unreads;
+            githubItems = this.props.unreads || [];
             title = 'Unread Messages';
             listUrl = baseURL + '/notifications';
             break;
         case RHSStates.ASSIGNMENTS:
 
-            githubItems = this.props.yourAssignments;
+            githubItems = this.props.yourAssignments || [];
             title = 'Your Assignments';
             listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + this.props.username + orgQuery;
             break;

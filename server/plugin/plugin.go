@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -783,11 +784,62 @@ func (p *Plugin) isOrganizationLocked() bool {
 }
 
 func (p *Plugin) sendRefreshEvent(userID string) {
+	eventLogger := logger.New(p.API).With(logger.LogContext{
+		"userid": userID,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+
+	context := &Context{
+		Ctx:    ctx,
+		UserID: userID,
+		Log:    eventLogger,
+	}
+
+	defer cancel()
+
+	info, apiErr := p.getGitHubUserInfo(context.UserID)
+	if apiErr != nil {
+		p.API.LogWarn("Failed to get github user info", "error", apiErr.Error())
+		return
+	}
+
+	context.Log = context.Log.With(logger.LogContext{
+		"github username": info.GitHubUsername,
+	})
+
+	userContext := &UserContext{
+		Context: *context,
+		GHInfo:  info,
+	}
+
+	sidebarContent := p.getSidebarData(userContext)
+
+	contentMap, err := convertContentToMap(sidebarContent)
+	if err != nil {
+		p.API.LogWarn("Failed to convert sidebar content to map", "error", apiErr.Error())
+		return
+	}
+
 	p.API.PublishWebSocketEvent(
 		wsEventRefresh,
-		nil,
+		contentMap,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
+}
+
+func convertContentToMap(sidebarContent *SidebarContent) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	bytes, err := json.Marshal(&sidebarContent)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = json.Unmarshal(bytes, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,
