@@ -133,7 +133,7 @@ func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
 
 	client, err := GetGitHubClient(token, config)
 	if err != nil {
-		p.API.LogError("Failed to create GitHub client", "error", err.Error())
+		p.API.LogWarn("Failed to create GitHub client", "error", err.Error())
 		return nil
 	}
 
@@ -290,7 +290,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 
 	shouldProcessMessage, err := client.Post.ShouldProcessMessage(post)
 	if err != nil {
-		p.API.LogError("Error while checking if the message should be processed", "error", err.Error())
+		p.API.LogWarn("Error while checking if the message should be processed", "error", err.Error())
 		return nil, ""
 	}
 
@@ -302,7 +302,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	info, appErr := p.getGitHubUserInfo(post.UserId)
 	if appErr != nil {
 		if appErr.ID != apiErrorIDNotConnected {
-			p.API.LogError("Error in getting user info", "error", appErr.Message)
+			p.API.LogWarn("Error in getting user info", "error", appErr.Message)
 		}
 		return nil, ""
 	}
@@ -614,7 +614,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		}
 
 		if n.GetRepository() == nil {
-			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			p.API.LogWarn("Unable to get repository for notification in todo list. Skipping.")
 			continue
 		}
 
@@ -731,7 +731,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 		}
 
 		if n.GetRepository() == nil {
-			p.API.LogError("Unable to get repository for notification in todo list. Skipping.")
+			p.API.LogWarn("Unable to get repository for notification in todo list. Skipping.")
 			continue
 		}
 
