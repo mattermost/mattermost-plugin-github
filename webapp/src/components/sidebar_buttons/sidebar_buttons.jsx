@@ -60,9 +60,7 @@ export default class SidebarButtons extends React.PureComponent {
         }
 
         this.setState({refreshing: true});
-        await Promise.all([
-            this.props.actions.getSidebarContent(),
-        ]);
+        await Promise.resolve(this.props.actions.getSidebarContent());
         this.setState({refreshing: false});
     }
 

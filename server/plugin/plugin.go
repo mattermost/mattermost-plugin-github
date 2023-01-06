@@ -804,10 +804,6 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		return
 	}
 
-	context.Log = context.Log.With(logger.LogContext{
-		"github username": info.GitHubUsername,
-	})
-
 	userContext := &UserContext{
 		Context: *context,
 		GHInfo:  info,
@@ -817,7 +813,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	contentMap, err := convertContentToMap(sidebarContent)
 	if err != nil {
-		p.API.LogWarn("Failed to convert sidebar content to map", "error", apiErr.Error())
+		p.API.LogWarn("Failed to convert sidebar content to map", "error", err.Error())
 		return
 	}
 

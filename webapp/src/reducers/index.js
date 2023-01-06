@@ -6,6 +6,13 @@ import {combineReducers} from 'redux';
 import ActionTypes from '../action_types';
 import Constants from '../constants';
 
+const defaultSidebarContent = {
+    reviews: [],
+    prs: [],
+    assignments: [],
+    unreads: [],
+};
+
 function connected(state = false, action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
@@ -86,7 +93,7 @@ function reviewsDetails(state = [], action) {
     }
 }
 
-function sidebarContent(state = [], action) {
+function sidebarContent(state = defaultSidebarContent, action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_SIDEBAR_CONTENT:
         return action.data;

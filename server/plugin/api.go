@@ -704,6 +704,7 @@ func (p *Plugin) getUnreadsData(c *UserContext) []*FilteredNotification {
 }
 
 func (p *Plugin) getReviewsData(c *UserContext) []*github.Issue {
+	var issue []*github.Issue
 	config := p.getConfiguration()
 
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
@@ -713,13 +714,14 @@ func (p *Plugin) getReviewsData(c *UserContext) []*github.Issue {
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for review")
-		return nil
+		return issue
 	}
 
 	return result.Issues
 }
 
 func (p *Plugin) getYourPrsData(c *UserContext) []*github.Issue {
+	var issue []*github.Issue
 	config := p.getConfiguration()
 
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
@@ -729,7 +731,7 @@ func (p *Plugin) getYourPrsData(c *UserContext) []*github.Issue {
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for PRs")
-		return nil
+		return issue
 	}
 
 	return result.Issues
@@ -978,6 +980,7 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 }
 
 func (p *Plugin) getYourAssignmentsData(c *UserContext) []*github.Issue {
+	var issue []*github.Issue
 	config := p.getConfiguration()
 
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
@@ -987,7 +990,7 @@ func (p *Plugin) getYourAssignmentsData(c *UserContext) []*github.Issue {
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for assignments")
-		return nil
+		return issue
 	}
 
 	return result.Issues

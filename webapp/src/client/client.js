@@ -15,7 +15,9 @@ export default class Client {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
 
-    getSidebarContent = async () => this.doGet(`${this.url}/sidebar-content`);
+    getSidebarContent = async () => {
+        return this.doGet(`${this.url}/sidebar-content`);
+    }
 
     getPrsDetails = async (prList) => {
         return this.doPost(`${this.url}/prsdetails`, prList);
