@@ -27,7 +27,8 @@ const (
 	// TokenTTL is the OAuth token expiry duration in seconds
 	TokenTTL = 10 * 60
 
-	requestTimeout = 30 * time.Second
+	requestTimeout       = 30 * time.Second
+	oauthCompleteTimeout = 2 * time.Minute
 )
 
 type OAuthState struct {
@@ -385,7 +386,10 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	conf := p.getOAuthConfig(state.PrivateAllowed)
 
-	tok, err := conf.Exchange(c.Ctx, code)
+	ctx, cancel := context.WithTimeout(context.Background(), oauthCompleteTimeout)
+	defer cancel()
+
+	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to exchange oauth code into token")
 
@@ -395,7 +399,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	githubClient := p.githubConnectToken(*tok)
-	gitUser, _, err := githubClient.Users.Get(c.Ctx, "")
+	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to get authenticated GitHub user")
 
