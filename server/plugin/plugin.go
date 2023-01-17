@@ -89,6 +89,8 @@ type Plugin struct {
 
 	webhookBroker *WebhookBroker
 	oauthBroker   *OAuthBroker
+
+	emojiMap map[string]string
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -109,6 +111,28 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
+	}
+
+	baseGithubEmojiMap := map[string]string{
+		"+1":         "+1",
+		"-1":         "-1",
+		"thumbsup":   "+1",
+		"thumbsdown": "-1",
+		"laughing":   "laugh",
+		"confused":   "confused",
+		"heart":      "heart",
+		"tada":       "hooray",
+		"rocket":     "rocket",
+		"eyes":       "eyes",
+	}
+
+	p.emojiMap = map[string]string{}
+	for systemEmoji := range model.SystemEmojis {
+		for mmBase, ghBase := range baseGithubEmojiMap {
+			if strings.HasPrefix(systemEmoji, mmBase) {
+				p.emojiMap[systemEmoji] = ghBase
+			}
+		}
 	}
 
 	return p
@@ -248,6 +272,151 @@ func (p *Plugin) OnDeactivate() error {
 	p.oauthBroker.Close()
 
 	return nil
+}
+
+func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (orgRepo []string, id float64, objectType string, ok bool) {
+	post, err := p.client.Post.GetPost(reaction.PostId)
+	if err != nil {
+		p.API.LogDebug("Error fetching post for reaction", "error", err.Error())
+		return orgRepo, id, objectType, false
+	}
+
+	repo, ok := post.GetProp(postPropGithubRepo).(string)
+	if !ok || repo == "" {
+		return orgRepo, id, objectType, false
+	}
+
+	orgRepo = strings.Split(repo, "/")
+	if len(orgRepo) != 2 {
+		p.API.LogDebug("Invalid organization repository")
+		return orgRepo, id, objectType, false
+	}
+
+	id, ok = post.GetProp(postPropGithubObjectID).(float64)
+	if !ok || id == 0 {
+		return orgRepo, id, objectType, false
+	}
+
+	objectType, ok = post.GetProp(postPropGithubObjectType).(string)
+	if !ok || objectType == "" {
+		return orgRepo, id, objectType, false
+	}
+
+	return orgRepo, id, objectType, true
+}
+
+func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reaction) {
+	githubEmoji := p.emojiMap[reaction.EmojiName]
+	if githubEmoji == "" {
+		return
+	}
+
+	orgRepo, id, objectType, ok := p.getPostPropsForReaction(reaction)
+	if !ok {
+		return
+	}
+
+	info, appErr := p.getGitHubUserInfo(reaction.UserId)
+	if appErr != nil {
+		if appErr.ID != apiErrorIDNotConnected {
+			p.API.LogDebug("Error in getting user info", "error", appErr.Message)
+		}
+		return
+	}
+
+	ghClient := p.githubConnectUser(context.Background(), info)
+	owner, repo := orgRepo[0], orgRepo[1]
+	switch objectType {
+	case githubObjectTypeIssueComment:
+		if _, _, err := ghClient.Reactions.CreateIssueCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
+			p.API.LogDebug("Error occurred while creating issue comment reaction", "error", err.Error())
+			return
+		}
+	case githubObjectTypeIssue:
+		if _, _, err := ghClient.Reactions.CreateIssueReaction(context.Background(), owner, repo, int(id), githubEmoji); err != nil {
+			p.API.LogDebug("Error occurred while creating issue reaction", "error", err.Error())
+			return
+		}
+	case githubObjectTypePRReviewComment:
+		if _, _, err := ghClient.Reactions.CreatePullRequestCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
+			p.API.LogDebug("Error occurred while creating PR review comment reaction", "error", err.Error())
+			return
+		}
+	default:
+		return
+	}
+}
+
+func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.Reaction) {
+	githubEmoji := p.emojiMap[reaction.EmojiName]
+	if githubEmoji == "" {
+		return
+	}
+
+	orgRepo, id, objectType, ok := p.getPostPropsForReaction(reaction)
+	if !ok {
+		return
+	}
+
+	info, appErr := p.getGitHubUserInfo(reaction.UserId)
+	if appErr != nil {
+		if appErr.ID != apiErrorIDNotConnected {
+			p.API.LogDebug("Error in getting user info", "error", appErr.Message)
+		}
+		return
+	}
+
+	ghClient := p.githubConnectUser(context.Background(), info)
+	owner, repo := orgRepo[0], orgRepo[1]
+	switch objectType {
+	case githubObjectTypeIssueComment:
+		reactions, _, err := ghClient.Reactions.ListIssueCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
+		if err != nil {
+			p.API.LogDebug("Error getting issue comment reaction list", "error", err.Error())
+			return
+		}
+
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				if _, err = ghClient.Reactions.DeleteIssueCommentReaction(context.Background(), owner, repo, int64(id), reactionObj.GetID()); err != nil {
+					p.API.LogDebug("Error occurred while removing issue comment reaction", "error", err.Error())
+				}
+				return
+			}
+		}
+	case githubObjectTypeIssue:
+		reactions, _, err := ghClient.Reactions.ListIssueReactions(context.Background(), owner, repo, int(id), &github.ListOptions{})
+		if err != nil {
+			p.API.LogDebug("Error getting issue reaction list", "error", err.Error())
+			return
+		}
+
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				if _, err = ghClient.Reactions.DeleteIssueReaction(context.Background(), owner, repo, int(id), reactionObj.GetID()); err != nil {
+					p.API.LogDebug("Error occurred while removing issue reaction", "error", err.Error())
+				}
+				return
+			}
+		}
+	case githubObjectTypePRReviewComment:
+		reactions, _, err := ghClient.Reactions.ListPullRequestCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
+		if err != nil {
+			p.API.LogDebug("Error getting PR review comment reaction list", "error", err.Error())
+			return
+		}
+
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				if _, err = ghClient.Reactions.DeletePullRequestCommentReaction(context.Background(), owner, repo, int64(id), reactionObj.GetID()); err != nil {
+					p.API.LogDebug("Error occurred while removing PR review comment reaction", "error", err.Error())
+				}
+				return
+			}
+		}
+	default:
+		return
+	}
 }
 
 func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
