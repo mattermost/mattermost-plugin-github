@@ -12,11 +12,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v48/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
+	"github.com/mattermost/mattermost-plugin-github/server/constants"
+	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
@@ -37,9 +39,11 @@ const (
 	wsEventConnect    = "connect"
 	wsEventDisconnect = "disconnect"
 	// WSEventConfigUpdate is the WebSocket event to update the configurations on webapp.
-	WSEventConfigUpdate = "config_update"
-	wsEventRefresh      = "refresh"
-	wsEventCreateIssue  = "createIssue"
+	WSEventConfigUpdate         = "config_update"
+	wsEventRefresh              = "refresh"
+	wsEventCreateOrUpdateIssue  = "createOrUpdateIssue"
+	wsEventCloseOrReopenIssue   = "closeOrReopenIssue"
+	wsEventAttachCommentToIssue = "attachCommentToIssue"
 
 	WSEventRefresh = "refresh"
 
@@ -123,7 +127,7 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 	return p.githubConnectUser(ctx, userInfo), nil
 }
 
-func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
+func (p *Plugin) githubConnectUser(ctx context.Context, info *serializer.GitHubUserInfo) *github.Client {
 	tok := *info.Token
 	return p.githubConnectToken(tok)
 }
@@ -301,7 +305,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	msg := post.Message
 	info, appErr := p.getGitHubUserInfo(post.UserId)
 	if appErr != nil {
-		if appErr.ID != apiErrorIDNotConnected {
+		if appErr.ID != constants.APIErrorIDNotConnected {
 			p.API.LogError("Error in getting user info", "error", appErr.Message)
 		}
 		return nil, ""
@@ -371,26 +375,7 @@ func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
 	}
 }
 
-type GitHubUserInfo struct {
-	UserID              string
-	Token               *oauth2.Token
-	GitHubUsername      string
-	LastToDoPostAt      int64
-	Settings            *UserSettings
-	AllowedPrivateRepos bool
-
-	// MM34646ResetTokenDone is set for a user whose token has been reset for MM-34646.
-	MM34646ResetTokenDone bool
-}
-
-type UserSettings struct {
-	SidebarButtons        string `json:"sidebar_buttons"`
-	DailyReminder         bool   `json:"daily_reminder"`
-	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
-	Notifications         bool   `json:"notifications"`
-}
-
-func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
+func (p *Plugin) storeGitHubUserInfo(info *serializer.GitHubUserInfo) error {
 	config := p.getConfiguration()
 
 	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
@@ -412,24 +397,24 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 	return nil
 }
 
-func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorResponse) {
+func (p *Plugin) getGitHubUserInfo(userID string) (*serializer.GitHubUserInfo, *serializer.APIErrorResponse) {
 	config := p.getConfiguration()
 
-	var userInfo GitHubUserInfo
+	var userInfo serializer.GitHubUserInfo
 
 	infoBytes, appErr := p.API.KVGet(userID + githubTokenKey)
 	if appErr != nil || infoBytes == nil {
-		return nil, &APIErrorResponse{ID: apiErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
+		return nil, &serializer.APIErrorResponse{ID: constants.APIErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
 	}
 
 	if err := json.Unmarshal(infoBytes, &userInfo); err != nil {
-		return nil, &APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
+		return nil, &serializer.APIErrorResponse{ID: "", Message: "Unable to parse token.", StatusCode: http.StatusInternalServerError}
 	}
 
 	unencryptedToken, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken)
 	if err != nil {
 		p.API.LogWarn("Failed to decrypt access token", "error", err.Error())
-		return nil, &APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
+		return nil, &serializer.APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
 	}
 
 	userInfo.Token.AccessToken = unencryptedToken
@@ -496,7 +481,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 
 func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
 	p.API.PublishWebSocketEvent(
-		wsEventCreateIssue,
+		wsEventCreateOrUpdateIssue,
 		map[string]interface{}{
 			"title":      title,
 			"channel_id": channelID,
@@ -556,7 +541,7 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	return string(summaryByte), nil
 }
 
-func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
+func (p *Plugin) PostToDo(info *serializer.GitHubUserInfo, userID string) error {
 	ctx := context.Background()
 	text, err := p.GetToDo(ctx, info.GitHubUsername, p.githubConnectUser(ctx, info))
 	if err != nil {
@@ -691,7 +676,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	return text, nil
 }
 
-func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
+func (p *Plugin) HasUnreads(info *serializer.GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
@@ -796,7 +781,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 func (p *Plugin) getUsername(mmUserID string) (string, error) {
 	info, apiEr := p.getGitHubUserInfo(mmUserID)
 	if apiEr != nil {
-		if apiEr.ID != apiErrorIDNotConnected {
+		if apiEr.ID != constants.APIErrorIDNotConnected {
 			return "", apiEr
 		}
 

@@ -179,12 +179,23 @@ function rhsState(state = null, action) {
     }
 }
 
-const isCreateIssueModalVisible = (state = false, action) => {
+const isCreateOrUpdateIssueModalVisible = (state = false, action) => {
     switch (action.type) {
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITH_POST:
+    case ActionTypes.OPEN_CREATE_OR_UPDATE_ISSUE_MODAL:
         return true;
-    case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
+    case ActionTypes.CLOSE_CREATE_OR_UPDATE_ISSUE_MODAL:
+        return false;
+    default:
+        return state;
+    }
+};
+
+const isCloseOrReopenIssueModalVisible = (state = false, action) => {
+    switch (action.type) {
+    case ActionTypes.OPEN_CLOSE_OR_REOPEN_ISSUE_MODAL:
+        return true;
+    case ActionTypes.CLOSE_CLOSE_OR_REOPEN_ISSUE_MODAL:
         return false;
     default:
         return state;
@@ -202,17 +213,30 @@ const attachCommentToIssueModalVisible = (state = false, action) => {
     }
 };
 
-const createIssueModal = (state = '', action) => {
+const createOrUpdateIssueModal = (state = '', action) => {
     switch (action.type) {
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITH_POST:
+    case ActionTypes.OPEN_CREATE_OR_UPDATE_ISSUE_MODAL:
         return {
             ...state,
             postId: action.data.postId,
-            title: action.data.title,
-            channelId: action.data.channelId,
+            messageData: action.data.messageData,
         };
-    case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
+    case ActionTypes.CLOSE_CREATE_OR_UPDATE_ISSUE_MODAL:
+        return {};
+    default:
+        return state;
+    }
+};
+
+const closeOrReopenIssueModal = (state = '', action) => {
+    switch (action.type) {
+    case ActionTypes.OPEN_CLOSE_OR_REOPEN_ISSUE_MODAL:
+        return {
+            ...state,
+            messageData: action.data.messageData,
+        };
+    case ActionTypes.CLOSE_CLOSE_OR_REOPEN_ISSUE_MODAL:
         return {};
     default:
         return state;
@@ -222,7 +246,11 @@ const createIssueModal = (state = '', action) => {
 const attachCommentToIssueModalForPostId = (state = '', action) => {
     switch (action.type) {
     case ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL:
-        return action.data.postId;
+        return {
+            ...state,
+            postId: action.data.postId,
+            messageData: action.data.messageData,
+        };
     case ActionTypes.CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL:
         return '';
     default:
@@ -249,8 +277,10 @@ export default combineReducers({
     githubUsers,
     rhsPluginAction,
     rhsState,
-    isCreateIssueModalVisible,
-    createIssueModal,
+    isCreateOrUpdateIssueModalVisible,
+    isCloseOrReopenIssueModalVisible,
+    createOrUpdateIssueModal,
+    closeOrReopenIssueModal,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
 });

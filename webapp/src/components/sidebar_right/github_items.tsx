@@ -255,58 +255,56 @@ function GithubItems(props: GithubItemsProps) {
     }) : <div style={style.container}>{'You have no active items'}</div>;
 }
 
-const getStyle = makeStyleFromTheme((theme) => {
-    return {
-        container: {
-            padding: '15px',
-            borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
-        },
-        itemTitle: {
-            color: theme.centerChannelColor,
-            lineHeight: 1.7,
-            fontWeight: 'bold',
-        },
-        subtitle: {
-            margin: '5px 0 0 0',
-            fontSize: '13px',
-        },
-        subtitleSecondLine: {
-            fontSize: '13px',
-        },
-        icon: {
-            top: 3,
-            position: 'relative',
-            left: 3,
-            height: 18,
-            display: 'inline-flex',
-            alignItems: 'center',
-            marginRight: '6px',
-        },
-        iconSucess: {
-            color: theme.onlineIndicator,
-        },
-        iconPending: {
-            color: theme.awayIndicator,
-        },
-        iconFailed: {
-            color: theme.dndIndicator,
-        },
-        iconChangesRequested: {
-            color: theme.dndIndicator,
-        },
-        conflictIcon: {
-            color: theme.dndIndicator,
-        },
-        milestoneIcon: {
-            top: 3,
-            position: 'relative',
-            height: 18,
-            display: 'inline-flex',
-            alignItems: 'center',
-            color: theme.centerChannelColor,
-        },
-    };
-});
+const getStyle = makeStyleFromTheme((theme) => ({
+    container: {
+        padding: '15px',
+        borderTop: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
+    },
+    itemTitle: {
+        color: theme.centerChannelColor,
+        lineHeight: 1.7,
+        fontWeight: 'bold',
+    },
+    subtitle: {
+        marginTop: '5px',
+        fontSize: '13px',
+    },
+    subtitleSecondLine: {
+        fontSize: '13px',
+    },
+    icon: {
+        top: 3,
+        position: 'relative',
+        left: 3,
+        height: 18,
+        display: 'inline-flex',
+        alignItems: 'center',
+        marginRight: '6px',
+    },
+    iconSucess: {
+        color: theme.onlineIndicator,
+    },
+    iconPending: {
+        color: theme.awayIndicator,
+    },
+    iconFailed: {
+        color: theme.dndIndicator,
+    },
+    iconChangesRequested: {
+        color: theme.dndIndicator,
+    },
+    conflictIcon: {
+        color: theme.dndIndicator,
+    },
+    milestoneIcon: {
+        top: 3,
+        position: 'relative',
+        height: 18,
+        display: 'inline-flex',
+        alignItems: 'center',
+        color: theme.centerChannelColor,
+    },
+}));
 
 function getGithubLabels(labels: Label[]) {
     return labels.map((label) => {

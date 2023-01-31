@@ -9,7 +9,9 @@ import {
     getUnreads,
     getYourAssignments,
     getYourPrs,
-    openCreateIssueModalWithoutPost,
+    openCreateOrUpdateIssueModal,
+    openCloseOrReopenIssueModal,
+    openCreateCommentOnIssueModal,
 } from '../actions';
 
 import {id as pluginId} from '../manifest';
@@ -85,11 +87,29 @@ export function handleRefresh(store) {
     };
 }
 
-export function handleOpenCreateIssueModal(store) {
+export function handleOpenCreateOrUpdateIssueModal(store) {
     return (msg) => {
         if (!msg.data) {
             return;
         }
-        store.dispatch(openCreateIssueModalWithoutPost(msg.data.title, msg.data.channel_id));
+        store.dispatch(openCreateOrUpdateIssueModal(msg.data));
+    };
+}
+
+export function handleOpenCloseOrReopenIssueModal(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+        store.dispatch(openCloseOrReopenIssueModal(msg.data));
+    };
+}
+
+export function handleOpenCreateCommentOnIssueModal(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+        store.dispatch(openCreateCommentOnIssueModal(msg.data));
     };
 }
