@@ -16,9 +16,10 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v48/github"
 	"github.com/mattermost/mattermost-plugin-github/server/constants"
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
+
+	"github.com/google/go-github/v48/github"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
@@ -370,7 +371,7 @@ func (p *Plugin) validateIssueRequestForUpdation(issue *serializer.UpdateIssueRe
 	return true
 }
 
-func (p *Plugin) updatePost(post *model.Post, issue *serializer.UpdateIssueRequest, w http.ResponseWriter) {
+func (p *Plugin) updatePost(issue *serializer.UpdateIssueRequest, w http.ResponseWriter) {
 	post, appErr := p.API.GetPost(issue.PostID)
 	if appErr != nil {
 		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})

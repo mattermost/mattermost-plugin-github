@@ -12,7 +12,7 @@ export default class Client {
     }
 
     closeOrReopenIssueModal = async (payload) => {
-        return this.doPost(`${this.url}/closereopenissuemodal`, payload);
+        return this.doPost(`${this.url}/close_reopen_issue_modal`, payload);
     }
 
     attachCommentIssueModal = async (payload) => {

@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
+
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 )
 

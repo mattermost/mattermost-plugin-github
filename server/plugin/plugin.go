@@ -17,12 +17,13 @@ import (
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/constants"
+	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 
 	root "github.com/mattermost/mattermost-plugin-github"
 )

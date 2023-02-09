@@ -13,7 +13,7 @@ const (
 	OwnerQueryParam        = "owner"
 	RepoQueryParam         = "repo"
 	NumberQueryParam       = "number"
-	PostIdQueryParam       = "postId"
+	PostIDQueryParam       = "postId"
 
 	IssueStatus         = "status"
 	AssigneesForProps   = "assignees"
@@ -21,7 +21,7 @@ const (
 	DescriptionForProps = "description"
 	TitleForProps       = "title"
 	IssueNumberForProps = "issue_number"
-	IssueUrlForProps    = "issue_url"
+	IssueURLForProps    = "issue_url"
 	RepoOwnerForProps   = "repo_owner"
 	RepoNameForProps    = "repo_name"
 
@@ -33,7 +33,7 @@ const (
 	IssueClose      = "closed"
 	IssueOpen       = "open"
 
-	//Actions of webhook events
+	// Actions of webhook events
 	ActionOpened    = "opened"
 	ActionClosed    = "closed"
 	ActionReopened  = "reopened"

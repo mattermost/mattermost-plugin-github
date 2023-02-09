@@ -16,10 +16,11 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
-	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
 	"github.com/mattermost/mattermost-plugin-github/server/constants"
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
+
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
+	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 )
@@ -97,7 +98,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/closeorreopenissue", p.checkAuth(p.attachUserContext(p.closeOrReopenIssue), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/updateissue", p.checkAuth(p.attachUserContext(p.updateIssue), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/editissuemodal", p.checkAuth(p.attachUserContext(p.openIssueEditModal), ResponseTypePlain)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/closereopenissuemodal", p.checkAuth(p.attachUserContext(p.openCloseOrReopenIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/close_reopen_issue_modal", p.checkAuth(p.attachUserContext(p.openCloseOrReopenIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/attachcommentissuemodal", p.checkAuth(p.attachUserContext(p.openAttachCommentIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/createissuecomment", p.checkAuth(p.attachUserContext(p.createIssueComment), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.checkAuth(p.attachUserContext(p.getMentions), ResponseTypePlain)).Methods(http.MethodGet)
@@ -1430,7 +1431,7 @@ func (p *Plugin) updateIssue(c *serializer.UserContext, w http.ResponseWriter, r
 		return
 	}
 
-	p.updatePost(post, issue, w)
+	p.updatePost(issue, w)
 	p.writeJSON(w, result)
 }
 

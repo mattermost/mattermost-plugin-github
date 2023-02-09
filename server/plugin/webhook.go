@@ -13,8 +13,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v48/github"
 	"github.com/mattermost/mattermost-plugin-github/server/constants"
+
+	"github.com/google/go-github/v48/github"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
 )
@@ -556,7 +557,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			post.Type = "custom_git_issue"
 			post.Props = map[string]interface{}{
 				constants.TitleForProps:       *issue.Title,
-				constants.IssueUrlForProps:    *issue.HTMLURL,
+				constants.IssueURLForProps:    *issue.HTMLURL,
 				constants.IssueNumberForProps: *issue.Number,
 				constants.DescriptionForProps: description,
 				constants.AssigneesForProps:   assignees,
