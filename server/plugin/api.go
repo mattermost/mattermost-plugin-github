@@ -27,7 +27,8 @@ const (
 	// TokenTTL is the OAuth token expiry duration in seconds
 	TokenTTL = 10 * 60
 
-	requestTimeout = 30 * time.Second
+	requestTimeout       = 30 * time.Second
+	oauthCompleteTimeout = 2 * time.Minute
 )
 
 type OAuthState struct {
@@ -157,7 +158,7 @@ func (p *Plugin) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if x := recover(); x != nil {
-				p.API.LogError("Recovered from a panic",
+				p.API.LogWarn("Recovered from a panic",
 					"url", r.URL.String(),
 					"error", x,
 					"stack", string(debug.Stack()))
@@ -191,7 +192,7 @@ func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) 
 			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			default:
-				p.API.LogError("Unknown ResponseType detected")
+				p.API.LogDebug("Unknown ResponseType detected")
 			}
 			return
 		}
@@ -385,7 +386,10 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	conf := p.getOAuthConfig(state.PrivateAllowed)
 
-	tok, err := conf.Exchange(c.Ctx, code)
+	ctx, cancel := context.WithTimeout(context.Background(), oauthCompleteTimeout)
+	defer cancel()
+
+	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to exchange oauth code into token")
 
@@ -395,7 +399,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	githubClient := p.githubConnectToken(*tok)
-	gitUser, _, err := githubClient.Users.Get(c.Ctx, "")
+	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to get authenticated GitHub user")
 
