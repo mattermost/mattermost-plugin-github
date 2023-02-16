@@ -8,7 +8,7 @@ import {id as pluginId} from '../manifest';
 
 export default class Client {
     editIssueModal = async (payload) => {
-        return this.doPost(`${this.url}/editissuemodal`, payload);
+        return this.doPost(`${this.url}/edit_issue_modal`, payload);
     }
 
     closeOrReopenIssueModal = async (payload) => {
@@ -16,7 +16,7 @@ export default class Client {
     }
 
     attachCommentIssueModal = async (payload) => {
-        return this.doPost(`${this.url}/attachcommentissuemodal`, payload);
+        return this.doPost(`${this.url}/attach_comment_issue_modal`, payload);
     }
 
     setServerRoute(url) {
@@ -32,15 +32,15 @@ export default class Client {
     }
 
     getYourPrs = async () => {
-        return this.doGet(`${this.url}/yourprs`);
+        return this.doGet(`${this.url}/your_prs`);
     }
 
     getPrsDetails = async (prList) => {
-        return this.doPost(`${this.url}/prsdetails`, prList);
+        return this.doPost(`${this.url}/prs_details`, prList);
     }
 
     getYourAssignments = async () => {
-        return this.doGet(`${this.url}/yourassignments`);
+        return this.doGet(`${this.url}/your_assignments`);
     }
 
     getMentions = async () => {
@@ -72,23 +72,23 @@ export default class Client {
     }
 
     createIssue = async (payload) => {
-        return this.doPost(`${this.url}/createissue`, payload);
+        return this.doPost(`${this.url}/create_issue`, payload);
     }
 
     closeOrReopenIssue = async (payload) => {
-        return this.doPost(`${this.url}/closeorreopenissue`, payload);
+        return this.doPost(`${this.url}/close_or_reopen_issue`, payload);
     }
 
     updateIssue = async (payload) => {
-        return this.doPost(`${this.url}/updateissue`, payload);
+        return this.doPost(`${this.url}/update_issue`, payload);
     }
 
     searchIssues = async (searchTerm) => {
-        return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
+        return this.doGet(`${this.url}/search_issues?term=${searchTerm}`);
     }
 
     attachCommentToIssue = async (payload) => {
-        return this.doPost(`${this.url}/createissuecomment`, payload);
+        return this.doPost(`${this.url}/create_issue_comment`, payload);
     }
 
     getIssue = async (owner, repo, issueNumber) => {

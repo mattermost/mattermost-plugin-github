@@ -64,8 +64,10 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
                 value: milestone_number,
                 label: milestone_title,
             },
+            repo: {
+                name: repo_full_name,
+            },
             issueDescription: description,
-            repo: repo_full_name,
             issueTitle: title.substring(0, MAX_TITLE_LENGTH)});
         }
     }
@@ -151,29 +153,28 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
     handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
+        if (!this.state.repo || !this.state.repo.name || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
             return null;
         }
 
-        const repoName = this.state.repo.name ?? this.state.repo;
         return (
             <>
                 <GithubLabelSelector
-                    repoName={repoName}
+                    repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
                 />
 
                 <GithubAssigneeSelector
-                    repoName={repoName}
+                    repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedAssignees={this.state.assignees}
                     onChange={this.handleAssigneesChange}
                 />
 
                 <GithubMilestoneSelector
-                    repoName={repoName}
+                    repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedMilestone={this.state.milestone}
                     onChange={this.handleMilestoneChange}
