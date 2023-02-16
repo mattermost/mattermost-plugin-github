@@ -16,7 +16,7 @@ export default class Client {
     }
 
     getSidebarContent = async () => {
-        return this.doGet(`${this.url}/sidebar-content`);
+        return this.doGet(`${this.url}/lhs-content`);
     }
 
     getPrsDetails = async (prList) => {

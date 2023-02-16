@@ -811,7 +811,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	sidebarContent := p.getSidebarData(userContext)
 
-	contentMap, err := convertContentToMap(sidebarContent)
+	contentMap, err := sidebarContent.toMap()
 	if err != nil {
 		p.API.LogWarn("Failed to convert sidebar content to map", "error", err.Error())
 		return
@@ -824,9 +824,9 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 	)
 }
 
-func convertContentToMap(sidebarContent *SidebarContent) (map[string]interface{}, error) {
+func (s *SidebarContent) toMap() (map[string]interface{}, error) {
 	var m map[string]interface{}
-	bytes, err := json.Marshal(&sidebarContent)
+	bytes, err := json.Marshal(&s)
 	if err != nil {
 		return nil, err
 	}
