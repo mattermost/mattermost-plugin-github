@@ -936,6 +936,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			}
 		}
 
+		// This has been handled in handleCommentAssigneeNotification function
 		if assigneeMentioned {
 			continue
 		}
@@ -1042,7 +1043,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 	case "issues":
 		templateName = "commentAssigneeIssueNotification"
 	default:
-		p.API.LogWarn("Unhandled issue type", "Type", eventType)
+		p.API.LogDebug("Unhandled issue type", "Type", eventType)
 		return
 	}
 
@@ -1064,7 +1065,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 			case "issues":
 				templateName = "commentAssigneeSelfMentionIssueNotification"
 			default:
-				p.API.LogWarn("Unhandled issue type", "Type", eventType)
+				p.API.LogDebug("Unhandled issue type", "Type", eventType)
 				return
 			}
 		}
