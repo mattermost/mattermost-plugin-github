@@ -93,7 +93,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, me, settings, subscribe, unsubscribe, mute, help, issue",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -551,9 +551,18 @@ func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
 }
 
 func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*model.CommandResponse, *model.AppError) {
-	command, action, parameters := parseCommand(args.Command)
+	cmd, action, parameters := parseCommand(args.Command)
 
-	if command != "/github" {
+	if cmd != "/github" {
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "about" {
+		text, err := command.BuildInfo(Manifest)
+		if err != nil {
+			text = errors.Wrap(err, "failed to get build info").Error()
+		}
+		p.postCommandResponse(args, text)
 		return &model.CommandResponse{}, nil
 	}
 
@@ -644,16 +653,19 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	if !config.IsOAuthConfigured() {
-		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup")
+		github := model.NewAutocompleteData("github", "[command]", "Available commands: setup, about")
 
 		setup := model.NewAutocompleteData("setup", "", "Set up the GitHub plugin")
 		setup.RoleID = model.SystemAdminRoleId
 		github.AddCommand(setup)
 
+		about := command.BuildInfoAutocomplete("about")
+		github.AddCommand(about)
+
 		return github
 	}
 
-	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscribe, unsubscribe, me, settings")
+	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
 	if config.EnablePrivateRepo {
@@ -668,9 +680,6 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	disconnect := model.NewAutocompleteData("disconnect", "", "Disconnect your Mattermost account from your GitHub account")
 	github.AddCommand(disconnect)
-
-	help := model.NewAutocompleteData("help", "", "Display Slash Command help text")
-	github.AddCommand(help)
 
 	todo := model.NewAutocompleteData("todo", "", "Get a list of unread messages and pull requests awaiting your review")
 	github.AddCommand(todo)
@@ -718,6 +727,14 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptions.AddCommand(subscriptionsDelete)
 
 	github.AddCommand(subscriptions)
+
+	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
+
+	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in GitHub, using the title if provided")
+	issueCreate.AddTextArgument("Title for the GitHub issue", "[title]", "")
+	issue.AddCommand(issueCreate)
+
+	github.AddCommand(issue)
 
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
@@ -769,20 +786,18 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	github.AddCommand(settings)
 
-	issue := model.NewAutocompleteData("issue", "[command]", "Available commands: create")
-
-	issueCreate := model.NewAutocompleteData("create", "[title]", "Open a dialog to create a new issue in GitHub, using the title if provided")
-	issueCreate.AddTextArgument("Title for the GitHub issue", "[title]", "")
-	issue.AddCommand(issueCreate)
-
-	github.AddCommand(issue)
-
 	setup := model.NewAutocompleteData("setup", "[command]", "Available commands: oauth, webhook, announcement")
 	setup.RoleID = model.SystemAdminRoleId
 	setup.AddCommand(model.NewAutocompleteData("oauth", "", "Set up the OAuth2 Application in GitHub"))
 	setup.AddCommand(model.NewAutocompleteData("webhook", "", "Create a webhook from GitHub to Mattermost"))
 	setup.AddCommand(model.NewAutocompleteData("announcement", "", "Announce to your team that they can use GitHub integration"))
 	github.AddCommand(setup)
+
+	help := model.NewAutocompleteData("help", "", "Display Slash Command help text")
+	github.AddCommand(help)
+
+	about := command.BuildInfoAutocomplete("about")
+	github.AddCommand(about)
 
 	return github
 }
