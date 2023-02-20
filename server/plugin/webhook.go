@@ -936,7 +936,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			}
 		}
 
-		// This has been handled in handleCommentAssigneeNotification function
+		// This has been handled in "handleCommentAssigneeNotification" function
 		if assigneeMentioned {
 			continue
 		}
