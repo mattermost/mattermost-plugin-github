@@ -7,7 +7,7 @@
     "release_notes_url": "https://github.com/mattermost/mattermost-plugin-github/releases/tag/v2.2.0",
     "icon_path": "assets/icon.svg",
     "version": "2.2.0",
-    "min_server_version": "6.5.0",
+    "min_server_version": "7.1.0",
     "server": {
       "executables": {
           "linux-amd64": "server/dist/plugin-linux-amd64",
