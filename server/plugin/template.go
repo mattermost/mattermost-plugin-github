@@ -300,7 +300,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("commentAssigneeIssueNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} commented on issue you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
+{{template "user" .GetSender}} commented on an issue you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
 {{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 `))
 
@@ -310,7 +310,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("commentAssigneeSelfMentionIssueNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} mentioned you on a issue that you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
+{{template "user" .GetSender}} mentioned you on an issue that you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
 {{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 `))
 

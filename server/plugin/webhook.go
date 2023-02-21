@@ -1051,6 +1051,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 
 	for _, assignee := range assignees {
 		usernameMentioned := false
+		template := templateName
 		for _, username := range mentionedUsernames {
 			if username == *assignee.Login {
 				usernameMentioned = true
@@ -1061,12 +1062,9 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 		if usernameMentioned {
 			switch eventType {
 			case "pull":
-				templateName = "commentAssigneeSelfMentionPullRequestNotification"
+				template = "commentAssigneeSelfMentionPullRequestNotification"
 			case "issues":
-				templateName = "commentAssigneeSelfMentionIssueNotification"
-			default:
-				p.API.LogDebug("Unhandled issue type", "Type", eventType)
-				return
+				template = "commentAssigneeSelfMentionIssueNotification"
 			}
 		}
 
@@ -1096,7 +1094,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 			continue
 		}
 
-		message, err := renderTemplate(templateName, event)
+		message, err := renderTemplate(template, event)
 		if err != nil {
 			p.API.LogWarn("Failed to render template", "error", err.Error())
 			continue
