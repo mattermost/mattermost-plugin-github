@@ -167,7 +167,7 @@ func (p *Plugin) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if x := recover(); x != nil {
-				p.API.LogError("Recovered from a panic",
+				p.API.LogWarn("Recovered from a panic",
 					"url", r.URL.String(),
 					"error", x,
 					"stack", string(debug.Stack()))
@@ -201,7 +201,7 @@ func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) 
 			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			default:
-				p.API.LogError("Unknown ResponseType detected")
+				p.API.LogDebug("Unknown ResponseType detected")
 			}
 			return
 		}

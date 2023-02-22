@@ -65,14 +65,14 @@ func (p *Plugin) forceResetAllMM34646() error {
 
 			info, errResp := p.getGitHubUserInfo(tryInfo.UserID)
 			if errResp != nil {
-				p.API.LogError("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
+				p.API.LogWarn("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
 					"error", errResp.Error())
 				continue
 			}
 
 			_, err = p.forceResetUserTokenMM34646(ctx, config, info)
 			if err != nil {
-				p.API.LogError("failed to reset GitHub user token", "key", key, "user_id", tryInfo.UserID,
+				p.API.LogWarn("failed to reset GitHub user token", "key", key, "user_id", tryInfo.UserID,
 					"error", err.Error())
 				continue
 			}

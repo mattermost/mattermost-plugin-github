@@ -30,7 +30,7 @@ func TestWithRecovery(t *testing.T) {
 
 	p := NewPlugin()
 	api := &plugintest.API{}
-	api.On("LogError",
+	api.On("LogWarn",
 		"Recovered from a panic",
 		"url", "http://random",
 		"error", "bad handler",
