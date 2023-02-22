@@ -113,6 +113,11 @@ func NewPlugin() *Plugin {
 		"issue":         p.handleIssue,
 	}
 
+	p.createGithubEmojiMap()
+	return p
+}
+
+func (p *Plugin) createGithubEmojiMap() {
 	baseGithubEmojiMap := map[string]string{
 		"+1":         "+1",
 		"-1":         "-1",
@@ -134,8 +139,6 @@ func NewPlugin() *Plugin {
 			}
 		}
 	}
-
-	return p
 }
 
 func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
@@ -275,44 +278,50 @@ func (p *Plugin) OnDeactivate() error {
 	return nil
 }
 
-func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (orgRepo []string, id float64, objectType string, ok bool) {
+func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo string, id float64, objectType string, ok bool) {
 	post, err := p.client.Post.GetPost(reaction.PostId)
 	if err != nil {
 		p.API.LogDebug("Error fetching post for reaction", "error", err.Error())
-		return orgRepo, id, objectType, false
+		return org, repo, id, objectType, false
 	}
 
-	repo, ok := post.GetProp(postPropGithubRepo).(string)
+	// Getting the Github repository from notification post props
+	repo, ok = post.GetProp(postPropGithubRepo).(string)
 	if !ok || repo == "" {
-		return orgRepo, id, objectType, false
+		return org, repo, id, objectType, false
 	}
 
-	orgRepo = strings.Split(repo, "/")
+	orgRepo := strings.Split(repo, "/")
 	if len(orgRepo) != 2 {
 		p.API.LogDebug("Invalid organization repository")
-		return orgRepo, id, objectType, false
+		return org, repo, id, objectType, false
 	}
 
+	org, repo = orgRepo[0], orgRepo[1]
+
+	// Getting the Github object id from notification post props
 	id, ok = post.GetProp(postPropGithubObjectID).(float64)
 	if !ok || id == 0 {
-		return orgRepo, id, objectType, false
+		return org, repo, id, objectType, false
 	}
 
+	// Getting the Github object type from notification post props
 	objectType, ok = post.GetProp(postPropGithubObjectType).(string)
 	if !ok || objectType == "" {
-		return orgRepo, id, objectType, false
+		return org, repo, id, objectType, false
 	}
 
-	return orgRepo, id, objectType, true
+	return org, repo, id, objectType, true
 }
 
 func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reaction) {
 	githubEmoji := p.emojiMap[reaction.EmojiName]
 	if githubEmoji == "" {
+		p.API.LogWarn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
 		return
 	}
 
-	orgRepo, id, objectType, ok := p.getPostPropsForReaction(reaction)
+	owner, repo, id, objectType, ok := p.getPostPropsForReaction(reaction)
 	if !ok {
 		return
 	}
@@ -320,13 +329,14 @@ func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reactio
 	info, appErr := p.getGitHubUserInfo(reaction.UserId)
 	if appErr != nil {
 		if appErr.ID != apiErrorIDNotConnected {
-			p.API.LogDebug("Error in getting user info", "error", appErr.Message)
+			p.API.LogDebug("Error in getting user info", "error", appErr.Error())
 		}
 		return
 	}
 
-	ghClient := p.githubConnectUser(context.Background(), info)
-	owner, repo := orgRepo[0], orgRepo[1]
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	ghClient := p.githubConnectUser(ctx, info)
 	switch objectType {
 	case githubObjectTypeIssueComment:
 		if _, _, err := ghClient.Reactions.CreateIssueCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
@@ -351,10 +361,11 @@ func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reactio
 func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.Reaction) {
 	githubEmoji := p.emojiMap[reaction.EmojiName]
 	if githubEmoji == "" {
+		p.API.LogWarn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
 		return
 	}
 
-	orgRepo, id, objectType, ok := p.getPostPropsForReaction(reaction)
+	owner, repo, id, objectType, ok := p.getPostPropsForReaction(reaction)
 	if !ok {
 		return
 	}
@@ -362,13 +373,14 @@ func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.React
 	info, appErr := p.getGitHubUserInfo(reaction.UserId)
 	if appErr != nil {
 		if appErr.ID != apiErrorIDNotConnected {
-			p.API.LogDebug("Error in getting user info", "error", appErr.Message)
+			p.API.LogDebug("Error in getting user info", "error", appErr.Error())
 		}
 		return
 	}
 
-	ghClient := p.githubConnectUser(context.Background(), info)
-	owner, repo := orgRepo[0], orgRepo[1]
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+	defer cancel()
+	ghClient := p.githubConnectUser(ctx, info)
 	switch objectType {
 	case githubObjectTypeIssueComment:
 		reactions, _, err := ghClient.Reactions.ListIssueCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
