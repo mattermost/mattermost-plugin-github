@@ -961,7 +961,22 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		Type:    "custom_git_mention",
 	}
 
+	assignees := event.GetIssue().Assignees
+
 	for _, username := range mentionedUsernames {
+		assigneeMentioned := false
+		for _, assignee := range assignees {
+			if username == *assignee.Login {
+				assigneeMentioned = true
+				break
+			}
+		}
+
+		// This has been handled in "handleCommentAssigneeNotification" function
+		if assigneeMentioned {
+			continue
+		}
+
 		// Don't notify user of their own comment
 		if username == event.GetSender().GetLogin() {
 			continue
@@ -1055,18 +1070,40 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 	if len(splitURL) < 2 {
 		return
 	}
+
+	eventType := splitURL[len(splitURL)-2]
 	var templateName string
-	switch splitURL[len(splitURL)-2] {
+	switch eventType {
 	case "pull":
 		templateName = "commentAssigneePullRequestNotification"
 	case "issues":
 		templateName = "commentAssigneeIssueNotification"
 	default:
-		p.API.LogWarn("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+		p.API.LogDebug("Unhandled issue type", "Type", eventType)
 		return
 	}
 
+	mentionedUsernames := parseGitHubUsernamesFromText(event.GetComment().GetBody())
+
 	for _, assignee := range assignees {
+		usernameMentioned := false
+		template := templateName
+		for _, username := range mentionedUsernames {
+			if username == *assignee.Login {
+				usernameMentioned = true
+				break
+			}
+		}
+
+		if usernameMentioned {
+			switch eventType {
+			case "pull":
+				template = "commentAssigneeSelfMentionPullRequestNotification"
+			case "issues":
+				template = "commentAssigneeSelfMentionIssueNotification"
+			}
+		}
+
 		userID := p.getGitHubToUserIDMapping(assignee.GetLogin())
 		if userID == "" {
 			continue
@@ -1093,7 +1130,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 			continue
 		}
 
-		message, err := renderTemplate(templateName, event)
+		message, err := renderTemplate(template, event)
 		if err != nil {
 			p.API.LogWarn("Failed to render template", "error", err.Error())
 			continue
