@@ -28,6 +28,14 @@ const (
 	actionCreated = "created"
 	actionDeleted = "deleted"
 	actionEdited  = "edited"
+
+	postPropGithubRepo       = "gh_repo"
+	postPropGithubObjectID   = "gh_object_id"
+	postPropGithubObjectType = "gh_object_type"
+
+	githubObjectTypeIssue           = "issue"
+	githubObjectTypeIssueComment    = "issue_comment"
+	githubObjectTypePRReviewComment = "pr_review_comment"
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -387,6 +395,13 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 		}
 
+		repoName := strings.ToLower(repo.GetFullName())
+		prNumber := event.GetPullRequest().Number
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, prNumber)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
+
 		if !contained && label != "" {
 			continue
 		}
@@ -554,6 +569,13 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			Type:    "custom_git_issue",
 			Message: renderedMessage,
 		}
+
+		repoName := strings.ToLower(repo.GetFullName())
+		issueNumber := issue.Number
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, issueNumber)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
 
 		label := sub.Label()
 
@@ -731,6 +753,13 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		Type:   "custom_git_comment",
 	}
 
+	repoName := strings.ToLower(repo.GetFullName())
+	commentID := event.GetComment().GetID()
+
+	post.AddProp(postPropGithubRepo, repoName)
+	post.AddProp(postPropGithubObjectID, commentID)
+	post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
+
 	labels := make([]string, len(event.GetIssue().Labels))
 	for i, v := range event.GetIssue().Labels {
 		labels[i] = v.GetName()
@@ -863,6 +892,13 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		Type:    "custom_git_pull_review_comment",
 		Message: newReviewMessage,
 	}
+
+	repoName := strings.ToLower(repo.GetFullName())
+	commentID := event.GetComment().GetID()
+
+	post.AddProp(postPropGithubRepo, repoName)
+	post.AddProp(postPropGithubObjectID, commentID)
+	post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
 	for i, v := range event.GetPullRequest().Labels {

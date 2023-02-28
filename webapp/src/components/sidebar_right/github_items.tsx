@@ -115,14 +115,17 @@ function GithubItems(props: GithubItemsProps) {
             };
 
             let icon;
+            let title;
             if (item.pullRequest) {
                 // item is a pull request
                 icon = <GitPullRequestIcon {...iconProps}/>;
+                title = 'Pull Request';
             } else {
                 icon = <IssueOpenedIcon {...iconProps}/>;
+                title = 'Issue';
             }
             number = (
-                <strong>
+                <strong title={title} >
                     <span style={{...style.icon}}>
                         {icon}
                     </span>
@@ -143,6 +146,7 @@ function GithubItems(props: GithubItemsProps) {
                 <a
                     href={item.html_url}
                     target='_blank'
+                    aria-label={titleText}
                     rel='noopener noreferrer'
                     style={style.itemTitle}
                 >
@@ -166,6 +170,9 @@ function GithubItems(props: GithubItemsProps) {
         if (item.milestone) {
             milestone = (
                 <span
+                    title={item.milestone.title}
+                    aria-label={item.milestone.title}
+                    role={'note'}
                     style={
                         {
                             ...style.milestoneIcon,
@@ -186,25 +193,78 @@ function GithubItems(props: GithubItemsProps) {
         if (item.status) {
             switch (item.status) {
             case 'success':
-                status = (<span style={{...style.icon, ...style.iconSucess}}><TickIcon/></span>);
+                status = (
+                    <span
+                        title={'Success'}
+                        aria-label={'Success'}
+                        role={'note'}
+                        style={{...style.icon, ...style.iconSucess}}
+                    >
+                        <TickIcon/>
+                    </span>
+                );
                 break;
             case 'pending':
-                status = (<span style={{...style.icon, ...style.iconPending}}><DotIcon/></span>);
+                status = (
+                    <OverlayTrigger
+                        key='githubRHSPRPending'
+                        placement='top'
+                        overlay={
+                            <Tooltip
+                                id='githubRHSPRPendingTooltip'
+                                aria-label={'Pending'}
+                                role={'note'}
+                            >
+                                {'Pending'}
+                            </Tooltip>
+                        }
+                    >
+                        <span
+                            style={{...style.icon, ...style.iconPending}}
+                        >
+                            <DotIcon/>
+                        </span>
+                    </OverlayTrigger>
+                );
                 break;
             default:
-                status = (<span style={{...style.icon, ...style.iconFailed}}><CrossIcon/></span>);
+                status = (
+                    <OverlayTrigger
+                        key='githubRHSPRFailed'
+                        placement='top'
+                        overlay={
+                            <Tooltip
+                                id='githubRHSPRFailedTooltip'
+                                aria-label={'Failed'}
+                                role={'note'}
+                            >
+                                {'Failed'}
+                            </Tooltip>
+                        }
+                    >
+                        <span
+                            style={{...style.icon, ...style.iconFailed}}
+                        >
+                            <CrossIcon/>
+                        </span>
+                    </OverlayTrigger>
+                );
             }
         }
 
         let hasConflict: JSX.Element | null = null;
         if (item.mergeable != null && !item.mergeable) {
+            const conflictText = 'This pull request has conflicts that must be resolved';
             hasConflict = (
                 <OverlayTrigger
                     key='githubRHSPRMergeableIndicator'
                     placement='top'
                     overlay={
-                        <Tooltip id='githubRHSPRMergeableTooltip'>
-                            {'This pull request has conflicts that must be resolved'}
+                        <Tooltip
+                            id='githubRHSPRMergeableTooltip'
+                            aria-label={conflictText}
+                        >
+                            {conflictText}
                         </Tooltip>
                     }
                 >
@@ -313,6 +373,8 @@ function getGithubLabels(labels: Label[]) {
         return (
             <Badge
                 key={label.id}
+                aria-label={label.name}
+                role={'note'}
                 style={{...itemStyle, ...{backgroundColor: `#${label.color}`, color: getLabelFontColor(label.color)}}}
             >{label.name}</Badge>
         );
@@ -381,11 +443,19 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
     }
 
     if (changesRequested > 0) {
+        const changedRequestedText = 'Changes Requested';
         changes = (
             <OverlayTrigger
                 key='changesRequestedDot'
                 placement='bottom'
-                overlay={<Tooltip id='changesRequestedTooltip'>{'Changes Requested'}</Tooltip>}
+                overlay={
+                    <Tooltip
+                        id='changesRequestedTooltip'
+                        aria-label={changedRequestedText}
+                    >
+                        {'Changes Requested'}
+                    </Tooltip>
+                }
             >
                 <span style={{...style.icon, ...style.iconChangesRequested}}><ChangesRequestedIcon/></span>
             </OverlayTrigger>
