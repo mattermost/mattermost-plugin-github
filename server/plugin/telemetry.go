@@ -16,7 +16,7 @@ func (p *Plugin) SendDailyTelemetry() {
 
 	connectedUserCount, err := p.getConnectedUserCount()
 	if err != nil {
-		p.API.LogWarn("Failed to get the number of connected users for telemetry", "error", err)
+		p.client.Log.Warn("Failed to get the number of connected users for telemetry", "error", err)
 	}
 
 	_ = p.tracker.TrackEvent("stats", map[string]interface{}{
