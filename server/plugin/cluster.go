@@ -21,30 +21,26 @@ func (p *Plugin) sendOAuthCompleteEvent(event OAuthCompleteEvent) {
 }
 
 func (p *Plugin) sendMessageToCluster(id string, v interface{}) {
-	/*
-				// TODO: Ben
-		b, err := json.Marshal(v)
-		if err != nil {
-			p.client.Log.Warn("couldn't get JSON bytes from cluster message",
-				"id", id,
-				"error", err,
-			)
-			return
-		}
+	b, err := json.Marshal(v)
+	if err != nil {
+		p.client.Log.Warn("couldn't get JSON bytes from cluster message",
+			"id", id,
+			"error", err,
+		)
+		return
+	}
 
-			event := model.PluginClusterEvent{Id: id, Data: b}
-			opts := model.PluginClusterEventSendOptions{
-				SendType: model.PluginClusterEventSendTypeReliable,
-			}
+	event := model.PluginClusterEvent{Id: id, Data: b}
+	opts := model.PluginClusterEventSendOptions{
+		SendType: model.PluginClusterEventSendTypeReliable,
+	}
 
-
-				if err := p.client.PublishPluginClusterEvent(event, opts); err != nil {
-					p.client.Log.Warn("error publishing cluster event",
-						"id", id,
-						"error", err,
-					)
-				}
-	*/
+	if err := p.client.Cluster.PublishPluginEvent(event, opts); err != nil {
+		p.client.Log.Warn("error publishing cluster event",
+			"id", id,
+			"error", err,
+		)
+	}
 }
 
 func (p *Plugin) HandleClusterEvent(ev model.PluginClusterEvent) {
