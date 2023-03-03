@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v41/github"
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -246,6 +247,7 @@ func TestMakeReplacements(t *testing.T) {
 	mockPluginAPI.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 	mockPluginAPI.On("LogWarn", mock.Anything, mock.Anything)
 	p.SetAPI(mockPluginAPI)
+	p.client = pluginapi.NewClient(p.API, p.Driver)
 
 	tcs := []struct {
 		name         string
