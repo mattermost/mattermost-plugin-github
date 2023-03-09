@@ -8,5 +8,4 @@ dist/
 
 # Jetbrains
 .idea/
-playwright
 node_modules
