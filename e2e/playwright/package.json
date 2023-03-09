@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "./run-tests.sh"
+    "test": "PLAYWRIGHT_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test-slomo --prefix ../../../mattermost-webapp/e2e/playwright"
   },
   "author": "\\",
   "license": "ISC",
