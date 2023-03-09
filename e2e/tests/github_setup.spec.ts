@@ -39,7 +39,7 @@ test.beforeEach(async ({pw, pages, page}) => {
     await page.click('.SidebarLink[aria-label="github"]');
 });
 
-test('install plugin', async ({pw, pages, page}) => {
+test('/github setup', async ({pw, pages, page}) => {
     const c = new pages.ChannelsPage(page);
 
     const runCommand = (cmd: string) => c.postMessage(cmd).then(() => page.getByTestId('SendMessageButton').click());
