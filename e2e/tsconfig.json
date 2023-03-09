@@ -7,8 +7,8 @@
       "noEmit": true,
       "baseUrl": ".",
       "paths": {
-          "@mattermost/client/*": ["../mattermost-webapp/packages/client/lib/*"],
-          "@mattermost/types/*": ["../mattermost-webapp/packages/types/lib/*"],
+          "@mattermost/client/*": ["../../mattermost-webapp/packages/client/lib/*"],
+          "@mattermost/types/*": ["../../mattermost-webapp/packages/types/lib/*"],
           "@e2e-support/*": ["./playwright/support/*"],
           "@e2e-test.config": ["./playwright/test.config.ts"],
           // "@playwright/test": ["./playwright/node_modules/@playwright/test"]
