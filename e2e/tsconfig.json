@@ -9,8 +9,8 @@
       "paths": {
           "@mattermost/client/*": ["../../mattermost-webapp/packages/client/lib/*"],
           "@mattermost/types/*": ["../../mattermost-webapp/packages/types/lib/*"],
-          "@e2e-support/*": ["./playwright/support/*"],
-          "@e2e-test.config": ["./playwright/test.config.ts"],
+          "@e2e-support/*": ["../mattermost-plugin-test-utils/playwright/support/*"],
+          "@e2e-test.config": ["../mattermost-plugin-test-utils/playwright/test.config.ts"],
           // "@playwright/test": ["./playwright/node_modules/@playwright/test"]
       }
   },
