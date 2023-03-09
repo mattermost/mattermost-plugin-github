@@ -44,8 +44,8 @@ test('/github setup', async ({pw, pages, page}) => {
 
     const runCommand = (cmd: string) => c.postMessage(cmd).then(() => page.getByTestId('SendMessageButton').click());
     const clickPostAction = async (name: string) => {
-        const p = await c.getLastPost();
-        p.container.getByText(name).last().click();
+        const postElement = await c.getLastPost();
+        await postElement.container.getByText(name).last().click();
     };
 
     await runCommand('/github setup');
