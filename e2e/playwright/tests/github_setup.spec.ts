@@ -1,6 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+// ***************************************************************
+// - [#] indicates a test step (e.g. # Go to a page)
+// - [*] indicates an assertion (e.g. * Check the title)
+// ***************************************************************
+
 import path from 'node:path';
 import fs from 'node:fs';
 
@@ -9,7 +14,7 @@ import {UserProfile} from '@mattermost/types/users';
 
 const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
-// Log in
+// # Log in
 test.beforeEach(async ({pw, pages, page}) => {
     const {adminClient} = await pw.getAdminClient();
     await adminClient.patchConfig({
@@ -44,7 +49,7 @@ const getPluginBundlePath = async (): Promise<string> => {
     return path.join(dir, bundle);
 }
 
-// Upload plugin
+// # Upload plugin
 test.beforeEach(async ({pw}) => {
     const bundlePath = await getPluginBundlePath();
     const {adminClient} = await pw.getAdminClient();
@@ -53,7 +58,7 @@ test.beforeEach(async ({pw}) => {
     await adminClient.enablePlugin('github');
 });
 
-// Navigate to GitHub bot DM channel
+// # Navigate to GitHub bot DM channel
 test.beforeEach(async ({page}) => {
     await page.click('.SidebarLink[aria-label="github"]');
 });
@@ -61,7 +66,8 @@ test.beforeEach(async ({page}) => {
 test('/github setup', async ({pw, pages, page, context}) => {
     const c = new pages.ChannelsPage(page);
 
-    // utility functions similar to this should be shared from mm-webapp.
+    // Utility functions similar to this should be shared from mm-webapp.
+
     // utility function
     const postMessage = async (command: string) => {
         await c.postMessage(command);
@@ -88,10 +94,10 @@ test('/github setup', async ({pw, pages, page, context}) => {
 
     // ---- TEST ----
 
-    // run setup command
+    // # Run setup command
     await postMessage('/github setup');
 
-    // go through prompts of setup flow
+    // # Go through prompts of setup flow
     const choices: string[] = [
         'Continue',
         "I'll do it myself",
@@ -104,7 +110,7 @@ test('/github setup', async ({pw, pages, page, context}) => {
         await clickPostAction(choice);
     }
 
-    // fill out interactive dialog for GitHub client id and client secret
+    // # Fill out interactive dialog for GitHub client id and client secret
     await page.getByTestId('client_idinput').fill('text'.repeat(5));
     await page.getByTestId('client_secretinput').fill('text'.repeat(10));
     await page.click('#interactiveDialogSubmit');
@@ -116,10 +122,10 @@ test('/github setup', async ({pw, pages, page, context}) => {
     const text = await page.locator(locatorId).innerText();
     expect(text).toEqual('Go here to connect your account.');
 
-    // not actually asserting anything here, though this could be used as an artifact in CI.
+    // Not asserting anything here, though this can be used as an artifact in CI.
     await screenshot('github_setup/show_connect_link.png');
 
-    // verify connect link has correct URL
+    // * Verify connect link has correct URL
     const siteURL = await getSiteURL();
     const expectedConnectLinkURL = `${siteURL}/plugins/github/oauth/connect`;
 
