@@ -27,10 +27,78 @@ test.beforeEach(async ({pw, pages, page}) => {
     await loginPage.login(user);
 });
 
+// utility function
+const getPluginBundlePath = async (): Promise<string> => {
+    const dir = path.join(__dirname, '../../../dist');
+    const files = await fs.promises.readdir(dir);
+    const bundle = files.find((fname) => fname.endsWith('.tar.gz'));
+    if (!bundle) {
+        throw new Error('Failed to find plugin bundle in dist folder');
+    }
+
+    return path.join(dir, bundle);
+}
+
+// utility function
+const getPluginBundlePath = async (): Promise<string> => {
+    const dir = path.join(__dirname, '../../../dist');
+    const files = await fs.promises.readdir(dir);
+    const bundle = files.find((fname) => fname.endsWith('.tar.gz'));
+    if (!bundle) {
+        throw new Error('Failed to find plugin bundle in dist folder');
+    }
+
+    return path.join(dir, bundle);
+}
+
+// utility function
+const getPluginBundlePath = async (): Promise<string> => {
+    const dir = path.join(__dirname, '../../../dist');
+    const files = await fs.promises.readdir(dir);
+    const bundle = files.find((fname) => fname.endsWith('.tar.gz'));
+    if (!bundle) {
+        throw new Error('Failed to find plugin bundle in dist folder');
+    }
+
+    return path.join(dir, bundle);
+}
+
+// utility function
+const getPluginBundlePath = async (): Promise<string> => {
+    const dir = path.join(__dirname, '../../../dist');
+    const files = await fs.promises.readdir(dir);
+    const bundle = files.find((fname) => fname.endsWith('.tar.gz'));
+    if (!bundle) {
+        throw new Error('Failed to find plugin bundle in dist folder');
+    }
+
+    return path.join(dir, bundle);
+}
+
 // Upload plugin
+test.beforeEach(async ({pw}) => {
+    const bundlePath = await getPluginBundlePath();
 test.beforeEach(async ({pw, pages, page}) => {
+test.beforeEach(async ({pw}) => {
+    const bundlePath = await getPluginBundlePath();
+test.beforeEach(async ({pw, pages, page}) => {
+test.beforeEach(async ({pw}) => {
+    const bundlePath = await getPluginBundlePath();
+test.beforeEach(async ({pw, pages, page}) => {
+test.beforeEach(async ({pw}) => {
+    const bundlePath = await getPluginBundlePath();
     const {adminClient} = await pw.getAdminClient();
+
+    await adminClient.uploadPluginX(bundlePath, true);
     await adminClient.uploadPluginX('../../dist/github-2.1.2.tar.gz', true);
+
+    await adminClient.uploadPluginX(bundlePath, true);
+    await adminClient.uploadPluginX('../../dist/github-2.1.2.tar.gz', true);
+
+    await adminClient.uploadPluginX(bundlePath, true);
+    await adminClient.uploadPluginX('../../dist/github-2.1.2.tar.gz', true);
+
+    await adminClient.uploadPluginX(bundlePath, true);
     await adminClient.enablePlugin('github');
 });
 
