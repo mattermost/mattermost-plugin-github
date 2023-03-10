@@ -1,7 +1,8 @@
 {
   "name": "plugin-e2e-tests",
   "scripts": {
-    "test": "PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test-slomo --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome"
+    "test": "PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test-slomo --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
+    "show-report": "npm run show-report --prefix ../../../mattermost-webapp/e2e/playwright"
   },
   "devDependencies": {
     "typescript": "^4.9.5"
