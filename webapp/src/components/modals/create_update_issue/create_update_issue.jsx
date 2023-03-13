@@ -22,6 +22,7 @@ const initialState = {
     repo: null,
     issueTitle: '',
     issueDescription: '',
+    channelId: '',
     labels: [],
     assignees: [],
     milestone: null,
@@ -34,6 +35,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
         update: PropTypes.func.isRequired,
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
+        getIssueInfo: PropTypes.func.isRequired,
         post: PropTypes.object,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
@@ -46,36 +48,50 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
         this.validator = new Validator();
     }
 
+    getIssueInfo = async () => {
+        const {repo_owner, repo_name, issue_number, postId} = this.props.messageData;
+        const issueInfo = await this.props.getIssueInfo(repo_owner, repo_name, issue_number, postId);
+        return issueInfo;
+    }
+
+    updateState(issueInfo) {
+        const {channel_id, title, description, milestone_title, milestone_number, repo_full_name} = issueInfo ?? {};
+        const assignees = issueInfo?.assignees ?? [];
+        const labels = issueInfo?.labels ?? [];
+
+        this.setState({milestone: {
+            value: milestone_number,
+            label: milestone_title,
+        },
+        repo: {
+            name: repo_full_name,
+        },
+        assignees,
+        labels,
+        channelId: channel_id,
+        issueDescription: description,
+        issueTitle: title.substring(0, MAX_TITLE_LENGTH)});
+    }
+
     /* eslint-disable react/no-did-update-set-state*/
     componentDidUpdate(prevProps) {
-        if (this.props.post && !this.props.messageData) {
+        if (this.props.post && !this.props.messageData && !prevProps.post) {
             this.setState({issueDescription: this.props.post.message});
         }
 
-        const {channel_id, title, description, assignees, labels, milestone_title, milestone_number, repo_full_name} = this.props.messageData ?? {};
-        if (channel_id && (channel_id !== prevProps.messageData?.channel_id || title !== prevProps.messageData?.title || description !== prevProps.messageData?.description || assignees !== prevProps.messageData?.assignees || labels !== prevProps.messageData?.labels || milestone_title !== prevProps.messageData?.milestone_title || milestone_number !== prevProps.messageData?.milestone_number)) {
-            if (assignees) {
-                this.setState({assignees});
-            }
-            if (labels) {
-                this.setState({labels});
-            }
-            this.setState({milestone: {
-                value: milestone_number,
-                label: milestone_title,
-            },
-            repo: {
-                name: repo_full_name,
-            },
-            issueDescription: description,
-            issueTitle: title.substring(0, MAX_TITLE_LENGTH)});
+        if (this.props.messageData?.repo_owner && !prevProps.visible && this.props.visible) {
+            this.getIssueInfo().then((issueInfo) => {
+                this.updateState(issueInfo.data);
+            });
+        } else if (this.props.messageData?.channel_id && (this.props.messageData?.channel_id !== prevProps.messageData?.channel_id || this.props.messageData?.title !== prevProps.messageData?.title)) {
+            this.updateState(this.props.messageData);
         }
     }
     /* eslint-enable */
 
     // handle issue creation or updation after form is populated
     handleCreateOrUpdate = async (e) => {
-        const {channel_id, issue_number, repo_full_name} = this.props.messageData ?? {};
+        const {issue_number} = this.props.messageData ?? {};
         if (e && e.preventDefault) {
             e.preventDefault();
         }
@@ -99,7 +115,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
             assignees: this.state.assignees,
             milestone: this.state.milestone && this.state.milestone.value,
             post_id: postId,
-            channel_id,
+            channel_id: this.state.channelId,
             issue_number,
         };
 
@@ -107,7 +123,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
             issue.repo = this.state.repo;
         }
         this.setState({submitting: true});
-        if (repo_full_name) {
+        if (issue_number) {
             const updated = await this.props.update(issue);
             if (updated?.error) {
                 const errMessage = getErrorMessage(updated.error.message);
@@ -233,6 +249,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
                     onChange={this.handleIssueTitleChange}
                 />
                 {issueTitleValidationError}
+
                 {this.renderIssueAttributeSelectors()}
 
                 <Input

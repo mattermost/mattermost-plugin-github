@@ -40,11 +40,9 @@ const (
 	wsEventConnect    = "connect"
 	wsEventDisconnect = "disconnect"
 	// WSEventConfigUpdate is the WebSocket event to update the configurations on webapp.
-	WSEventConfigUpdate         = "config_update"
-	wsEventRefresh              = "refresh"
-	wsEventCreateOrUpdateIssue  = "createOrUpdateIssue"
-	wsEventCloseOrReopenIssue   = "closeOrReopenIssue"
-	wsEventAttachCommentToIssue = "attachCommentToIssue"
+	WSEventConfigUpdate = "config_update"
+	wsEventRefresh      = "refresh"
+	wsEventCreateIssue  = "createIssue"
 
 	WSEventRefresh = "refresh"
 
@@ -482,7 +480,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 
 func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
 	p.API.PublishWebSocketEvent(
-		wsEventCreateOrUpdateIssue,
+		wsEventCreateIssue,
 		map[string]interface{}{
 			"title":      title,
 			"channel_id": channelID,

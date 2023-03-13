@@ -6,7 +6,7 @@ import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 
 import {id as pluginId} from 'manifest';
-import {closeCreateOrUpdateIssueModal, createIssue, updateIssue} from 'actions';
+import {closeCreateOrUpdateIssueModal, createIssue, updateIssue, getIssueInfo} from 'actions';
 
 import CreateOrUpdateIssueModal from './create_update_issue';
 
@@ -26,6 +26,7 @@ const mapDispatchToProps = (dispatch) => bindActionCreators({
     close: closeCreateOrUpdateIssueModal,
     create: createIssue,
     update: updateIssue,
+    getIssueInfo,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(CreateOrUpdateIssueModal);

@@ -10,8 +10,6 @@ import {
     getYourAssignments,
     getYourPrs,
     openCreateOrUpdateIssueModal,
-    openCloseOrReopenIssueModal,
-    openCreateCommentOnIssueModal,
 } from '../actions';
 
 import {id as pluginId} from '../manifest';
@@ -93,23 +91,5 @@ export function handleOpenCreateOrUpdateIssueModal(store) {
             return;
         }
         store.dispatch(openCreateOrUpdateIssueModal(msg.data));
-    };
-}
-
-export function handleOpenCloseOrReopenIssueModal(store) {
-    return (msg) => {
-        if (!msg.data) {
-            return;
-        }
-        store.dispatch(openCloseOrReopenIssueModal(msg.data));
-    };
-}
-
-export function handleOpenCreateCommentOnIssueModal(store) {
-    return (msg) => {
-        if (!msg.data) {
-            return;
-        }
-        store.dispatch(openCreateCommentOnIssueModal(msg.data));
     };
 }

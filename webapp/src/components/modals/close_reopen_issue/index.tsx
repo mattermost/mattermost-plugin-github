@@ -36,9 +36,9 @@ const CloseOrReopenIssueModal = ({theme}: {theme: Theme}) => {
             channel_id: messageData.channel_id,
             issue_comment: comment,
             status_reason: currentStatus,
-            repo: messageData.repo,
-            number: messageData.number,
-            owner: messageData.owner,
+            repo: messageData.repo_name,
+            number: messageData.issue_number,
+            owner: messageData.repo_owner,
             status: messageData.status,
             postId: messageData.postId,
         };

@@ -4,7 +4,7 @@ import {Theme} from 'mattermost-redux/types/preferences';
 import {Post} from 'mattermost-redux/types/posts';
 import {useDispatch} from 'react-redux';
 
-import {attachCommentIssueModal, editIssueModal, closeOrReopenIssueModal} from '../../actions';
+import {openCreateCommentOnIssueModal, openCreateOrUpdateIssueModal, openCloseOrReopenIssueModal} from '../../actions';
 
 type GithubIssueProps = {
     theme: Theme,
@@ -24,6 +24,7 @@ const GithubIssue = ({theme, post}: GithubIssueProps) => {
         issue_number: postProps.issue_number,
         postId: post.id,
         status: postProps.status,
+        channel_id: post.channel_id,
     };
 
     const content = (
@@ -31,17 +32,17 @@ const GithubIssue = ({theme, post}: GithubIssueProps) => {
             <button
                 style={{...style.button, ...style.other_buttons}}
                 className='btn btn-primary'
-                onClick={() => dispatch(attachCommentIssueModal(issue))}
+                onClick={() => dispatch(openCreateCommentOnIssueModal(issue))}
             >{'Comment'}</button>
             <button
                 style={{...style.button, ...style.other_buttons}}
                 className='btn btn-primary'
-                onClick={() => dispatch(editIssueModal(issue))}
+                onClick={() => dispatch(openCreateOrUpdateIssueModal(issue))}
             >{'Edit'}</button>
             <button
                 style={{...style.button, ...{...postProps.status === 'Close' ? style.close_or_reopen_button : style.other_buttons}}}
                 className='btn btn-primary'
-                onClick={() => dispatch(closeOrReopenIssueModal(issue))}
+                onClick={() => dispatch(openCloseOrReopenIssueModal(issue))}
             >{postProps.status}</button>
         </div>
     );
