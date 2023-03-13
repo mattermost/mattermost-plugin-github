@@ -16,7 +16,10 @@ const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
 // # Log in
 test.beforeEach(async ({pw, pages, page}) => {
-    const {adminClient} = await pw.getAdminClient();
+    const {adminClient, adminUser} = await pw.getAdminClient();
+    if (!adminUser) {
+        throw new Error("Failed to get admin user");
+    }
     await adminClient.patchConfig({
         ServiceSettings: {
             EnableTutorial: false,
@@ -29,12 +32,7 @@ test.beforeEach(async ({pw, pages, page}) => {
 
     await loginPage.goto();
     await loginPage.toBeVisible();
-
-    const user = {
-        username: 'sysadmin',
-        password: 'Sys@dmin-sample1',
-    } as UserProfile;
-    await loginPage.login(user);
+    await loginPage.login(adminUser);
 });
 
 // utility function
@@ -59,13 +57,12 @@ test.beforeEach(async ({pw}) => {
 });
 
 // # Navigate to GitHub bot DM channel
-test.beforeEach(async ({page}) => {
-    await page.click('.SidebarLink[aria-label="github"]');
-});
+// test.beforeEach(async ({page}) => {
+//     await page.click('.SidebarLink[aria-label="github"]');
+// });
 
 test('/github setup', async ({pw, pages, page, context}) => {
     const c = new pages.ChannelsPage(page);
-
     // Utility functions similar to this should be shared from mm-webapp.
 
     // utility function
@@ -93,9 +90,12 @@ test('/github setup', async ({pw, pages, page, context}) => {
     }
 
     // ---- TEST ----
-
     // # Run setup command
     await postMessage('/github setup');
+
+    // # go to github bot DM channel
+    await page.locator('.SidebarChannelGroup_content').getByText('github').click();
+
 
     // # Go through prompts of setup flow
     const choices: string[] = [
