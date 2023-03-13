@@ -92,12 +92,14 @@ type Plugin struct {
 
 	webhookBroker *WebhookBroker
 	oauthBroker   *OAuthBroker
+
+	emojiMap map[string]string
 }
 
 // NewPlugin returns an instance of a Plugin.
 func NewPlugin() *Plugin {
 	p := &Plugin{
-		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
@@ -114,7 +116,32 @@ func NewPlugin() *Plugin {
 		"issue":         p.handleIssue,
 	}
 
+	p.createGithubEmojiMap()
 	return p
+}
+
+func (p *Plugin) createGithubEmojiMap() {
+	baseGithubEmojiMap := map[string]string{
+		"+1":         "+1",
+		"-1":         "-1",
+		"thumbsup":   "+1",
+		"thumbsdown": "-1",
+		"laughing":   "laugh",
+		"confused":   "confused",
+		"heart":      "heart",
+		"tada":       "hooray",
+		"rocket":     "rocket",
+		"eyes":       "eyes",
+	}
+
+	p.emojiMap = map[string]string{}
+	for systemEmoji := range model.SystemEmojis {
+		for mmBase, ghBase := range baseGithubEmojiMap {
+			if strings.HasPrefix(systemEmoji, mmBase) {
+				p.emojiMap[systemEmoji] = ghBase
+			}
+		}
+	}
 }
 
 func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
@@ -223,6 +250,7 @@ func (p *Plugin) OnActivate() error {
 	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
 
 	botID, err := p.client.Bot.EnsureBot(&model.Bot{
+		OwnerId:     Manifest.Id, // Workaround to support older server version affected by https://github.com/mattermost/mattermost-server/pull/21560
 		Username:    "github",
 		DisplayName: "GitHub",
 		Description: "Created by the GitHub plugin.",
@@ -251,6 +279,160 @@ func (p *Plugin) OnDeactivate() error {
 	p.oauthBroker.Close()
 
 	return nil
+}
+
+func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo string, id float64, objectType string, ok bool) {
+	post, err := p.client.Post.GetPost(reaction.PostId)
+	if err != nil {
+		p.API.LogDebug("Error fetching post for reaction", "error", err.Error())
+		return org, repo, id, objectType, false
+	}
+
+	// Getting the Github repository from notification post props
+	repo, ok = post.GetProp(postPropGithubRepo).(string)
+	if !ok || repo == "" {
+		return org, repo, id, objectType, false
+	}
+
+	orgRepo := strings.Split(repo, "/")
+	if len(orgRepo) != 2 {
+		p.API.LogDebug("Invalid organization repository")
+		return org, repo, id, objectType, false
+	}
+
+	org, repo = orgRepo[0], orgRepo[1]
+
+	// Getting the Github object id from notification post props
+	id, ok = post.GetProp(postPropGithubObjectID).(float64)
+	if !ok || id == 0 {
+		return org, repo, id, objectType, false
+	}
+
+	// Getting the Github object type from notification post props
+	objectType, ok = post.GetProp(postPropGithubObjectType).(string)
+	if !ok || objectType == "" {
+		return org, repo, id, objectType, false
+	}
+
+	return org, repo, id, objectType, true
+}
+
+func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reaction) {
+	githubEmoji := p.emojiMap[reaction.EmojiName]
+	if githubEmoji == "" {
+		p.API.LogWarn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
+		return
+	}
+
+	owner, repo, id, objectType, ok := p.getPostPropsForReaction(reaction)
+	if !ok {
+		return
+	}
+
+	info, appErr := p.getGitHubUserInfo(reaction.UserId)
+	if appErr != nil {
+		if appErr.ID != constants.APIErrorIDNotConnected {
+			p.API.LogDebug("Error in getting user info", "error", appErr.Error())
+		}
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	defer cancel()
+	ghClient := p.githubConnectUser(ctx, info)
+	switch objectType {
+	case githubObjectTypeIssueComment:
+		if _, _, err := ghClient.Reactions.CreateIssueCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
+			p.API.LogDebug("Error occurred while creating issue comment reaction", "error", err.Error())
+			return
+		}
+	case githubObjectTypeIssue:
+		if _, _, err := ghClient.Reactions.CreateIssueReaction(context.Background(), owner, repo, int(id), githubEmoji); err != nil {
+			p.API.LogDebug("Error occurred while creating issue reaction", "error", err.Error())
+			return
+		}
+	case githubObjectTypePRReviewComment:
+		if _, _, err := ghClient.Reactions.CreatePullRequestCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
+			p.API.LogDebug("Error occurred while creating PR review comment reaction", "error", err.Error())
+			return
+		}
+	default:
+		return
+	}
+}
+
+func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.Reaction) {
+	githubEmoji := p.emojiMap[reaction.EmojiName]
+	if githubEmoji == "" {
+		p.API.LogWarn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
+		return
+	}
+
+	owner, repo, id, objectType, ok := p.getPostPropsForReaction(reaction)
+	if !ok {
+		return
+	}
+
+	info, appErr := p.getGitHubUserInfo(reaction.UserId)
+	if appErr != nil {
+		if appErr.ID != constants.APIErrorIDNotConnected {
+			p.API.LogDebug("Error in getting user info", "error", appErr.Error())
+		}
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	defer cancel()
+	ghClient := p.githubConnectUser(ctx, info)
+	switch objectType {
+	case githubObjectTypeIssueComment:
+		reactions, _, err := ghClient.Reactions.ListIssueCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
+		if err != nil {
+			p.API.LogDebug("Error getting issue comment reaction list", "error", err.Error())
+			return
+		}
+
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				if _, err = ghClient.Reactions.DeleteIssueCommentReaction(context.Background(), owner, repo, int64(id), reactionObj.GetID()); err != nil {
+					p.API.LogDebug("Error occurred while removing issue comment reaction", "error", err.Error())
+				}
+				return
+			}
+		}
+	case githubObjectTypeIssue:
+		reactions, _, err := ghClient.Reactions.ListIssueReactions(context.Background(), owner, repo, int(id), &github.ListOptions{})
+		if err != nil {
+			p.API.LogDebug("Error getting issue reaction list", "error", err.Error())
+			return
+		}
+
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				if _, err = ghClient.Reactions.DeleteIssueReaction(context.Background(), owner, repo, int(id), reactionObj.GetID()); err != nil {
+					p.API.LogDebug("Error occurred while removing issue reaction", "error", err.Error())
+				}
+				return
+			}
+		}
+	case githubObjectTypePRReviewComment:
+		reactions, _, err := ghClient.Reactions.ListPullRequestCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
+		if err != nil {
+			p.API.LogDebug("Error getting PR review comment reaction list", "error", err.Error())
+			return
+		}
+
+		for _, reactionObj := range reactions {
+			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
+				if _, err = ghClient.Reactions.DeletePullRequestCommentReaction(context.Background(), owner, repo, int64(id), reactionObj.GetID()); err != nil {
+					p.API.LogDebug("Error occurred while removing PR review comment reaction", "error", err.Error())
+				}
+				return
+			}
+		}
+	default:
+		return
+	}
 }
 
 func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
