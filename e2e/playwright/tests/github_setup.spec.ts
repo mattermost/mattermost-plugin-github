@@ -7,61 +7,12 @@
 // ***************************************************************
 
 import path from 'node:path';
-import fs from 'node:fs';
 
 import {expect, test} from '@e2e-support/test_fixture';
-import {UserProfile} from '@mattermost/types/users';
+
+import './init_test';
 
 const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
-
-// # Log in
-test.beforeEach(async ({pw, pages, page}) => {
-    const {adminClient} = await pw.getAdminClient();
-    await adminClient.patchConfig({
-        ServiceSettings: {
-            EnableTutorial: false,
-            EnableOnboardingFlow: false,
-        },
-    });
-
-    const adminConfig = await adminClient.getConfig();
-    const loginPage = new pages.LoginPage(page, adminConfig);
-
-    await loginPage.goto();
-    await loginPage.toBeVisible();
-
-    const user = {
-        username: 'sysadmin',
-        password: 'Sys@dmin-sample1',
-    } as UserProfile;
-    await loginPage.login(user);
-});
-
-// utility function
-const getPluginBundlePath = async (): Promise<string> => {
-    const dir = path.join(__dirname, '../../../dist');
-    const files = await fs.promises.readdir(dir);
-    const bundle = files.find((fname) => fname.endsWith('.tar.gz'));
-    if (!bundle) {
-        throw new Error('Failed to find plugin bundle in dist folder');
-    }
-
-    return path.join(dir, bundle);
-}
-
-// # Upload plugin
-test.beforeEach(async ({pw}) => {
-    const bundlePath = await getPluginBundlePath();
-    const {adminClient} = await pw.getAdminClient();
-
-    await adminClient.uploadPluginX(bundlePath, true);
-    await adminClient.enablePlugin('github');
-});
-
-// # Navigate to GitHub bot DM channel
-test.beforeEach(async ({page}) => {
-    await page.click('.SidebarLink[aria-label="github"]');
-});
 
 test('/github setup', async ({pw, pages, page, context}) => {
     const c = new pages.ChannelsPage(page);
@@ -95,7 +46,10 @@ test('/github setup', async ({pw, pages, page, context}) => {
     // ---- TEST ----
 
     // # Run setup command
-    await postMessage('/github setup');
+    await postMessage('/github connect');
+
+    // # go to github bot DM channel
+    await page.locator('.SidebarChannelGroup_content').getByText('github').click();
 
     // # Go through prompts of setup flow
     const choices: string[] = [
