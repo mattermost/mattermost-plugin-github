@@ -11,6 +11,7 @@
           "@mattermost/types/*": ["../../../mattermost-webapp/packages/types/lib/*"],
           "@e2e-support/*": ["../../../mattermost-webapp/e2e/playwright/support/*"],
           "@e2e-test.config": ["../../../mattermost-webapp/e2e/playwright/test.config.ts"],
+          "@playwright/test": ["../../../mattermost-webapp/e2e/playwright/node_modules/@playwright/test"],
       }
   },
   "include": ["./**/*"]
