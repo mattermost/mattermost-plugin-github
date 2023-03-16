@@ -1,3 +1,4 @@
+node_modules
 dist/
 
 # Mac
@@ -8,4 +9,3 @@ dist/
 
 # Jetbrains
 .idea/
-node_modules
