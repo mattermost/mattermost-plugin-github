@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -512,6 +513,11 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	}
 
 	baseURL := config.getBaseURL()
+	testOauthServerURL := os.Getenv("MOCK_OAUTH_SERVER_URL")
+	if testOauthServerURL != "" {
+		baseURL = testOauthServerURL + "/"
+	}
+
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
 
