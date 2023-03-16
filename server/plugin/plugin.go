@@ -513,7 +513,7 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	}
 
 	baseURL := config.getBaseURL()
-	testOauthServerURL := os.Getenv("MOCK_OAUTH_SERVER_URL")
+	testOauthServerURL := os.Getenv("PLUGIN_E2E_MOCK_OAUTH_SERVER_URL")
 	if testOauthServerURL != "" {
 		baseURL = testOauthServerURL + "/"
 	}
