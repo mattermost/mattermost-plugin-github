@@ -1,11 +1,18 @@
 {
   "name": "plugin-e2e-tests",
   "scripts": {
-    "test": "PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test-slomo --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
+    "test": "PW_SLOMO=200 PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
+    "test-slomo": "PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test-slomo --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
     "debug": "npm test -- --debug",
-    "show-report": "npm run show-report --prefix ../../../mattermost-webapp/e2e/playwright"
+    "show-report": "npm run show-report --prefix ../../../mattermost-webapp/e2e/playwright",
+    "oauth-server": "npm i --prefix mock_oauth_server && node mock_oauth_server/index.js",
+    "setup": "cd ../../../mattermost-webapp/e2e/playwright && npx playwright install && cd -"
   },
   "devDependencies": {
+    "@types/pg": "^8.6.6",
     "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "pg": "^8.10.0"
   }
 }

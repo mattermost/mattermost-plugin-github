@@ -8,8 +8,9 @@
 
 import {expect, test} from '@e2e-support/test_fixture';
 
-import '../../support/init_test';
-import {sleep, fillTextField, postMessage, submitDialog, clickPostAction, screenshot, cleanUpBotDMs, navigateToChannel, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../../support/utils';
+import '../support/init_test';
+
+import {sleep, fillTextField, postMessage, submitDialog, clickPostAction, screenshot, navigateToChannel, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = '/plugins/github/oauth/connect';
 const TEST_CLIENT_ID = 'aaaaaaaaaaaaaaaaaaaa';
@@ -60,19 +61,20 @@ test('/github setup', async ({pages, page}) => {
 
     await page.click(connectLinkLocator);
 
-    // # Say no to webhook thing
+    // # Say no to "Create a webhook"
     await clickPostAction('No', c);
 
-    // # Say no to "broadcast to channel"
+    // # Say no to "Broadcast to channel"
     await clickPostAction('Not now', c);
+
+    await screenshot('github_setup/done.png', page);
 });
 
-test('/github connect', async ({pw, pages, page, context}) => {
+test('/github connect', async ({pages, page}) => {
     const c = new pages.ChannelsPage(page);
 
     // # Run connect command
     await postMessage('/github connect', c, page);
-
     await sleep();
 
     let post = await c.getLastPost();
@@ -94,7 +96,6 @@ test('/github connect', async ({pw, pages, page, context}) => {
 
     // # Go to github bot DM channel
     await navigateToChannel('github', page)
-
     await sleep();
 
     post = await c.getLastPost();
@@ -105,4 +106,21 @@ test('/github connect', async ({pw, pages, page, context}) => {
     expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
 
     await screenshot('github_connect/after_navigate_to_github_plugin.png', page);
+});
+
+test('/github issue create', async ({pages, page}) => {
+    const c = new pages.ChannelsPage(page);
+
+    // # Run create command
+    await postMessage('/github issue create', c, page);
+    await sleep();
+
+    await screenshot('github_issue_create/ran_create_command.png', page);
+
+    // * Check that Create Issue modal is shown
+    await expect(page.getByRole('heading', {
+        name: 'Create GitHub Issue'
+    })).toBeVisible();
+
+    // await page.pause();
 });
