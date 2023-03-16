@@ -16,9 +16,9 @@ console.log(`Using Mattermost Site URL: ${siteURL}`);
 const pluginId = process.env.MM_PLUGIN_ID || 'github';
 console.log(`Running OAuth server for plugin: ${pluginId}`);
 
-const accessToken = process.env.OAUTH_ACCESS_TOKEN;
+const accessToken = process.env.MOCK_OAUTH_ACCESS_TOKEN;
 if(!accessToken) {
-    console.error('Error: Please provide an access token via environment variable OAUTH_ACCESS_TOKEN\n\n');
+    console.error('Error: Please provide an access token via environment variable MOCK_OAUTH_ACCESS_TOKEN\n\n');
     process.exit(1);
 }
 
