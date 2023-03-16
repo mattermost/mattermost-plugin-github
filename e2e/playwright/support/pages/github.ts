@@ -15,12 +15,6 @@ export default class GithubPage {
     constructor(page: Page) {
         this.page = page;
 
-
-    // await page.goto("https://github.com/login")
-    // await page.locator('#login_field').fill('trilotest');
-    // await page.locator('#password').fill('!JDFUwa-T.T*z!Pc@z.VwRTtAi4DRJbn');
-    // await page.locator('input[type="submit"]').click();
-
         this.url = "https://github.com/login";
         this.username = page.locator('#login_field');
         this.password = page.locator('#password');
