@@ -133,7 +133,7 @@ jobs:
         with:
           node-version: "16"
           cache: "npm"
-          cache-dependency-path: e2e/palywright/package-lock.json
+          cache-dependency-path: e2e/playwright/package-lock.json
 
       - name: ci/install-tests-deps
         run: |
