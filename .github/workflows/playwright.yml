@@ -121,9 +121,9 @@ jobs:
           STATUSCODE=$(curl -X POST -H "Content-Type: application/json" -d '{"email": "'${MM_ADMIN_EMAIL}'", "username": "'${MM_ADMIN_USERNAME}'", "password": "'${MM_ADMIN_PASSWORD}'"}' ${MM_SERVICESETTINGS_SITEURL}/api/v4/users -w "%{http_code}" -o /dev/stderr)
           if test $STATUSCODE -ne 201; then exit 1; fi
 
-      - name: ci/install-plugin-go-dependencies
+      - name: ci/install-go-dependencies
         run: go mod tidy
-      - name: ci/install-plugin-npm-dependencies
+      - name: ci/install-npm-dependencies
         run: cd webapp && npm ci
       - name: ci/build-and-install-plugin
         run: make deploy
