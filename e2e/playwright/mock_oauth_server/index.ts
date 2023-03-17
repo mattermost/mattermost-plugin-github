@@ -24,5 +24,5 @@ const app = makeOAuthServer({
 
 const port = process.env.OAUTH_SERVER_PORT || 8080;
 app.listen(port, () => {
-    console.log(`Listening on ${port}`);
+    console.log(`Mock OAuth server listening on port ${port}`);
 });

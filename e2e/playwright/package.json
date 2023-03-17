@@ -2,6 +2,7 @@
   "name": "plugin-e2e-tests",
   "scripts": {
     "test": "PW_SLOMO=200 PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
+    "test-ci": "PW_HEADLESS=true PW_SLOMO=200 PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
     "test-slomo": "PW_TEST_DIR='../../../mattermost-plugin-github/e2e/playwright' npm run test-slomo --prefix ../../../mattermost-webapp/e2e/playwright -- --project=chrome",
     "debug": "npm test -- --debug",
     "show-report": "npm run show-report --prefix ../../../mattermost-webapp/e2e/playwright",
