@@ -1,19 +1,21 @@
-name: playwright
+name: Playwright Tests
 on:
   schedule:
     - cron: "0 0 * * *"
+  pull_request:
   push:
     branches:
       - master
-    tags:
-      - "v*"
-  pull_request:
+
+env:
+  TERM: xterm
+  GO_VERSION: 1.19.6
+  NODE_VERSION: 16.15.0
+  MM_RUDDER_WRITE_KEY: ${{ secrets.MM_PLUGIN_APPS_RUDDER_WRITE_KEY }}
 
 jobs:
   playwright-run:
     runs-on: ubuntu-latest-4-cores
-    needs:
-      - lint
     services:
       postgres:
         image: postgres:11.13
@@ -110,9 +112,9 @@ jobs:
       - name: ci/setup-node
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
-          node-version: "${{ env.NODE_VERSION }}"
+          node-version-file: ".nvmrc"
           cache: "npm"
-          cache-dependency-path: test/e2e/package-lock.json
+          cache-dependency-path: webapp/package-lock.json
 
       - name: ci/create-admin-user
         run: |
@@ -120,6 +122,13 @@ jobs:
           if test $STATUSCODE -ne 201; then exit 1; fi
       - name: ci/build-and-install-plugin
         run: make deploy
+
+      - name: ci/setup-node
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
+        with:
+          node-version: "16"
+          cache: "npm"
+          cache-dependency-path: e2e/palywright/package-lock.json
 
       - name: ci/install-tests-deps
         run: |
