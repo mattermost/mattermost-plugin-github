@@ -97,8 +97,6 @@ jobs:
       MM_ADMIN_PASSWORD: Sys@dmin-sample1
       TEST_DATABASE_URL: postgres://mmuser:mostest@localhost:5432/mattermost_test
       MM_SERVICESETTINGS_ENABLEDEVELOPER: true
-
-      PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
     steps:
       - name: ci/checkout-repo
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
@@ -139,6 +137,8 @@ jobs:
         run: |
           cd e2e/playwright
           ./setup-environment
+        env:
+          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
       - name: ci/run-playwright-tests
         run: |
           cd e2e/playwright
