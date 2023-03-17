@@ -7,7 +7,10 @@
 // ***************************************************************
 
 import {expect, test} from '@e2e-support/test_fixture';
+import { ChannelsPost } from '@e2e-support/ui/components';
 import {UserProfile} from '@mattermost/types/users';
+import {messages} from '../../support/constants';
+import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 
 // TODO: this is just temporary until we can make the real ouath thing
 const mmUsername = process.env.PW_MM_USERNAME;
@@ -35,24 +38,26 @@ test.beforeEach(async ({pw, pages, page}) => {
     await loginPage.login({username: mmUsername, password: mmPassword} as UserProfile);
 });
 
-const messages = {
-    UNCONNECTED: 'You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter /github connect.',
-    NOSETUP: "Before using this plugin, you'll need to configure it by running /github setup: must have a github oauth client id",
-};
+
 
 // TODO: all tests are not run at the same time since user is hardcoded from ENV
 // As soon as we plug this with real setup connect, the test should include those steps and remove the skip
 test.describe('/github me', () => {
 
-    test('from connected account', async ({pages, page}) => {
+    test.only('from connected account', async ({pages, page}) => {
         const c = new pages.ChannelsPage(page);
 
         // # Run comand
         await c.postMessage('/github me');
-        await page.getByTestId('SendMessageButton').click();
+        await c.sendMessage();
 
+        // # Get last post
         const post = await c.getLastPost();
         const postId = await post.getId();
+
+        // * Verify that message is sent by the github bot
+        await expect(getPostAuthor(post)).toHaveText('github');
+        await expect(getBotTagFromPost(post)).toBeVisible();
 
         // * assert intro message
         await expect(post.container.getByText('You are connected to Github as')).toBeVisible()
@@ -73,10 +78,15 @@ test.describe('/github me', () => {
 
         // # Run comand
         await c.postMessage('/github me');
-        await page.getByTestId('SendMessageButton').click();
+        await c.sendMessage();
 
+        // # Get last post
         const post = await c.getLastPost();
         const postId = await post.getId();
+
+        // * Verify that message is sent by the github bot
+        await expect(getPostAuthor(post)).toHaveText('github');
+        await expect(getBotTagFromPost(post)).toBeVisible();
 
         // * assert failure message
         await expect(post.container.getByText(messages.UNCONNECTED)).toBeVisible()
@@ -93,10 +103,15 @@ test.describe('/github me', () => {
 
         // # Run comand
         await c.postMessage('/github me');
-        await page.getByTestId('SendMessageButton').click();
+        await c.sendMessage();
 
+        // # Get last post
         const post = await c.getLastPost();
         const postId = await post.getId();
+
+        // * Verify that message is sent by the github bot
+        await expect(getPostAuthor(post)).toHaveText('github');
+        await expect(getBotTagFromPost(post)).toBeVisible();
 
         // * assert failure message
         await expect(post.container.getByText(messages.NOSETUP)).toBeVisible()
