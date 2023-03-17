@@ -79,6 +79,7 @@ jobs:
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
           MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
           MM_FEATUREFLAGS_AppsEnabled: true
+          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://localhost:8080
 
         ports:
           - 8065:8065
@@ -116,21 +117,14 @@ jobs:
         run: |
           STATUSCODE=$(curl -X POST -H "Content-Type: application/json" -d '{"email": "'${MM_ADMIN_EMAIL}'", "username": "'${MM_ADMIN_USERNAME}'", "password": "'${MM_ADMIN_PASSWORD}'"}' ${MM_SERVICESETTINGS_SITEURL}/api/v4/users -w "%{http_code}" -o /dev/stderr)
           if test $STATUSCODE -ne 201; then exit 1; fi
-      - name: ci/install-apps-plugin
+      - name: ci/build-and-install-plugin
         run: make deploy
 
-      - name: ci/start-hello-app
-        run: |
-          echo "Mattermost Server Container ID: ${{ job.services.mattermost-server.id }}"
-          cd test/hello-world
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build .
-          docker cp hello-world ${{ job.services.mattermost-server.id }}:/hello-world
-          docker exec -d ${{ job.services.mattermost-server.id }} /hello-world
       - name: ci/install-tests-deps
         run: |
-          cd test/e2e
-          npm install
-      - name: ci/run-cypress-tests
+          cd e2e/playwright
+          ./setup-environment
+      - name: ci/run-playwright-tests
         run: |
-          cd test/e2e
-          npm run test
+          cd e2e/playwright
+          npm test
