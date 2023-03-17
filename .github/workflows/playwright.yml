@@ -12,7 +12,6 @@ on:
 jobs:
   playwright-run:
     runs-on: ubuntu-latest-4-cores
-    if: ${{ github.ref_name == 'master' || github.event_name == 'schedule' }}
     needs:
       - lint
     services:
