@@ -137,9 +137,9 @@ jobs:
         run: |
           cd e2e/playwright
           ./setup-environment
-        env:
-          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
       - name: ci/run-playwright-tests
         run: |
           cd e2e/playwright
           npm test
+        env:
+          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
