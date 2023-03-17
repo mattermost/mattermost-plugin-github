@@ -1,0 +1,13 @@
+cd ../../../
+git clone https://github.com/mattermost/mattermost-webapp.git
+cd mattermost-webapp/e2e/playwright
+
+git checkout playwright-test-dir
+
+source ~/.nvm/nvm.sh
+nvm install
+npm i
+npx playwright install
+
+cd ../../../mattermost-plugin-github/e2e/playwright
+npm i

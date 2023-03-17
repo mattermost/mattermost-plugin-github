@@ -60,6 +60,4 @@ export const clearKVStoreForPlugin = async (pluginId: string) => {
 
     await client.query(query, [botUserKey, pluginId])
         .finally(client.end);
-
-    console.log(`Removed all KV entries for plugin '${pluginId}'`)
 }

@@ -23,7 +23,7 @@ test('/github setup', async ({pages, page}) => {
     await postMessage('/github setup', c, page);
 
     // # Go to github bot DM channel
-    await navigateToChannel('github', page)
+    await navigateToChannel('github', page);
 
     // # Go through prompts of setup flow
     let choices: string[] = [

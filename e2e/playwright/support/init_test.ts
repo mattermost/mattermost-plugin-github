@@ -11,12 +11,15 @@ import {clearKVStoreForPlugin} from './kv';
 import {DeepPartial} from '@mattermost/types/utilities';
 import {AdminConfig} from '@mattermost/types/config';
 
+import {runOAuthServer} from './init_mock_oauth_server';
+
 const pluginDistPath = path.join(__dirname, '../../../dist');
 const pluginId = 'github';
 
 // # Clear plugin's KV store
 test.beforeAll(async () => {
     await clearKVStoreForPlugin(pluginId);
+    await runOAuthServer();
 });
 
 // # Upload plugin
