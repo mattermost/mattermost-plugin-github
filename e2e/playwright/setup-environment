@@ -1,8 +1,8 @@
 cd ../../../
 git clone https://github.com/mickmister/mattermost-webapp.git
-cd mattermost-webapp/e2e/playwright
-
 git checkout playwright-test-dir
+
+cd mattermost-webapp/e2e/playwright
 
 source ~/.nvm/nvm.sh
 nvm install
