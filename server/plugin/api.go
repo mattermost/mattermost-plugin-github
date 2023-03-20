@@ -1203,19 +1203,50 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 	p.writeJSON(w, allMilestones)
 }
 
+func getRepositoryList(c *UserContext, userName string, githubClient *github.Client, allRepos []*github.Repository, opt github.ListOptions) ([]*github.Repository, error) {
+	for {
+		repos, resp, err := githubClient.Repositories.List(c.Ctx, userName, &github.RepositoryListOptions{ListOptions: opt})
+		if err != nil {
+			return nil, err
+		}
+
+		allRepos = append(allRepos, repos...)
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opt.Page = resp.NextPage
+	}
+
+	return allRepos, nil
+}
+
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	org := p.getConfiguration().GitHubOrg
 
 	var allRepos []*github.Repository
+	var err error
 	opt := github.ListOptions{PerPage: 50}
+	invalidOrgName := false
 
 	if org == "" {
+		allRepos, err = getRepositoryList(c, "", githubClient, allRepos, opt)
+		if err != nil {
+			c.Log.WithError(err).Warnf("Failed to list repositories")
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+		}
+	} else {
 		for {
-			repos, resp, err := githubClient.Repositories.List(c.Ctx, "", &github.RepositoryListOptions{ListOptions: opt})
-			if err != nil {
-				c.Log.WithError(err).Warnf("Failed to list repositories")
+			repos, resp, lErr := githubClient.Repositories.ListByOrg(c.Ctx, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
+			if lErr != nil {
+				if resp.StatusCode == http.StatusNotFound {
+					invalidOrgName = true
+					break
+				}
+
+				c.Log.WithError(lErr).Warnf("Failed to list repositories by organization")
 				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 				return
 			}
@@ -1225,19 +1256,13 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 			}
 			opt.Page = resp.NextPage
 		}
-	} else {
-		for {
-			repos, resp, err := githubClient.Repositories.ListByOrg(c.Ctx, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
+
+		if invalidOrgName {
+			allRepos, err = getRepositoryList(c, org, githubClient, allRepos, opt)
 			if err != nil {
-				c.Log.WithError(err).Warnf("Failed to list repositories by org")
+				c.Log.WithError(err).Warnf("Failed to list repositories")
 				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-				return
 			}
-			allRepos = append(allRepos, repos...)
-			if resp.NextPage == 0 {
-				break
-			}
-			opt.Page = resp.NextPage
 		}
 	}
 
