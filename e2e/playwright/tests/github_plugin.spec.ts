@@ -34,8 +34,12 @@ test('/github setup', async ({pages, page}) => {
         'Continue',
     ];
 
+    let i = 0;
     for (const choice of choices) {
+        i++;
+        await screenshot(`post_action_before_${i}`, page);
         await clickPostAction(choice, c);
+        await screenshot(`post_action_after_${i}`, page);
     }
 
     // # Fill out interactive dialog for GitHub client id and client secret
@@ -52,22 +56,28 @@ test('/github setup', async ({pages, page}) => {
     const text = await page.locator(locatorId).innerText();
     expect(text).toEqual('Go here to connect your account.');
 
-    await screenshot('github_setup/show_connect_link.png', page);
+    await screenshot('github_setup/show_connect_link', page);
 
     // * Verify connect link has correct URL
     const connectLinkLocator = `${locatorId} a`;
     const href = await page.locator(connectLinkLocator).getAttribute('href');
     expect(href).toMatch(GITHUB_CONNECT_LINK);
 
+    await screenshot(`connect_click_before`, page);
     await page.click(connectLinkLocator);
+    await screenshot(`connect_click_after`, page);
 
     // # Say no to "Create a webhook"
+    await screenshot(`webhook_question_before`, page);
     await clickPostAction('No', c);
+    await screenshot(`webhook_question_aftrt`, page);
 
     // # Say no to "Broadcast to channel"
+    await screenshot(`broadcast_question_before`, page);
     await clickPostAction('Not now', c);
+    await screenshot(`broadcast_question_after`, page);
 
-    await screenshot('github_setup/done.png', page);
+    await screenshot('github_setup/done', page);
 });
 
 test('/github connect', async ({pages, page}) => {
@@ -84,7 +94,7 @@ test('/github connect', async ({pages, page}) => {
     let text = await page.locator(locatorId).innerText();
     expect(text).toEqual('Click here to link your GitHub account.');
 
-    await screenshot('github_connect/show_connect_link.png', page);
+    await screenshot('github_connect/show_connect_link', page);
 
     // * Verify connect link has correct URL
     const connectLinkLocator = `${locatorId} a`;
@@ -92,7 +102,7 @@ test('/github connect', async ({pages, page}) => {
     expect(href).toMatch(GITHUB_CONNECT_LINK);
 
     await page.click(connectLinkLocator);
-    await screenshot('github_connect/after_clicking_connect_link.png', page);
+    await screenshot('github_connect/after_clicking_connect_link', page);
 
     // # Go to github bot DM channel
     await navigateToChannel('github', page)
@@ -105,7 +115,7 @@ test('/github connect', async ({pages, page}) => {
     text = await page.locator(locatorId).innerText();
     expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
 
-    await screenshot('github_connect/after_navigate_to_github_plugin.png', page);
+    await screenshot('github_connect/after_navigate_to_github_plugin', page);
 });
 
 test('/github issue create', async ({pages, page}) => {
@@ -115,7 +125,7 @@ test('/github issue create', async ({pages, page}) => {
     await postMessage('/github issue create', c, page);
     await sleep();
 
-    await screenshot('github_issue_create/ran_create_command.png', page);
+    await screenshot('github_issue_create/ran_create_command', page);
 
     // * Check that Create Issue modal is shown
     await expect(page.getByRole('heading', {

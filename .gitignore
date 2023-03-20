@@ -9,3 +9,5 @@ dist/
 
 # Jetbrains
 .idea/
+
+_debug

@@ -28,7 +28,7 @@ export const clickPostAction = async (name: string, c: ChannelsPage) => {
     // TODO we need to wait for the next post to come up, since this opening a new tab and OAuth redirect can take an undeterminate
     // page.waitForSelector // Step 3: Create a Webhook in GitHub
 
-    await sleep(5000);
+    // await sleep(5000);
     const postElement = await c.getLastPost();
     await postElement.container.getByText(name).last().click();
 };
@@ -44,7 +44,7 @@ export const getLastPostText = async (c: ChannelsPage, page: Page): Promise<stri
 }
 
 export const screenshot = async(name: string, page: Page) => {
-    await page.screenshot({path: path.join(SCREENSHOTS_DIR, name)});
+    await page.screenshot({path: path.join(SCREENSHOTS_DIR, name + '.png')});
 }
 
 export const cleanUpBotDMs = async (client: Client4, userId: UserProfile['id'], botUsername: string) => {
