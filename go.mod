@@ -2,6 +2,8 @@ module github.com/mattermost/mattermost-plugin-github
 
 go 1.18
 
+replace github.com/mattermost/mattermost-plugin-api => ../mattermost-plugin-api
+
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v41 v41.0.0

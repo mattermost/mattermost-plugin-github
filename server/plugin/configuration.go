@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
@@ -219,9 +218,11 @@ func (p *Plugin) OnConfigurationChange() error {
 			enableDiagnostics = *configValue
 		}
 	}
-
-	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
-
+	if enableDiagnostics && p.tracker != nil {
+		p.tracker.Enable()
+	} else if !enableDiagnostics && p.tracker != nil {
+		p.tracker.Disable()
+	}
 	return nil
 }
 

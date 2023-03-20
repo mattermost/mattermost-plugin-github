@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -75,8 +76,7 @@ type Plugin struct {
 
 	router *mux.Router
 
-	telemetryClient telemetry.Client
-	tracker         telemetry.Tracker
+	tracker telemetry.Tracker
 
 	BotUserID   string
 	poster      poster.Poster
@@ -237,11 +237,7 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	p.initializeAPI()
-
-	p.telemetryClient, err = telemetry.NewRudderClient()
-	if err != nil {
-		p.API.LogWarn("Telemetry client not started", "error", err.Error())
-	}
+	p.initializeTelemetry()
 
 	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
 	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
@@ -269,6 +265,45 @@ func (p *Plugin) OnActivate() error {
 		}
 	}()
 	return nil
+}
+
+// Initialize telemetry setups the tracker/clients needed to send telemetry data.
+// - enable/disable is handled by LogSettings.EnableDiagnostics (also at onConfigurationChange for live changes)
+// - debug logging is added at pluginAPI side if ServiceSettings.EnableDeveloper is true
+func (p *Plugin) initializeTelemetry() {
+	var err error
+	var trackerLogger logger.Logger
+
+	// Telemetry client
+	telemetryClient, err := telemetry.NewRudderClient()
+	if err != nil {
+		p.API.LogWarn("Telemetry client not started", "error", err.Error())
+		return
+	}
+
+	// Get config values
+	enableDiagnostics := false
+	enableDeveloper := false
+	if config := p.API.GetConfig(); config != nil {
+		if configValue := config.LogSettings.EnableDiagnostics; configValue != nil {
+			enableDiagnostics = *configValue
+		}
+		if configValue := config.ServiceSettings.EnableDeveloper; configValue != nil {
+			enableDeveloper = *configValue
+		}
+	}
+	if enableDeveloper {
+		trackerLogger = logger.New(p.API)
+	}
+	p.tracker = telemetry.NewTracker(
+		telemetryClient,
+		p.API.GetDiagnosticId(),
+		p.API.GetServerVersion(),
+		Manifest.Id,
+		Manifest.Version,
+		"github",
+		enableDiagnostics,
+		trackerLogger)
 }
 
 func (p *Plugin) OnDeactivate() error {
