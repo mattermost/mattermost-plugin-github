@@ -76,7 +76,8 @@ type Plugin struct {
 
 	router *mux.Router
 
-	tracker telemetry.Tracker
+	telemetryClient telemetry.Client
+	tracker         telemetry.Tracker
 
 	BotUserID   string
 	poster      poster.Poster
@@ -275,7 +276,7 @@ func (p *Plugin) initializeTelemetry() {
 	var trackerLogger logger.Logger
 
 	// Telemetry client
-	telemetryClient, err := telemetry.NewRudderClient()
+	p.telemetryClient, err = telemetry.NewRudderClient()
 	if err != nil {
 		p.API.LogWarn("Telemetry client not started", "error", err.Error())
 		return
@@ -296,7 +297,7 @@ func (p *Plugin) initializeTelemetry() {
 		trackerLogger = logger.New(p.API)
 	}
 	p.tracker = telemetry.NewTracker(
-		telemetryClient,
+		p.telemetryClient,
 		p.API.GetDiagnosticId(),
 		p.API.GetServerVersion(),
 		Manifest.Id,
@@ -309,7 +310,9 @@ func (p *Plugin) initializeTelemetry() {
 func (p *Plugin) OnDeactivate() error {
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
-
+	if err := p.telemetryClient.Close(); err != nil {
+		p.API.LogWarn("Telemetry client failed to close", "error", err.Error())
+	}
 	return nil
 }
 
