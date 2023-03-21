@@ -11,7 +11,7 @@ npm i
 cd e2e/playwright
 
 npm i
-npx playwright install
+npx playwright install --with-deps
 
 cd ../../../mattermost-plugin-github/e2e/playwright
 npm i
