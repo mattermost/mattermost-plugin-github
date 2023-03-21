@@ -9,16 +9,13 @@ on:
 
 env:
   TERM: xterm
-  GO_VERSION: 1.20.2
+  GO_VERSION: 1.19.6
   NODE_VERSION: 16.15.0
   MM_RUDDER_WRITE_KEY: ${{ secrets.MM_PLUGIN_APPS_RUDDER_WRITE_KEY }}
 
 jobs:
   playwright-run:
     runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.30.0-focal
-      options: "--network-alias main-container"
     services:
       postgres:
         image: postgres:11.13
@@ -79,11 +76,11 @@ jobs:
           MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10"
           MM_SQLSETTINGS_DRIVERNAME: postgres
           MM_PLUGINSETTINGS_ENABLEUPLOADS: true
-          MM_SERVICESETTINGS_SITEURL: http://mattermost-server:8065
+          MM_SERVICESETTINGS_SITEURL: http://localhost:8065
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
           MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
           MM_FEATUREFLAGS_AppsEnabled: true
-          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://main-container:8080
+          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://localhost:8080
 
         ports:
           - 8065:8065
@@ -94,11 +91,11 @@ jobs:
       HEADLESS: true
       DASHBOARD_ENABLE: false
       FULL_REPORT: false
-      MM_SERVICESETTINGS_SITEURL: http://mattermost-server:8065
+      MM_SERVICESETTINGS_SITEURL: http://localhost:8065
       MM_ADMIN_EMAIL: sysadmin@sample.mattermost.com
       MM_ADMIN_USERNAME: sysadmin
       MM_ADMIN_PASSWORD: Sys@dmin-sample1
-      TEST_DATABASE_URL: postgres://mmuser:mostest@postgres:5432/mattermost_test
+      TEST_DATABASE_URL: postgres://mmuser:mostest@localhost:5432/mattermost_test
       MM_SERVICESETTINGS_ENABLEDEVELOPER: true
     steps:
       - name: ci/checkout-repo
@@ -149,7 +146,6 @@ jobs:
         env:
           PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
-          MM_DATABASE_CONNECTION_STRING: "postgres://mmuser:mostest@${{ env.DB_HOST }}/mattermost_test"
 
       - uses: actions/upload-artifact@v3
         with:

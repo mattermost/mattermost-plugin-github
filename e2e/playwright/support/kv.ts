@@ -4,7 +4,7 @@ const DATABASE_CONNECTION_STRING = process.env.MM_DATABASE_CONNECTION_STRING || 
 
 export function getClient() {
     const client = new Client({
-        host: 'postgres',
+        host: 'localhost',
         user: 'mmuser',
         password: 'mostest',
         database: 'mattermost_test',
