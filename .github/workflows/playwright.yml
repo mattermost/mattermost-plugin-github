@@ -9,7 +9,7 @@ on:
 
 env:
   TERM: xterm
-  GO_VERSION: 1.18.10
+  GO_VERSION: 1.20.2
   NODE_VERSION: 16.15.0
   MM_RUDDER_WRITE_KEY: ${{ secrets.MM_PLUGIN_APPS_RUDDER_WRITE_KEY }}
 
