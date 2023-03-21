@@ -142,7 +142,7 @@ jobs:
       - name: ci/run-playwright-tests
         run: |
           cd e2e/playwright
-          npm run test-ci || echo "avoid fail"
+          npm run test-ci
         env:
           PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
