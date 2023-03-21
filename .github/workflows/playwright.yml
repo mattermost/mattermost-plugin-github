@@ -17,7 +17,7 @@ jobs:
   playwright-run:
     runs-on: ubuntu-latest
     container:
-      image: node:16
+      image: ubuntu:latest
       options: "--network-alias main-container"
     services:
       postgres:
@@ -126,8 +126,11 @@ jobs:
         run: go mod tidy
       - name: ci/install-npm-dependencies
         run: cd webapp && npm ci
+
       - name: ci/build-and-install-plugin
         run: make deploy
+        env:
+          GO_BUILD_FLAGS: "-buildvcs=false"
 
       - name: ci/setup-node
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
@@ -140,6 +143,7 @@ jobs:
         run: |
           cd e2e/playwright
           ./setup-environment
+
       - name: ci/run-playwright-tests
         run: |
           cd e2e/playwright
