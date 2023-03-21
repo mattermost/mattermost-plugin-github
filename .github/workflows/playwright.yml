@@ -17,7 +17,7 @@ jobs:
   playwright-run:
     runs-on: ubuntu-latest
     container:
-      image: node:16
+      image: mcr.microsoft.com/playwright:v1.30.0-focal
       options: "--network-alias main-container"
     services:
       postgres:
