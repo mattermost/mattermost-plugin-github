@@ -1,6 +1,6 @@
 import {Client} from 'pg';
 
-const DATABASE_CONNECTION_STRING = process.env.MM_DATABASE_CONNECTION_STRING || 'postgres://mmuser:mostest@localhost/mattermost_test';
+const DATABASE_CONNECTION_STRING = process.env.MM_DATABASE_CONNECTION_STRING || 'postgres://mmuser:mostest@mattermost-server/mattermost_test';
 
 export function getClient() {
     const client = new Client({
