@@ -9,7 +9,7 @@ on:
 
 env:
   TERM: xterm
-  GO_VERSION: 1.19.6
+  GO_VERSION: 1.18.10
   NODE_VERSION: 16.15.0
   MM_RUDDER_WRITE_KEY: ${{ secrets.MM_PLUGIN_APPS_RUDDER_WRITE_KEY }}
 
@@ -129,8 +129,6 @@ jobs:
 
       - name: ci/build-and-install-plugin
         run: make deploy
-        env:
-          GO_BUILD_FLAGS: "-buildvcs=false"
 
       - name: ci/setup-node
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
