@@ -16,6 +16,9 @@ env:
 jobs:
   playwright-run:
     runs-on: ubuntu-latest
+    container:
+      image: "image: node:16.15"
+      options: "--network-alias main-container"
     services:
       postgres:
         image: postgres:11.13
@@ -80,11 +83,10 @@ jobs:
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
           MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
           MM_FEATUREFLAGS_AppsEnabled: true
-          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://localhost:8080
+          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://main-container:8080
 
         ports:
           - 8065:8065
-          - 8080:8080
           - 4000:4000
     env:
       TYPE: NONE
