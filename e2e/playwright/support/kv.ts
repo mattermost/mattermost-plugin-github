@@ -1,6 +1,6 @@
 import {Client} from 'pg';
 
-const DATABASE_CONNECTION_STRING = process.env.MM_DATABASE_CONNECTION_STRING || 'postgres://mmuser:mostest@localhost/mattermost_test?sslmode=disable\u0026connect_timeout=10\u0026binary_parameters=yes';
+const DATABASE_CONNECTION_STRING = process.env.MM_DATABASE_CONNECTION_STRING || 'postgres://mmuser:mostest@localhost/mattermost_test';
 
 export function getClient() {
     const client = new Client({

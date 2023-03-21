@@ -149,6 +149,8 @@ jobs:
         env:
           PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
+          MM_DATABASE_CONNECTION_STRING: "postgres://mmuser:mostest@${{ env.DB_HOST }}/mattermost_test"
+
       - uses: actions/upload-artifact@v3
         with:
           name: screenshots
