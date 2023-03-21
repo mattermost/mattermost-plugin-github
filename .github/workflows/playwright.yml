@@ -80,7 +80,7 @@ jobs:
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
           MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
           MM_FEATUREFLAGS_AppsEnabled: true
-          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://localhost:8080
+          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
 
         ports:
           - 8065:8065
