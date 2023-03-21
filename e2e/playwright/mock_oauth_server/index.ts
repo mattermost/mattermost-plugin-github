@@ -11,7 +11,7 @@ if (!mockOAuthAccessToken) {
 const defaultAuthorizePrefix = '/login/oauth' // Used by GitHub
 const authorizeURLPrefix = process.env.OAUTH_AUTHORIZE_URL_PREFIX || defaultAuthorizePrefix;
 
-const mattermostSiteURL = process.env.MM_SITE_URL || 'http://localhost:8065';
+const mattermostSiteURL = process.env.MM_SERVICESETTINGS_SITEURL || 'http://localhost:8065';
 const pluginId = process.env.MM_PLUGIN_ID || 'github';
 
 const app = makeOAuthServer({

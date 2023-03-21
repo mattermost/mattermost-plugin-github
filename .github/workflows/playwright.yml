@@ -79,7 +79,7 @@ jobs:
           MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10"
           MM_SQLSETTINGS_DRIVERNAME: postgres
           MM_PLUGINSETTINGS_ENABLEUPLOADS: true
-          MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+          MM_SERVICESETTINGS_SITEURL: http://mattermost-server:8065
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
           MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
           MM_FEATUREFLAGS_AppsEnabled: true
@@ -94,11 +94,11 @@ jobs:
       HEADLESS: true
       DASHBOARD_ENABLE: false
       FULL_REPORT: false
-      MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+      MM_SERVICESETTINGS_SITEURL: http://mattermost-server:8065
       MM_ADMIN_EMAIL: sysadmin@sample.mattermost.com
       MM_ADMIN_USERNAME: sysadmin
       MM_ADMIN_PASSWORD: Sys@dmin-sample1
-      TEST_DATABASE_URL: postgres://mmuser:mostest@localhost:5432/mattermost_test
+      TEST_DATABASE_URL: postgres://mmuser:mostest@postgres:5432/mattermost_test
       MM_SERVICESETTINGS_ENABLEDEVELOPER: true
     steps:
       - name: ci/checkout-repo
@@ -146,6 +146,7 @@ jobs:
           npm run test-ci || echo "avoid fail"
         env:
           PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
+          PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
       - uses: actions/upload-artifact@v3
         with:
           name: screenshots

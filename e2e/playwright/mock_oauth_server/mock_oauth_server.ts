@@ -1,4 +1,5 @@
 import express from 'express';
+import loggerMiddleware from './logger';
 
 export enum ExpiryAlgorithms {
     NO_EXPIRY = 'no_expiry',
@@ -33,7 +34,9 @@ export const makeOAuthServer = ({
     const app = express();
 
     app.use(express.json());
-    app.use(express.urlencoded());
+    app.use(express.urlencoded({extended: true}));
+
+    app.use(loggerMiddleware);
 
     const oauthRouter = express.Router();
 
