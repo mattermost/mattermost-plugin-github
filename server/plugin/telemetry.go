@@ -57,8 +57,8 @@ func (p *Plugin) getConnectedUserCount() (int64, error) {
 }
 
 // Initialize telemetry setups the tracker/clients needed to send telemetry data.
-// - enable/disable is handled by LogSettings.EnableDiagnostics (also at onConfigurationChange for live changes)
-// - debug logging is added at pluginAPI side if ServiceSettings.EnableDeveloper is true
+// The telemetry.NewTrackerConfig(...) param will take care of extract/parse the config to set rge right settings.
+// If you don't want the default behavior you still can pass a different telemetry.TrackerConfig data.
 func (p *Plugin) initializeTelemetry() {
 	var err error
 
