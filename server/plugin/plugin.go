@@ -278,7 +278,7 @@ func (p *Plugin) initializeTelemetry() {
 	// Telemetry client
 	p.telemetryClient, err = telemetry.NewRudderClient()
 	if err != nil {
-		p.API.LogWarn("Telemetry client not started", "error", err.Error())
+		p.API.LogWarn("Failed to start telemetry client", "error", err.Error())
 		return
 	}
 
