@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
@@ -211,17 +212,9 @@ func (p *Plugin) OnConfigurationChange() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to register command")
 	}
-
-	enableDiagnostics := false
-	if config := p.API.GetConfig(); config != nil {
-		if configValue := config.LogSettings.EnableDiagnostics; configValue != nil {
-			enableDiagnostics = *configValue
-		}
-	}
-	if enableDiagnostics && p.tracker != nil {
-		p.tracker.Enable()
-	} else if !enableDiagnostics && p.tracker != nil {
-		p.tracker.Disable()
+	// Some config changes require reloading tracking config
+	if p.tracker != nil {
+		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.API))
 	}
 	return nil
 }

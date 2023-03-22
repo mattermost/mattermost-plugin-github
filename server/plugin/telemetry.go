@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
+	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/pkg/errors"
 )
 
@@ -52,4 +54,30 @@ func (p *Plugin) getConnectedUserCount() (int64, error) {
 	}
 
 	return count, nil
+}
+
+// Initialize telemetry setups the tracker/clients needed to send telemetry data.
+// - enable/disable is handled by LogSettings.EnableDiagnostics (also at onConfigurationChange for live changes)
+// - debug logging is added at pluginAPI side if ServiceSettings.EnableDeveloper is true
+func (p *Plugin) initializeTelemetry() {
+	var err error
+
+	// Telemetry client
+	p.telemetryClient, err = telemetry.NewRudderClient()
+	if err != nil {
+		p.API.LogWarn("Telemetry client not started", "error", err.Error())
+		return
+	}
+
+	// Get config values
+	p.tracker = telemetry.NewTracker(
+		p.telemetryClient,
+		p.API.GetDiagnosticId(),
+		p.API.GetServerVersion(),
+		Manifest.Id,
+		Manifest.Version,
+		"github",
+		telemetry.NewTrackerConfig(p.API),
+		logger.New(p.API),
+	)
 }
