@@ -212,15 +212,10 @@ func (p *Plugin) OnConfigurationChange() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to register command")
 	}
-
-	enableDiagnostics := false
-	if config := p.API.GetConfig(); config != nil {
-		if configValue := config.LogSettings.EnableDiagnostics; configValue != nil {
-			enableDiagnostics = *configValue
-		}
+	// Some config changes require reloading tracking config
+	if p.tracker != nil {
+		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.API.GetConfig()))
 	}
-
-	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
 
 	return nil
 }
