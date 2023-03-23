@@ -77,7 +77,7 @@ func (p *Plugin) initializeTelemetry() {
 		Manifest.Id,
 		Manifest.Version,
 		"github",
-		telemetry.NewTrackerConfig(p.API),
+		telemetry.NewTrackerConfig(p.API.GetConfig()),
 		logger.New(p.API),
 	)
 }

@@ -409,7 +409,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	// track the successful connection
-	if err := p.tracker.TrackUserEvent("account_connected", c.UserID, nil); err != nil {
+	if err = p.tracker.TrackUserEvent("account_connected", c.UserID, nil); err != nil {
 		c.Log.WithError(err).Warnf("Failed to track telemetry 'account_connected' event")
 	}
 
