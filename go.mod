@@ -6,6 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v41 v41.0.0
 	github.com/gorilla/mux v1.8.0
+	github.com/mattermost/mattermost-plugin-api v0.1.3-0.20230323124751-86c7be7ffbac
 	// mmgoget: github.com/mattermost/mattermost-server/v6@v7.5.0 is replaced by -> github.com/mattermost/mattermost-server/v6@21aec2741b
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221109191448-21aec2741bfe
 	github.com/microcosm-cc/bluemonday v1.0.19
@@ -45,7 +46,6 @@ require (
 	github.com/mattermost/go-i18n v1.11.1-0.20211013152124-5c415071e404 // indirect
 	github.com/mattermost/ldap v0.0.0-20201202150706-ee0e6284187d // indirect
 	github.com/mattermost/logr/v2 v2.0.15 // indirect
-	github.com/mattermost/mattermost-plugin-api v0.1.3-0.20230323103040-f4c6bcdd4c83 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
