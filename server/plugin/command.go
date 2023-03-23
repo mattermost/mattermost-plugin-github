@@ -38,6 +38,27 @@ var validFeatures = map[string]bool{
 	featureStars:         true,
 }
 
+const (
+	subCommandDeleteAll = "delete-all"
+	subCommandList      = "list"
+	subCommandDelete    = "delete"
+	subCommandAdd       = "add"
+)
+
+type Features string
+
+func (features Features) String() string {
+	return string(features)
+}
+
+func (features Features) FormattedString() string {
+	return "`" + strings.Join(strings.Split(features.String(), ","), "`, `") + "`"
+}
+
+func (features Features) ToSlice() []string {
+	return strings.Split(string(features), ",")
+}
+
 // validateFeatures returns false when 1 or more given features
 // are invalid along with a list of the invalid features.
 func validateFeatures(features []string) (bool, []string) {
@@ -176,19 +197,19 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 	command := parameters[0]
 
 	switch {
-	case command == "list":
+	case command == subCommandList:
 		return p.handleMuteList(args, userInfo)
-	case command == "add":
+	case command == subCommandAdd:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleMuteAdd(args, parameters[1], userInfo)
-	case command == "delete":
+	case command == subCommandDelete:
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == "delete-all":
+	case command == subCommandDeleteAll:
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -214,7 +235,7 @@ func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, par
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
-	case len(parameters) == 1 && parameters[0] == "list":
+	case len(parameters) == 1 && parameters[0] == subCommandList:
 		return p.handleSubscriptionsList(c, args, parameters[1:], userInfo)
 	default:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
@@ -230,11 +251,11 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	parameters = parameters[1:]
 
 	switch {
-	case command == "list":
+	case command == subCommandList:
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	case command == "add":
+	case command == subCommandAdd:
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
-	case command == "delete":
+	case command == subCommandDelete:
 		return p.handleUnsubscribe(c, args, parameters, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -255,7 +276,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	}
 	for _, sub := range subs {
 		subFlags := sub.Flags.String()
-		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
+		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features.String())
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
@@ -266,15 +287,14 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	defaultEvents := Features("pulls,issues,creates,deletes")
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
-
 	config := p.getConfiguration()
+	baseURL := config.getBaseURL()
 
-	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
-
 	if len(parameters) > 1 {
 		flagParams := parameters[1:]
 
@@ -291,7 +311,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			parsedFlag := parseFlag(flag)
 
 			if parsedFlag == flagFeatures {
-				features = value
+				defaultEvents = Features(value)
 				continue
 			}
 			if err := flags.AddFlag(parsedFlag, value); err != nil {
@@ -299,7 +319,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 		}
 
-		fs := strings.Split(features, ",")
+		fs := defaultEvents.ToSlice()
 		if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 			return "Feature list cannot contain both issue and issue_creations"
 		}
@@ -318,22 +338,56 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-
-	owner, repo := parseOwnerAndRepo(parameters[0], config.getBaseURL())
-	if repo == "" {
-		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
-			return err.Error()
-		}
-
-		return fmt.Sprintf("Successfully subscribed to organization %s.", owner)
+	user, appErr := p.API.GetUser(args.UserId)
+	if appErr != nil {
+		return appErr.Error()
 	}
 
-	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
+	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
+	previousSubscribedEvents, err := p.getSubscribedFeatures(args.ChannelId, owner, repo)
+	if err != nil {
+		return err.Error()
+	}
+
+	var previousSubscribedEventMessage string
+	if previousSubscribedEvents != "" {
+		previousSubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.FormattedString())
+	}
+
+	if repo == "" {
+		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, defaultEvents, flags); err != nil {
+			return err.Error()
+		}
+		orgLink := baseURL + owner
+		subscriptionSuccess := fmt.Sprintf("@%v subscribed this channel to [%s](%s) with the following events: %s.", user.Username, owner, orgLink, defaultEvents.FormattedString())
+
+		if previousSubscribedEvents != "" {
+			subscriptionSuccess += previousSubscribedEventMessage
+		}
+
+		post := &model.Post{
+			ChannelId: args.ChannelId,
+			UserId:    p.BotUserID,
+			Message:   subscriptionSuccess,
+		}
+
+		if _, appErr = p.API.CreatePost(post); appErr != nil {
+			p.API.LogWarn("Error while creating post", "Post", post, "Error", appErr.Error())
+			return fmt.Sprintf("%s error creating the public post: %s", subscriptionSuccess, appErr.Error())
+		}
+
+		return ""
+	}
+
+	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, defaultEvents, flags); err != nil {
 		return err.Error()
 	}
 	repoLink := config.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to [%s](%s).", repo, repoLink)
+	msg := fmt.Sprintf("@%v subscribed this channel to [%s/%s](%s) with the following events: %s", user.Username, owner, repo, repoLink, defaultEvents.FormattedString())
+	if previousSubscribedEvents != "" {
+		msg += previousSubscribedEventMessage
+	}
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
@@ -342,22 +396,99 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
 
-	return msg
+	post := &model.Post{
+		ChannelId: args.ChannelId,
+		UserId:    p.BotUserID,
+		Message:   msg,
+	}
+
+	if _, appErr := p.API.CreatePost(post); appErr != nil {
+		p.API.LogWarn("Error while creating post", "Post", post, "Error", appErr.Error())
+		return fmt.Sprintf("%s error creating the public post: %s", msg, appErr.Error())
+	}
+
+	return ""
 }
 
+func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features, error) {
+	var previousFeatures Features
+	subs, err := p.GetSubscriptionsByChannel(channelID)
+	if err != nil {
+		return previousFeatures, err
+	}
+
+	for _, sub := range subs {
+		label := repo
+		if owner != "" {
+			label = owner + "/" + repo
+		}
+
+		if sub.Repository == label {
+			previousFeatures = sub.Features
+			return previousFeatures, nil
+		}
+	}
+
+	return previousFeatures, nil
+}
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
 
 	repo := parameters[0]
+	config := p.getConfiguration()
+	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
+	if owner == "" && repo == "" {
+		return "invalid repository"
+	}
 
-	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
+	if err := p.Unsubscribe(args.ChannelId, repo, owner); err != nil {
 		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
-	return fmt.Sprintf("Successfully unsubscribed from %s.", repo)
+	baseURL := config.getBaseURL()
+	user, appErr := p.API.GetUser(args.UserId)
+	if appErr != nil {
+		p.API.LogWarn("Error while fetching user details", "Error", appErr.Error())
+		return fmt.Sprintf("error while fetching user details: %s", appErr.Error())
+	}
+
+	unsubscribeMessage := ""
+	if repo == "" {
+		orgLink := baseURL + owner
+		unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s](%s)", user.Username, owner, orgLink)
+		post := &model.Post{
+			ChannelId: args.ChannelId,
+			UserId:    p.BotUserID,
+			Message:   unsubscribeMessage,
+		}
+
+		if _, appErr := p.API.CreatePost(post); appErr != nil {
+			p.API.LogWarn("Error while creating post", "Post", post, "Error", appErr.Error())
+			return fmt.Sprintf("%s. Error creating the public post: %s", unsubscribeMessage, appErr.Error())
+		}
+
+		return ""
+	}
+
+	repoLink := baseURL + owner + "/" + repo
+	unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s/%s](%s)", user.Username, owner, repo, repoLink)
+	post := &model.Post{
+		ChannelId: args.ChannelId,
+		UserId:    p.BotUserID,
+		Message:   unsubscribeMessage,
+	}
+
+	if _, appErr := p.API.CreatePost(post); appErr != nil {
+		p.API.LogWarn("Error while creating post", "Post", post, "Error", appErr.Error())
+		return fmt.Sprintf("%s. Error creating the public post: %s", unsubscribeMessage, appErr.Error())
+	}
+
+	return ""
 }
 
 func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
@@ -666,10 +797,10 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptions := model.NewAutocompleteData("subscriptions", "[command]", "Available commands: list, add, delete")
 
-	subscribeList := model.NewAutocompleteData("list", "", "List the current channel subscriptions")
+	subscribeList := model.NewAutocompleteData(subCommandList, "", "List the current channel subscriptions")
 	subscriptions.AddCommand(subscribeList)
 
-	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
+	subscriptionsAdd := model.NewAutocompleteData(subCommandAdd, "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
@@ -702,7 +833,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	})
 
 	subscriptions.AddCommand(subscriptionsAdd)
-	subscriptionsDelete := model.NewAutocompleteData("delete", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
+	subscriptionsDelete := model.NewAutocompleteData(subCommandDelete, "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
 	subscriptionsDelete.AddTextArgument("Owner/repo to unsubscribe from", "[owner/repo]", "")
 	subscriptions.AddCommand(subscriptionsDelete)
 
@@ -721,20 +852,20 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	mute := model.NewAutocompleteData("mute", "[command]", "Available commands: list, add, delete, delete-all")
 
-	muteAdd := model.NewAutocompleteData("add", "[github username]", "Mute notifications from the provided GitHub user")
+	muteAdd := model.NewAutocompleteData(subCommandAdd, "[github username]", "Mute notifications from the provided GitHub user")
 	muteAdd.AddTextArgument("GitHub user to mute", "[username]", "")
 	mute.AddCommand(muteAdd)
 
-	muteDelete := model.NewAutocompleteData("delete", "[github username]", "Unmute notifications from the provided GitHub user")
+	muteDelete := model.NewAutocompleteData(subCommandDelete, "[github username]", "Unmute notifications from the provided GitHub user")
 	muteDelete.AddTextArgument("GitHub user to unmute", "[username]", "")
 	mute.AddCommand(muteDelete)
 
 	github.AddCommand(mute)
 
-	muteDeleteAll := model.NewAutocompleteData("delete-all", "", "Unmute all muted GitHub users")
+	muteDeleteAll := model.NewAutocompleteData(subCommandDeleteAll, "", "Unmute all muted GitHub users")
 	mute.AddCommand(muteDeleteAll)
 
-	muteList := model.NewAutocompleteData("list", "", "List muted GitHub users")
+	muteList := model.NewAutocompleteData(subCommandList, "", "List muted GitHub users")
 	mute.AddCommand(muteList)
 
 	settings := model.NewAutocompleteData("settings", "[setting] [value]", "Update your user settings")
