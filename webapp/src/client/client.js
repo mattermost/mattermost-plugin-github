@@ -7,6 +7,10 @@ import {ClientError} from 'mattermost-redux/client/client4';
 import {id as pluginId} from '../manifest';
 
 export default class Client {
+    getIssueInfo = async (owner, repo, issueNumber, postID) => {
+        return this.doGet(`${this.url}/issue_info?owner=${owner}&repo=${repo}&number=${issueNumber}&postId=${postID}`);
+    }
+
     setServerRoute(url) {
         this.url = url + `/plugins/${pluginId}/api/v1`;
     }
@@ -20,15 +24,15 @@ export default class Client {
     }
 
     getYourPrs = async () => {
-        return this.doGet(`${this.url}/yourprs`);
+        return this.doGet(`${this.url}/your_prs`);
     }
 
     getPrsDetails = async (prList) => {
-        return this.doPost(`${this.url}/prsdetails`, prList);
+        return this.doPost(`${this.url}/prs_details`, prList);
     }
 
     getYourAssignments = async () => {
-        return this.doGet(`${this.url}/yourassignments`);
+        return this.doGet(`${this.url}/your_assignments`);
     }
 
     getMentions = async () => {
@@ -60,15 +64,23 @@ export default class Client {
     }
 
     createIssue = async (payload) => {
-        return this.doPost(`${this.url}/createissue`, payload);
+        return this.doPost(`${this.url}/create_issue`, payload);
+    }
+
+    closeOrReopenIssue = async (payload) => {
+        return this.doPost(`${this.url}/close_or_reopen_issue`, payload);
+    }
+
+    updateIssue = async (payload) => {
+        return this.doPost(`${this.url}/update_issue`, payload);
     }
 
     searchIssues = async (searchTerm) => {
-        return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
+        return this.doGet(`${this.url}/search_issues?term=${searchTerm}`);
     }
 
     attachCommentToIssue = async (payload) => {
-        return this.doPost(`${this.url}/createissuecomment`, payload);
+        return this.doPost(`${this.url}/create_issue_comment`, payload);
     }
 
     getIssue = async (owner, repo, issueNumber) => {

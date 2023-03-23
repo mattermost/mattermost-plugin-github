@@ -9,7 +9,7 @@ import {
     getUnreads,
     getYourAssignments,
     getYourPrs,
-    openCreateIssueModalWithoutPost,
+    openCreateOrUpdateIssueModal,
 } from '../actions';
 
 import {id as pluginId} from '../manifest';
@@ -85,11 +85,11 @@ export function handleRefresh(store) {
     };
 }
 
-export function handleOpenCreateIssueModal(store) {
+export function handleOpenCreateOrUpdateIssueModal(store) {
     return (msg) => {
         if (!msg.data) {
             return;
         }
-        store.dispatch(openCreateIssueModalWithoutPost(msg.data.title, msg.data.channel_id));
+        store.dispatch(openCreateOrUpdateIssueModal(msg.data));
     };
 }

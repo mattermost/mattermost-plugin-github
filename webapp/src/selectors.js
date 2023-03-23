@@ -1,3 +1,5 @@
+import {createSelector} from 'reselect';
+
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {id as pluginId} from './manifest';
@@ -18,5 +20,16 @@ export const getServerRoute = (state) => {
 
     return basePath;
 };
+
+export const getCloseOrReopenIssueModalData = createSelector(
+    getPluginState,
+    (pluginState) => {
+        const {messageData} = pluginState.closeOrReopenIssueModal;
+        return {
+            visible: pluginState.isCloseOrReopenIssueModalVisible,
+            messageData,
+        };
+    },
+);
 
 export const configuration = (state) => getPluginState(state).configuration;

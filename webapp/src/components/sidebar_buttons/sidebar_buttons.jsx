@@ -208,28 +208,26 @@ export default class SidebarButtons extends React.PureComponent {
     }
 }
 
-const getStyle = makeStyleFromTheme((theme) => {
-    return {
-        buttonTeam: {
-            color: changeOpacity(theme.sidebarText, 0.6),
-            display: 'block',
-            marginBottom: '10px',
-            width: '100%',
-        },
-        buttonHeader: {
-            color: changeOpacity(theme.sidebarText, 0.6),
-            textAlign: 'center',
-            cursor: 'pointer',
-        },
-        containerHeader: {
-            marginTop: '10px',
-            marginBottom: '5px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-around',
-            padding: '0 10px',
-        },
-        containerTeam: {
-        },
-    };
-});
+const getStyle = makeStyleFromTheme((theme) => ({
+    buttonTeam: {
+        color: changeOpacity(theme.sidebarText, 0.6),
+        display: 'block',
+        marginBottom: '10px',
+        width: '100%',
+    },
+    buttonHeader: {
+        color: changeOpacity(theme.sidebarText, 0.6),
+        textAlign: 'center',
+        cursor: 'pointer',
+    },
+    containerHeader: {
+        marginTop: '10px',
+        marginBottom: '5px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        padding: '0 10px',
+    },
+    containerTeam: {
+    },
+}));

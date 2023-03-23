@@ -211,6 +211,24 @@ export function getMilestoneOptions(repo) {
     };
 }
 
+export function getIssueInfo(owner, repo, issueNumber, postID) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getIssueInfo(owner, repo, issueNumber, postID);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
 export function getYourAssignments() {
     return async (dispatch, getState) => {
         let data;
@@ -339,28 +357,51 @@ export function updateRhsState(rhsState) {
     };
 }
 
-export function openCreateIssueModal(postId) {
+export function openCreateIssueModalWithPost(postId) {
     return {
-        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL,
+        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITH_POST,
         data: {
             postId,
         },
     };
 }
 
-export function openCreateIssueModalWithoutPost(title, channelId) {
+export function openCreateOrUpdateIssueModal(messageData) {
     return {
-        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST,
+        type: ActionTypes.OPEN_CREATE_OR_UPDATE_ISSUE_MODAL,
         data: {
-            title,
-            channelId,
+            messageData,
         },
     };
 }
 
-export function closeCreateIssueModal() {
+export function openCloseOrReopenIssueModal(messageData) {
     return {
-        type: ActionTypes.CLOSE_CREATE_ISSUE_MODAL,
+        type: ActionTypes.OPEN_CLOSE_OR_REOPEN_ISSUE_MODAL,
+        data: {
+            messageData,
+        },
+    };
+}
+
+export function openCreateCommentOnIssueModal(messageData) {
+    return {
+        type: ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL,
+        data: {
+            messageData,
+        },
+    };
+}
+
+export function closeCreateOrUpdateIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_CREATE_OR_UPDATE_ISSUE_MODAL,
+    };
+}
+
+export function closeCloseOrReOpenIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_CLOSE_OR_REOPEN_ISSUE_MODAL,
     };
 }
 
@@ -369,6 +410,42 @@ export function createIssue(payload) {
         let data;
         try {
             data = await Client.createIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await dispatch(checkAndHandleNotConnected(data));
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function closeOrReopenIssue(payload) {
+    return async (dispatch) => {
+        let data;
+        try {
+            data = await Client.closeOrReopenIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await dispatch(checkAndHandleNotConnected(data));
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function updateIssue(payload) {
+    return async (dispatch) => {
+        let data;
+        try {
+            data = await Client.updateIssue(payload);
         } catch (error) {
             return {error};
         }

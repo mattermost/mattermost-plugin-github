@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v48/github"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
+
+	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 )
 
 const pageSize = 100
@@ -49,7 +51,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 					appErr.Error())
 				continue
 			}
-			tryInfo := GitHubUserInfo{}
+			tryInfo := serializer.GitHubUserInfo{}
 			err := json.Unmarshal(data, &tryInfo)
 			if err != nil {
 				// too noisy to report
@@ -89,7 +91,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 	return nil
 }
 
-func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *GitHubUserInfo) (string, error) {
+func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *serializer.GitHubUserInfo) (string, error) {
 	if info.MM34646ResetTokenDone {
 		return info.Token.AccessToken, nil
 	}
@@ -111,7 +113,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 	info.MM34646ResetTokenDone = true
 	err = p.storeGitHubUserInfo(info)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
+		return "", errors.Wrap(err, "failed to store updated serializer.GitHubUserInfo")
 	}
 	p.API.LogDebug("Updated user access token for MM-34646", "user_id", info.UserID)
 
