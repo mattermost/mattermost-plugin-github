@@ -7,11 +7,11 @@
       "noEmit": true,
       "baseUrl": ".",
       "paths": {
-          "@mattermost/client/*": ["../../../mattermost-webapp/packages/client/lib/*"],
-          "@mattermost/types/*": ["../../../mattermost-webapp/packages/types/lib/*"],
-          "@e2e-support/*": ["../../../mattermost-webapp/e2e/playwright/support/*"],
-          "@e2e-test.config": ["../../../mattermost-webapp/e2e/playwright/test.config.ts"],
-          "@playwright/test": ["../../../mattermost-webapp/e2e/playwright/node_modules/@playwright/test"],
+          "@mattermost/client/*": ["../../../mattermost-server/webapp/platform/client/lib/*"],
+          "@mattermost/types/*": ["../../../mattermost-server/webapp/platform/types/lib/*"],
+          "@e2e-support/*": ["../../../mattermost-server/e2e/playwright/support/*"],
+          "@e2e-test.config": ["../../../mattermost-server/e2e/playwright/test.config.ts"],
+          "@playwright/test": ["../../../mattermost-server/e2e/playwright/node_modules/@playwright/test"],
       }
   },
   "include": ["./**/*"]
