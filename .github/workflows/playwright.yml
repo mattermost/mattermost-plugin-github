@@ -143,6 +143,9 @@ jobs:
         run: |
           cd e2e/playwright
           npm run test-ci || echo 'test failed'
+          mv ../mattermost-server/e2e/playwright/playwright-report .
+          mv ../mattermost-server/e2e/playwright/test-results .
+
         env:
           PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
@@ -154,8 +157,8 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: playwright-report
-          path: ../mattermost-server/e2e/playwright/playwright-report
+          path: e2e/playwright/playwright-report
       - uses: actions/upload-artifact@v3
         with:
           name: test-results
-          path: ../mattermost-server/e2e/playwright/test-results
+          path: e2e/playwright/test-results
