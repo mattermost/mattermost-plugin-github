@@ -5,7 +5,6 @@ import type {Page} from '@playwright/test';
 import {ChannelsPage} from '@e2e-support/ui/pages';
 import {UserProfile} from '@mattermost/types/users';
 import Client4 from '@mattermost/client/client4';
-import {Channel} from '@mattermost/types/channels';
 
 const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
@@ -57,10 +56,6 @@ export const cleanUpBotDMs = async (client: Client4, userId: UserProfile['id'], 
 
     const deletePostPromises = Object.keys(posts.posts).map(client.deletePost);
     await Promise.all(deletePostPromises);
-}
-
-export const navigateToChannel = async (displayName: Channel['display_name'], page: Page) => {
-    await page.locator('.SidebarChannelGroup_content').getByText(displayName).click();
 }
 
 export const getSlackAttachmentLocatorId = (postId: string) => {

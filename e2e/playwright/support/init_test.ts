@@ -107,11 +107,4 @@ test.beforeEach(async ({pw, pages, page}) => {
             EnableOnboardingFlow: false,
         },
     });
-
-    const adminConfig = await adminClient.getConfig();
-    const loginPage = new pages.LoginPage(page, adminConfig);
-
-    await loginPage.goto();
-    await loginPage.toBeVisible();
-    await loginPage.login(adminUser);
 });

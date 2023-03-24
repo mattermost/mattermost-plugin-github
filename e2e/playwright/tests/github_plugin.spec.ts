@@ -10,20 +10,27 @@ import {expect, test} from '@e2e-support/test_fixture';
 
 import '../support/init_test';
 
-import {sleep, fillTextField, postMessage, submitDialog, clickPostAction, screenshot, navigateToChannel, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
+import {sleep, fillTextField, postMessage, submitDialog, clickPostAction, screenshot, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = '/plugins/github/oauth/connect';
 const TEST_CLIENT_ID = 'aaaaaaaaaaaaaaaaaaaa';
 const TEST_CLIENT_SECRET = 'bbbbbbbbbbbbbbbbbbbbcccccccccccccccccccc';
 
-test('/github setup', async ({pages, page}) => {
+test('/github setup', async ({pw, pages}) => {
+    // # Log in
+    const {adminUser} = await pw.getAdminClient();
+    const {page} = await pw.testBrowser.login(adminUser);
+
+    // # Navigate to Channels
     const c = new pages.ChannelsPage(page);
+    await c.goto();
 
     // # Run setup command
     await postMessage('/github setup', c, page);
 
     // # Go to github bot DM channel
-    await navigateToChannel('github', page);
+    const teamName = page.url().split('/')[3];
+    await c.goto(teamName, 'messages/@github');
 
     // # Go through prompts of setup flow
     let choices: string[] = [
@@ -80,8 +87,14 @@ test('/github setup', async ({pages, page}) => {
     await screenshot('github_setup/done', page);
 });
 
-test('/github connect', async ({pages, page}) => {
+test('/github connect', async ({pw, pages}) => {
+    // # Log in
+    const {adminUser} = await pw.getAdminClient();
+    const {page} = await pw.testBrowser.login(adminUser);
+
+    // # Navigate to Channels
     const c = new pages.ChannelsPage(page);
+    await c.goto();
 
     // # Run connect command
     await postMessage('/github connect', c, page);
@@ -105,7 +118,8 @@ test('/github connect', async ({pages, page}) => {
     await screenshot('github_connect/after_clicking_connect_link', page);
 
     // # Go to github bot DM channel
-    await navigateToChannel('github', page)
+    const teamName = page.url().split('/')[3];
+    await c.goto(teamName, 'messages/@github');
     await sleep();
 
     post = await c.getLastPost();
@@ -118,8 +132,14 @@ test('/github connect', async ({pages, page}) => {
     await screenshot('github_connect/after_navigate_to_github_plugin', page);
 });
 
-test('/github issue create', async ({pages, page}) => {
+test('/github issue create', async ({pw, pages}) => {
+    // # Log in
+    const {adminUser} = await pw.getAdminClient();
+    const {page} = await pw.testBrowser.login(adminUser);
+
+    // # Navigate to Channels
     const c = new pages.ChannelsPage(page);
+    await c.goto();
 
     // # Run create command
     await postMessage('/github issue create', c, page);
