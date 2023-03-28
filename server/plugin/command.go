@@ -348,7 +348,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	githubClient := p.githubConnectUser(ctx, userInfo)
 	user, appErr := p.API.GetUser(args.UserId)
 	if appErr != nil {
-		return appErr.Error()
+		return errors.Wrap(appErr, "failed to get the user").Error()
 	}
 
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
