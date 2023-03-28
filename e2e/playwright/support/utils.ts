@@ -45,7 +45,7 @@ export const getLastPostText = async (c: ChannelsPage, page: Page): Promise<stri
 
 export const screenshot = async(name: string, page: Page) => {
     await page.screenshot({path: path.join(SCREENSHOTS_DIR, name + '.png')});
-    console.log(`Created screenshot ${name}`);
+    // console.log(`Created screenshot ${name}`);
 }
 
 export const cleanUpBotDMs = async (client: Client4, userId: UserProfile['id'], botUsername: string) => {

@@ -31,7 +31,7 @@ test.beforeEach(async ({pw}) => {
     }
 
     const bundlePath = path.join(pluginDistPath, bundle);
-    const {adminClient} = await pw.getAdminClient();
+    const {adminClient, adminUser} = await pw.getAdminClient();
 
     await adminClient.uploadPluginX(bundlePath, true);
     await adminClient.enablePlugin(pluginId);
