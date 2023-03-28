@@ -279,7 +279,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	return txt
 }
 
-func (p *Plugin) CreatePost(channelID, userID, message string) *model.AppError {
+func (p *Plugin) createPost(channelID, userID, message string) error {
 	post := &model.Post{
 		ChannelId: channelID,
 		UserId:    userID,
@@ -354,7 +354,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
 	previousSubscribedEvents, err := p.getSubscribedFeatures(args.ChannelId, owner, repo)
 	if err != nil {
-		return err.Error()
+		return errors.Wrap(err, "failed to get the subscribed events").Error()
 	}
 
 	var previousSubscribedEventMessage string
@@ -364,7 +364,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	if repo == "" {
 		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscriptionEvents, flags); err != nil {
-			return err.Error()
+			return errors.Wrap(err, "failed to get the subscribed org").Error()
 		}
 		orgLink := baseURL + owner
 		subscriptionSuccess := fmt.Sprintf("@%v subscribed this channel to [%s](%s) with the following events: %s.", user.Username, owner, orgLink, subscriptionEvents.FormattedString())
@@ -373,15 +373,15 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			subscriptionSuccess += previousSubscribedEventMessage
 		}
 
-		if appErr = p.CreatePost(args.ChannelId, p.BotUserID, subscriptionSuccess); appErr != nil {
-			return fmt.Sprintf("%s error creating the public post: %s", subscriptionSuccess, appErr.Error())
+		if err := p.createPost(args.ChannelId, p.BotUserID, subscriptionSuccess); err != nil {
+			return fmt.Sprintf("%s error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
 
 		return ""
 	}
 
 	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscriptionEvents, flags); err != nil {
-		return err.Error()
+		return errors.Wrap(err, "failed to create a subscription").Error()
 	}
 	repoLink := config.getBaseURL() + owner + "/" + repo
 
@@ -397,8 +397,8 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
 
-	if appErr = p.CreatePost(args.ChannelId, p.BotUserID, msg); appErr != nil {
-		return fmt.Sprintf("%s error creating the public post: %s", msg, appErr.Error())
+	if err = p.createPost(args.ChannelId, p.BotUserID, msg); err != nil {
+		return fmt.Sprintf("%s\nError creating the public post: %s", msg, appErr.Error())
 	}
 
 	return ""
@@ -412,12 +412,12 @@ func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features,
 	}
 
 	for _, sub := range subs {
-		label := repo
+		fullRepoName := repo
 		if owner != "" {
-			label = owner + "/" + repo
+			fullRepoName = owner + "/" + repo
 		}
 
-		if sub.Repository == label {
+		if sub.Repository == fullRepoName {
 			previousFeatures = sub.Features
 			return previousFeatures, nil
 		}
@@ -456,8 +456,8 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 		orgLink := baseURL + owner
 		unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s](%s)", user.Username, owner, orgLink)
 
-		if appErr = p.CreatePost(args.ChannelId, p.BotUserID, unsubscribeMessage); appErr != nil {
-			return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, appErr.Error())
+		if err := p.createPost(args.ChannelId, p.BotUserID, unsubscribeMessage); err != nil {
+			return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, err.Error())
 		}
 
 		return ""
@@ -466,8 +466,8 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	repoLink := baseURL + owner + "/" + repo
 	unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s/%s](%s)", user.Username, owner, repo, repoLink)
 
-	if appErr = p.CreatePost(args.ChannelId, p.BotUserID, unsubscribeMessage); appErr != nil {
-		return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, appErr.Error())
+	if err := p.createPost(args.ChannelId, p.BotUserID, unsubscribeMessage); err != nil {
+		return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, err.Error())
 	}
 
 	return ""
