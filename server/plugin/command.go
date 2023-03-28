@@ -373,7 +373,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			subscriptionSuccess += previousSubscribedEventMessage
 		}
 
-		if err := p.createPost(args.ChannelId, p.BotUserID, subscriptionSuccess); err != nil {
+		if err = p.createPost(args.ChannelId, p.BotUserID, subscriptionSuccess); err != nil {
 			return fmt.Sprintf("%s error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
 
