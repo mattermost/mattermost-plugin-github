@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/hex"
+	"path"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 			case "commit":
 				r.permalinkInfo.commit = m[j]
 			case "path":
-				r.permalinkInfo.path = m[j]
+				r.permalinkInfo.path = strings.TrimPrefix(path.Join("/", m[j]), "/")
 			case "line":
 				r.permalinkInfo.line = m[j]
 			}

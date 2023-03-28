@@ -49,7 +49,34 @@ func TestGetReplacements(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
+			name:            "basic link with relative path",
+			input:           "start https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/../../../authentication.go#L15-L22 lorem ipsum",
+			numReplacements: 1,
+			replacements: []replacement{
+				{
+					index: 6,
+					word:  "https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/../../../authentication.go#L15-L22",
+					permalinkInfo: struct {
+						haswww string
+						commit string
+						user   string
+						repo   string
+						path   string
+						line   string
+					}{
+						haswww: "",
+						commit: "cbb25838a61872b624ac512556d7bc932486a64c",
+						line:   "L15-L22",
+						path:   "authentication.go",
+						user:   "mattermost",
+						repo:   "mattermost-server",
+					},
+				},
+			},
+		},
+		{
 			name:            "duplicate expansions",
 			input:           "start https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22 lorem ipsum https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22 lorem ipsum",
 			numReplacements: 2,

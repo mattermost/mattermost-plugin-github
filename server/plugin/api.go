@@ -397,6 +397,9 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		return
 	}
 
+	// track the successful connection
+	p.TrackUserEvent("account_connected", c.UserID, nil)
+
 	userInfo := &GitHubUserInfo{
 		UserID:         state.UserID,
 		Token:          tok,
