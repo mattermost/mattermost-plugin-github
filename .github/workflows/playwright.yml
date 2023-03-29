@@ -152,14 +152,14 @@ jobs:
         if: success() || failure()
         run: |
           cd e2e/playwright
-          mkdir test-results
+          mkdir results
 
-          mv screenshots test-results
-          mv ../../../mattermost-server/e2e/playwright/playwright-report ./test-results
-          mv ../../../mattermost-server/e2e/playwright/test-results ./test-results
+          mv screenshots results
+          mv playwright-report results
+          mv test-results results
 
       - uses: actions/upload-artifact@v3
         if: success() || failure()
         with:
           name: test-results
-          path: e2e/playwright/test-results
+          path: e2e/playwright/results
