@@ -215,7 +215,7 @@ func (p *Plugin) OnConfigurationChange() error {
 	}
 	// Some config changes require reloading tracking config
 	if p.tracker != nil {
-		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.API.GetConfig()))
+		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.client.Configuration.GetConfig()))
 	}
 
 	return nil
