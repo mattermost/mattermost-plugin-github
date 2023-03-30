@@ -32,9 +32,9 @@ ifneq ($(wildcard build/custom.mk),)
 endif
 
 ifneq ($(MM_DEBUG),)
-GO_BUILD_GCFLAGS = -gcflags "all=-N -l"
+	GO_BUILD_GCFLAGS = -gcflags "all=-N -l"
 else
-GO_BUILD_GCFLAGS =
+	GO_BUILD_GCFLAGS =
 endif
 
 ## Checks the code style, tests, builds and bundles the plugin.
