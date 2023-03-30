@@ -3,24 +3,29 @@ import core from './github_plugin.spec';
 import me from './command/me.spec';
 import todo from './command/todo.spec';
 import autocomplete from './command/autocomplete.spec';
+import { sleep } from 'support/utils';
 
 
 // Test features when no setup is done
+test.describe(autocomplete.noSetup);
 test.describe(me.noSetup);
 test.describe(todo.noSetup);
-test.describe(autocomplete.noSetup);
 
-// Test Setup & connect
+// Test /github setup
 test.describe(core.setup);
 
-// Test Setuip & connect
+// Test /github connect
 test.describe(core.connect);
 
 // Test features that needs connect
+test.describe(autocomplete.connected);
 test.describe(me.connected);
 test.describe(todo.connected);
-test.describe(autocomplete.connected);
 
-// should disconnect (keeping setup) and keep testing disconnected features
+// Test /github disconnect
+// test.describe(core.disconnect);
+
 // Test features when setup but no conection
 // test.describe(me.unconnected);
+// test.describe(todo.unconnected);
+// test.describe(autocomplete.unconnected);

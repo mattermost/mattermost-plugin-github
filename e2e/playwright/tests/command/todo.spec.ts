@@ -9,6 +9,8 @@ import {test, expect} from '@e2e-support/test_fixture';
 import TodoMessage from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
+import "../../support/init_test";
+import { sleep } from '../../support/utils';
 
 const repoRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+/;
 const prRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+\/pull\/\d+/;
@@ -29,8 +31,18 @@ const completeCommands = [
 export default {
     connected: () => {
         test.describe('/github todo command', () => {
-            test('from connected account', async ({pages, page}) => {
+            test('from connected account', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
+
                 const c = new pages.ChannelsPage(page);
+                await c.goto();
+
+                // wait to avoid rate limit, ideas we can try to mitigate this:
+                // - we avoid searching twice when getConnected (hasunread & posttodo)
+                // - we put more tests bwtween this one and setup/connect ones
+                await sleep(60*1000);
 
                 // # Run todo command
                 await c.postMessage('/github todo');
@@ -101,8 +113,13 @@ export default {
     unconnected: () => {
         test.describe('/github todo command', () => {
 
-            test('from non connected account', async ({pages, page}) => {
+            test('from non connected account', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
+
                 const c = new pages.ChannelsPage(page);
+                await c.goto();
 
                 // # Run todo command
                 await c.postMessage('/github todo');
@@ -130,8 +147,13 @@ export default {
     noSetup: () => {
         test.describe('/github todo command', () => {
 
-            test('before doing setup', async ({pages, page}) => {
+            test('before doing setup', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
+
                 const c = new pages.ChannelsPage(page);
+                await c.goto();
 
                 // # Run todo command
                 await c.postMessage('/github todo');

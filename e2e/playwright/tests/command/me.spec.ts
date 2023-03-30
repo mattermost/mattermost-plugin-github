@@ -7,14 +7,12 @@
 // ***************************************************************
 
 import { expect, test } from "@e2e-support/test_fixture";
-import { ChannelsPost } from "@e2e-support/ui/components";
-import { UserProfile } from "@mattermost/types/users";
 import { messages } from "../../support/constants";
 import {
     getBotTagFromPost,
     getPostAuthor,
 } from "../../support/components/post";
-import { navigateToChannel, sleep } from "../../support/utils";
+import { sleep } from "../../support/utils";
 import "../../support/init_test";
 
 const mmGithubHandle = 'MM-Github-Plugin';
@@ -22,8 +20,14 @@ const mmGithubHandle = 'MM-Github-Plugin';
 export default {
     connected: () => {
         test.describe("/github me", () => {
-            test("from connected account", async ({ pages, page }) => {
+            test("from connected account", async ({ pages, pw }) => {
+
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
+
                 const c = new pages.ChannelsPage(page);
+                await c.goto();
 
                 // # Run comand
                 await c.postMessage("/github me");
@@ -60,8 +64,13 @@ export default {
     },
     unconnected: () => {
         test.describe("/github me", () => {
-            test("from non connected account", async ({ pages, page }) => {
+            test("from non connected account", async ({ pages, pw }) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
+
                 const c = new pages.ChannelsPage(page);
+                await c.goto();
 
                 // # Run comand
                 await c.postMessage("/github me");
@@ -91,8 +100,13 @@ export default {
     },
     noSetup: () => {
         test.describe("/github me", () => {
-            test("before doing setup", async ({ pages, page }) => {
+            test("before doing setup", async ({ pages, pw }) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
+
                 const c = new pages.ChannelsPage(page);
+                await c.goto();
 
                 // # Run comand
                 await c.postMessage("/github me");

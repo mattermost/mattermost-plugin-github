@@ -1,15 +1,12 @@
-
-import testConfig from '@e2e-test.config';
-
 import {ExpiryAlgorithms, makeOAuthServer} from '../mock_oauth_server/mock_oauth_server';
 
-export const runOAuthServer = async () => {
-    const mockOAuthAccessToken = testConfig.pluginMockOAuthToken;
-    if (!mockOAuthAccessToken) {
-        console.error('Please provide an OAuth access token to use via env var PLUGIN_E2E_MOCK_OAUTH_TOKEN');
-        process.exit(0);
-    }
+const mockOAuthAccessToken = process.env.PLUGIN_E2E_MOCK_OAUTH_TOKEN;
+if (!mockOAuthAccessToken) {
+    console.error('Please provide an OAuth access token to use via env var PLUGIN_E2E_MOCK_OAUTH_TOKEN');
+    process.exit(1);
+}
 
+export const runOAuthServer = async () => {
     const defaultAuthorizePrefix = '/login/oauth' // Used by GitHub
     const authorizeURLPrefix = process.env.OAUTH_AUTHORIZE_URL_PREFIX || defaultAuthorizePrefix;
 

@@ -80,7 +80,6 @@ jobs:
           MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
           MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
           MM_FEATUREFLAGS_AppsEnabled: true
-          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
 
         ports:
           - 8065:8065
@@ -126,6 +125,8 @@ jobs:
 
       - name: ci/build-and-install-plugin
         run: make deploy
+        env:
+          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
 
       - name: ci/setup-node
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
@@ -144,10 +145,21 @@ jobs:
           cd e2e/playwright
           npm run test-ci
         env:
-          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_E2E_MOCK_OAUTH_TOKEN }}
+          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.PLUGIN_GITHUB_E2E_OAUTH_TOKEN }}
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
 
+      - name: ci/move-artifacts
+        if: success() || failure()
+        run: |
+          cd e2e/playwright
+          mkdir results
+
+          mv screenshots results
+          mv playwright-report results
+          mv test-results results
+
       - uses: actions/upload-artifact@v3
+        if: success() || failure()
         with:
-          name: screenshots
-          path: e2e/playwright/screenshots
+          name: test-results
+          path: e2e/playwright/results

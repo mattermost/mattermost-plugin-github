@@ -7,7 +7,7 @@
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
 import {SlashCommandSuggestions} from '../../support/components/slash_commands';
-import {UserProfile} from '@mattermost/types/users';
+import "../../support/init_test";
 
 
 // This test is meant to get the slash command help for the main command
@@ -39,112 +39,139 @@ export default {
     connected: () => {
         test.describe('available commands', () => {
 
-            test.describe('from connected account', () => {
-                test('with just the main command', async ({pages, page}) => {
-                    const c = new pages.ChannelsPage(page);
-                    const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+            test('with just the main command', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
 
-                    // # Run incomplete command to trigger help
-                    await c.postMessage('/github');
+                const c = new pages.ChannelsPage(page);
+                await c.goto();
 
-                    // * Assert suggestions are visible
-                    await slash.toBeVisible();
+                const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
-                    // * Assert help is visible
-                    await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
-                    //TODO: setup is available but not listed here
-                    await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
-                });
+                // # Run incomplete command to trigger help
+                await c.postMessage('/github');
 
-                test('with an additional space', async ({pages, page}) => {
-                    const c = new pages.ChannelsPage(page);
-                    const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+                // * Assert suggestions are visible
+                await slash.toBeVisible();
 
-                    // # Run incomplete command+space to trigger autocomplete
-                    await c.postMessage('/github ');
+                // * Assert help is visible
+                await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
+                //TODO: setup is available but not listed here
+                await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
+            });
 
-                    // * Assert suggestions are visible
-                    await slash.toBeVisible();
+            test('with an additional space', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
 
-                    // * Assert autocomplete commands
-                    completeCommands.forEach(async (item) => {
-                        await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
-                    });
+                const c = new pages.ChannelsPage(page);
+                await c.goto();
+
+                const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+
+                // # Run incomplete command+space to trigger autocomplete
+                await c.postMessage('/github ');
+
+                // * Assert suggestions are visible
+                await slash.toBeVisible();
+
+                // * Assert autocomplete commands
+                completeCommands.forEach(async (item) => {
+                    await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
                 });
             });
         });
     },
     unconnected: () => {
-        test.describe('available commands', () => {
-            test.describe('from non connected account', () => {
-                test('with just the main command', async ({pages, page}) => {
-                    const c = new pages.ChannelsPage(page);
-                    const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+        test.describe('available commands when unnconnected', () => {
+            test('with just the main command', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
 
-                    // # Run incomplete command to trigger help
-                    await c.postMessage('/github');
+                const c = new pages.ChannelsPage(page);
+                await c.goto();
 
-                    // * Assert suggestions are visible
-                    await slash.toBeVisible();
+                const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
-                    // * Assert help is visible
-                    await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
-                    //TODO: setup is available but not listed here
-                    await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
-                });
+                // # Run incomplete command to trigger help
+                await c.postMessage('/github');
 
-                test('with an additional space', async ({pages, page}) => {
-                    const c = new pages.ChannelsPage(page);
-                    const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+                // * Assert suggestions are visible
+                await slash.toBeVisible();
 
-                    // # Run incomplete command+space to trigger autocomplete
-                    await c.postMessage('/github ');
+                // * Assert help is visible
+                await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
+                //TODO: setup is available but not listed here
+                await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
+            });
 
-                    // * Assert suggestions are visible
-                    await slash.toBeVisible();
+            test('with an additional space', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
 
-                    // * Assert autocomplete commands
-                    completeCommands.forEach(async (item) => {
-                        await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
-                    });
+                const c = new pages.ChannelsPage(page);
+                await c.goto();
+
+                const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+
+                // # Run incomplete command+space to trigger autocomplete
+                await c.postMessage('/github ');
+
+                // * Assert suggestions are visible
+                await slash.toBeVisible();
+
+                // * Assert autocomplete commands
+                completeCommands.forEach(async (item) => {
+                    await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
                 });
             });
         });
     },
     noSetup: () => {
-        test.describe('available commands', () => {
+        test.describe('available commands whe no setup', () => {
+            test('with just the main command', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
 
-            test.describe('before doing setup', () => {
-                test('with just the main command', async ({pages, page}) => {
-                    const c = new pages.ChannelsPage(page);
-                    const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+                const c = new pages.ChannelsPage(page);
+                await c.goto();
+                const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
-                    // # Run incomplete command to trigger help
-                    await c.postMessage('/github');
+                // # Run incomplete command to trigger help
+                await c.postMessage('/github');
 
-                    // * Assert suggestions are visible
-                    await slash.toBeVisible();
+                // * Assert suggestions are visible
+                await slash.toBeVisible();
 
-                    // * Assert help is visible
-                    await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
-                    await expect(slash.getItemDescNth(0)).toHaveText('Available commands: setup, about');
-                });
+                // * Assert help is visible
+                await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
+                await expect(slash.getItemDescNth(0)).toHaveText('Available commands: setup, about');
+            });
 
-                test('with an additional space', async ({pages, page}) => {
-                    const c = new pages.ChannelsPage(page);
-                    const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
+            test('with an additional space', async ({pages, pw}) => {
+                // # Log in
+                const {adminUser} = await pw.getAdminClient();
+                const {page} = await pw.testBrowser.login(adminUser);
 
-                    // # Run incomplete command+space to trigger autocomplete
-                    await c.postMessage('/github ');
+                const c = new pages.ChannelsPage(page);
+                await c.goto();
+                const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
-                    // * Assert suggestions are visible
-                    await slash.toBeVisible();
+                // # Run incomplete command+space to trigger autocomplete
+                await c.postMessage('/github ');
 
-                    // * Assert autocomplete commands are visible
-                    await expect(slash.getItemTitleNth(1)).toHaveText('setup');
-                    await expect(slash.getItemTitleNth(2)).toHaveText('about');
+                // * Assert suggestions are visible
+                await slash.toBeVisible();
 
-                });
+                // * Assert autocomplete commands are visible
+                await expect(slash.getItemTitleNth(1)).toHaveText('setup');
+                await expect(slash.getItemTitleNth(2)).toHaveText('about');
+
             });
         });
     }

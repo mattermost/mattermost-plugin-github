@@ -10,17 +10,7 @@ import { expect, test } from "@e2e-support/test_fixture";
 
 import "../support/init_test";
 
-import {
-    sleep,
-    fillTextField,
-    postMessage,
-    submitDialog,
-    clickPostAction,
-    screenshot,
-    navigateToChannel,
-    getSlackAttachmentLocatorId,
-    getPostMessageLocatorId,
-} from "../support/utils";
+import {sleep, fillTextField, postMessage, submitDialog, clickPostAction, screenshot, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = "/plugins/github/oauth/connect";
 const TEST_CLIENT_ID = "aaaaaaaaaaaaaaaaaaaa";
@@ -28,14 +18,20 @@ const TEST_CLIENT_SECRET = "bbbbbbbbbbbbbbbbbbbbcccccccccccccccccccc";
 
 export default {
     setup: () =>{
-        test("/github setup", async ({ pages, page }) => {
+        test("/github setup", async ({ pw, pages }) => {
+            // # Log in
+            const {adminUser} = await pw.getAdminClient();
+            const {page} = await pw.testBrowser.login(adminUser);
+
             const c = new pages.ChannelsPage(page);
+            await c.goto();
 
             // # Run setup command
             await postMessage("/github setup", c, page);
 
             // # Go to github bot DM channel
-            await navigateToChannel("github", page);
+            const teamName = page.url().split('/')[3];
+            await c.goto(teamName, 'messages/@github');
 
             // # Go through prompts of setup flow
             let choices: string[] = [
@@ -95,11 +91,18 @@ export default {
         });
     },
     connect: () =>{
-        test("/github connect", async ({ pages, page }) => {
+        test("/github connect", async ({ pages, pw }) => {
+
+            // # Log in
+            const {adminUser} = await pw.getAdminClient();
+            const {page} = await pw.testBrowser.login(adminUser);
+
+            // # Navigate to Channels
             const c = new pages.ChannelsPage(page);
+            await c.goto();
 
             // # Run connect command
-            await postMessage("/github connect", c, page);
+            await postMessage('/github connect', c, page);
             await sleep();
 
             let post = await c.getLastPost();
@@ -107,22 +110,21 @@ export default {
             let locatorId = getPostMessageLocatorId(postId);
 
             let text = await page.locator(locatorId).innerText();
-            expect(text).toEqual("Click here to link your GitHub account.");
+            expect(text).toEqual('Click here to link your GitHub account.');
 
-            await screenshot("github_connect/show_connect_link", page);
+            await screenshot('github_connect/show_connect_link', page);
 
             // * Verify connect link has correct URL
             const connectLinkLocator = `${locatorId} a`;
-            const href = await page
-                .locator(connectLinkLocator)
-                .getAttribute("href");
+            const href = await page.locator(connectLinkLocator).getAttribute('href');
             expect(href).toMatch(GITHUB_CONNECT_LINK);
 
             await page.click(connectLinkLocator);
-            await screenshot("github_connect/after_clicking_connect_link", page);
+            await screenshot('github_connect/after_clicking_connect_link', page);
 
             // # Go to github bot DM channel
-            await navigateToChannel("github", page);
+            const teamName = page.url().split('/')[3];
+            await c.goto(teamName, 'messages/@github');
             await sleep();
 
             post = await c.getLastPost();
@@ -130,31 +132,29 @@ export default {
             locatorId = getPostMessageLocatorId(postId);
 
             text = await page.locator(locatorId).innerText();
-            expect(text).toContain("Welcome to the Mattermost GitHub Plugin!");
+            expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
 
-            await screenshot(
-                "github_connect/after_navigate_to_github_plugin",
-                page
-            );
+            await screenshot('github_connect/after_navigate_to_github_plugin', page);
+        });
+    },
+    disconnect: () => {
+        test("/github disconnect", async ({ pages, pw }) => {
+
+            // # Log in
+            const {adminUser} = await pw.getAdminClient();
+            const {page} = await pw.testBrowser.login(adminUser);
+
+            // # Navigate to Channels
+            const c = new pages.ChannelsPage(page);
+            await c.goto();
+
+            // # Run connect command
+            await postMessage('/github disconnect', c, page);
+            await sleep();
+
+            let post = await c.getLastPost();
+            await expect(post.container.innerText()).toEqual('Disconnected your GitHub account.');
         });
     },
 }
 
-// test.skip("/github issue create", async ({ pages, page }) => {
-//     const c = new pages.ChannelsPage(page);
-
-//     // # Run create command
-//     await postMessage("/github issue create", c, page);
-//     await sleep();
-
-//     await screenshot("github_issue_create/ran_create_command", page);
-
-//     // * Check that Create Issue modal is shown
-//     await expect(
-//         page.getByRole("heading", {
-//             name: "Create GitHub Issue",
-//         })
-//     ).toBeVisible();
-
-//     // await page.pause();
-// });

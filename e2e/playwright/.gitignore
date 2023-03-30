@@ -1,4 +1,5 @@
 .env
-
 screenshots
 playwright.config.ts
+playwright-report
+test-results
