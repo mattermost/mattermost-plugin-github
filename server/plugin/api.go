@@ -1222,18 +1222,12 @@ func getRepositoryList(c context.Context, userName string, githubClient *github.
 	return allRepos, nil
 }
 
-func getRepositoryListByOrg(c context.Context, org string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, bool, error) {
-	shouldFetchUserReposInsteadOfOrg := false
+func getRepositoryListByOrg(c context.Context, org string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, int, error) {
 	var allRepos []*github.Repository
 	for {
-		repos, resp, lErr := githubClient.Repositories.ListByOrg(c, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
-		if lErr != nil {
-			if resp.StatusCode == http.StatusNotFound {
-				shouldFetchUserReposInsteadOfOrg = true
-				break
-			}
-
-			return nil, shouldFetchUserReposInsteadOfOrg, lErr
+		repos, resp, err := githubClient.Repositories.ListByOrg(c, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
+		if err != nil {
+			return nil, resp.StatusCode, err
 		}
 
 		allRepos = append(allRepos, repos...)
@@ -1243,7 +1237,7 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 		opt.Page = resp.NextPage
 	}
 
-	return allRepos, shouldFetchUserReposInsteadOfOrg, nil
+	return allRepos, http.StatusOK, nil
 }
 
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1253,8 +1247,8 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 
 	var allRepos []*github.Repository
 	var err error
+	var statusCode int
 	opt := github.ListOptions{PerPage: 50}
-	shouldFetchUserReposInsteadOfOrg := false
 
 	if org == "" {
 		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, opt)
@@ -1264,16 +1258,16 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 			return
 		}
 	} else {
-		allRepos, shouldFetchUserReposInsteadOfOrg, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
+		allRepos, statusCode, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
 		if err != nil {
-			c.Log.WithError(err).Warnf("Failed to list repositories")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-			return
-		}
-
-		if shouldFetchUserReposInsteadOfOrg {
-			allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
-			if err != nil {
+			if statusCode == http.StatusNotFound {
+				allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
+				if err != nil {
+					c.Log.WithError(err).Warnf("Failed to list repositories")
+					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+					return
+				}
+			} else {
 				c.Log.WithError(err).Warnf("Failed to list repositories")
 				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 				return
