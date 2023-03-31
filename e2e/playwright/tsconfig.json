@@ -9,10 +9,10 @@
       "paths": {
           "@mattermost/client/*": ["../../../mattermost-server/webapp/platform/client/lib/*"],
           "@mattermost/types/*": ["../../../mattermost-server/webapp/platform/types/lib/*"],
-          "@e2e-support/*": ["../../../mattermost-server/e2e/playwright/support/*"],
-          "@e2e-test.config": ["../../../mattermost-server/e2e/playwright/test.config.ts"],
-          "@e2e-test.playwright-config": ["../../../mattermost-server/e2e/playwright/playwright.config.ts"],
-          "@playwright/test": ["../../../mattermost-server/e2e/playwright/node_modules/@playwright/test"],
+          "@e2e-support/*": ["../../../mattermost-server/e2e-tests/playwright/support/*"],
+          "@e2e-test.config": ["../../../mattermost-server/e2e-tests/playwright/test.config.ts"],
+          "@e2e-test.playwright-config": ["../../../mattermost-server/e2e-tests/playwright/playwright.config.ts"],
+          "@playwright/test": ["../../../mattermost-server/e2e-tests/playwright/node_modules/@playwright/test"],
       }
   },
   "include": ["./**/*"]

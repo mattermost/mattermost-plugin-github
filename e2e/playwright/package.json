@@ -1,11 +1,11 @@
 {
   "name": "plugin-e2e-tests",
   "scripts": {
-    "test": "PW_SLOMO=200 npm run test --prefix ../../../mattermost-server/e2e/playwright -- --project=chrome --config='../../../mattermost-plugin-github/e2e/playwright/playwright.config.ts'",
+    "test": "PW_SLOMO=200 npm run test --prefix ../../../mattermost-server/e2e-tests/playwright -- --project=chrome --config='../../../mattermost-plugin-github/e2e/playwright/playwright.config.ts'",
     "test-ci": "PW_HEADLESS=true npm test",
-    "test-slomo": "npm run test-slomo --prefix ../../../mattermost-server/e2e/playwright -- --project=chrome --config='../../../mattermost-plugin-github/e2e/playwright/playwright.config.ts",
+    "test-slomo": "npm run test-slomo --prefix ../../../mattermost-server/e2e-tests/playwright -- --project=chrome --config='../../../mattermost-plugin-github/e2e/playwright/playwright.config.ts",
     "debug": "npm test -- --debug",
-    "show-report": "npm run show-report --prefix ../../../mattermost-server/e2e/playwright"
+    "show-report": "npm run show-report --prefix ../../../mattermost-server/e2e-tests/playwright"
   },
   "devDependencies": {
     "@types/express": "^4.17.17",
