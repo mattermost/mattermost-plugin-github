@@ -156,7 +156,6 @@ jobs:
 
           mv screenshots results
           mv playwright-report results
-          mv test-results results
 
       - uses: actions/upload-artifact@v3
         if: success() || failure()
