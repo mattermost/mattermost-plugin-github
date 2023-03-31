@@ -1,7 +1,6 @@
 cd ../../../
 git clone https://github.com/mattermost/mattermost-server.git
 cd mattermost-server
-git checkout playwright-test-dir
 
 source ~/.nvm/nvm.sh
 nvm install
@@ -9,7 +8,7 @@ nvm install
 cd webapp
 npm i
 
-cd ../e2e/playwright
+cd ../e2e-tests/playwright
 
 npm i
 npx playwright install --with-deps
