@@ -16,10 +16,11 @@ const GITHUB_CONNECT_LINK = '/plugins/github/oauth/connect';
 const TEST_CLIENT_ID = 'aaaaaaaaaaaaaaaaaaaa';
 const TEST_CLIENT_SECRET = 'bbbbbbbbbbbbbbbbbbbbcccccccccccccccccccc';
 
-test('/github setup', async ({pw, pages}) => {
+test('/github setup', async ({pw, pages, page: originalPage}) => {
     // # Log in
     const {adminUser} = await pw.getAdminClient();
     const {page} = await pw.testBrowser.login(adminUser);
+    await originalPage.close();
 
     // # Navigate to Channels
     const c = new pages.ChannelsPage(page);
@@ -85,12 +86,14 @@ test('/github setup', async ({pw, pages}) => {
     await screenshot(`broadcast_question_after`, page);
 
     await screenshot('github_setup/done', page);
+    await page.close();
 });
 
-test('/github connect', async ({pw, pages}) => {
+test('/github connect', async ({pw, pages, page: originalPage}) => {
     // # Log in
     const {adminUser} = await pw.getAdminClient();
     const {page} = await pw.testBrowser.login(adminUser);
+    await originalPage.close();
 
     // # Navigate to Channels
     const c = new pages.ChannelsPage(page);
@@ -130,12 +133,14 @@ test('/github connect', async ({pw, pages}) => {
     expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
 
     await screenshot('github_connect/after_navigate_to_github_plugin', page);
+    await page.close();
 });
 
-test('/github issue create', async ({pw, pages}) => {
+test('/github issue create', async ({pw, pages, page: originalPage}) => {
     // # Log in
     const {adminUser} = await pw.getAdminClient();
     const {page} = await pw.testBrowser.login(adminUser);
+    await originalPage.close();
 
     // # Navigate to Channels
     const c = new pages.ChannelsPage(page);
@@ -151,6 +156,7 @@ test('/github issue create', async ({pw, pages}) => {
     await expect(page.getByRole('heading', {
         name: 'Create GitHub Issue'
     })).toBeVisible();
+    await page.close();
 
     // await page.pause();
 });
