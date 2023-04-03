@@ -7,10 +7,10 @@ ifeq ($(GO),)
 endif
 
 # Ensure that the build tools are compiled. Go's caching makes this quick.
-$(shell cd build/manifest && $(GO) build -buildvcs=false $(GO_BUILD_FLAGS) -o ../bin/manifest)
+$(shell cd build/manifest && $(GO) build -o ../bin/manifest)
 
 # Ensure that the deployment tools are compiled. Go's caching makes this quick.
-$(shell cd build/pluginctl && $(GO) build -buildvcs=false $(GO_BUILD_FLAGS) -o ../bin/pluginctl)
+$(shell cd build/deploy && $(GO) build -o ../bin/deploy)
 
 # Extract the plugin id from the manifest.
 PLUGIN_ID ?= $(shell build/bin/manifest id)
