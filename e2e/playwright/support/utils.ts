@@ -25,7 +25,7 @@ export const postMessage = async (message: string, c: ChannelsPage, page: Page) 
 
 export const clickPostAction = async (name: string, c: ChannelsPage) => {
     // TODO we need to wait for the next post to come up, since this opening a new tab and OAuth redirect can take an undeterminate
-    // page.waitForSelector // Step 3: Create a Webhook in GitHub
+    // https://mattermost.atlassian.net/browse/MM-51906
 
     await sleep(500);
     const postElement = await c.getLastPost();
