@@ -58,6 +58,10 @@ const (
 
 var (
 	Manifest model.Manifest = root.Manifest
+
+	// testOAuthServerURL is the URL for the oauthServer used for testing purposes
+	// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
+	testOAuthServerURL = ""
 )
 
 type Plugin struct {
@@ -510,6 +514,10 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	}
 
 	baseURL := config.getBaseURL()
+	if testOAuthServerURL != "" {
+		baseURL = testOAuthServerURL + "/"
+	}
+
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
 
