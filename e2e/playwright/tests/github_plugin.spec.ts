@@ -10,11 +10,20 @@ import {expect, test} from '@e2e-support/test_fixture';
 
 import '../support/init_test';
 
-import {sleep, fillTextField, postMessage, submitDialog, clickPostAction, screenshot, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
+import {
+    fillTextField,
+    postMessage,
+    submitDialog,
+    clickPostAction,
+    screenshot,
+    getSlackAttachmentLocatorId,
+    getPostMessageLocatorId,
+    DEFAULT_WAIT_MILLIS,
+} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = '/plugins/github/oauth/connect';
-const TEST_CLIENT_ID = 'aaaaaaaaaaaaaaaaaaaa';
-const TEST_CLIENT_SECRET = 'bbbbbbbbbbbbbbbbbbbbcccccccccccccccccccc';
+const TEST_CLIENT_ID = 'a'.repeat(20);
+const TEST_CLIENT_SECRET = 'b'.repeat(40);
 
 test('/github setup', async ({pw, pages, page: originalPage}) => {
     // # Log in
@@ -45,7 +54,7 @@ test('/github setup', async ({pw, pages, page: originalPage}) => {
     let i = 0;
     for (const choice of choices) {
         i++;
-        await sleep(page);
+        await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
         await screenshot(`post_action_before_${i}`, page);
         await clickPostAction(choice, c);
         await screenshot(`post_action_after_${i}`, page);
@@ -56,7 +65,7 @@ test('/github setup', async ({pw, pages, page: originalPage}) => {
     await fillTextField('client_secret', TEST_CLIENT_SECRET, page);
     await submitDialog(page);
 
-    await sleep(page);
+    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
 
     const post = await c.getLastPost();
     const postId = await post.getId();
@@ -102,7 +111,7 @@ test('/github connect', async ({pw, pages, page: originalPage}) => {
 
     // # Run connect command
     await postMessage('/github connect', c, page);
-    await sleep(page);
+    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
 
     let post = await c.getLastPost();
     let postId = await post.getId();
@@ -124,7 +133,7 @@ test('/github connect', async ({pw, pages, page: originalPage}) => {
     // # Go to github bot DM channel
     const teamName = page.url().split('/')[3];
     await c.goto(teamName, 'messages/@github');
-    await sleep(page);
+    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
 
     post = await c.getLastPost();
     postId = await post.getId();
@@ -149,7 +158,7 @@ test('/github issue create', async ({pw, pages, page: originalPage}) => {
 
     // # Run create command
     await postMessage('/github issue create', c, page);
-    await sleep(page);
+    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
 
     await screenshot('github_issue_create/ran_create_command', page);
 

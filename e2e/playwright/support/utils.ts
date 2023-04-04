@@ -8,7 +8,7 @@ import Client4 from '@mattermost/client/client4';
 
 const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
-export const sleep = (page: Page, millis = 500) => page.waitForTimeout(millis);
+export const DEFAULT_WAIT_MILLIS = 500;
 
 export const fillTextField = async (name: string, value: string, page: Page) => {
     await page.getByTestId(`${name}input`).fill(value);
@@ -32,7 +32,7 @@ export const clickPostAction = async (name: string, c: ChannelsPage) => {
 };
 
 export const getLastPostText = async (c: ChannelsPage, page: Page): Promise<string> => {
-    await sleep(page);
+    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
 
     const post = await c.getLastPost();
     const postId = await post.getId();
