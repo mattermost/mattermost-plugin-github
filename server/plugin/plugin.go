@@ -990,3 +990,10 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 
 	return "@" + info.GitHubUsername, nil
 }
+
+func (p *Plugin) getSiteURL() string {
+	if p.API.GetConfig().ServiceSettings.SiteURL != nil {
+		return *p.API.GetConfig().ServiceSettings.SiteURL
+	}
+	return ""
+}
