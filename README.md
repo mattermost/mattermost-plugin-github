@@ -185,4 +185,4 @@ This plugin contains both a server and web app portion. Read our documentation a
 
 ### Playwright e2e tests
 
-In order to get your environment set up to run [Playwright](https://playwright.dev) tests, please see the setup guide at [/e2e/playwright/README.md](/e2e/playwright/README.md).
+In order to get your environment set up to run [Playwright](https://playwright.dev) tests, please see the setup guide at [e2e/playwright](/e2e/playwright#readme).
