@@ -8,7 +8,7 @@ import Client4 from '@mattermost/client/client4';
 
 const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
-export const sleep = (millis = 500) => new Promise(r => setTimeout(r, millis));
+export const sleep = (page: Page, millis = 500) => page.waitForTimeout(millis);
 
 export const fillTextField = async (name: string, value: string, page: Page) => {
     await page.getByTestId(`${name}input`).fill(value);
@@ -27,13 +27,12 @@ export const clickPostAction = async (name: string, c: ChannelsPage) => {
     // TODO we need to wait for the next post to come up, since this opening a new tab and OAuth redirect can take an undeterminate
     // https://mattermost.atlassian.net/browse/MM-51906
 
-    await sleep(500);
     const postElement = await c.getLastPost();
     await postElement.container.getByText(name).last().click();
 };
 
 export const getLastPostText = async (c: ChannelsPage, page: Page): Promise<string> => {
-    await sleep();
+    await sleep(page);
 
     const post = await c.getLastPost();
     const postId = await post.getId();

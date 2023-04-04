@@ -19,9 +19,6 @@ export const makeOAuthServer = ({
     authorizeURLPrefix,
     expiryAlgorithm,
 }: OAuthServerOptions): express.Express => {
-    console.log(`Using Mattermost Site URL: ${mattermostSiteURL}`);
-    console.log(`Running OAuth server for plugin: ${pluginId}`);
-
     if (!mockOAuthAccessToken) {
         throw new Error(`MockOAuthServer: Please provide an OAuth access token to use`);
     }

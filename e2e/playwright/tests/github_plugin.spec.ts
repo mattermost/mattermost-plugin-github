@@ -45,6 +45,7 @@ test('/github setup', async ({pw, pages, page: originalPage}) => {
     let i = 0;
     for (const choice of choices) {
         i++;
+        await sleep(page);
         await screenshot(`post_action_before_${i}`, page);
         await clickPostAction(choice, c);
         await screenshot(`post_action_after_${i}`, page);
@@ -55,7 +56,7 @@ test('/github setup', async ({pw, pages, page: originalPage}) => {
     await fillTextField('client_secret', TEST_CLIENT_SECRET, page);
     await submitDialog(page);
 
-    await sleep();
+    await sleep(page);
 
     const post = await c.getLastPost();
     const postId = await post.getId();
@@ -101,7 +102,7 @@ test('/github connect', async ({pw, pages, page: originalPage}) => {
 
     // # Run connect command
     await postMessage('/github connect', c, page);
-    await sleep();
+    await sleep(page);
 
     let post = await c.getLastPost();
     let postId = await post.getId();
@@ -123,7 +124,7 @@ test('/github connect', async ({pw, pages, page: originalPage}) => {
     // # Go to github bot DM channel
     const teamName = page.url().split('/')[3];
     await c.goto(teamName, 'messages/@github');
-    await sleep();
+    await sleep(page);
 
     post = await c.getLastPost();
     postId = await post.getId();
@@ -148,7 +149,7 @@ test('/github issue create', async ({pw, pages, page: originalPage}) => {
 
     // # Run create command
     await postMessage('/github issue create', c, page);
-    await sleep();
+    await sleep(page);
 
     await screenshot('github_issue_create/ran_create_command', page);
 
@@ -157,6 +158,4 @@ test('/github issue create', async ({pw, pages, page: originalPage}) => {
         name: 'Create GitHub Issue'
     })).toBeVisible();
     await page.close();
-
-    // await page.pause();
 });

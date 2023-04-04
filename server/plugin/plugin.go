@@ -57,8 +57,11 @@ const (
 )
 
 var (
-	Manifest           model.Manifest = root.Manifest
-	testOAuthServerURL                = ""
+	Manifest model.Manifest = root.Manifest
+
+	// testOAuthServerURL is the URL for the oauthServer used for testing purposes
+	// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
+	testOAuthServerURL = ""
 )
 
 type Plugin struct {
