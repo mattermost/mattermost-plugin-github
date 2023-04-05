@@ -88,6 +88,8 @@ export default {
             await screenshot(`broadcast_question_after`, page);
 
             await screenshot("github_setup/done", page);
+
+            await page.close();
         });
     },
     connect: () =>{
@@ -135,6 +137,8 @@ export default {
             expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
 
             await screenshot('github_connect/after_navigate_to_github_plugin', page);
+
+            await page.close();
         });
     },
     disconnect: () => {
@@ -154,6 +158,8 @@ export default {
 
             let post = await c.getLastPost();
             await expect(post.container.innerText()).toEqual('Disconnected your GitHub account.');
+
+            await page.close();
         });
     },
 }

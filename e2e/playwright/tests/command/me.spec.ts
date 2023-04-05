@@ -12,7 +12,6 @@ import {
     getBotTagFromPost,
     getPostAuthor,
 } from "../../support/components/post";
-import { sleep } from "../../support/utils";
 import "../../support/init_test";
 
 const mmGithubHandle = 'MM-Github-Plugin';
@@ -59,6 +58,8 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
+
+                await page.close();
             });
         });
     },
@@ -75,7 +76,7 @@ export default {
                 // # Run comand
                 await c.postMessage("/github me");
                 await c.sendMessage();
-                await sleep();
+                await page.waitForTimeout(500);
 
                 // # Get last post
                 const post = await c.getLastPost();
@@ -95,6 +96,8 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
+
+                await page.close();
             });
         });
     },
@@ -130,6 +133,8 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
+
+                await page.close();
             });
         });
     },

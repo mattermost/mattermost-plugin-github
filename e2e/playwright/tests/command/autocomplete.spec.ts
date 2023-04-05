@@ -59,6 +59,8 @@ export default {
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
                 //TODO: setup is available but not listed here
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
+
+                await page.close();
             });
 
             test('with an additional space', async ({pages, pw}) => {
@@ -81,6 +83,8 @@ export default {
                 completeCommands.forEach(async (item) => {
                     await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
                 });
+
+                await page.close();
             });
         });
     },
@@ -106,6 +110,8 @@ export default {
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
                 //TODO: setup is available but not listed here
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
+
+                await page.close();
             });
 
             test('with an additional space', async ({pages, pw}) => {
@@ -128,6 +134,8 @@ export default {
                 completeCommands.forEach(async (item) => {
                     await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
                 });
+
+                await page.close();
             });
         });
     },
@@ -151,6 +159,8 @@ export default {
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: setup, about');
+
+                await page.close();
             });
 
             test('with an additional space', async ({pages, pw}) => {
@@ -172,6 +182,7 @@ export default {
                 await expect(slash.getItemTitleNth(1)).toHaveText('setup');
                 await expect(slash.getItemTitleNth(2)).toHaveText('about');
 
+                await page.close();
             });
         });
     }

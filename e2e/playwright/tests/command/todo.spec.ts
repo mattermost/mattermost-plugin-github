@@ -10,7 +10,6 @@ import TodoMessage from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 import "../../support/init_test";
-import { sleep } from '../../support/utils';
 
 const repoRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+/;
 const prRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+\/pull\/\d+/;
@@ -42,7 +41,7 @@ export default {
                 // wait to avoid rate limit, ideas we can try to mitigate this:
                 // - we avoid searching twice when getConnected (hasunread & posttodo)
                 // - we put more tests bwtween this one and setup/connect ones
-                await sleep(60*1000);
+                await page.waitForTimeout(60*1000);
 
                 // # Run todo command
                 await c.postMessage('/github todo');
@@ -107,6 +106,8 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
+
+                await page.close();
             });
         });
     },
@@ -141,6 +142,8 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
+
+                await page.close();
             });
         });
     },
@@ -176,6 +179,7 @@ export default {
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
 
+                await page.close();
             });
         });
     }

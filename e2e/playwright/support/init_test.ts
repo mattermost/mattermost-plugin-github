@@ -98,3 +98,6 @@ test.beforeAll(async ({pw}) => {
     await adminClient.patchConfig(newConfig);
 });
 
+test.afterEach(async ({page}) => {
+    await page.close();
+});
