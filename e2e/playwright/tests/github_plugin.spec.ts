@@ -13,8 +13,8 @@ import "../support/init_test";
 import {fillTextField, postMessage, submitDialog, clickPostAction, screenshot, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = "/plugins/github/oauth/connect";
-const TEST_CLIENT_ID = "aaaaaaaaaaaaaaaaaaaa";
-const TEST_CLIENT_SECRET = "bbbbbbbbbbbbbbbbbbbbcccccccccccccccccccc";
+const TEST_CLIENT_ID = 'a'.repeat(20);
+const TEST_CLIENT_SECRET = 'b'.repeat(40);
 
 export default {
     setup: () =>{
