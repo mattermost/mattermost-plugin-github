@@ -82,6 +82,10 @@ test.beforeAll(async ({pw}) => {
 
     const config = await adminClient.getConfig();
     const newConfig: DeepPartial<AdminConfig> = {
+        ServiceSettings: {
+            EnableTutorial: false,
+            EnableOnboardingFlow: false,
+        },
         PluginSettings: {
             ...config.PluginSettings,
             Plugins: {
@@ -94,17 +98,3 @@ test.beforeAll(async ({pw}) => {
     await adminClient.patchConfig(newConfig);
 });
 
-// # Log in
-test.beforeEach(async ({pw, pages, page}) => {
-    const {adminClient, adminUser} = await pw.getAdminClient();
-    if (!adminUser) {
-        throw new Error('Failed to get admin user');
-    }
-
-    await adminClient.patchConfig({
-        ServiceSettings: {
-            EnableTutorial: false,
-            EnableOnboardingFlow: false,
-        },
-    });
-});

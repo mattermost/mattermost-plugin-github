@@ -42,7 +42,6 @@ export const makeOAuthServer = ({
             token_type: 'bearer',
             expiry: '0001-01-01T00:00:00Z',
         };
-
         res.json(token);
     });
 

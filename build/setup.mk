@@ -1,3 +1,5 @@
+GO_BUILD_FLAGS ?=
+
 # Ensure that go is installed. Note that this is independent of whether or not a server is being
 # built, since the build script itself uses go.
 ifeq ($(GO),)
@@ -5,10 +7,10 @@ ifeq ($(GO),)
 endif
 
 # Ensure that the build tools are compiled. Go's caching makes this quick.
-$(shell cd build/manifest && $(GO) build -o ../bin/manifest)
+$(shell cd build/manifest && $(GO) build -buildvcs=false $(GO_BUILD_FLAGS) -o ../bin/manifest)
 
 # Ensure that the deployment tools are compiled. Go's caching makes this quick.
-$(shell cd build/pluginctl && $(GO) build -o ../bin/pluginctl)
+$(shell cd build/pluginctl && $(GO) build -buildvcs=false $(GO_BUILD_FLAGS) -o ../bin/pluginctl)
 
 # Extract the plugin id from the manifest.
 PLUGIN_ID ?= $(shell build/bin/manifest id)
