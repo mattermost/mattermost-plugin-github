@@ -18,7 +18,15 @@ const pluginId = 'github';
 
 // # Clear plugin's KV store
 test.beforeAll(async () => {
+    if (process.env.AVOID_TEST_CLEANUP === 'true') {
+        return;
+    }
+
     await clearKVStoreForPlugin(pluginId);
+}
+
+// # Run OAuth server
+test.beforeAll(async () => {
     await runOAuthServer();
 });
 
@@ -78,6 +86,10 @@ const githubConfig: GithubPluginSettings = {
 
 // # Set plugin settings
 test.beforeAll(async ({pw}) => {
+    if (process.env.AVOID_TEST_CLEANUP === 'true') {
+        return
+    }
+
     const {adminClient} = await pw.getAdminClient();
 
     const config = await adminClient.getConfig();

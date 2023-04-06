@@ -7,6 +7,9 @@
 // ***************************************************************
 
 import {expect, test} from '@e2e-support/test_fixture';
+import {Page} from '@playwright/test';
+
+import CreateIssueForm from '../support/components/github_create_issue_modal_fixture';
 
 import '../support/init_test';
 
@@ -162,9 +165,32 @@ test('/github issue create', async ({pw, pages, page: originalPage}) => {
 
     await screenshot('github_issue_create/ran_create_command', page);
 
+    const form = new CreateIssueForm(page);
+
     // * Check that Create Issue modal is shown
-    await expect(page.getByRole('heading', {
-        name: 'Create GitHub Issue'
-    })).toBeVisible();
+    await expect(form.header).toBeVisible();
+
+    const repoSearch = 'mickmister-org/test'
+    const repoName = 'mickmister-org/test-repo'
+    await form.selectRepo(repoSearch, repoName);
+
+    // # Select labels
+    await form.selectLabels(['enhancement']);
+
+    // # Select assignees
+    await form.selectAssignees(['mickmister']);
+
+    // # Issue title
+    await form.issueTitle.fill('The title');
+
+    // # Issue description
+    await form.issueDescription.fill('My description');
+
+    // # Submit form
+    await form.submit();
+
+    const p = await c.getLastPost();
+    await expect(p.container.getByText('Created GitHub issue')).toBeVisible();
+
     await page.close();
 });

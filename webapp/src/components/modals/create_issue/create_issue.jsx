@@ -124,26 +124,30 @@ export default class CreateIssueModal extends PureComponent {
 
         return (
             <>
-                <GithubLabelSelector
-                    repoName={this.state.repo.name}
-                    theme={this.props.theme}
-                    selectedLabels={this.state.labels}
-                    onChange={this.handleLabelsChange}
-                />
-
-                <GithubAssigneeSelector
-                    repoName={this.state.repo.name}
-                    theme={this.props.theme}
-                    selectedAssignees={this.state.assignees}
-                    onChange={this.handleAssigneesChange}
-                />
-
-                <GithubMilestoneSelector
-                    repoName={this.state.repo.name}
-                    theme={this.props.theme}
-                    selectedMilestone={this.state.milestone}
-                    onChange={this.handleMilestoneChange}
-                />
+                <div id='github-label-selector'>
+                    <GithubLabelSelector
+                        repoName={this.state.repo.name}
+                        theme={this.props.theme}
+                        selectedLabels={this.state.labels}
+                        onChange={this.handleLabelsChange}
+                    />
+                </div>
+                <div id='github-assignee-selector'>
+                    <GithubAssigneeSelector
+                        repoName={this.state.repo.name}
+                        theme={this.props.theme}
+                        selectedAssignees={this.state.assignees}
+                        onChange={this.handleAssigneesChange}
+                    />
+                </div>
+                <div id='github-milestone-selector'>
+                    <GithubMilestoneSelector
+                        repoName={this.state.repo.name}
+                        theme={this.props.theme}
+                        selectedMilestone={this.state.milestone}
+                        onChange={this.handleMilestoneChange}
+                    />
+                </div>
             </>
         );
     }
@@ -178,35 +182,40 @@ export default class CreateIssueModal extends PureComponent {
 
         const component = (
             <div>
-                <GithubRepoSelector
-                    onChange={this.handleRepoChange}
-                    value={this.state.repo && this.state.repo.name}
-                    required={true}
-                    theme={theme}
-                    addValidate={this.validator.addComponent}
-                    removeValidate={this.validator.removeComponent}
-                />
-
-                <Input
-                    id={'title'}
-                    label='Title for the GitHub Issue'
-                    type='input'
-                    required={true}
-                    disabled={false}
-                    maxLength={MAX_TITLE_LENGTH}
-                    value={this.state.issueTitle}
-                    onChange={this.handleIssueTitleChange}
-                />
+                <div id='github-repo-selector'>
+                    <GithubRepoSelector
+                        onChange={this.handleRepoChange}
+                        value={this.state.repo && this.state.repo.name}
+                        required={true}
+                        theme={theme}
+                        addValidate={this.validator.addComponent}
+                        removeValidate={this.validator.removeComponent}
+                    />
+                </div>
+                <div id='github-issue-title'>
+                    <Input
+                        id={'title'}
+                        label='Title for the GitHub Issue'
+                        type='input'
+                        required={true}
+                        disabled={false}
+                        maxLength={MAX_TITLE_LENGTH}
+                        value={this.state.issueTitle}
+                        onChange={this.handleIssueTitleChange}
+                    />
+                </div>
                 {issueTitleValidationError}
 
                 {this.renderIssueAttributeSelectors()}
 
-                <Input
-                    label='Description for the GitHub Issue'
-                    type='textarea'
-                    value={this.state.issueDescription}
-                    onChange={this.handleIssueDescriptionChange}
-                />
+                <div id='github-issue-description'>
+                    <Input
+                        label='Description for the GitHub Issue'
+                        type='textarea'
+                        value={this.state.issueDescription}
+                        onChange={this.handleIssueDescriptionChange}
+                    />
+                </div>
             </div>
         );
 
@@ -227,6 +236,7 @@ export default class CreateIssueModal extends PureComponent {
                 <form
                     role='form'
                     onSubmit={this.handleCreate}
+                    id='github-create-issue-form'
                 >
                     <Modal.Body
                         style={style.modal}
