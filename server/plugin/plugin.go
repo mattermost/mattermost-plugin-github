@@ -220,7 +220,9 @@ func (p *Plugin) setDefaultConfiguration() error {
 }
 
 func (p *Plugin) OnActivate() error {
-	p.client = pluginapi.NewClient(p.API, p.Driver)
+	if p.client == nil {
+		p.client = pluginapi.NewClient(p.API, p.Driver)
+	}
 
 	siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
 	if siteURL == nil || *siteURL == "" {
