@@ -1,9 +1,7 @@
 package plugin
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -167,7 +165,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if err != nil {
-		p.API.LogWarn("Failed to get repository or org for subscribe action", "error", err.Error())
+		p.client.Log.Warn("Failed to get repository or org for subscribe action", "error", err.Error())
 		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
@@ -257,31 +255,22 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
-	value, appErr := p.API.KVGet(SubscriptionsKey)
-	if appErr != nil {
-		return nil, errors.Wrap(appErr, "could not get subscriptions from KVStore")
-	}
-
-	if value == nil {
-		return &Subscriptions{Repositories: map[string][]*Subscription{}}, nil
-	}
-
-	err := json.NewDecoder(bytes.NewReader(value)).Decode(&subscriptions)
+	err := p.client.KV.Get(SubscriptionsKey, &subscriptions)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not properly decode subscriptions key")
+		return nil, errors.Wrap(err, "could not get subscriptions from KVStore")
+	}
+
+	// No subscriptions stored.
+	if subscriptions == nil {
+		return &Subscriptions{Repositories: map[string][]*Subscription{}}, nil
 	}
 
 	return subscriptions, nil
 }
 
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
-	b, err := json.Marshal(s)
-	if err != nil {
-		return errors.Wrap(err, "error while converting subscriptions map to json")
-	}
-
-	if appErr := p.API.KVSet(SubscriptionsKey, b); appErr != nil {
-		return errors.Wrap(appErr, "could not store subscriptions in KV store")
+	if _, err := p.client.KV.Set(SubscriptionsKey, s); err != nil {
+		return errors.Wrap(err, "could not store subscriptions in KV store")
 	}
 
 	return nil
