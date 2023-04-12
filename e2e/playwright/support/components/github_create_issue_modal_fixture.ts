@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {Page} from '@playwright/test';
-import {screenshot} from 'support/utils';
+import {screenshot} from '../../support/utils';
 
 export default class CreateIssueForm {
     readonly formElement = this.page.locator('#github-create-issue-form');
