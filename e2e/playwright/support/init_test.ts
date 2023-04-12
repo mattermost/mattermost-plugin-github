@@ -23,7 +23,7 @@ test.beforeAll(async () => {
     }
 
     await clearKVStoreForPlugin(pluginId);
-}
+});
 
 // # Run OAuth server
 test.beforeAll(async () => {

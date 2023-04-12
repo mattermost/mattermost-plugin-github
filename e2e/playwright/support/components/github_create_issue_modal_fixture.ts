@@ -45,11 +45,28 @@ export default class CreateIssueForm {
     }
 
     submit = async () => {
-        await this.page.getByRole('button', { name: 'Submit' }).click();
+        await this.page.getByRole('button', {name: 'Submit'}).click();
     }
 
     clickReactSelectOption = async (optionText: string) => {
-        await this.page.getByText(optionText).first().click();
-        await this.header.click();
+        await this.page.waitForTimeout(100);
+
+        const optionClassSuffix = '-MenuList';
+        const selector = `div[class$="${optionClassSuffix}"] > div`;
+
+        const arrayOfLocators = this.page.locator(selector);
+        const elementsCount = await arrayOfLocators.count();
+
+        for (let index = 0; index < elementsCount; index++) {
+            const element = await arrayOfLocators.nth(index);
+            const innerText = await element.innerText();
+            if (innerText === optionText) {
+                await element.click();
+                await this.header.click();
+                return;
+            }
+        }
+
+        throw new Error(`Could not find React Select option with text "${optionText}"`)
     }
 }

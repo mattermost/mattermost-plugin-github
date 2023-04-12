@@ -170,15 +170,17 @@ test('/github issue create', async ({pw, pages, page: originalPage}) => {
     // * Check that Create Issue modal is shown
     await expect(form.header).toBeVisible();
 
-    const repoSearch = 'mickmister-org/test'
-    const repoName = 'mickmister-org/test-repo'
+    await page.pause();
+
+    const repoSearch = 'MM-Github-Testorg';
+    const repoName = 'MM-Github-Testorg/testrepo';
     await form.selectRepo(repoSearch, repoName);
 
     // # Select labels
     await form.selectLabels(['enhancement']);
 
     // # Select assignees
-    await form.selectAssignees(['mickmister']);
+    await form.selectAssignees(['MM-Github-Plugin']);
 
     // # Issue title
     await form.issueTitle.fill('The title');
@@ -186,11 +188,41 @@ test('/github issue create', async ({pw, pages, page: originalPage}) => {
     // # Issue description
     await form.issueDescription.fill('My description');
 
+    await screenshot('github_issue_create/form_filled_out', page);
+
     // # Submit form
     await form.submit();
 
-    const p = await c.getLastPost();
-    await expect(p.container.getByText('Created GitHub issue')).toBeVisible();
+    const post = await c.getLastPost();
+
+    await screenshot('github_issue_create/after_form_submission', page);
+
+    const postTextMatch = 'Created GitHub issue';
+    await expect(post.container.getByText(postTextMatch)).toBeVisible();
+
+    const postId = await post.getId();
+    const locatorId = getPostMessageLocatorId(postId);
+
+    // * Verify the issue URL is for the right repository
+    const issueLinkSelector = `${locatorId} a`;
+    const issueLinkLocator = page.locator(issueLinkSelector);
+    const href = await issueLinkLocator.getAttribute('href');
+    const text = await issueLinkLocator.innerText();
+
+    // [#4](https://github.com/MM-Github-Testorg/testrepo/issues/4)
+    expect(text[0]).toEqual('#');
+    const issueUrlMatch = `https://github.com/${repoName}/issues/${text.substring(1)}`;
+    expect(href).toEqual(issueUrlMatch);
+
 
     await page.close();
 });
+
+const parseMarkdownLink = (link: string) => {
+    if (!(link.startsWith('[') && link.includes('](') && link.endsWith(')'))) {
+        throw new Error(`Invalid markdown link to parse: "${link}"`);
+    }
+
+    const parts = link.split('](');
+    const label = parts[0].substring(1);
+}
