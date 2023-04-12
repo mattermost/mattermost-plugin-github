@@ -9,7 +9,6 @@ import {test, expect} from '@e2e-support/test_fixture';
 import TodoMessage from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
-import "../../support/init_test";
 
 const repoRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+/;
 const prRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+\/pull\/\d+/;

@@ -8,8 +8,6 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 
-import "../support/init_test";
-
 import {fillTextField, postMessage, submitDialog, clickPostAction, screenshot, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = "/plugins/github/oauth/connect";

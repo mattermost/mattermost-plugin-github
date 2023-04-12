@@ -12,7 +12,6 @@ import {
     getBotTagFromPost,
     getPostAuthor,
 } from "../../support/components/post";
-import "../../support/init_test";
 
 const mmGithubHandle = 'MM-Github-Plugin';
 

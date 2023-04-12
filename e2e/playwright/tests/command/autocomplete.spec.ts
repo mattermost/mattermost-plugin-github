@@ -7,20 +7,6 @@
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
 import {SlashCommandSuggestions} from '../../support/components/slash_commands';
-import "../../support/init_test";
-
-
-// This test is meant to get the slash command help for the main command
-// at three scenarios: no setup done, setup ready but not connected account and
-// fully setup and connected account.
-//
-// Note that this test does not cover any autocomplete of each of the subcommands,
-// that should be covered in each subcommand spec.
-
-// TODO: this is just temporary until we can make the real ouath thing
-const mmUsername = process.env.PW_MM_USERNAME;
-const mmPassword = process.env.PW_MM_PASSWORD;
-
 
 const completeCommands = [
     {position: 1, cmd: 'connect'},

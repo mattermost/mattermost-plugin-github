@@ -4,6 +4,8 @@ import me from './command/me.spec';
 import todo from './command/todo.spec';
 import autocomplete from './command/autocomplete.spec';
 
+import "../support/init_test";
+
 
 // Test features when no setup is done
 test.describe(autocomplete.noSetup);
