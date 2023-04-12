@@ -140,7 +140,7 @@ export default {
         });
     },
     noSetup: () => {
-        test.describe('available commands whe no setup', () => {
+        test.describe('available commands when no setup', () => {
             test('with just the main command', async ({pages, pw}) => {
                 // # Log in
                 const {adminUser} = await pw.getAdminClient();

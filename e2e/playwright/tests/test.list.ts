@@ -22,9 +22,9 @@ test.describe(me.connected);
 test.describe(todo.connected);
 
 // Test /github disconnect
-// test.describe(core.disconnect);
+test.describe(core.disconnect);
 
 // Test features when setup but no conection
-// test.describe(me.unconnected);
-// test.describe(todo.unconnected);
-// test.describe(autocomplete.unconnected);
+test.describe(me.unconnected);
+test.describe(todo.unconnected);
+test.describe(autocomplete.unconnected);

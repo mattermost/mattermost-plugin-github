@@ -38,11 +38,6 @@ export default {
                 const c = new pages.ChannelsPage(page);
                 await c.goto();
 
-                // wait to avoid rate limit, ideas we can try to mitigate this:
-                // - we avoid searching twice when getConnected (hasunread & posttodo)
-                // - we put more tests bwtween this one and setup/connect ones
-                await page.waitForTimeout(60*1000);
-
                 // # Run todo command
                 await c.postMessage('/github todo');
                 await c.sendMessage();

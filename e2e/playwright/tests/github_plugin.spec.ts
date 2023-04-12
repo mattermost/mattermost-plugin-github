@@ -45,9 +45,7 @@ export default {
             let i = 0;
             for (const choice of choices) {
                 i++;
-                await screenshot(`post_action_before_${i}`, page);
                 await clickPostAction(choice, c);
-                await screenshot(`post_action_after_${i}`, page);
             }
 
             // # Fill out interactive dialog for GitHub client id and client secret
@@ -64,8 +62,6 @@ export default {
             const text = await page.locator(locatorId).innerText();
             expect(text).toEqual("Go here to connect your account.");
 
-            await screenshot("github_setup/show_connect_link", page);
-
             // * Verify connect link has correct URL
             const connectLinkLocator = `${locatorId} a`;
             const href = await page
@@ -73,28 +69,19 @@ export default {
                 .getAttribute("href");
             expect(href).toMatch(GITHUB_CONNECT_LINK);
 
-            await screenshot(`connect_click_before`, page);
             await page.click(connectLinkLocator);
-            await screenshot(`connect_click_after`, page);
 
             // # Say no to "Create a webhook"
-            await screenshot(`webhook_question_before`, page);
             await clickPostAction("No", c);
-            await screenshot(`webhook_question_aftrt`, page);
 
             // # Say no to "Broadcast to channel"
-            await screenshot(`broadcast_question_before`, page);
             await clickPostAction("Not now", c);
-            await screenshot(`broadcast_question_after`, page);
-
-            await screenshot("github_setup/done", page);
 
             await page.close();
         });
     },
     connect: () =>{
         test("/github connect", async ({ pages, pw }) => {
-
             // # Log in
             const {adminUser} = await pw.getAdminClient();
             const {page} = await pw.testBrowser.login(adminUser);
@@ -105,7 +92,7 @@ export default {
 
             // # Run connect command
             await postMessage('/github connect', c, page);
-            await page.waitForTimeout(500)
+            await page.waitForTimeout(1000)
 
             let post = await c.getLastPost();
             let postId = await post.getId();
@@ -114,20 +101,17 @@ export default {
             let text = await page.locator(locatorId).innerText();
             expect(text).toEqual('Click here to link your GitHub account.');
 
-            await screenshot('github_connect/show_connect_link', page);
-
             // * Verify connect link has correct URL
             const connectLinkLocator = `${locatorId} a`;
             const href = await page.locator(connectLinkLocator).getAttribute('href');
             expect(href).toMatch(GITHUB_CONNECT_LINK);
 
             await page.click(connectLinkLocator);
-            await screenshot('github_connect/after_clicking_connect_link', page);
 
             // # Go to github bot DM channel
             const teamName = page.url().split('/')[3];
             await c.goto(teamName, 'messages/@github');
-            await page.waitForTimeout(500)
+            await page.waitForTimeout(1000)
 
             post = await c.getLastPost();
             postId = await post.getId();
@@ -135,8 +119,6 @@ export default {
 
             text = await page.locator(locatorId).innerText();
             expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
-
-            await screenshot('github_connect/after_navigate_to_github_plugin', page);
 
             await page.close();
         });
@@ -154,10 +136,13 @@ export default {
 
             // # Run connect command
             await postMessage('/github disconnect', c, page);
-            await page.waitForTimeout(500)
+            await page.waitForTimeout(1000)
 
-            let post = await c.getLastPost();
-            await expect(post.container.innerText()).toEqual('Disconnected your GitHub account.');
+            const post = await c.getLastPost();
+            const postId = await post.getId();
+            const locatorId = getPostMessageLocatorId(postId);
+            const text = await page.locator(locatorId).innerText();
+            await expect(text).toContain('Disconnected your GitHub account');
 
             await page.close();
         });

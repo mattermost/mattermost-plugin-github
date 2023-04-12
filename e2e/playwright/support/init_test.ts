@@ -16,14 +16,18 @@ import {runOAuthServer} from './init_mock_oauth_server';
 const pluginDistPath = path.join(__dirname, '../../../dist');
 const pluginId = 'github';
 
-// # Clear plugin's KV store
-test.beforeAll(async () => {
-    await clearKVStoreForPlugin(pluginId);
-    await runOAuthServer();
-});
 
-// # Upload plugin
-test.beforeEach(async ({pw}) => {
+// # One time tasks
+test.beforeAll(async ({pw}) => {
+    const {adminClient} = await pw.getAdminClient();
+
+    // Clear KV store
+    await clearKVStoreForPlugin(pluginId);
+
+    // Run OAuth mock server
+    await runOAuthServer();
+
+    // Upload and enable plugin
     const files = await fs.promises.readdir(pluginDistPath);
     const bundle = files.find((fname) => fname.endsWith('.tar.gz'));
     if (!bundle) {
@@ -31,13 +35,29 @@ test.beforeEach(async ({pw}) => {
     }
 
     const bundlePath = path.join(pluginDistPath, bundle);
-    const {adminClient} = await pw.getAdminClient();
-
     await adminClient.uploadPluginX(bundlePath, true);
     await adminClient.enablePlugin(pluginId);
+
+    // update config
+    const config = await adminClient.getConfig();
+    const newConfig: DeepPartial<AdminConfig> = {
+        ServiceSettings: {
+            EnableTutorial: false,
+            EnableOnboardingFlow: false,
+        },
+        PluginSettings: {
+            ...config.PluginSettings,
+            Plugins: {
+                ...config.PluginSettings.Plugins,
+                [pluginId]: githubConfig as any,
+            },
+        },
+    };
+
+    await adminClient.patchConfig(newConfig);
 });
 
-// # Clear bot DM channel
+// # Clear bot DM channel for each new test
 test.beforeEach(async ({pw}) => {
     const {adminClient, adminUser} = await pw.getAdminClient();
     await cleanUpBotDMs(adminClient, adminUser!.id, pluginId);
@@ -68,36 +88,12 @@ const githubConfig: GithubPluginSettings = {
     enableleftsidebar: true,
     enableprivaterepo: null,
     enablewebhookeventlogging: false,
-    encryptionkey: '',
+    encryptionkey: 'S9YasItflsENXnrnKUhMJkdosXTsr6Tc',
     enterprisebaseurl: '',
     enterpriseuploadurl: '',
     githuborg: null,
     usepreregisteredapplication: false,
-    webhooksecret: '',
+    webhooksecret: 'w7HfrdZ+mtJKnWnsmHMh8eKzWpQH7xET',
 };
 
-// # Set plugin settings
-test.beforeAll(async ({pw}) => {
-    const {adminClient} = await pw.getAdminClient();
 
-    const config = await adminClient.getConfig();
-    const newConfig: DeepPartial<AdminConfig> = {
-        ServiceSettings: {
-            EnableTutorial: false,
-            EnableOnboardingFlow: false,
-        },
-        PluginSettings: {
-            ...config.PluginSettings,
-            Plugins: {
-                ...config.PluginSettings.Plugins,
-                [pluginId]: githubConfig as any,
-            },
-        },
-    };
-
-    await adminClient.patchConfig(newConfig);
-});
-
-test.afterEach(async ({page}) => {
-    await page.close();
-});
