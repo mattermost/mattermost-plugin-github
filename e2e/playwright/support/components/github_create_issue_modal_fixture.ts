@@ -2,6 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {Page} from '@playwright/test';
+import {screenshot} from 'support/utils';
 
 export default class CreateIssueForm {
     readonly formElement = this.page.locator('#github-create-issue-form');
@@ -50,6 +51,7 @@ export default class CreateIssueForm {
 
     clickReactSelectOption = async (optionText: string) => {
         await this.page.waitForTimeout(100);
+        await screenshot('before_react_select_choice', this.page);
 
         const optionClassSuffix = '-MenuList';
         const selector = `div[class$="${optionClassSuffix}"] > div`;
