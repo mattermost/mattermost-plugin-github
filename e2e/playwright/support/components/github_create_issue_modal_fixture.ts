@@ -52,8 +52,7 @@ export default class CreateIssueForm {
     clickReactSelectOption = async (optionText: string) => {
         await screenshot('before_react_select_choice', this.page);
 
-        const optionClassSuffix = '-MenuList';
-        const selector = `div[class$="${optionClassSuffix}"] > div`;
+        const selector = 'div[id^="react-select-"]';
 
         await this.page.waitForTimeout(2000);
 
