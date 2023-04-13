@@ -53,12 +53,10 @@ export default class CreateIssueForm {
         await screenshot('before_react_select_choice', this.page);
 
         const selector = 'div[id^="react-select-"]';
-
-        await this.page.waitForTimeout(2000);
+        await this.page.waitForSelector(selector);
 
         const arrayOfLocators = this.page.locator(selector);
         const elementsCount = await arrayOfLocators.count();
-        console.log(elementsCount, 'elements');
 
         for (let index = 0; index < elementsCount; index++) {
             const element = await arrayOfLocators.nth(index);
