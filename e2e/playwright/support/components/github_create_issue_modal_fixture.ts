@@ -55,10 +55,11 @@ export default class CreateIssueForm {
         const optionClassSuffix = '-MenuList';
         const selector = `div[class$="${optionClassSuffix}"] > div`;
 
-        await this.page.waitForSelector(selector);
+        await this.page.waitForTimeout(2000);
 
         const arrayOfLocators = this.page.locator(selector);
         const elementsCount = await arrayOfLocators.count();
+        console.log(elementsCount, 'elements');
 
         for (let index = 0; index < elementsCount; index++) {
             const element = await arrayOfLocators.nth(index);
