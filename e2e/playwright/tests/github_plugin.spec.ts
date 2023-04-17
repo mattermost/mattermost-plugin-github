@@ -8,7 +8,7 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 
-import {fillTextField, postMessage, submitDialog, clickPostAction, screenshot, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
+import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDM, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = "/plugins/github/oauth/connect";
 const TEST_CLIENT_ID = 'a'.repeat(20);
@@ -16,20 +16,18 @@ const TEST_CLIENT_SECRET = 'b'.repeat(40);
 
 export default {
     setup: () =>{
-        test("/github setup", async ({ pw, pages }) => {
-            // # Log in
-            const {adminUser} = await pw.getAdminClient();
-            const {page} = await pw.testBrowser.login(adminUser);
+        test("/github setup", async ({ pw, page, pages }) => {
+            const {adminClient, adminUser} = await pw.getAdminClient();
+            const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+            await page.goto(URL);
 
             const c = new pages.ChannelsPage(page);
-            await c.goto();
 
             // # Run setup command
             await postMessage("/github setup", c, page);
 
             // # Go to github bot DM channel
-            const teamName = page.url().split('/')[3];
-            await c.goto(teamName, 'messages/@github');
+            await page.goto(URL);
 
             // # Go through prompts of setup flow
             let choices: string[] = [
@@ -74,19 +72,15 @@ export default {
 
             // # Say no to "Broadcast to channel"
             await clickPostAction("Not now", c);
-
-            await page.close();
         });
     },
     connect: () =>{
-        test("/github connect", async ({ pages, pw }) => {
-            // # Log in
-            const {adminUser} = await pw.getAdminClient();
-            const {page} = await pw.testBrowser.login(adminUser);
+        test("/github connect", async ({ pages, page, pw }) => {
+            const {adminClient, adminUser} = await pw.getAdminClient();
+            const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+            await page.goto(URL);
 
-            // # Navigate to Channels
             const c = new pages.ChannelsPage(page);
-            await c.goto();
 
             // # Run connect command
             await postMessage('/github connect', c, page);
@@ -105,11 +99,7 @@ export default {
             expect(href).toMatch(GITHUB_CONNECT_LINK);
 
             await page.click(connectLinkLocator);
-
-            // # Go to github bot DM channel
-            const teamName = page.url().split('/')[3];
-            await c.goto(teamName, 'messages/@github');
-            await page.waitForTimeout(1000)
+            await page.waitForTimeout(2000)
 
             post = await c.getLastPost();
             postId = await post.getId();
@@ -117,20 +107,15 @@ export default {
 
             text = await page.locator(locatorId).innerText();
             expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
-
-            await page.close();
         });
     },
     disconnect: () => {
-        test("/github disconnect", async ({ pages, pw }) => {
+        test("/github disconnect", async ({ pages, page, pw }) => {
+            const {adminClient, adminUser} = await pw.getAdminClient();
+            const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+            await page.goto(URL);
 
-            // # Log in
-            const {adminUser} = await pw.getAdminClient();
-            const {page} = await pw.testBrowser.login(adminUser);
-
-            // # Navigate to Channels
             const c = new pages.ChannelsPage(page);
-            await c.goto();
 
             // # Run connect command
             await postMessage('/github disconnect', c, page);
@@ -142,7 +127,6 @@ export default {
             const text = await page.locator(locatorId).innerText();
             await expect(text).toContain('Disconnected your GitHub account');
 
-            await page.close();
         });
     },
 }

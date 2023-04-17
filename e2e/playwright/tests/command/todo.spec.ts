@@ -8,6 +8,7 @@
 import {test, expect} from '@e2e-support/test_fixture';
 import TodoMessage from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
+import {getGithubBotDM} from '../../support/utils';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 
 const repoRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+/;
@@ -29,13 +30,12 @@ const completeCommands = [
 export default {
     connected: () => {
         test.describe('/github todo command', () => {
-            test('from connected account', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('from connected account', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 // # Run todo command
                 await c.postMessage('/github todo');
@@ -57,7 +57,7 @@ export default {
                 // * Assert that description are there for each section
                 // TODO: Counters may vary and should be explicitely changed once the test accounts are set
                 await expect(todo.getDesc('openpr')).toHaveText('You have 1 open pull requests:');
-                await expect(todo.getDesc('assignments')).toHaveText('You have 1 assignments:');
+                await expect(todo.getDesc('assignments')).toHaveText('You have 19 assignments:');
                 await expect(todo.getDesc('reviewpr')).toHaveText('You have 1 pull requests awaiting your review:');
                 await expect(todo.getDesc('unread')).toHaveText('You have 1 unread messages:');
 
@@ -75,7 +75,7 @@ export default {
                 const reviewPr = await todo.getList('reviewpr');
                 await expect(reviewPr.locator('li')).toHaveCount(1)
 
-                // * Assert the open pull request links are correct <REPO> <PR>
+                // * Assert the pull request links are correct <REPO> <PR>
                 for (let i=0; i<1; i++) {
                     await expect(reviewPr.locator('li').nth(i).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
                     await expect(reviewPr.locator('li').nth(i).locator('a').nth(1)).toHaveAttribute('href', prRegex)
@@ -83,7 +83,7 @@ export default {
 
                 // * Assert the assignments list has 1 items
                 const assignments = await todo.getList('assignments');
-                await expect(assignments.locator('li')).toHaveCount(1)
+                await expect(assignments.locator('li')).toHaveCount(19)
 
                 // * Assert the assignments links are correct <REPO> <ISSUE>
                 for (let i=0; i<1; i++) {
@@ -100,21 +100,18 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
-
-                await page.close();
             });
         });
     },
     unconnected: () => {
         test.describe('/github todo command', () => {
 
-            test('from non connected account', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('from non connected account', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 // # Run todo command
                 await c.postMessage('/github todo');
@@ -136,21 +133,18 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
-
-                await page.close();
             });
         });
     },
     noSetup: () => {
         test.describe('/github todo command', () => {
 
-            test('before doing setup', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('before doing setup', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 // # Run todo command
                 await c.postMessage('/github todo');
@@ -172,8 +166,6 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
-
-                await page.close();
             });
         });
     }

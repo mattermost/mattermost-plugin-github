@@ -5,11 +5,28 @@ import testConfig from '@e2e-test.playwright-config';
 
 // Configuration override for plugin tests
 testConfig.testDir = __dirname + '/tests';
+testConfig.outputDir = __dirname + '/test-results';
 testConfig.testMatch = 'test.list.ts';
 testConfig.use!.video = {
-    mode:    'retain-on-failure',
-    size: { width: 640, height: 480 }
+    mode:    'on',
+    size: { width: 1024, height: 768 }
 }
-testConfig.timeout = 90000;
+testConfig.projects = [
+    {
+        name: 'setup',
+        testMatch: /integrations\.setup\.ts/
+    },
+    {
+        name: 'chrome',
+        use: {
+            browserName: 'chromium',
+            permissions: ['notifications'],
+            viewport: {width: 1280, height: 1024},
+            storageState: __dirname + '/.auth-user.json',
+        },
+        dependencies: ['setup'],
+    },
+
+];
 
 export default testConfig;

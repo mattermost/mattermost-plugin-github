@@ -7,6 +7,7 @@
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
 import {SlashCommandSuggestions} from '../../support/components/slash_commands';
+import {getGithubBotDM} from '../../support/utils';
 
 const completeCommands = [
     {position: 1, cmd: 'connect'},
@@ -25,14 +26,12 @@ export default {
     connected: () => {
         test.describe('available commands', () => {
 
-            test('with just the main command', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('with just the main command', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
-
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
@@ -45,17 +44,15 @@ export default {
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
                 //TODO: setup is available but not listed here
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
-
-                await page.close();
             });
 
-            test('with an additional space', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('with an additional space', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
+                await c.goto(page.url().split('/')[3], 'messages/@github?skip_github_fetch=true');
 
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
@@ -69,20 +66,17 @@ export default {
                 completeCommands.forEach(async (item) => {
                     await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
                 });
-
-                await page.close();
             });
         });
     },
     unconnected: () => {
         test.describe('available commands when unnconnected', () => {
-            test('with just the main command', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('with just the main command', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
@@ -96,17 +90,14 @@ export default {
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
                 //TODO: setup is available but not listed here
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
-
-                await page.close();
             });
 
-            test('with an additional space', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('with an additional space', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
@@ -120,20 +111,17 @@ export default {
                 completeCommands.forEach(async (item) => {
                     await expect(slash.getItemTitleNth(item.position)).toHaveText(item.cmd);
                 });
-
-                await page.close();
             });
         });
     },
     noSetup: () => {
         test.describe('available commands when no setup', () => {
-            test('with just the main command', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('with just the main command', async ({page, pages, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
@@ -145,17 +133,14 @@ export default {
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: setup, about');
-
-                await page.close();
             });
 
-            test('with an additional space', async ({pages, pw}) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test('with an additional space', async ({pages, page, pw}) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
@@ -167,8 +152,6 @@ export default {
                 // * Assert autocomplete commands are visible
                 await expect(slash.getItemTitleNth(1)).toHaveText('setup');
                 await expect(slash.getItemTitleNth(2)).toHaveText('about');
-
-                await page.close();
             });
         });
     }

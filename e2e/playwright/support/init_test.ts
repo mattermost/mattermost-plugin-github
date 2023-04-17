@@ -19,10 +19,11 @@ const pluginId = 'github';
 
 // # One time tasks
 test.beforeAll(async ({pw}) => {
-    const {adminClient} = await pw.getAdminClient();
+    const {adminClient, adminUser} = await pw.getAdminClient();
     // Clear KV store
     await clearKVStoreForPlugin(pluginId);
-    // Run OA
+
+    // Run Mock OAuth server
     await runOAuthServer();
 
     // Upload and enable plugin
@@ -33,12 +34,10 @@ test.beforeAll(async ({pw}) => {
     }
 
     const bundlePath = path.join(pluginDistPath, bundle);
-
-
-
     await adminClient.uploadPluginX(bundlePath, true);
     await adminClient.enablePlugin(pluginId);
 
+    // Configure plugin
     const config = await adminClient.getConfig();
     const newConfig: DeepPartial<AdminConfig> = {
         ServiceSettings: {
@@ -58,7 +57,7 @@ test.beforeAll(async ({pw}) => {
 });
 
 // # Clear bot DM channel
-test.beforeEach(async ({pw}) => {
+test.beforeEach(async ({pw, pages, page}) => {
     const {adminClient, adminUser} = await pw.getAdminClient();
     await cleanUpBotDMs(adminClient, adminUser!.id, pluginId);
 });
@@ -95,26 +94,3 @@ const githubConfig: GithubPluginSettings = {
     usepreregisteredapplication: false,
     webhooksecret: 'w7HfrdZ+mtJKnWnsmHMh8eKzWpQH7xET',
 };
-
-// // # Set plugin settings
-// test.beforeAll(async ({pw}) => {
-//     const {adminClient} = await pw.getAdminClient();
-
-//     const config = await adminClient.getConfig();
-//     const newConfig: DeepPartial<AdminConfig> = {
-//         ServiceSettings: {
-//             EnableTutorial: false,
-//             EnableOnboardingFlow: false,
-//         },
-//         PluginSettings: {
-//             ...config.PluginSettings,
-//             Plugins: {
-//                 ...config.PluginSettings.Plugins,
-//                 [pluginId]: githubConfig as any,
-//             },
-//         },
-//     };
-
-//     await adminClient.patchConfig(newConfig);
-// });
-

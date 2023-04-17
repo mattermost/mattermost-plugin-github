@@ -8,6 +8,7 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 import { messages } from "../../support/constants";
+import { getGithubBotDM } from "../../support/utils";
 import {
     getBotTagFromPost,
     getPostAuthor,
@@ -18,14 +19,12 @@ const mmGithubHandle = 'MM-Github-Plugin';
 export default {
     connected: () => {
         test.describe("/github me", () => {
-            test("from connected account", async ({ pages, pw }) => {
-
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test("from connected account", async ({ pages, page, pw }) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 // # Run comand
                 await c.postMessage("/github me");
@@ -57,20 +56,17 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
-
-                await page.close();
             });
         });
     },
     unconnected: () => {
         test.describe("/github me", () => {
-            test("from non connected account", async ({ pages, pw }) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test("from non connected account", async ({ pages, page, pw }) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 // # Run comand
                 await c.postMessage("/github me");
@@ -95,20 +91,17 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
-
-                await page.close();
             });
         });
     },
     noSetup: () => {
         test.describe("/github me", () => {
-            test("before doing setup", async ({ pages, pw }) => {
-                // # Log in
-                const {adminUser} = await pw.getAdminClient();
-                const {page} = await pw.testBrowser.login(adminUser);
+            test("before doing setup", async ({ pages, page, pw }) => {
+                const {adminClient, adminUser} = await pw.getAdminClient();
+                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto();
 
                 // # Run comand
                 await c.postMessage("/github me");
@@ -132,8 +125,6 @@ export default {
 
                 // * Assert that ephemeral has disappeared
                 await expect(page.locator(`#post_${postId}`)).toHaveCount(0);
-
-                await page.close();
             });
         });
     },

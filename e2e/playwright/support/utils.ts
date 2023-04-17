@@ -10,6 +10,14 @@ const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
 export const DEFAULT_WAIT_MILLIS = 500;
 
+export const getGithubBotDM = async (client: Client4, teamName = '', userId: string) => {
+    if (teamName === '') {
+        const teams = await client.getTeamsForUser(userId);
+        teamName = teams[0].name;
+    }
+    return `${teamName}/messages/@github?skip_github_fetch=true`;
+}
+
 export const fillTextField = async (name: string, value: string, page: Page) => {
     await page.getByTestId(`${name}input`).fill(value);
 }

@@ -19,6 +19,7 @@ export default class SidebarButtons extends React.PureComponent {
         yourPrs: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         isTeamSidebar: PropTypes.bool,
+        enableDeveloper: PropTypes.bool,
         showRHSPlugin: PropTypes.func.isRequired,
         actions: PropTypes.shape({
             getConnected: PropTypes.func.isRequired,
@@ -55,6 +56,14 @@ export default class SidebarButtons extends React.PureComponent {
 
     getData = async (e) => {
         if (this.state.refreshing) {
+            return;
+        }
+
+        // Avoid refreshing data on each test when doing e2e testing.
+        // It requires enableDeveloper setting and skip_github_fetch query param.
+        // Otherwise we'll load app on each test consuming 3 searches from 30 rate limit.
+        const params = new URLSearchParams(window.location.search);
+        if (this.props.enableDeveloper && params.get('skip_github_fetch') === 'true') {
             return;
         }
 
