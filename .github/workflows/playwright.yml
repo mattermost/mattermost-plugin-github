@@ -153,7 +153,7 @@ jobs:
           cd e2e/playwright
           mkdir results
 
-          mv screenshots results
+          mv test-results results
           mv playwright-report results
 
       - uses: actions/upload-artifact@v3

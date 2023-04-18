@@ -7,6 +7,7 @@ import testConfig from '@e2e-test.playwright-config';
 testConfig.testDir = __dirname + '/tests';
 testConfig.outputDir = __dirname + '/test-results';
 testConfig.testMatch = 'test.list.ts';
+testConfig.timeout = 30 * 1000;
 testConfig.use!.video = {
     mode:    'on',
     size: { width: 1024, height: 768 }
