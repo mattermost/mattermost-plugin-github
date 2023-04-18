@@ -23,10 +23,10 @@ test.describe(autocomplete.connected);
 test.describe(me.connected);
 test.describe(todo.connected);
 
-// // Test /github disconnect
+// Test /github disconnect
 test.describe(core.disconnect);
 
-// // Test features when setup but no conection
+// Test features when setup but no conection
 test.describe(me.unconnected);
 test.describe(todo.unconnected);
 test.describe(autocomplete.unconnected);
