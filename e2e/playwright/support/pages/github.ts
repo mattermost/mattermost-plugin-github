@@ -6,15 +6,13 @@ import {expect, Locator, Page} from '@playwright/test';
 
 export default class GithubPage {
 
-    readonly page: Page;
     readonly url: string;
     readonly username: Locator;
     readonly password: Locator;
     readonly submit: Locator;
 
-    constructor(page: Page) {
+    constructor(readonly page: Page) {
         this.page = page;
-
         this.url = "https://github.com/login";
         this.username = page.locator('#login_field');
         this.password = page.locator('#password');

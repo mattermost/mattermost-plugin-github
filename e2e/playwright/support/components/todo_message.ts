@@ -4,7 +4,6 @@
 import {expect, Locator} from '@playwright/test';
 
 export default class TodoMessage {
-        readonly container: Locator;
         readonly unreadTitle: Locator;
         readonly openPRTitle: Locator;
         readonly reviewPRTitle: Locator;
@@ -16,7 +15,7 @@ export default class TodoMessage {
         readonly zeroResRegex: RegExp;
 
 
-        constructor(container: Locator) {
+        constructor(readonly container: Locator) {
             this.container = container;
             this.unreadTitle = container.locator('h5').filter({hasText: 'Unread Messages'});
             this.openPRTitle = container.locator('h5').filter({hasText: 'Your Open Pull Requests'});

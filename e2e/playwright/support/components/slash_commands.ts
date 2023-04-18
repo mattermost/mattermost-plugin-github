@@ -4,9 +4,7 @@
 import {expect, Locator} from '@playwright/test';
 
 export default class SlashCommandSuggestions {
-        readonly container: Locator;
-
-        constructor(container: Locator) {
+        constructor(readonly container: Locator) {
             this.container = container;
         }
 
