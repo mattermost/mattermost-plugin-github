@@ -8,7 +8,7 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 
-import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDM, getSlackAttachmentLocatorId, getPostMessageLocatorId} from '../support/utils';
+import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDM, getSlackAttachmentLocatorId, getPostMessageLocatorId, waitForNewMessages} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = "/plugins/github/oauth/connect";
 const TEST_CLIENT_ID = 'a'.repeat(20);
@@ -26,8 +26,8 @@ export default {
             // # Run setup command
             await postMessage("/github setup", c, page);
 
-            // # Go to github bot DM channel
-            await page.goto(URL);
+            // # Wait for new messages to ensure the last post is the one we want
+            await waitForNewMessages(page);
 
             // # Go through prompts of setup flow
             let choices: string[] = [
@@ -84,7 +84,9 @@ export default {
 
             // # Run connect command
             await postMessage('/github connect', c, page);
-            await page.waitForTimeout(1000)
+
+            // # Wait for new messages to ensure the last post is the one we want
+            await waitForNewMessages(page);
 
             let post = await c.getLastPost();
             let postId = await post.getId();
@@ -119,7 +121,9 @@ export default {
 
             // # Run connect command
             await postMessage('/github disconnect', c, page);
-            await page.waitForTimeout(1000)
+
+            // # Wait for new messages to ensure the last post is the one we want
+            await waitForNewMessages(page);
 
             const post = await c.getLastPost();
             const postId = await post.getId();

@@ -8,7 +8,7 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 import { messages } from "../../support/constants";
-import { getGithubBotDM } from "../../support/utils";
+import { getGithubBotDM, waitForNewMessages } from "../../support/utils";
 import {
     getBotTagFromPost,
     getPostAuthor,
@@ -30,6 +30,9 @@ export default {
                 await c.postMessage("/github me");
                 await c.sendMessage();
 
+                // # Wait for new messages to ensure the last post is the one we want
+                await waitForNewMessages(page);
+
                 // # Get last post
                 const post = await c.getLastPost();
                 const postId = await post.getId();
@@ -39,17 +42,11 @@ export default {
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
                 // * assert intro message
-                await expect(
-                    post.container.getByText("You are connected to Github as")
-                ).toBeVisible();
+                await expect(post.container.getByText("You are connected to Github as")).toBeVisible();
                 // * check username
-                await expect(
-                    post.container.getByRole("link", { name: mmGithubHandle })
-                ).toBeVisible();
+                await expect(post.container.getByRole("link", { name: mmGithubHandle })).toBeVisible();
                 // * check profile image
-                await expect(
-                    post.container.getByRole("heading").locator("img")
-                ).toBeVisible();
+                await expect(post.container.getByRole("heading").locator("img")).toBeVisible();
 
                 // # Refresh
                 await page.reload();
@@ -71,7 +68,9 @@ export default {
                 // # Run comand
                 await c.postMessage("/github me");
                 await c.sendMessage();
-                await page.waitForTimeout(500);
+
+                // # Wait for new messages to ensure the last post is the one we want
+                await waitForNewMessages(page);
 
                 // # Get last post
                 const post = await c.getLastPost();
@@ -82,9 +81,7 @@ export default {
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
                 // * assert failure message
-                await expect(
-                    post.container.getByText(messages.UNCONNECTED)
-                ).toBeVisible();
+                await expect(post.container.getByText(messages.UNCONNECTED)).toBeVisible();
 
                 // # Refresh
                 await page.reload();
@@ -107,6 +104,9 @@ export default {
                 await c.postMessage("/github me");
                 await c.sendMessage();
 
+                // # Wait for new messages to ensure the last post is the one we want
+                await waitForNewMessages(page);
+
                 // # Get last post
                 const post = await c.getLastPost();
                 const postId = await post.getId();
@@ -116,9 +116,7 @@ export default {
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
                 // * assert failure message
-                await expect(
-                    post.container.getByText(messages.NOSETUP)
-                ).toBeVisible();
+                await expect(post.container.getByText(messages.NOSETUP)).toBeVisible();
 
                 // # Refresh
                 await page.reload();

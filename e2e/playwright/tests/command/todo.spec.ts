@@ -8,7 +8,7 @@
 import {test, expect} from '@e2e-support/test_fixture';
 import TodoMessage from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
-import {getGithubBotDM} from '../../support/utils';
+import {getGithubBotDM, waitForNewMessages} from '../../support/utils';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 
 const repoRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+/;
@@ -40,6 +40,9 @@ export default {
                 // # Run todo command
                 await c.postMessage('/github todo');
                 await c.sendMessage();
+
+                // # Wait for new messages to ensure the last post is the one we want
+                await waitForNewMessages(page);
 
                 // # Get last post
                 const post = await c.getLastPost();
@@ -117,6 +120,9 @@ export default {
                 await c.postMessage('/github todo');
                 await c.sendMessage();
 
+                // # Wait for new messages to ensure the last post is the one we want
+                await waitForNewMessages(page);
+
                 // # Get last post
                 const post = await c.getLastPost();
                 const postId = await post.getId();
@@ -149,6 +155,9 @@ export default {
                 // # Run todo command
                 await c.postMessage('/github todo');
                 await c.sendMessage();
+
+                // # Wait for new messages to ensure the last post is the one we want
+                await waitForNewMessages(page);
 
                 // # Get last post
                 const post = await c.getLastPost();

@@ -52,8 +52,6 @@ export default {
                 await page.goto(URL);
 
                 const c = new pages.ChannelsPage(page);
-                await c.goto(page.url().split('/')[3], 'messages/@github?skip_github_fetch=true');
-
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete

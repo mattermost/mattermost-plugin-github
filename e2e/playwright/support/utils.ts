@@ -10,6 +10,11 @@ const SCREENSHOTS_DIR = path.join(__dirname, '../screenshots');
 
 export const DEFAULT_WAIT_MILLIS = 500;
 
+
+export const waitForNewMessages = async (page: Page) => {
+    await page.locator('#postListContent').getByTestId('NotificationSeparator').getByText('New Messages').waitFor();
+}
+
 export const getGithubBotDM = async (client: Client4, teamName = '', userId: string) => {
     if (teamName === '') {
         const teams = await client.getTeamsForUser(userId);
