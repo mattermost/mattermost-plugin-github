@@ -27,7 +27,9 @@ export default {
             await postMessage("/github setup", c, page);
 
             // # Wait for new messages to ensure the last post is the one we want
-            await waitForNewMessages(page);
+            // await waitForNewMessages(page);
+            await page.waitForTimeout(1000)
+
 
             // # Go through prompts of setup flow
             let choices: string[] = [
