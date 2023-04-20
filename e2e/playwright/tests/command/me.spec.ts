@@ -112,6 +112,7 @@ export default {
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
+                console.log(await post.container.innerText());
                 await expect(getPostAuthor(post)).toHaveText("github");
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
