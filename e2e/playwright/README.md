@@ -9,7 +9,7 @@ What this script does:
 - Install Playwright test dependencies - `cd ../e2e-tests/playwright && npm i`
 - Install Playwright - `npx install playwright`
 - Install GitHub plugin e2e dependencies - `cd ../../../mattermost-plugin-github/e2e/playwright && npm i`
-- Build and deploy plugin with mock OAuth server URL env var - `PLUGIN_E2E_MOCK_OAUTH_SERVER_URL=http://localhost:8080 make deploy`
+- Build and deploy plugin with mock OAuth server URL env var - `E2E_TESTING=true PLUGIN_E2E_MOCK_OAUTH_SERVER_URL=http://localhost:8080 make deploy`
 
 -----
 

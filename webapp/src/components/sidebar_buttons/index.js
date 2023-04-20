@@ -20,7 +20,6 @@ function mapStateToProps(state) {
         unreads: state[`plugins-${pluginId}`].unreads,
         enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
         showRHSPlugin: state[`plugins-${pluginId}`].rhsPluginAction,
-        enableDeveloper: state.entities.general.config.EnableDeveloper,
     };
 }
 
