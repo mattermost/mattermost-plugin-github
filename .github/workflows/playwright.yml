@@ -14,7 +14,7 @@ env:
 
 jobs:
   playwright-run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-4-cores
     services:
       postgres:
         image: postgres:11.13
