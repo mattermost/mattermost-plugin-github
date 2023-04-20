@@ -22,7 +22,7 @@ export default {
             test("from connected account", async ({ pages, page, pw }) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -61,7 +61,7 @@ export default {
             test("from non connected account", async ({ pages, page, pw }) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -96,7 +96,7 @@ export default {
             test("before doing setup", async ({ pages, page, pw }) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 

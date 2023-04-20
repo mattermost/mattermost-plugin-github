@@ -29,7 +29,7 @@ export default {
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
@@ -49,7 +49,7 @@ export default {
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
@@ -72,7 +72,7 @@ export default {
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -93,7 +93,7 @@ export default {
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -117,7 +117,7 @@ export default {
             test('with just the main command', async ({page, pages, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
@@ -136,7 +136,7 @@ export default {
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
-                await page.goto(URL);
+                await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
