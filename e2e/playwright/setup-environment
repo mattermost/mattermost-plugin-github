@@ -7,7 +7,7 @@ source ~/.nvm/nvm.sh
 nvm install
 
 cd webapp
-# npm i
+npm i
 
 cd ../e2e-tests/playwright
 
