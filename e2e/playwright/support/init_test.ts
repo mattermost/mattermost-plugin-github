@@ -12,6 +12,7 @@ import {DeepPartial} from '@mattermost/types/utilities';
 import {AdminConfig} from '@mattermost/types/config';
 
 import {runOAuthServer} from './init_mock_oauth_server';
+import { preferencesForUser } from './user';
 
 const pluginDistPath = path.join(__dirname, '../../../dist');
 const pluginId = 'github';
@@ -54,6 +55,7 @@ test.beforeAll(async ({pw}) => {
     };
 
     await adminClient.patchConfig(newConfig);
+    await adminClient.savePreferences(adminUser!.id, preferencesForUser(adminUser!.id))
 });
 
 // # Clear bot DM channel
