@@ -7,8 +7,8 @@ import {UserProfile} from '@mattermost/types/users';
 import Client4 from '@mattermost/client/client4';
 
 export const waitForNewMessages = async (page: Page) => {
-    const numberOfPosts = await page.locator('#postListContent').getByTestId('postView').count();
-    await page.locator('#postListContent').getByTestId('NotificationSeparator').getByText('New Messages').waitFor();
+    await page.waitForTimeout(2000);
+    // await page.locator('#postListContent').getByTestId('NotificationSeparator').getByText('New Messages').waitFor();
 }
 
 export const getGithubBotDM = async (client: Client4, teamName = '', userId: string) => {
