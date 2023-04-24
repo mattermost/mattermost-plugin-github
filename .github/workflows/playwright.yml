@@ -137,7 +137,9 @@ jobs:
           cache-dependency-path: e2e/playwright/package-lock.json
 
       - name: ci/lint
-        run: npm run lint
+        run: |
+          cd e2e/playwright
+          npm run lint
 
       - name: ci/install-tests-deps
         run: |
@@ -157,8 +159,6 @@ jobs:
         run: |
           cd e2e/playwright
           mkdir results
-
-          mv test-results results
           mv playwright-report results
 
       - uses: actions/upload-artifact@v3
