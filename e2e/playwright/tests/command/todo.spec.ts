@@ -6,9 +6,9 @@
 // - [*] indicates an assertion (e.g. * Check the title)
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
-import TodoMessage from '../../support/components/todo_message';
+import TodoMessage, {GithubRHSCategory} from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
-import {getGithubBotDM, waitForNewMessages} from '../../support/utils';
+import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 
 const repoRegex = /https:\/\/github.com\/[\w\-]+\/[\w\-]+/;
@@ -32,7 +32,7 @@ export default {
         test.describe('/github todo command', () => {
             test('from connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -52,50 +52,45 @@ export default {
 
                 // * Assert that titles are there for each section
                 // Text are fixed and checked inside todo component handler
-                await expect(todo.getTitle('openpr')).toBeVisible();
-                await expect(todo.getTitle('assignments')).toBeVisible();
-                await expect(todo.getTitle('reviewpr')).toBeVisible();
-                await expect(todo.getTitle('unread')).toBeVisible();
+                await expect(todo.getTitle(GithubRHSCategory.OPEN_PR)).toBeVisible();
+                await expect(todo.getTitle(GithubRHSCategory.ASSIGNMENTS)).toBeVisible();
+                await expect(todo.getTitle(GithubRHSCategory.REVIEW_PR)).toBeVisible();
+                await expect(todo.getTitle(GithubRHSCategory.UNREAD)).toBeVisible();
 
                 // * Assert that description are there for each section
+                // TODO singular/plurals are not taken into account: ticket separated at https://mattermost.atlassian.net/browse/MM-52416
                 // TODO: Counters may vary and should be explicitely changed once the test accounts are set
-                await expect(todo.getDesc('openpr')).toHaveText('You have 1 open pull requests:');
-                await expect(todo.getDesc('assignments')).toHaveText('You have 19 assignments:');
-                await expect(todo.getDesc('reviewpr')).toHaveText('You have 1 pull requests awaiting your review:');
-                await expect(todo.getDesc('unread')).toHaveText('You have 1 unread messages:');
+                await expect(todo.getDesc(GithubRHSCategory.OPEN_PR)).toHaveText('You have 1 open pull requests:');
+                await expect(todo.getDesc(GithubRHSCategory.ASSIGNMENTS)).toHaveText('You have 19 assignments:');
+                await expect(todo.getDesc(GithubRHSCategory.REVIEW_PR)).toHaveText('You have 1 pull requests awaiting your review:');
+                await expect(todo.getDesc(GithubRHSCategory.UNREAD)).toHaveText('You have 1 unread messages:');
 
                 // * Assert the open pull request list has 1 items
-                const openPr = await todo.getList('openpr');
+                const openPr = await todo.getList(GithubRHSCategory.OPEN_PR);
                 await expect(openPr.locator('li')).toHaveCount(1)
 
                 // * Assert the open pull request links are correct <REPO> <PR>
-                for (let i=0; i<1; i++) {
-                    await expect(openPr.locator('li').nth(i).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
-                    await expect(openPr.locator('li').nth(i).locator('a').nth(1)).toHaveAttribute('href', prRegex)
-                }
+                await expect(openPr.locator('li').nth(0).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
+                await expect(openPr.locator('li').nth(0).locator('a').nth(1)).toHaveAttribute('href', prRegex)
 
                 // * Assert the review request list has 1 items
-                const reviewPr = await todo.getList('reviewpr');
+                const reviewPr = await todo.getList(GithubRHSCategory.REVIEW_PR);
                 await expect(reviewPr.locator('li')).toHaveCount(1)
 
                 // * Assert the pull request links are correct <REPO> <PR>
-                for (let i=0; i<1; i++) {
-                    await expect(reviewPr.locator('li').nth(i).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
-                    await expect(reviewPr.locator('li').nth(i).locator('a').nth(1)).toHaveAttribute('href', prRegex)
-                }
+                await expect(reviewPr.locator('li').nth(0).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
+                await expect(reviewPr.locator('li').nth(0).locator('a').nth(1)).toHaveAttribute('href', prRegex)
 
                 // * Assert the assignments list has 1 items
-                const assignments = await todo.getList('assignments');
+                const assignments = await todo.getList(GithubRHSCategory.ASSIGNMENTS);
                 await expect(assignments.locator('li')).toHaveCount(19)
 
                 // * Assert the assignments links are correct <REPO> <ISSUE>
-                for (let i=0; i<1; i++) {
-                    await expect(assignments.locator('li').nth(i).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
-                    await expect(assignments.locator('li').nth(i).locator('a').nth(1)).toHaveAttribute('href', issueRegex)
-                }
+                await expect(assignments.locator('li').nth(0).locator('a').nth(0)).toHaveAttribute('href', repoRegex)
+                await expect(assignments.locator('li').nth(0).locator('a').nth(1)).toHaveAttribute('href', issueRegex)
 
                 // * Assert the unread has 1 items
-                const unread = await todo.getList('unread');
+                const unread = await todo.getList(GithubRHSCategory.UNREAD);
                 await expect(unread.locator('li')).toHaveCount(1);
 
                 // # Refresh
@@ -111,7 +106,7 @@ export default {
 
             test('from non connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -147,7 +142,7 @@ export default {
 
             test('before doing setup', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);

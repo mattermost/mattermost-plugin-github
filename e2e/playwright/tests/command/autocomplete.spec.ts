@@ -7,7 +7,7 @@
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
 import {SlashCommandSuggestions} from '../../support/components/slash_commands';
-import {getGithubBotDM} from '../../support/utils';
+import {getGithubBotDMPageURL} from '../../support/utils';
 
 const completeCommands = [
     {position: 1, cmd: 'connect'},
@@ -21,14 +21,13 @@ const completeCommands = [
     {position: 9, cmd: 'setup [command]'},
 ];
 
-
 export default {
     connected: () => {
         test.describe('available commands', () => {
 
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -48,7 +47,7 @@ export default {
 
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -71,7 +70,7 @@ export default {
         test.describe('available commands when unnconnected', () => {
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -92,7 +91,7 @@ export default {
 
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -116,7 +115,7 @@ export default {
         test.describe('available commands when no setup', () => {
             test('with just the main command', async ({page, pages, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -135,7 +134,7 @@ export default {
 
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);

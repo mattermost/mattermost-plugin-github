@@ -8,7 +8,7 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 import { messages } from "../../support/constants";
-import { getGithubBotDM, waitForNewMessages } from "../../support/utils";
+import { getGithubBotDMPageURL, waitForNewMessages } from "../../support/utils";
 import {
     getBotTagFromPost,
     getPostAuthor,
@@ -21,7 +21,7 @@ export default {
         test.describe("/github me", () => {
             test("from connected account", async ({ pages, page, pw }) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -60,7 +60,7 @@ export default {
         test.describe("/github me", () => {
             test("from non connected account", async ({ pages, page, pw }) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -95,7 +95,7 @@ export default {
         test.describe("/github me", () => {
             test("before doing setup", async ({ pages, page, pw }) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);

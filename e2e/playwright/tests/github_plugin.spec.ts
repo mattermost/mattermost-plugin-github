@@ -8,7 +8,7 @@
 
 import { expect, test } from "@e2e-support/test_fixture";
 
-import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDM, getSlackAttachmentLocatorId, getPostMessageLocatorId, waitForNewMessages} from '../support/utils';
+import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDMPageURL, getSlackAttachmentLocatorId, getPostMessageLocatorId, waitForNewMessages} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = "/plugins/github/oauth/connect";
 const TEST_CLIENT_ID = 'a'.repeat(20);
@@ -18,7 +18,7 @@ export default {
     setup: () =>{
         test("/github setup", async ({ pw, page, pages }) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
-            const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
@@ -79,7 +79,7 @@ export default {
     connect: () =>{
         test("/github connect", async ({ pages, page, pw }) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
-            const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
@@ -116,7 +116,7 @@ export default {
     disconnect: () => {
         test("/github disconnect", async ({ pages, page, pw }) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
-            const URL = await getGithubBotDM(adminClient, '', adminUser!.id);
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
