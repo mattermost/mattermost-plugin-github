@@ -6,6 +6,7 @@
 // - [*] indicates an assertion (e.g. * Check the title)
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
+
 import {SlashCommandSuggestions} from '../../support/components/slash_commands';
 import {getGithubBotDMPageURL} from '../../support/utils';
 
@@ -24,7 +25,6 @@ const completeCommands = [
 export default {
     connected: () => {
         test.describe('available commands', () => {
-
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
@@ -41,6 +41,7 @@ export default {
 
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
+
                 //TODO: setup is available but not listed here
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
             });
@@ -85,6 +86,7 @@ export default {
 
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
+
                 //TODO: setup is available but not listed here
                 await expect(slash.getItemDescNth(0)).toHaveText('Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about');
             });
@@ -151,5 +153,5 @@ export default {
                 await expect(slash.getItemTitleNth(2)).toHaveText('about');
             });
         });
-    }
+    },
 };

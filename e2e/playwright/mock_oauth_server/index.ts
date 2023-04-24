@@ -1,3 +1,6 @@
+/* eslint-disable no-console */
+/* eslint-disable no-process-exit */
+/* eslint-disable no-process-env */
 require('dotenv').config();
 
 import {ExpiryAlgorithms, makeOAuthServer} from './mock_oauth_server';
@@ -8,7 +11,7 @@ if (!mockOAuthAccessToken) {
     process.exit(0);
 }
 
-const defaultAuthorizePrefix = '/login/oauth' // Used by GitHub
+const defaultAuthorizePrefix = '/login/oauth'; // Used by GitHub
 const authorizeURLPrefix = process.env.OAUTH_AUTHORIZE_URL_PREFIX || defaultAuthorizePrefix;
 
 const mattermostSiteURL = process.env.MM_SERVICESETTINGS_SITEURL || 'http://localhost:8065';
@@ -24,5 +27,6 @@ const app = makeOAuthServer({
 
 const port = process.env.OAUTH_SERVER_PORT || 8080;
 app.listen(port, () => {
+    // eslint-disable-next-line no-console
     console.log(`Mock OAuth server listening on port ${port}`);
 });

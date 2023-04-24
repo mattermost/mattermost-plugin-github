@@ -8,26 +8,28 @@ import Client4 from '@mattermost/client/client4';
 
 export const waitForNewMessages = async (page: Page) => {
     await page.waitForTimeout(1000);
+
     // This should be able to be waited based on locators instead of pure time-based
     // The following code work "almost" always. Commented for now to have green tests.
     // await page.locator('#postListContent').getByTestId('NotificationSeparator').getByText('New Messages').waitFor();
-}
+};
 
 export const getGithubBotDMPageURL = async (client: Client4, teamName: string, userId: string) => {
-    if (teamName === '') {
+    let team = teamName;
+    if (team === '') {
         const teams = await client.getTeamsForUser(userId);
-        teamName = teams[0].name;
+        team = teams[0].name;
     }
-    return `${teamName}/messages/@github?skip_github_fetch=true`;
-}
+    return `${team}/messages/@github?skip_github_fetch=true`;
+};
 
 export const fillTextField = async (name: string, value: string, page: Page) => {
     await page.getByTestId(`${name}input`).fill(value);
-}
+};
 
 export const submitDialog = async (page: Page) => {
     await page.click('#interactiveDialogSubmit');
-}
+};
 
 export const postMessage = async (message: string, c: ChannelsPage, page: Page) => {
     await c.postMessage(message);
@@ -51,12 +53,12 @@ export const cleanUpBotDMs = async (client: Client4, userId: UserProfile['id'], 
 
     const deletePostPromises = Object.keys(posts.posts).map(client.deletePost);
     await Promise.all(deletePostPromises);
-}
+};
 
 export const getSlackAttachmentLocatorId = (postId: string) => {
     return `#post_${postId} .attachment__body`;
-}
+};
 
 export const getPostMessageLocatorId = (postId: string) => {
     return `#post_${postId} .post-message`;
-}
+};

@@ -5,22 +5,21 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 import {test} from '@e2e-support/test_fixture';
-import {cleanUpBotDMs} from './utils';
-
-import {clearKVStoreForPlugin} from './kv';
 import {DeepPartial} from '@mattermost/types/utilities';
 import {AdminConfig} from '@mattermost/types/config';
 
+import {cleanUpBotDMs} from './utils';
+import {clearKVStoreForPlugin} from './kv';
 import {runOAuthServer} from './init_mock_oauth_server';
-import { preferencesForUser } from './user';
+import {preferencesForUser} from './user';
 
 const pluginDistPath = path.join(__dirname, '../../../dist');
 const pluginId = 'github';
 
-
 // # One time tasks
 test.beforeAll(async ({pw}) => {
     const {adminClient, adminUser} = await pw.getAdminClient();
+
     // Clear KV store
     await clearKVStoreForPlugin(pluginId);
 
@@ -55,7 +54,7 @@ test.beforeAll(async ({pw}) => {
     };
 
     await adminClient.patchConfig(newConfig);
-    await adminClient.savePreferences(adminUser!.id, preferencesForUser(adminUser!.id))
+    await adminClient.savePreferences(adminUser!.id, preferencesForUser(adminUser!.id));
 });
 
 // # Clear bot DM channel

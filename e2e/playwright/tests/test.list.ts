@@ -1,11 +1,11 @@
-import { test } from '@playwright/test';
+import {test} from '@playwright/test';
+
 import core from './github_plugin.spec';
 import me from './command/me.spec';
 import todo from './command/todo.spec';
 import autocomplete from './command/autocomplete.spec';
 
-import "../support/init_test";
-
+import '../support/init_test';
 
 // Test features when no setup is done
 test.describe(autocomplete.noSetup);

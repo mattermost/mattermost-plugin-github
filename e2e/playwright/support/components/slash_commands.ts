@@ -4,31 +4,31 @@
 import {expect, Locator} from '@playwright/test';
 
 export default class SlashCommandSuggestions {
-        constructor(readonly container: Locator) {
-            this.container = container;
-        }
-
-        getItems() {
-            return this.container.getByRole('button');
-        }
-
-        getItemNth(n: number) {
-            return this.container.getByRole('button').nth(n);
-        }
-        getItemTitleNth(n: number) {
-            return this.getItemNth(n).locator('.slash-command__title');
-        }
-        getItemDescNth(n: number) {
-            return this.getItemNth(n).locator('.slash-command__desc');
-        }
-
-        // The text must be exact and complete, otherwise won't match the item
-        getItemByText(text: string) {
-            return this.container.getByRole('button', {name: text});
-        }
-
-        async toBeVisible() {
-            await expect(this.container).toBeVisible();
-        }
+    constructor(readonly container: Locator) {
+        this.container = container;
     }
+
+    getItems() {
+        return this.container.getByRole('button');
+    }
+
+    getItemNth(n: number) {
+        return this.container.getByRole('button').nth(n);
+    }
+    getItemTitleNth(n: number) {
+        return this.getItemNth(n).locator('.slash-command__title');
+    }
+    getItemDescNth(n: number) {
+        return this.getItemNth(n).locator('.slash-command__desc');
+    }
+
+    // The text must be exact and complete, otherwise won't match the item
+    getItemByText(text: string) {
+        return this.container.getByRole('button', {name: text});
+    }
+
+    async toBeVisible() {
+        await expect(this.container).toBeVisible();
+    }
+}
 export {SlashCommandSuggestions};

@@ -6,20 +6,21 @@
 // - [*] indicates an assertion (e.g. * Check the title)
 // ***************************************************************
 
-import { expect, test } from "@e2e-support/test_fixture";
-import { messages } from "../../support/constants";
-import { getGithubBotDMPageURL, waitForNewMessages } from "../../support/utils";
+import {expect, test} from '@e2e-support/test_fixture';
+
+import {messages} from '../../support/constants';
+import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
 import {
     getBotTagFromPost,
     getPostAuthor,
-} from "../../support/components/post";
+} from '../../support/components/post';
 
 const mmGithubHandle = 'MM-Github-Plugin';
 
 export default {
     connected: () => {
-        test.describe("/github me", () => {
-            test("from connected account", async ({ pages, page, pw }) => {
+        test.describe('/github me', () => {
+            test('from connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
@@ -27,7 +28,7 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
-                await c.postMessage("/github me");
+                await c.postMessage('/github me');
                 await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -38,15 +39,17 @@ export default {
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
-                await expect(getPostAuthor(post)).toHaveText("github");
+                await expect(getPostAuthor(post)).toHaveText('github');
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
                 // * assert intro message
-                await expect(post.container.getByText("You are connected to Github as")).toBeVisible();
+                await expect(post.container.getByText('You are connected to Github as')).toBeVisible();
+
                 // * check username
-                await expect(post.container.getByRole("link", { name: mmGithubHandle })).toBeVisible();
+                await expect(post.container.getByRole('link', {name: mmGithubHandle})).toBeVisible();
+
                 // * check profile image
-                await expect(post.container.getByRole("heading").locator("img")).toBeVisible();
+                await expect(post.container.getByRole('heading').locator('img')).toBeVisible();
 
                 // # Refresh
                 await page.reload();
@@ -57,8 +60,8 @@ export default {
         });
     },
     unconnected: () => {
-        test.describe("/github me", () => {
-            test("from non connected account", async ({ pages, page, pw }) => {
+        test.describe('/github me', () => {
+            test('from non connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
@@ -66,7 +69,7 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
-                await c.postMessage("/github me");
+                await c.postMessage('/github me');
                 await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -77,7 +80,7 @@ export default {
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
-                await expect(getPostAuthor(post)).toHaveText("github");
+                await expect(getPostAuthor(post)).toHaveText('github');
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
                 // * assert failure message
@@ -92,8 +95,8 @@ export default {
         });
     },
     noSetup: () => {
-        test.describe("/github me", () => {
-            test("before doing setup", async ({ pages, page, pw }) => {
+        test.describe('/github me', () => {
+            test('before doing setup', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
                 await page.goto(URL, {waitUntil: 'load'});
@@ -101,7 +104,7 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
-                await c.postMessage("/github me");
+                await c.postMessage('/github me');
                 await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -112,7 +115,7 @@ export default {
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
-                await expect(getPostAuthor(post)).toHaveText("github");
+                await expect(getPostAuthor(post)).toHaveText('github');
                 await expect(getBotTagFromPost(post)).toBeVisible();
 
                 // * assert failure message

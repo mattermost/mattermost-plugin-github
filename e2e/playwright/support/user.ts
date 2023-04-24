@@ -32,13 +32,13 @@ export const preferencesForUser = (userId: string) => {
             user_id: userId,
             category: 'tutorial_step',
             name: userId,
-            value: '999'
+            value: '999',
         },
         {
             user_id: userId,
             category: 'crt_tutorial_triggered',
             name: userId,
-            value: '999'
+            value: '999',
         },
         {
             user_id: userId,
@@ -50,19 +50,19 @@ export const preferencesForUser = (userId: string) => {
             user_id: userId,
             category: 'actions_menu',
             name: 'actions_menu_tutorial_state',
-            value: '{"actions_menu_modal_viewed":true}'
+            value: '{"actions_menu_modal_viewed":true}',
         },
         {
             user_id: userId,
             category: 'insights',
             name: 'insights_tutorial_state',
-            value: '{"insights_modal_viewed":true}'
+            value: '{"insights_modal_viewed":true}',
         },
         {
             user_id: userId,
             category: 'drafts',
             name: 'drafts_tour_tip_showed',
-            value: '{"drafts_tour_tip_showed":true}'
-        }
+            value: '{"drafts_tour_tip_showed":true}',
+        },
     ];
 };

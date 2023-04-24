@@ -9,13 +9,13 @@ testConfig.outputDir = __dirname + '/test-results';
 testConfig.testMatch = 'test.list.ts';
 testConfig.timeout = 30 * 1000;
 testConfig.use!.video = {
-    mode:    'on',
-    size: { width: 1024, height: 768 }
-}
+    mode: 'on',
+    size: {width: 1024, height: 768},
+};
 testConfig.projects = [
     {
         name: 'setup',
-        testMatch: /integrations\.setup\.ts/
+        testMatch: /integrations\.setup\.ts/,
     },
     {
         name: 'chrome',
