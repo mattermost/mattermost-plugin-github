@@ -136,6 +136,9 @@ jobs:
           cache: "npm"
           cache-dependency-path: e2e/playwright/package-lock.json
 
+      - name: ci/lint
+        run: npm run lint
+
       - name: ci/install-tests-deps
         run: |
           cd e2e/playwright

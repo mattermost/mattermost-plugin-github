@@ -1,4 +1,7 @@
-import {expect, test as setup} from '@e2e-support/test_fixture';
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import {test as setup} from '@e2e-support/test_fixture';
 
 const authFile = __dirname + '/../.auth-user.json';
 
