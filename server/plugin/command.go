@@ -270,7 +270,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	return txt
 }
 
-func (p *Plugin) getWebhookListForRepoOrOrg(githubClient *github.Client, repo, owner string, ctx context.Context) (bool, error) {
+func (p *Plugin) checkIfConfiguredWebhookExists(githubClient *github.Client, repo, owner string, ctx context.Context) (bool, error) {
 	found := false
 	opt := &github.ListOptions{
 		PerPage: GithubListOptionsPerPageValue,
@@ -378,7 +378,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 		subOrgMsg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 
-		found, err := p.getWebhookListForRepoOrOrg(githubClient, repo, owner, ctx)
+		found, err := p.checkIfConfiguredWebhookExists(githubClient, repo, owner, ctx)
 		if err != nil {
 			return errors.Wrap(err, "failed to get the list of webhooks").Error()
 		}
@@ -403,7 +403,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
 
-	found, err := p.getWebhookListForRepoOrOrg(githubClient, repo, owner, ctx)
+	found, err := p.checkIfConfiguredWebhookExists(githubClient, repo, owner, ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get the list of webhooks").Error()
 	}
