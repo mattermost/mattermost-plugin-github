@@ -22,8 +22,12 @@ export default {
         test.describe('/github me', () => {
             test('from connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
-                await page.goto(URL, {waitUntil: 'load'});
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -63,8 +67,12 @@ export default {
         test.describe('/github me', () => {
             test('from non connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
-                await page.goto(URL, {waitUntil: 'load'});
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -98,8 +106,12 @@ export default {
         test.describe('/github me', () => {
             test('before doing setup', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
-                await page.goto(URL, {waitUntil: 'load'});
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 

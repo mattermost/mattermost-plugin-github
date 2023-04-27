@@ -18,7 +18,11 @@ export default {
     setup: () => {
         test('/github setup', async ({pw, page, pages}) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
-            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+            if (adminUser === null) {
+                throw new Error('can not get adminUser');
+            }
+
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
@@ -70,7 +74,11 @@ export default {
     connect: () => {
         test('/github connect', async ({pages, page, pw}) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
-            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+            if (adminUser === null) {
+                throw new Error('can not get adminUser');
+            }
+
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
@@ -107,7 +115,11 @@ export default {
     disconnect: () => {
         test('/github disconnect', async ({pages, page, pw}) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
-            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+            if (adminUser === null) {
+                throw new Error('can not get adminUser');
+            }
+
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);

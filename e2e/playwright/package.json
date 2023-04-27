@@ -7,7 +7,8 @@
     "debug": "npm test -- --debug",
     "show-report": "npm run show-report --prefix ../../../mattermost-server/e2e-tests/playwright",
     "lint": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js  --ext ts . --quiet --cache",
-    "lint:fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js  --ext ts . --quiet --cache --fix"
+    "lint:fix": "eslint --ignore-pattern node_modules --ignore-pattern dist --ext .js  --ext ts . --quiet --cache --fix",
+    "tsc": "tsc"
   },
   "devDependencies": {
     "@types/express": "^4.17.17",

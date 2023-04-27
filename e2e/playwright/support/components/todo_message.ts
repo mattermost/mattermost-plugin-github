@@ -40,11 +40,11 @@ export default class TodoMessage {
     }
 
     getTitle(kind: GithubRHSCategory): Locator {
-        return this.titles.get(kind)!;
+        return this.titles.get(kind) ?? this.container.locator('notfound');
     }
 
     getDesc(kind: GithubRHSCategory): Locator {
-        return this.descriptions.get(kind)!;
+        return this.descriptions.get(kind) ?? this.container.locator('notfound');
     }
 
     // this func match elements based on layout, not the most reliable selector :(
@@ -54,7 +54,7 @@ export default class TodoMessage {
         if (desc.match(this.zeroResRegex)) {
             return this.container.locator('notfound'); // temp trick
         }
-        return this.lists.get(kind)!;
+        return this.lists.get(kind) ?? this.container.locator('notfound');
     }
 
     async toBeVisible() {

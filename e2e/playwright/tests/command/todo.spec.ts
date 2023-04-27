@@ -16,25 +16,17 @@ const repoRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+/;
 const prRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+\/pull\/\d+/;
 const issueRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+\/issues\/\d+/;
 
-const completeCommands = [
-    {position: 1, cmd: 'connect'},
-    {position: 2, cmd: 'disconnect'},
-    {position: 3, cmd: 'todo'},
-    {position: 4, cmd: 'subscriptions [command]'},
-    {position: 5, cmd: 'issue [command]'},
-    {position: 6, cmd: 'me'},
-    {position: 7, cmd: 'mute [command]'},
-    {position: 8, cmd: 'settings [setting] [value]'},
-    {position: 9, cmd: 'setup [command]'},
-];
-
 export default {
     connected: () => {
         test.describe('/github todo command', () => {
             test('from connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
-                await page.goto(URL, {waitUntil: 'load'});
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -59,8 +51,8 @@ export default {
                 await expect(todo.getTitle(GithubRHSCategory.UNREAD)).toBeVisible();
 
                 // * Assert that description are there for each section
-                // TODO singular/plurals are not taken into account: ticket separated at https://mattermost.atlassian.net/browse/MM-52416
-                // TODO: Counters may vary and should be explicitely changed once the test accounts are set
+                // Singular/plurals are not taken into account: ticket separated at https://mattermost.atlassian.net/browse/MM-52416
+                // Counters may vary and should be explicitely changed once the test accounts are set
                 await expect(todo.getDesc(GithubRHSCategory.OPEN_PR)).toHaveText('You have 1 open pull requests:');
                 await expect(todo.getDesc(GithubRHSCategory.ASSIGNMENTS)).toHaveText('You have 19 assignments:');
                 await expect(todo.getDesc(GithubRHSCategory.REVIEW_PR)).toHaveText('You have 1 pull requests awaiting your review:');
@@ -106,8 +98,12 @@ export default {
         test.describe('/github todo command', () => {
             test('from non connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
-                await page.goto(URL, {waitUntil: 'load'});
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
@@ -141,8 +137,12 @@ export default {
         test.describe('/github todo command', () => {
             test('before doing setup', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const URL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
-                await page.goto(URL, {waitUntil: 'load'});
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
