@@ -19,6 +19,9 @@ const pluginId = 'github';
 // # One time tasks
 test.beforeAll(async ({pw}) => {
     const {adminClient, adminUser} = await pw.getAdminClient();
+    if (adminUser === null) {
+        throw new Error('can not get adminUser');
+    }
 
     // Clear KV store
     await clearKVStoreForPlugin(pluginId);
@@ -54,13 +57,16 @@ test.beforeAll(async ({pw}) => {
     };
 
     await adminClient.patchConfig(newConfig);
-    await adminClient.savePreferences(adminUser!.id, preferencesForUser(adminUser!.id));
+    await adminClient.savePreferences(adminUser.id, preferencesForUser(adminUser.id));
 });
 
 // # Clear bot DM channel
-test.beforeEach(async ({pw, pages, page}) => {
+test.beforeEach(async ({pw}) => {
     const {adminClient, adminUser} = await pw.getAdminClient();
-    await cleanUpBotDMs(adminClient, adminUser!.id, pluginId);
+    if (adminUser === null) {
+        throw new Error('can not get adminUser');
+    }
+    await cleanUpBotDMs(adminClient, adminUser.id, pluginId);
 });
 
 type GithubPluginSettings = {

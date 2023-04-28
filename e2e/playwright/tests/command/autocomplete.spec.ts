@@ -27,7 +27,10 @@ export default {
         test.describe('available commands', () => {
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -37,7 +40,7 @@ export default {
                 await c.postMessage('/github');
 
                 // * Assert suggestions are visible
-                await slash.toBeVisible();
+                await expect(slash.container).toBeVisible();
 
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
@@ -48,7 +51,11 @@ export default {
 
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -58,7 +65,7 @@ export default {
                 await c.postMessage('/github ');
 
                 // * Assert suggestions are visible
-                await slash.toBeVisible();
+                await expect(slash.container).toBeVisible();
 
                 // * Assert autocomplete commands
                 completeCommands.forEach(async (item) => {
@@ -71,7 +78,11 @@ export default {
         test.describe('available commands when unnconnected', () => {
             test('with just the main command', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -82,7 +93,7 @@ export default {
                 await c.postMessage('/github');
 
                 // * Assert suggestions are visible
-                await slash.toBeVisible();
+                await expect(slash.container).toBeVisible();
 
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
@@ -93,7 +104,11 @@ export default {
 
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -104,7 +119,7 @@ export default {
                 await c.postMessage('/github ');
 
                 // * Assert suggestions are visible
-                await slash.toBeVisible();
+                await expect(slash.container).toBeVisible();
 
                 // * Assert autocomplete commands
                 completeCommands.forEach(async (item) => {
@@ -117,7 +132,11 @@ export default {
         test.describe('available commands when no setup', () => {
             test('with just the main command', async ({page, pages, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -127,7 +146,7 @@ export default {
                 await c.postMessage('/github');
 
                 // * Assert suggestions are visible
-                await slash.toBeVisible();
+                await expect(slash.container).toBeVisible();
 
                 // * Assert help is visible
                 await expect(slash.getItemTitleNth(0)).toHaveText('github [command]');
@@ -136,7 +155,11 @@ export default {
 
             test('with an additional space', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser!.id);
+                if (adminUser === null) {
+                    throw new Error('can not get adminUser');
+                }
+
+                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
@@ -146,7 +169,7 @@ export default {
                 await c.postMessage('/github ');
 
                 // * Assert suggestions are visible
-                await slash.toBeVisible();
+                await expect(slash.container).toBeVisible();
 
                 // * Assert autocomplete commands are visible
                 await expect(slash.getItemTitleNth(1)).toHaveText('setup');

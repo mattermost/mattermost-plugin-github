@@ -1,7 +1,7 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {expect, Locator} from '@playwright/test';
+import {Locator} from '@playwright/test';
 
 export default class SlashCommandSuggestions {
     constructor(readonly container: Locator) {
@@ -25,10 +25,6 @@ export default class SlashCommandSuggestions {
     // The text must be exact and complete, otherwise won't match the item
     getItemByText(text: string) {
         return this.container.getByRole('button', {name: text});
-    }
-
-    async toBeVisible() {
-        await expect(this.container).toBeVisible();
     }
 }
 export {SlashCommandSuggestions};
