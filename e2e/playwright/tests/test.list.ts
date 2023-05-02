@@ -7,6 +7,8 @@ import core from './github_plugin.spec';
 import me from './command/me.spec';
 import todo from './command/todo.spec';
 import autocomplete from './command/autocomplete.spec';
+import sidebar from './ui/sidebar.spec';
+import rhs from './ui/rhs.spec';
 
 import '../support/init_test';
 
@@ -14,6 +16,9 @@ import '../support/init_test';
 test.describe(autocomplete.noSetup);
 test.describe(me.noSetup);
 test.describe(todo.noSetup);
+test.describe(sidebar.noSetup);
+
+// test.describe(rhs.noSetup);
 
 // Test /github setup
 test.describe(core.setup);
@@ -25,6 +30,9 @@ test.describe(core.connect);
 test.describe(autocomplete.connected);
 test.describe(me.connected);
 test.describe(todo.connected);
+test.describe(sidebar.connected);
+
+// test.describe(rhs.connected);
 
 // Test /github disconnect
 test.describe(core.disconnect);
@@ -33,3 +41,6 @@ test.describe(core.disconnect);
 test.describe(me.unconnected);
 test.describe(todo.unconnected);
 test.describe(autocomplete.unconnected);
+test.describe(sidebar.unconnected);
+
+// test.describe(rhs.unconnected);

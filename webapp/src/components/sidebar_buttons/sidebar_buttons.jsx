@@ -59,11 +59,12 @@ export default class SidebarButtons extends React.PureComponent {
         }
 
         // Avoid refreshing data on each test when doing e2e testing.
-        // It requires __E2E_TESTING__ env/webpack-flag set and skip_github_fetch query param.
+        // It requires __E2E_TESTING__ env/webpack-flag set, skip_github_fetch query param and
+        // lack event e (we still process refresh click).
         // Otherwise we'll load app on each test consuming 3 searches from 30 rate limit.
         const params = new URLSearchParams(window.location.search);
         // eslint-disable-next-line no-undef
-        if (__E2E_TESTING__ && params.get('skip_github_fetch') === 'true') {
+        if (!e && __E2E_TESTING__ && params.get('skip_github_fetch') === 'true') {
             return;
         }
 
@@ -113,6 +114,7 @@ export default class SidebarButtons extends React.PureComponent {
                         overlay={<Tooltip id='reviewTooltip'>{'Connect to your GitHub'}</Tooltip>}
                     >
                         <a
+                            data-testid='sidebar-github-unconnected'
                             href='/plugins/github/oauth/connect'
                             onClick={this.openConnectWindow}
                             style={button}
@@ -137,7 +139,10 @@ export default class SidebarButtons extends React.PureComponent {
         }
 
         return (
-            <div style={container}>
+            <div
+                style={container}
+                data-testid='sidebar-github'
+            >
                 <a
                     key='githubHeader'
                     href={baseURL + '/settings/connections/applications/' + this.props.clientId}
@@ -153,6 +158,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='yourPrsTooltip'>{'Your open pull requests'}</Tooltip>}
                 >
                     <a
+                        data-testid='sidebar-github-openpr'
                         style={button}
                         onClick={() => this.openRHS(RHSStates.PRS)}
                     >
@@ -166,6 +172,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='reviewTooltip'>{'Pull requests needing review'}</Tooltip>}
                 >
                     <a
+                        data-testid='sidebar-github-reviewpr'
                         onClick={() => this.openRHS(RHSStates.REVIEWS)}
                         style={button}
                     >
@@ -179,6 +186,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='reviewTooltip'>{'Your assignments'}</Tooltip>}
                 >
                     <a
+                        data-testid='sidebar-github-assignments'
                         onClick={() => this.openRHS(RHSStates.ASSIGNMENTS)}
                         style={button}
                     >
@@ -192,6 +200,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='unreadsTooltip'>{'Unread messages'}</Tooltip>}
                 >
                     <a
+                        data-testid='sidebar-github-unreads'
                         onClick={() => this.openRHS(RHSStates.UNREADS)}
                         style={button}
                     >
@@ -205,6 +214,7 @@ export default class SidebarButtons extends React.PureComponent {
                     overlay={<Tooltip id='refreshTooltip'>{'Refresh'}</Tooltip>}
                 >
                     <a
+                        data-testid='sidebar-github-refresh'
                         href='#'
                         style={button}
                         onClick={this.getData}
