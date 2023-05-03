@@ -1,5 +1,6 @@
+#!/bin/sh
 cd ../../../
-git clone https://github.com/mattermost/mattermost-server.git
+git clone --depth 1 https://github.com/mattermost/mattermost-server.git
 cd mattermost-server
 
 source ~/.nvm/nvm.sh

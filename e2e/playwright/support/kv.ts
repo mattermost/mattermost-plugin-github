@@ -1,3 +1,6 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {Client} from 'pg';
 
 export function getClient() {
@@ -21,6 +24,6 @@ export const clearKVStoreForPlugin = async (pluginId: string) => {
 
     const query = 'DELETE from PluginKeyValueStore WHERE pkey != $1 AND pluginid = $2';
 
-    await client.query(query, [botUserKey, pluginId])
-        .finally(client.end);
-}
+    await client.query(query, [botUserKey, pluginId]).
+        finally(client.end);
+};

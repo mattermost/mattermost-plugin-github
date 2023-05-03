@@ -2,7 +2,6 @@
 // See LICENSE.txt for license information.
 
 import {Page} from '@playwright/test';
-import {screenshot} from '../../support/utils';
 
 export default class CreateIssueForm {
     readonly formElement = this.page.locator('#github-create-issue-form');
@@ -50,8 +49,6 @@ export default class CreateIssueForm {
     }
 
     clickReactSelectOption = async (optionText: string) => {
-        await screenshot('before_react_select_choice', this.page);
-
         const selector = 'div[id^="react-select-"]';
         await this.page.waitForSelector(selector);
 
@@ -59,7 +56,7 @@ export default class CreateIssueForm {
         const elementsCount = await arrayOfLocators.count();
 
         for (let index = 0; index < elementsCount; index++) {
-            const element = await arrayOfLocators.nth(index);
+            const element = arrayOfLocators.nth(index);
             const innerText = await element.innerText();
             if (innerText === optionText) {
                 await element.click();

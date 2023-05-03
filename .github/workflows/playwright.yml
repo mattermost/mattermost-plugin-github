@@ -56,7 +56,7 @@ jobs:
         ports:
           - 9200:9200
       mattermost-server:
-        image: mattermost/mattermost-enterprise-edition:release-7.7
+        image: mattermost/mattermost-enterprise-edition:master
         env:
           DB_HOST: postgres
           DB_PORT_NUMBER: 5432
@@ -126,6 +126,7 @@ jobs:
         run: make deploy
         env:
           PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
+          E2E_TESTING: true
 
       - name: ci/setup-node
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
@@ -138,6 +139,16 @@ jobs:
         run: |
           cd e2e/playwright
           ./setup-environment
+
+      - name: ci/tsc
+        run: |
+          cd e2e/playwright
+          npm run tsc
+
+      - name: ci/lint
+        run: |
+          cd e2e/playwright
+          npm run lint
 
       - name: ci/run-playwright-tests
         run: |
@@ -152,8 +163,6 @@ jobs:
         run: |
           cd e2e/playwright
           mkdir results
-
-          mv screenshots results
           mv playwright-report results
 
       - uses: actions/upload-artifact@v3
