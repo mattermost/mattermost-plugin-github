@@ -149,7 +149,10 @@ export default class SidebarRight extends React.PureComponent {
                     renderThumbVertical={renderThumbVertical}
                     renderView={renderView}
                 >
-                    <div style={style.sectionHeader}>
+                    <div
+                        data-testid='github-rhs-title'
+                        style={style.sectionHeader}
+                    >
                         <strong>
                             <a
                                 href={listUrl}
@@ -158,7 +161,7 @@ export default class SidebarRight extends React.PureComponent {
                             >{title}</a>
                         </strong>
                     </div>
-                    <div>
+                    <div data-testid='github-rhs-list'>
                         <GithubItems
                             items={githubItems}
                             theme={this.props.theme}

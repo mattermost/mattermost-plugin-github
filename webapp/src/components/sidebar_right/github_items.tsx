@@ -283,6 +283,7 @@ function GithubItems(props: GithubItemsProps) {
 
         return (
             <div
+                data-testid='github-rhs-item'
                 key={item.id}
                 style={style.container}
             >

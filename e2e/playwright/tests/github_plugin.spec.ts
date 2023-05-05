@@ -30,16 +30,12 @@ export default {
             // # Run setup command
             await postMessage('/github setup', c, page);
 
-            // # Wait for new messages to ensure the last post is the one we want
-            // await waitForNewMessages(page);
-            await page.waitForTimeout(1000);
-
             // # Go through prompts of setup flow
-            await clickPostAction('Continue', c);
-            await clickPostAction("I'll do it myself", c);
-            await clickPostAction('No', c);
-            await clickPostAction('Continue', c);
-            await clickPostAction('Continue', c);
+            await clickPostAction('Continue', c, page);
+            await clickPostAction("I'll do it myself", c, page);
+            await clickPostAction('No', c, page);
+            await clickPostAction('Continue', c, page);
+            await clickPostAction('Continue', c, page);
 
             // # Fill out interactive dialog for GitHub client id and client secret
             await fillTextField('client_id', TEST_CLIENT_ID, page);
@@ -65,10 +61,10 @@ export default {
             await page.click(connectLinkLocator);
 
             // # Say no to "Create a webhook"
-            await clickPostAction('No', c);
+            await clickPostAction('No', c, page);
 
             // # Say no to "Broadcast to channel"
-            await clickPostAction('Not now', c);
+            await clickPostAction('Not now', c, page);
         });
     },
     connect: () => {

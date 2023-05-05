@@ -10,7 +10,9 @@ export const messages = {
 
 export const expectedData = {
     [GithubRHSCategory.UNREAD]: '1',
-    [GithubRHSCategory.ASSIGNMENTS]: '19',
+    [GithubRHSCategory.ASSIGNMENTS]: '32',
     [GithubRHSCategory.REVIEW_PR]: '1',
     [GithubRHSCategory.OPEN_PR]: '1',
 };
+
+export const username = 'MM-Github-Plugin';

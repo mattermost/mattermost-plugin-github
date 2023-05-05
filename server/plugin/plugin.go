@@ -785,7 +785,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", errors.Wrap(err, "error occurred while searching for PRs")
 	}
 
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}})
 	if err != nil {
 		return "", errors.Wrap(err, "error occurred while searching for assignments")
 	}
@@ -898,7 +898,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	}
 
 	query = getYourAssigneeSearchQuery(username, config.GitHubOrg)
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for assignments", "query", query, "error", "error", err.Error())
 		return false

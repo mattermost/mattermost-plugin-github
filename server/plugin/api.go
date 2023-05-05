@@ -974,7 +974,7 @@ func (p *Plugin) getYourAssignments(c *UserContext, w http.ResponseWriter, r *ht
 
 	username := c.GHInfo.GitHubUsername
 	query := getYourAssigneeSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
+	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}})
 	if err != nil {
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for assignments")
 		return

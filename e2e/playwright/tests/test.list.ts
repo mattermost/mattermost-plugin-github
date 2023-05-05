@@ -18,8 +18,6 @@ test.describe(me.noSetup);
 test.describe(todo.noSetup);
 test.describe(sidebar.noSetup);
 
-// test.describe(rhs.noSetup);
-
 // Test /github setup
 test.describe(core.setup);
 
@@ -31,8 +29,7 @@ test.describe(autocomplete.connected);
 test.describe(me.connected);
 test.describe(todo.connected);
 test.describe(sidebar.connected);
-
-// test.describe(rhs.connected);
+test.describe(rhs.connected);
 
 // Test /github disconnect
 test.describe(core.disconnect);
@@ -42,5 +39,3 @@ test.describe(me.unconnected);
 test.describe(todo.unconnected);
 test.describe(autocomplete.unconnected);
 test.describe(sidebar.unconnected);
-
-// test.describe(rhs.unconnected);

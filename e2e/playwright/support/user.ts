@@ -64,5 +64,11 @@ export const preferencesForUser = (userId: string) => {
             name: 'drafts_tour_tip_showed',
             value: '{"drafts_tour_tip_showed":true}',
         },
+        {
+            user_id: userId,
+            category: 'start_trial_modal',
+            name: 'trial_modal_auto_shown',
+            value: 'true',
+        },
     ];
 };

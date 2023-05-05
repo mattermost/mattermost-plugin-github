@@ -37,9 +37,10 @@ export const postMessage = async (message: string, c: ChannelsPage, page: Page) 
     await page.getByTestId('SendMessageButton').click();
 };
 
-export const clickPostAction = async (name: string, c: ChannelsPage) => {
+export const clickPostAction = async (name: string, c: ChannelsPage, page: Page) => {
     // We need to wait for the next post to come up, since this opening a new tab and OAuth redirect can take an undeterminate
     // https://mattermost.atlassian.net/browse/MM-51906
+    await page.waitForTimeout(500);
     const postElement = await c.getLastPost();
     await postElement.container.getByText(name).last().click();
 };

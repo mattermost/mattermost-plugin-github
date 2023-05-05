@@ -8,14 +8,12 @@
 
 import {expect, test} from '@e2e-support/test_fixture';
 
-import {messages} from '../../support/constants';
+import {messages, username} from '../../support/constants';
 import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
 import {
     getBotTagFromPost,
     getPostAuthor,
 } from '../../support/components/post';
-
-const mmGithubHandle = 'MM-Github-Plugin';
 
 export default {
     connected: () => {
@@ -50,7 +48,7 @@ export default {
                 await expect(post.container.getByText('You are connected to Github as')).toBeVisible();
 
                 // * check username
-                await expect(post.container.getByRole('link', {name: mmGithubHandle})).toBeVisible();
+                await expect(post.container.getByRole('link', {name: username})).toBeVisible();
 
                 // * check profile image
                 await expect(post.container.getByRole('heading').locator('img')).toBeVisible();

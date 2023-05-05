@@ -9,6 +9,7 @@
 import {expect, test} from '@e2e-support/test_fixture';
 
 import {GithubRHSCategory} from '../../support/components/todo_message';
+import Sidebar from '../../support/components/sidebar';
 import {expectedData} from '../../support/constants';
 import {getGithubBotDMPageURL} from '../../support/utils';
 
@@ -23,23 +24,25 @@ export default {
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
+                const sidebar = new Sidebar(page);
+
                 // * Unconnected version of icon shouldn't be visible
-                await expect(page.getByTestId('sidebar-github-unconnected')).not.toBeVisible();
+                await expect(sidebar.containerUnconnected).not.toBeVisible();
 
                 // * Counters must be visible
-                await expect(page.getByTestId('sidebar-github')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-openpr')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-reviewpr')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-assignments')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-unreads')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-refresh')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-refresh')).toBeEnabled();
+                await expect(sidebar.container).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.OPEN_PR)).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.REVIEW_PR)).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.ASSIGNMENTS)).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.UNREAD)).toBeVisible();
+                await expect(sidebar.refresh).toBeVisible();
+                await expect(sidebar.refresh).toBeEnabled();
 
                 // * Assert counters before refresh
-                await expect(page.getByTestId('sidebar-github-openpr')).toHaveText('0');
-                await expect(page.getByTestId('sidebar-github-reviewpr')).toHaveText('0');
-                await expect(page.getByTestId('sidebar-github-assignments')).toHaveText('0');
-                await expect(page.getByTestId('sidebar-github-unreads')).toHaveText('0');
+                await expect(sidebar.getCounter(GithubRHSCategory.OPEN_PR)).toHaveText('0');
+                await expect(sidebar.getCounter(GithubRHSCategory.REVIEW_PR)).toHaveText('0');
+                await expect(sidebar.getCounter(GithubRHSCategory.ASSIGNMENTS)).toHaveText('0');
+                await expect(sidebar.getCounter(GithubRHSCategory.UNREAD)).toHaveText('0');
             });
 
             test('from connected account (after refresh)', async ({page, pw}) => {
@@ -50,29 +53,31 @@ export default {
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
+                const sidebar = new Sidebar(page);
+
                 // * Unconnected version of icon shouldn't be visible
-                await expect(page.getByTestId('sidebar-github-unconnected')).not.toBeVisible();
+                await expect(sidebar.containerUnconnected).not.toBeVisible();
 
                 // # Click refresh data (fetch, impacts rate limit)
-                await page.getByTestId('sidebar-github-refresh').click();
+                await sidebar.refresh.click();
 
                 // # Waits for 1sec
                 await page.waitForTimeout(1000);
 
                 // * Counters must be visible
-                await expect(page.getByTestId('sidebar-github')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-openpr')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-reviewpr')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-assignments')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-unreads')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-refresh')).toBeVisible();
-                await expect(page.getByTestId('sidebar-github-refresh')).toBeEnabled();
+                await expect(sidebar.container).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.OPEN_PR)).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.REVIEW_PR)).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.ASSIGNMENTS)).toBeVisible();
+                await expect(sidebar.getCounter(GithubRHSCategory.UNREAD)).toBeVisible();
+                await expect(sidebar.refresh).toBeVisible();
+                await expect(sidebar.refresh).toBeEnabled();
 
                 // * Assert counters before refresh
-                await expect(page.getByTestId('sidebar-github-openpr')).toHaveText(expectedData[GithubRHSCategory.OPEN_PR]);
-                await expect(page.getByTestId('sidebar-github-reviewpr')).toHaveText(expectedData[GithubRHSCategory.REVIEW_PR]);
-                await expect(page.getByTestId('sidebar-github-assignments')).toHaveText(expectedData[GithubRHSCategory.ASSIGNMENTS]);
-                await expect(page.getByTestId('sidebar-github-unreads')).toHaveText(expectedData[GithubRHSCategory.UNREAD]);
+                await expect(sidebar.getCounter(GithubRHSCategory.OPEN_PR)).toHaveText(expectedData[GithubRHSCategory.OPEN_PR]);
+                await expect(sidebar.getCounter(GithubRHSCategory.REVIEW_PR)).toHaveText(expectedData[GithubRHSCategory.REVIEW_PR]);
+                await expect(sidebar.getCounter(GithubRHSCategory.ASSIGNMENTS)).toHaveText(expectedData[GithubRHSCategory.ASSIGNMENTS]);
+                await expect(sidebar.getCounter(GithubRHSCategory.UNREAD)).toHaveText(expectedData[GithubRHSCategory.UNREAD]);
             });
         });
     },
@@ -86,11 +91,13 @@ export default {
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
+                const sidebar = new Sidebar(page);
+
                 // * Unconnected version of icon should be visible
-                await expect(page.getByTestId('sidebar-github-unconnected')).toBeVisible();
+                await expect(sidebar.containerUnconnected).toBeVisible();
 
                 // * Unconnected version of icon should have the connect link
-                await expect(page.getByTestId('sidebar-github-unconnected')).toHaveAttribute('href', '/plugins/github/oauth/connect');
+                await expect(sidebar.containerUnconnected).toHaveAttribute('href', '/plugins/github/oauth/connect');
             });
         });
     },
@@ -104,11 +111,13 @@ export default {
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
+                const sidebar = new Sidebar(page);
+
                 // * Unconnected version of icon should be visible
-                await expect(page.getByTestId('sidebar-github-unconnected')).toBeVisible();
+                await expect(sidebar.containerUnconnected).toBeVisible();
 
                 // * Unconnected version of icon should have the connect link
-                await expect(page.getByTestId('sidebar-github-unconnected')).toHaveAttribute('href', '/plugins/github/oauth/connect');
+                await expect(sidebar.containerUnconnected).toHaveAttribute('href', '/plugins/github/oauth/connect');
             });
         });
     },
