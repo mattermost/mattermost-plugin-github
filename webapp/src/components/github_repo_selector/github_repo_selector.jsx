@@ -34,11 +34,14 @@ export default class GithubRepoSelector extends PureComponent {
 
     componentDidMount() {
         this.props.actions.getOrgs();
+        this.props.actions.getReposByOrg("");
     }
 
-    onChangeForOrg = (_, name) => {
-        this.props.actions.getReposByOrg(name);
-        this.setState({org: name})
+    onChangeForOrg = (_, org) => {
+        if (this.state.org != org) {
+            this.setState({org: org}, () => {this.props.actions.getReposByOrg(org)});
+            this.props.onChange(null);
+        }
     }
 
     onChangeForRepo = (_, name) => {
@@ -47,8 +50,8 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     render() {
-        const orgOptions  = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}))
-        orgOptions.unshift({value: "", label: "repositories for authenticated user"})
+        const orgOptions  = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}));
+        orgOptions.unshift({value: "", label: "repositories for authenticated user"});
         const repoOptions = this.props.yourReposByOrg.map((item) => ({value: item.full_name, label: item.name}));
         let orgSelector, helperTextForRepoSelector;
         // If there are no organanizations for authenticated user, then don't show organization selector
