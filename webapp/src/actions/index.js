@@ -88,6 +88,57 @@ export function getReviewsDetails(prList) {
     };
 }
 
+
+export function getOrgs() {
+    return async (dispatch, getState) => {
+        console.log("IN getOrgs")
+        let data;
+        try {
+            data = await Client.getOrganizations();
+        } catch (error) {
+            console.log("getOrgs, err: ", data)
+            return {error: data};
+        }
+
+        console.log("getOrgs", data)
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_ORGANIZATIONs,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function getReposByOrg(organization) {
+    return async (dispatch, getState) => {
+        let data;
+        try {
+            data = await Client.getRepositoriesByOrganization(organization);
+        } catch (error) {
+            return {error: data};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_REPOSITORIES_BY_ORGANIZATION,
+            data,
+        });
+
+        return {data};
+    };
+}
+
 export function getRepos() {
     return async (dispatch, getState) => {
         let data;

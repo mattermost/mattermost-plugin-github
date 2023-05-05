@@ -43,8 +43,16 @@ export default class Client {
         return this.doPost(`${this.url}/user`, {user_id: userID});
     }
 
+    getOrganizations = async () => {
+        return this.doGet(`${this.url}/organizations`);
+    }
+
     getRepositories = async () => {
         return this.doGet(`${this.url}/repositories`);
+    }
+
+    getRepositoriesByOrganization = async (organization) => {
+        return this.doGet(`${this.url}/reposByOrg?organization=${organization}`);
     }
 
     getLabels = async (repo) => {

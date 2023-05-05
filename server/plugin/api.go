@@ -1217,10 +1217,10 @@ func getOrganizationList(c context.Context, userName string, githubClient *githu
 	return allOrgs, nil
 }
 
-func getRepositoryList(c context.Context, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, error) {
+func getRepositoryList(c context.Context, userName string, githubClient *github.Client, opt github.RepositoryListOptions) ([]*github.Repository, error) {
 	var allRepos []*github.Repository
 	for {
-		repos, resp, err := githubClient.Repositories.List(c, userName, &github.RepositoryListOptions{ListOptions: opt})
+		repos, resp, err := githubClient.Repositories.List(c, userName, &opt)
 		if err != nil {
 			return nil, err
 		}
@@ -1267,14 +1267,12 @@ func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http
 	}
 	// Only send down fields to client that are needed
 	type OrganizationResponse struct {
-		Name    string `json:"name,omitempty"`
-		Company string `json:"company,omitempty"`
+		Login string `json:"login,omitempty"`
 	}
 
 	resp := make([]OrganizationResponse, len(allOrgs))
 	for i, r := range allOrgs {
-		resp[i].Name = r.GetName()
-		resp[i].Company = r.GetCompany()
+		resp[i].Login = r.GetLogin()
 	}
 
 	p.writeJSON(w, resp)
@@ -1287,28 +1285,35 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	org := r.URL.Query().Get("organization")
 
-	if org == "" {
-		c.Log.Warnf("Empty organization provided")
-		p.writeAPIError(w, &APIErrorResponse{Message: "Organization is not provided in query", StatusCode: http.StatusBadRequest})
-		return
-	}
+	var allRepos []*github.Repository
+	var err error
+	var statusCode int
 
-	allRepos, statusCode, err := getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
-	if err != nil {
-		if statusCode == http.StatusNotFound {
-			allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
-			if err != nil {
-				c.Log.WithError(err).Warnf("Failed to list repositories")
-				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-				return
-			}
-		} else {
+	// if organization is not given then return repos where authenticated user is owner
+	if org == "" {
+		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, github.RepositoryListOptions{ListOptions: opt, Affiliation: "owner"})
+		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to list repositories")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 			return
 		}
+	} else {
+		allRepos, statusCode, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
+		if err != nil {
+			if statusCode == http.StatusNotFound {
+				allRepos, err = getRepositoryList(c.Ctx, org, githubClient, github.RepositoryListOptions{ListOptions: opt})
+				if err != nil {
+					c.Log.WithError(err).Warnf("Failed to list repositories")
+					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+					return
+				}
+			} else {
+				c.Log.WithError(err).Warnf("Failed to list repositories")
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+				return
+			}
+		}
 	}
-
 	// Only send down fields to client that are needed
 	type RepositoryResponse struct {
 		Name        string          `json:"name,omitempty"`
@@ -1337,7 +1342,7 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 	opt := github.ListOptions{PerPage: 50}
 
 	if org == "" {
-		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, opt)
+		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, github.RepositoryListOptions{ListOptions: opt})
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to list repositories")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
@@ -1347,7 +1352,7 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 		allRepos, statusCode, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
 		if err != nil {
 			if statusCode == http.StatusNotFound {
-				allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
+				allRepos, err = getRepositoryList(c.Ctx, org, githubClient, github.RepositoryListOptions{ListOptions: opt})
 				if err != nil {
 					c.Log.WithError(err).Warnf("Failed to list repositories")
 					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})

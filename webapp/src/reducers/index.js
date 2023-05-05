@@ -104,6 +104,24 @@ function yourPrs(state = [], action) {
     }
 }
 
+function yourOrgs(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_ORGANIZATIONs:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
+function yourReposByOrg(state = [], action) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_REPOSITORIES_BY_ORGANIZATION:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function yourRepos(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REPOSITORIES:
@@ -242,6 +260,8 @@ export default combineReducers({
     reviewsDetails,
     yourPrs,
     yourRepos,
+    yourReposByOrg,
+    yourOrgs,
     yourPrsDetails,
     yourAssignments,
     mentions,

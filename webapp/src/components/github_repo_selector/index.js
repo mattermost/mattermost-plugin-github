@@ -5,20 +5,22 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
 import {id as pluginId} from 'manifest';
-import {getRepos} from '../../actions';
+import {getReposByOrg, getOrgs} from '../../actions';
 
 import GithubRepoSelector from './github_repo_selector.jsx';
 
 function mapStateToProps(state) {
     return {
-        yourRepos: state[`plugins-${pluginId}`].yourRepos,
+        yourOrgs: state[`plugins-${pluginId}`].yourOrgs,
+        yourReposByOrg: state[`plugins-${pluginId}`].yourReposByOrg,
     };
 }
 
 function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators({
-            getRepos,
+            getOrgs,
+            getReposByOrg
         }, dispatch),
     };
 }
