@@ -91,16 +91,12 @@ export function getReviewsDetails(prList) {
 
 export function getOrgs() {
     return async (dispatch, getState) => {
-        console.log("IN getOrgs")
         let data;
         try {
             data = await Client.getOrganizations();
         } catch (error) {
-            console.log("getOrgs, err: ", data)
             return {error: data};
         }
-
-        console.log("getOrgs", data)
 
         const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
         if (!connected) {
