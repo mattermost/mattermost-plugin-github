@@ -146,6 +146,8 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/labels", p.checkAuth(p.attachUserContext(p.getLabels), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/milestones", p.checkAuth(p.attachUserContext(p.getMilestones), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/assignees", p.checkAuth(p.attachUserContext(p.getAssignees), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/organizations", p.checkAuth(p.attachUserContext(p.getOrganizations), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/reposByOrg", p.checkAuth(p.attachUserContext(p.getReposByOrg), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.checkAuth(p.attachUserContext(p.getRepositories), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.checkAuth(p.attachUserContext(p.updateSettings), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/issue", p.checkAuth(p.attachUserContext(p.getIssueByNumber), ResponseTypePlain)).Methods(http.MethodGet)
@@ -1196,6 +1198,25 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 	p.writeJSON(w, allMilestones)
 }
 
+func getOrganizationList(c context.Context, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Organization, error) {
+	var allOrgs []*github.Organization
+	for {
+		orgs, resp, err := githubClient.Organizations.List(c, userName, &opt)
+		if err != nil {
+			return nil, err
+		}
+
+		allOrgs = append(allOrgs, orgs...)
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opt.Page = resp.NextPage
+	}
+
+	return allOrgs, nil
+}
+
 func getRepositoryList(c context.Context, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, error) {
 	var allRepos []*github.Repository
 	for {
@@ -1231,6 +1252,78 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 	}
 
 	return allRepos, http.StatusOK, nil
+}
+
+func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+
+	opt := github.ListOptions{PerPage: 50}
+
+	allOrgs, err := getOrganizationList(c.Ctx, "", githubClient, opt)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to list organizations")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch organizations", StatusCode: http.StatusInternalServerError})
+		return
+	}
+	// Only send down fields to client that are needed
+	type OrganizationResponse struct {
+		Name    string `json:"name,omitempty"`
+		Company string `json:"company,omitempty"`
+	}
+
+	resp := make([]OrganizationResponse, len(allOrgs))
+	for i, r := range allOrgs {
+		resp[i].Name = r.GetName()
+		resp[i].Company = r.GetCompany()
+	}
+
+	p.writeJSON(w, resp)
+}
+
+func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+
+	opt := github.ListOptions{PerPage: 50}
+
+	org := r.URL.Query().Get("organization")
+
+	if org == "" {
+		c.Log.Warnf("Empty organization provided")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Organization is not provided in query", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	allRepos, statusCode, err := getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
+	if err != nil {
+		if statusCode == http.StatusNotFound {
+			allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
+			if err != nil {
+				c.Log.WithError(err).Warnf("Failed to list repositories")
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+				return
+			}
+		} else {
+			c.Log.WithError(err).Warnf("Failed to list repositories")
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+			return
+		}
+	}
+
+	// Only send down fields to client that are needed
+	type RepositoryResponse struct {
+		Name        string          `json:"name,omitempty"`
+		FullName    string          `json:"full_name,omitempty"`
+		Permissions map[string]bool `json:"permissions,omitempty"`
+	}
+
+	resp := make([]RepositoryResponse, len(allRepos))
+	for i, r := range allRepos {
+		resp[i].Name = r.GetName()
+		resp[i].FullName = r.GetFullName()
+		resp[i].Permissions = r.GetPermissions()
+	}
+
+	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
