@@ -23,7 +23,7 @@ func (p *Plugin) sendOAuthCompleteEvent(event OAuthCompleteEvent) {
 func (p *Plugin) sendMessageToCluster(id string, v interface{}) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		p.API.LogWarn("couldn't get JSON bytes from cluster message",
+		p.client.Log.Warn("couldn't get JSON bytes from cluster message",
 			"id", id,
 			"error", err,
 		)
@@ -35,8 +35,8 @@ func (p *Plugin) sendMessageToCluster(id string, v interface{}) {
 		SendType: model.PluginClusterEventSendTypeReliable,
 	}
 
-	if err := p.API.PublishPluginClusterEvent(event, opts); err != nil {
-		p.API.LogWarn("error publishing cluster event",
+	if err := p.client.Cluster.PublishPluginEvent(event, opts); err != nil {
+		p.client.Log.Warn("error publishing cluster event",
 			"id", id,
 			"error", err,
 		)
@@ -48,7 +48,7 @@ func (p *Plugin) HandleClusterEvent(ev model.PluginClusterEvent) {
 	case webHookPingEventID:
 		var event github.PingEvent
 		if err := json.Unmarshal(ev.Data, &event); err != nil {
-			p.API.LogWarn("cannot unmarshal cluster event with GitHub ping event", "error", err)
+			p.client.Log.Warn("cannot unmarshal cluster event with GitHub ping event", "error", err)
 			return
 		}
 
@@ -56,12 +56,12 @@ func (p *Plugin) HandleClusterEvent(ev model.PluginClusterEvent) {
 	case oauthCompleteEventID:
 		var event OAuthCompleteEvent
 		if err := json.Unmarshal(ev.Data, &event); err != nil {
-			p.API.LogWarn("cannot unmarshal cluster event with OAuth complete event", "error", err)
+			p.client.Log.Warn("cannot unmarshal cluster event with OAuth complete event", "error", err)
 			return
 		}
 
 		p.oauthBroker.publishOAuthComplete(event.UserID, event.Err, true)
 	default:
-		p.API.LogWarn("unknown cluster event", "id", ev.Id)
+		p.client.Log.Warn("unknown cluster event", "id", ev.Id)
 	}
 }

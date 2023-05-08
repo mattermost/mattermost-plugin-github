@@ -6,7 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v41 v41.0.0
 	github.com/gorilla/mux v1.8.0
-	github.com/mattermost/mattermost-plugin-api v0.1.1
+	github.com/mattermost/mattermost-plugin-api v0.1.3
 	// mmgoget: github.com/mattermost/mattermost-server/v6@v7.5.0 is replaced by -> github.com/mattermost/mattermost-server/v6@21aec2741b
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221109191448-21aec2741bfe
 	github.com/microcosm-cc/bluemonday v1.0.19
@@ -79,9 +79,9 @@ require (
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
-	golang.org/x/net v0.0.0-20220812174116-3211cb980234 // indirect
-	golang.org/x/sys v0.0.0-20220817070843-5a390386f1f2 // indirect
-	golang.org/x/text v0.3.8 // indirect
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220817144833-d7fd3f11b9b1 // indirect
 	google.golang.org/grpc v1.48.0 // indirect

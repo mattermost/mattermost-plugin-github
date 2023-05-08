@@ -68,7 +68,7 @@ func validateFeatures(features []string) (bool, []string) {
 }
 
 func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
-	iconData, err := command.GetIconData(p.API, "assets/icon-bg.svg")
+	iconData, err := command.GetIconData(&p.client.System, "assets/icon-bg.svg")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get icon data")
 	}
@@ -90,11 +90,12 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 		RootId:    args.RootId,
 		Message:   text,
 	}
-	_ = p.API.SendEphemeralPost(args.UserId, post)
+	p.client.Post.SendEphemeralPost(args.UserId, post)
 }
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
-	mutedUsernameBytes, err := p.API.KVGet(userInfo.UserID + "-muted-users")
+	var mutedUsernameBytes []byte
+	err := p.client.KV.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
 	if err != nil {
 		return nil
 	}
@@ -145,9 +146,12 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	} else {
 		mutedUsers = username
 	}
-	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(mutedUsers)); err != nil {
+
+	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
+	if err != nil {
 		return "Error occurred saving list of muted users"
 	}
+
 	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
@@ -155,16 +159,21 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
-	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ","))); err != nil {
+
+	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
+	if err != nil {
 		return "Error occurred unmuting users"
 	}
+
 	return fmt.Sprintf("`%v`", username) + " is no longer muted"
 }
 
 func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
-	if err := p.API.KVSet(userInfo.UserID+"-muted-users", []byte("")); err != nil {
+	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(""))
+	if err != nil {
 		return "Error occurred unmuting users"
 	}
+
 	return "Unmuted all users"
 }
 
@@ -337,7 +346,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
-		p.API.LogWarn("Failed to fetch repository", "error", err.Error())
+		p.client.Log.Warn("Failed to fetch repository", "error", err.Error())
 	} else if ghRepo != nil && ghRepo.GetPrivate() {
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
@@ -353,7 +362,7 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	repo := parameters[0]
 
 	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
-		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
+		p.client.Log.Warn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
@@ -370,7 +379,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
 	if err != nil {
-		p.API.LogWarn("Failed get get Todos", "error", err.Error())
+		p.client.Log.Warn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
 	}
 
@@ -391,7 +400,7 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	message, err := renderTemplate("helpText", p.getConfiguration())
 	if err != nil {
-		p.API.LogWarn("Failed to render help template", "error", err.Error())
+		p.client.Log.Warn("Failed to render help template", "error", err.Error())
 		return "Encountered an error posting help text."
 	}
 
@@ -438,15 +447,15 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		if userInfo.Settings.Notifications {
 			err := p.storeGitHubToUserIDMapping(userInfo.GitHubUsername, userInfo.UserID)
 			if err != nil {
-				p.API.LogWarn("Failed to store GitHub to userID mapping",
+				p.client.Log.Warn("Failed to store GitHub to userID mapping",
 					"userID", userInfo.UserID,
 					"GitHub username", userInfo.GitHubUsername,
 					"error", err.Error())
 			}
 		} else {
-			err := p.API.KVDelete(userInfo.GitHubUsername + githubUsernameKey)
+			err := p.client.KV.Delete(userInfo.GitHubUsername + githubUsernameKey)
 			if err != nil {
-				p.API.LogWarn("Failed to delete GitHub to userID mapping",
+				p.client.Log.Warn("Failed to delete GitHub to userID mapping",
 					"userID", userInfo.UserID,
 					"GitHub username", userInfo.GitHubUsername,
 					"error", err.Error())
@@ -456,7 +465,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 
 	err := p.storeGitHubUserInfo(userInfo)
 	if err != nil {
-		p.API.LogWarn("Failed to store github user info", "error", err.Error())
+		p.client.Log.Warn("Failed to store github user info", "error", err.Error())
 		return "Failed to store settings"
 	}
 
@@ -484,7 +493,7 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {
-		p.API.LogWarn("Failed to check if user is System Admin", "error", err.Error())
+		p.client.Log.Warn("Failed to check if user is System Admin", "error", err.Error())
 
 		return "Error checking user's permissions"
 	}
@@ -520,9 +529,9 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
-	user, appErr := p.API.GetUser(userID)
-	if appErr != nil {
-		return false, appErr
+	user, err := p.client.User.Get(userID)
+	if err != nil {
+		return false, err
 	}
 	if !strings.Contains(user.Roles, "system_admin") {
 		return false, nil
@@ -562,7 +571,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		switch {
 		case err != nil:
 			text = "Error checking user's permissions"
-			p.API.LogWarn(text, "error", err.Error())
+			p.client.Log.Warn(text, "error", err.Error())
 		case isSysAdmin:
 			text = fmt.Sprintf("Before using this plugin, you'll need to configure it by running `/github setup`: %s", validationErr.Error())
 		default:
@@ -574,7 +583,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		siteURL := p.API.GetConfig().ServiceSettings.SiteURL
+		siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
 		if siteURL == nil {
 			p.postCommandResponse(args, "Encountered an error connecting to GitHub.")
 			return &model.CommandResponse{}, nil

@@ -12,7 +12,6 @@ import (
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
 
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -21,6 +20,11 @@ import (
 type PingBroker interface {
 	UnsubscribePings(ch <-chan *github.PingEvent)
 	SubscribePings() <-chan *github.PingEvent
+}
+
+type Tracker interface {
+	TrackEvent(event string, properties map[string]interface{})
+	TrackUserEvent(event, userID string, properties map[string]interface{})
 }
 
 type FlowManager struct {
@@ -32,7 +36,7 @@ type FlowManager struct {
 	getGitHubClient  func(ctx context.Context, userID string) (*github.Client, error)
 
 	pingBroker PingBroker
-	tracker    telemetry.Tracker
+	tracker    Tracker
 
 	setupFlow        *flow.Flow
 	oauthFlow        *flow.Flow
@@ -50,7 +54,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		getGitHubClient:  p.GetGitHubClient,
 
 		pingBroker: p.webhookBroker,
-		tracker:    p.tracker,
+		tracker:    p,
 	}
 
 	fm.setupFlow = fm.newFlow("setup").WithSteps(
@@ -223,14 +227,14 @@ func (fm *FlowManager) StartSetupWizard(userID string, delegatedFrom string) err
 }
 
 func (fm *FlowManager) trackStartSetupWizard(userID string, fromInvite bool) {
-	_ = fm.tracker.TrackUserEvent("setup_wizard_start", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("setup_wizard_start", userID, map[string]interface{}{
 		"from_invite": fromInvite,
 		"time":        model.GetMillis(),
 	})
 }
 
 func (fm *FlowManager) trackCompleteSetupWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("setup_wizard_complete", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("setup_wizard_complete", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
@@ -249,13 +253,13 @@ func (fm *FlowManager) StartOauthWizard(userID string) error {
 }
 
 func (fm *FlowManager) trackStartOauthWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("oauth_wizard_start", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("oauth_wizard_start", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
 
 func (fm *FlowManager) trackCompleteOauthWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("oauth_wizard_complete", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("oauth_wizard_complete", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
@@ -591,13 +595,13 @@ func (fm *FlowManager) StartWebhookWizard(userID string) error {
 }
 
 func (fm *FlowManager) trackStartWebhookWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("webhook_wizard_start", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("webhook_wizard_start", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
 
 func (fm *FlowManager) trackCompleteWebhookWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("webhook_wizard_complete", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("webhook_wizard_complete", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
@@ -755,13 +759,13 @@ func (fm *FlowManager) StartAnnouncementWizard(userID string) error {
 }
 
 func (fm *FlowManager) trackStartAnnouncementWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("announcement_wizard_start", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("announcement_wizard_start", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }
 
 func (fm *FlowManager) trackCompletAnnouncementWizard(userID string) {
-	_ = fm.tracker.TrackUserEvent("announcement_wizard_complete", userID, map[string]interface{}{
+	fm.tracker.TrackUserEvent("announcement_wizard_complete", userID, map[string]interface{}{
 		"time": model.GetMillis(),
 	})
 }

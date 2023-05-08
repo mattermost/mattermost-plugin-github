@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/hex"
+	"path"
 	"strings"
 	"time"
 
@@ -75,7 +76,7 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 			case "commit":
 				r.permalinkInfo.commit = m[j]
 			case "path":
-				r.permalinkInfo.path = m[j]
+				r.permalinkInfo.path = strings.TrimPrefix(path.Join("/", m[j]), "/")
 			case "line":
 				r.permalinkInfo.line = m[j]
 			}
@@ -95,7 +96,7 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 		r := replacements[i]
 		// quick bailout if the commit hash is not proper.
 		if _, err := hex.DecodeString(r.permalinkInfo.commit); err != nil {
-			p.API.LogWarn("Bad git commit hash in permalink", "error", err.Error(), "hash", r.permalinkInfo.commit)
+			p.client.Log.Warn("Bad git commit hash in permalink", "error", err.Error(), "hash", r.permalinkInfo.commit)
 			continue
 		}
 
@@ -106,7 +107,7 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 		if config.EnableCodePreview != "privateAndPublic" {
 			repo, _, err := ghClient.Repositories.Get(ctx, r.permalinkInfo.user, r.permalinkInfo.repo)
 			if err != nil {
-				p.API.LogWarn("Error while fetching repository information",
+				p.client.Log.Warn("Error while fetching repository information",
 					"error", err.Error(),
 					"repo", r.permalinkInfo.repo,
 					"user", r.permalinkInfo.user)
@@ -126,17 +127,17 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 		fileContent, _, _, err := ghClient.Repositories.GetContents(ctx,
 			r.permalinkInfo.user, r.permalinkInfo.repo, r.permalinkInfo.path, &opts)
 		if err != nil {
-			p.API.LogWarn("Error while fetching file contents", "error", err.Error(), "path", r.permalinkInfo.path)
+			p.client.Log.Warn("Error while fetching file contents", "error", err.Error(), "path", r.permalinkInfo.path)
 			continue
 		}
 		// this is not a file, ignore.
 		if fileContent == nil {
-			p.API.LogWarn("Permalink is not a file", "file", r.permalinkInfo.path)
+			p.client.Log.Warn("Permalink is not a file", "file", r.permalinkInfo.path)
 			continue
 		}
 		decoded, err := fileContent.GetContent()
 		if err != nil {
-			p.API.LogWarn("Error while decoding file contents", "error", err.Error(), "path", r.permalinkInfo.path)
+			p.client.Log.Warn("Error while decoding file contents", "error", err.Error(), "path", r.permalinkInfo.path)
 			continue
 		}
 
@@ -153,10 +154,10 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 		}
 		lines, err := filterLines(decoded, start, end)
 		if err != nil {
-			p.API.LogWarn("Error while filtering lines", "error", err.Error(), "path", r.permalinkInfo.path)
+			p.client.Log.Warn("Error while filtering lines", "error", err.Error(), "path", r.permalinkInfo.path)
 		}
 		if lines == "" {
-			p.API.LogWarn("Line numbers out of range. Skipping.", "file", r.permalinkInfo.path, "start", start, "end", end)
+			p.client.Log.Warn("Line numbers out of range. Skipping.", "file", r.permalinkInfo.path, "start", start, "end", end)
 			continue
 		}
 		final := getCodeMarkdown(r.permalinkInfo.user, r.permalinkInfo.repo, r.permalinkInfo.path, r.word, lines, isTruncated)

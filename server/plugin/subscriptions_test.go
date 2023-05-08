@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,6 +27,7 @@ func pluginWithMockedSubs(subscriptions []*Subscription) *Plugin {
 	jsn, _ := json.Marshal(subs)
 	mockPluginAPI.On("KVGet", SubscriptionsKey).Return(jsn, nil)
 	p.SetAPI(mockPluginAPI)
+	p.client = pluginapi.NewClient(p.API, p.Driver)
 	return p
 }
 
