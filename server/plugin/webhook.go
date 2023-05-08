@@ -181,7 +181,7 @@ func (wb *WebhookBroker) Close() {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
+	config := p.configService.GetConfiguration()
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -297,9 +297,9 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	config := p.getConfiguration()
+	config := p.configService.GetConfiguration()
 
-	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.getBaseURL())
+	owner, repo := parseOwnerAndRepo(ownerAndRepo, config.GetBaseURL())
 
 	if owner == "" {
 		return false
@@ -308,12 +308,12 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 		return false
 	}
 
-	info, apiErr := p.getGitHubUserInfo(userID)
+	info, apiErr := p.GetGitHubUserInfo(userID)
 	if apiErr != nil {
 		return false
 	}
 	ctx := context.Background()
-	githubClient := p.githubConnectUser(ctx, info)
+	githubClient := p.GithubConnectUser(ctx, info)
 
 	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
 		if err != nil {
@@ -330,14 +330,14 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 		return false
 	}
 
-	info, err := p.getGitHubUserInfo(subscription.CreatorID)
+	info, err := p.GetGitHubUserInfo(subscription.CreatorID)
 	if err != nil {
 		p.client.Log.Warn("Failed to exclude org member", "error", err.Message)
 		return false
 	}
 
-	githubClient := p.githubConnectUser(context.Background(), info)
-	organization := p.getConfiguration().GitHubOrg
+	githubClient := p.GithubConnectUser(context.Background(), info)
+	organization := p.configService.GetConfiguration().GitHubOrg
 
 	return p.isUserOrganizationMember(githubClient, user, organization)
 }

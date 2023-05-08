@@ -89,7 +89,7 @@ func (p *Plugin) getReplacements(msg string) []replacement {
 // makeReplacements perform the given replacements on the msg and returns
 // the new msg. The replacements slice needs to be sorted by the index in ascending order.
 func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClient *github.Client) string {
-	config := p.getConfiguration()
+	config := p.configService.GetConfiguration()
 
 	// iterating the slice in reverse to preserve the replacement indices.
 	for i := len(replacements) - 1; i >= 0; i-- {

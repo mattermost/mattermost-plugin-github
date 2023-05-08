@@ -1,4 +1,4 @@
-package plugin
+package config
 
 import (
 	"testing"
@@ -157,7 +157,7 @@ func TestSetDefaults(t *testing.T) {
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
-			changed, err := testCase.config.setDefaults(testCase.isCloud)
+			changed, err := testCase.config.SetDefaults(testCase.isCloud)
 
 			assert.Equal(t, testCase.shouldChange, changed)
 			testCase.outputCheck(t, &testCase.config)

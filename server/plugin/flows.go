@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
+	"github.com/mattermost/mattermost-plugin-github/server/config"
 
 	"github.com/pkg/errors"
 
@@ -32,7 +33,7 @@ type FlowManager struct {
 	pluginURL        string
 	botUserID        string
 	router           *mux.Router
-	getConfiguration func() *Configuration
+	getConfiguration func() *config.Configuration
 	getGitHubClient  func(ctx context.Context, userID string) (*github.Client, error)
 
 	pingBroker PingBroker
@@ -50,7 +51,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		pluginURL:        *p.client.Configuration.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id,
 		botUserID:        p.BotUserID,
 		router:           p.router,
-		getConfiguration: p.getConfiguration,
+		getConfiguration: p.configService.GetConfiguration,
 		getGitHubClient:  p.GetGitHubClient,
 
 		pingBroker: p.webhookBroker,
@@ -206,7 +207,7 @@ func (fm *FlowManager) getBaseState() flow.State {
 	config := fm.getConfiguration()
 	isOAuthConfigured := config.GitHubOAuthClientID != "" || config.GitHubOAuthClientSecret != ""
 	return flow.State{
-		keyBaseURL:                     config.getBaseURL(),
+		keyBaseURL:                     config.GetBaseURL(),
 		keyUsePreregisteredApplication: config.UsePreregisteredApplication,
 		keyIsOAuthConfigured:           isOAuthConfigured,
 	}
@@ -443,7 +444,7 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 	config := fm.getConfiguration()
 	config.EnterpriseBaseURL = baseURL
 	config.EnterpriseUploadURL = uploadURL
-	config.sanitize()
+	config.Sanitize()
 
 	configMap, err := config.ToMap()
 	if err != nil {
@@ -456,7 +457,7 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 	}
 
 	return "", flow.State{
-		keyBaseURL: config.getBaseURL(),
+		keyBaseURL: config.GetBaseURL(),
 	}, nil, nil
 }
 
@@ -653,7 +654,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 
 	config := fm.getConfiguration()
 
-	org, repo := parseOwnerAndRepo(repoOrg, config.getBaseURL())
+	org, repo := ParseOwnerAndRepo(repoOrg, config.GetBaseURL())
 	if org == "" && repo == "" {
 		return "", nil, nil, errors.New("invalid format")
 	}

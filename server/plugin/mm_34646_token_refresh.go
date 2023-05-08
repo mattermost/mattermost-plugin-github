@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
+	"github.com/mattermost/mattermost-plugin-github/server/config"
 )
 
 const pageSize = 100
@@ -15,7 +16,7 @@ const delayBetweenUsers = 1 * time.Second
 const delayToStart = 1 * time.Minute
 
 func (p *Plugin) forceResetAllMM34646() error {
-	config := p.getConfiguration()
+	config := p.configService.GetConfiguration()
 	ctx := context.Background()
 
 	time.Sleep(delayToStart)
@@ -60,7 +61,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 				continue
 			}
 
-			info, errResp := p.getGitHubUserInfo(tryInfo.UserID)
+			info, errResp := p.GetGitHubUserInfo(tryInfo.UserID)
 			if errResp != nil {
 				p.client.Log.Warn("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
 					"error", errResp.Error())
@@ -90,7 +91,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 	return nil
 }
 
-func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *GitHubUserInfo) (string, error) {
+func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *config.Configuration, info *GitHubUserInfo) (string, error) {
 	if info.MM34646ResetTokenDone {
 		return info.Token.AccessToken, nil
 	}
@@ -110,7 +111,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 
 	info.Token.AccessToken = *a.Token
 	info.MM34646ResetTokenDone = true
-	err = p.storeGitHubUserInfo(info)
+	err = p.StoreGitHubUserInfo(info)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
 	}
@@ -119,7 +120,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 	return *a.Token, nil
 }
 
-func (p *Plugin) getResetUserTokenMM34646Client(config *Configuration) (*github.Client, error) {
+func (p *Plugin) getResetUserTokenMM34646Client(config *config.Configuration) (*github.Client, error) {
 	t := &github.BasicAuthTransport{
 		Username: config.GitHubOAuthClientID,
 		Password: config.GitHubOAuthClientSecret,

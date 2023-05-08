@@ -76,7 +76,7 @@ func TestParseOwnerAndRepo(t *testing.T) {
 
 	for i, tc := range tcs {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
-			owner, repo := parseOwnerAndRepo(tc.Full, tc.BaseURL)
+			owner, repo := ParseOwnerAndRepo(tc.Full, tc.BaseURL)
 
 			assert.Equal(t, tc.ExpectedOwner, owner)
 			assert.Equal(t, tc.ExpectedRepo, repo)

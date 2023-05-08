@@ -15,7 +15,6 @@ const (
 	SubscriptionsKey     = "subscriptions"
 	flagExcludeOrgMember = "exclude-org-member"
 	flagRenderStyle      = "render-style"
-	flagFeatures         = "features"
 )
 
 type SubscriptionFlags struct {
@@ -314,9 +313,9 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 }
 
 func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	config := p.getConfiguration()
+	config := p.configService.GetConfiguration()
 
-	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
+	owner, repo := parseOwnerAndRepo(repo, config.GetBaseURL())
 	if owner == "" && repo == "" {
 		return errors.New("invalid repository")
 	}

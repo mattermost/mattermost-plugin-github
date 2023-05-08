@@ -1,4 +1,4 @@
-package plugin
+package command
 
 import (
 	"fmt"

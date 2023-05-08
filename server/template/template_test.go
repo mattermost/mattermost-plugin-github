@@ -1,4 +1,4 @@
-package plugin
+package template
 
 import (
 	"strings"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v41/github"
+	"github.com/mattermost/mattermost-plugin-github/server/plugin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -239,7 +240,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newPR", plugin.GetEventWithRenderConfig(
 			&github.PullRequestEvent{
 				Repo:        &repo,
 				PullRequest: &pullRequest,
@@ -262,7 +263,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newPR", plugin.GetEventWithRenderConfig(
 			&github.PullRequestEvent{
 				Repo:        &repo,
 				PullRequest: &pullRequestWithMentions,
@@ -286,7 +287,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newPR", plugin.GetEventWithRenderConfig(
 			&github.PullRequestEvent{
 				Repo:        &repo,
 				PullRequest: &pullRequestWithLabelAndAssignee,
@@ -310,7 +311,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 `
 
-		actual, err := renderTemplate("newPR", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newPR", plugin.GetEventWithRenderConfig(
 			&github.PullRequestEvent{
 				Repo:        &repo,
 				PullRequest: &pullRequestWithMultipleLabelsAndAssignees,
@@ -327,13 +328,13 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was opened by [panda](https://github.com/panda).
 `
 
-		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
+		actual, err := renderTemplate("newPR", &plugin.EventWithRenderConfig{
 			Event: &github.PullRequestEvent{
 				Repo:        &repo,
 				PullRequest: &pullRequest,
 				Sender:      &user,
 			},
-			Config: RenderConfig{
+			Config: plugin.RenderConfig{
 				Style: "collapsed",
 			},
 		})
@@ -348,13 +349,13 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 #new-pull-request by [panda](https://github.com/panda)
 `
 
-		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
+		actual, err := renderTemplate("newPR", &plugin.EventWithRenderConfig{
 			Event: &github.PullRequestEvent{
 				Repo:        &repo,
 				PullRequest: &pullRequest,
 				Sender:      &user,
 			},
-			Config: RenderConfig{
+			Config: plugin.RenderConfig{
 				Style: "skip-body",
 			},
 		})
@@ -422,7 +423,7 @@ func TestNewIssueTemplate(t *testing.T) {
 git-get-head sounds like a great feature we should support
 `
 
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newIssue", plugin.GetEventWithRenderConfig(
 			&github.IssuesEvent{
 				Repo:   &repo,
 				Issue:  &issue,
@@ -444,7 +445,7 @@ git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
 `
 
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newIssue", plugin.GetEventWithRenderConfig(
 			&github.IssuesEvent{
 				Repo:   &repo,
 				Issue:  &issueWithMentions,
@@ -467,7 +468,7 @@ Assignees: [panda](https://github.com/panda)
 git-get-head sounds like a great feature we should support
 `
 
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newIssue", plugin.GetEventWithRenderConfig(
 			&github.IssuesEvent{
 				Repo:   &repo,
 				Issue:  &issueWithLabelAndAssignee,
@@ -490,7 +491,7 @@ Assignees: [panda](https://github.com/panda), [panda](https://github.com/panda)
 git-get-head sounds like a great feature we should support
 `
 
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
+		actual, err := renderTemplate("newIssue", plugin.GetEventWithRenderConfig(
 			&github.IssuesEvent{
 				Repo:   &repo,
 				Issue:  &issueWithMultipleLabelsAndAssignee,
@@ -507,13 +508,13 @@ git-get-head sounds like a great feature we should support
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) opened by [panda](https://github.com/panda).
 `
 
-		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
+		actual, err := renderTemplate("newIssue", &plugin.EventWithRenderConfig{
 			Event: &github.IssuesEvent{
 				Repo:   &repo,
 				Issue:  &issue,
 				Sender: &user,
 			},
-			Config: RenderConfig{
+			Config: plugin.RenderConfig{
 				Style: "collapsed",
 			},
 		})
@@ -528,13 +529,13 @@ git-get-head sounds like a great feature we should support
 #new-issue by [panda](https://github.com/panda)
 `
 
-		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
+		actual, err := renderTemplate("newIssue", &plugin.EventWithRenderConfig{
 			Event: &github.IssuesEvent{
 				Repo:   &repo,
 				Issue:  &issue,
 				Sender: &user,
 			},
-			Config: RenderConfig{
+			Config: plugin.RenderConfig{
 				Style: "skip-body",
 			},
 		})
@@ -548,7 +549,7 @@ func TestClosedIssueTemplate(t *testing.T) {
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("closedIssue", GetEventWithRenderConfig(
+	actual, err := renderTemplate("closedIssue", plugin.GetEventWithRenderConfig(
 		&github.IssuesEvent{
 			Repo:   &repo,
 			Issue:  &issue,
@@ -565,7 +566,7 @@ func TestReopenedIssueTemplate(t *testing.T) {
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) reopened by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("reopenedIssue", GetEventWithRenderConfig(
+	actual, err := renderTemplate("reopenedIssue", plugin.GetEventWithRenderConfig(
 		&github.IssuesEvent{
 			Repo:   &repo,
 			Issue:  &issue,
@@ -584,7 +585,7 @@ func TestIssueLabelledTemplate(t *testing.T) {
 #issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("issueLabelled", GetEventWithRenderConfig(
+	actual, err := renderTemplate("issueLabelled", plugin.GetEventWithRenderConfig(
 		&github.IssuesEvent{
 			Repo:  &repo,
 			Issue: &issue,

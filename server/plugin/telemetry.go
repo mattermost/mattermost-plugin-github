@@ -28,7 +28,7 @@ func (p *Plugin) TrackUserEvent(event, userID string, properties map[string]inte
 }
 
 func (p *Plugin) SendDailyTelemetry() {
-	config := p.getConfiguration()
+	config := p.configService.GetConfiguration()
 
 	connectedUserCount, err := p.getConnectedUserCount()
 	if err != nil {
