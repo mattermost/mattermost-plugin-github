@@ -6,11 +6,7 @@
 /* eslint-disable no-process-env */
 import {ExpiryAlgorithms, makeOAuthServer} from '../mock_oauth_server/mock_oauth_server';
 
-const mockOAuthAccessToken = process.env.PLUGIN_E2E_MOCK_OAUTH_TOKEN;
-if (!mockOAuthAccessToken) {
-    console.error('Please provide an OAuth access token to use via env var PLUGIN_E2E_MOCK_OAUTH_TOKEN');
-    process.exit(1);
-}
+import {mockOAuthAccessToken} from './creds';
 
 export const runOAuthServer = async () => {
     const defaultAuthorizePrefix = '/login/oauth'; // Used by GitHub

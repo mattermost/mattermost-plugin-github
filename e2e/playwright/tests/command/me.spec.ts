@@ -28,6 +28,7 @@ export default {
 
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
+                await page.waitForTimeout(5000);
 
                 const c = new pages.ChannelsPage(page);
 
@@ -73,6 +74,7 @@ export default {
 
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
+                await page.waitForTimeout(5000);
 
                 const c = new pages.ChannelsPage(page);
 
@@ -112,6 +114,7 @@ export default {
 
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
+                await page.waitForTimeout(5000);
 
                 const c = new pages.ChannelsPage(page);
 

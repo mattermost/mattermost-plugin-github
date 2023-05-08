@@ -11,6 +11,7 @@ import {messages} from '../../support/constants';
 import {getGithubBotDMPageURL, getPostMessageLocatorId, waitForNewMessages} from '../../support/utils';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 import CreateIssueForm from '../../support/components/github_create_issue_modal_fixture';
+import {closeIssue} from '../../support/github_cleanup';
 
 export default {
     connected: () => {
@@ -23,6 +24,7 @@ export default {
 
                 const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(URL, {waitUntil: 'load'});
+                await page.waitForTimeout(5000);
 
                 const c = new pages.ChannelsPage(page);
 
@@ -70,9 +72,14 @@ export default {
                 const text = await issueLinkLocator.innerText();
 
                 // [#4](https://github.com/MM-Github-Testorg/testrepo/issues/4)
-                expect(text[0]).toEqual('#');
-                const issueUrlMatch = `https://github.com/${repoName}/issues/${text.substring(1)}`;
+                const issueNum = text.substring(1);
+                const issueUrlMatch = `https://github.com/${repoName}/issues/${issueNum}`;
                 expect(href).toEqual(issueUrlMatch);
+
+                const owner = 'MM-Github-Testorg';
+                const repo = 'testrepo';
+                const issueNumber = parseInt(issueNum, 10);
+                await closeIssue(owner, repo, issueNumber);
             });
         });
     },
@@ -125,6 +132,7 @@ export default {
 
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
+                await page.waitForTimeout(5000);
 
                 const c = new pages.ChannelsPage(page);
 
