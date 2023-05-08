@@ -157,7 +157,6 @@ jobs:
         env:
           PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.MM_GITHUB_PLUGIN_E2E_TOKEN }}
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
-          DEBUG: pw:api
 
       - name: ci/move-artifacts
         if: success() || failure()
