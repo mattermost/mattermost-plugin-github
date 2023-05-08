@@ -51,7 +51,32 @@ export default {
                 await expect(rhs.title).toHaveAttribute('rel', 'noopener noreferrer');
 
                 // * Assert RHS item count is correct
-                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.OPEN_PR]));
+                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.OPEN_PR].count));
+
+                // # Get first item
+                const item = await rhs.getItem(0);
+                const expectedItem = expectedData[GithubRHSCategory.OPEN_PR].firstItem;
+
+                // * Assert Title / Link
+                await expect(item.title).toHaveText(expectedItem.title);
+                await expect(item.title).toHaveAttribute('href', expectedItem.link);
+                await expect(item.title).toHaveAttribute('target', '_blank');
+                await expect(item.title).toBeEnabled();
+
+                // * Assert ID
+                await expect(item.id).toHaveText(expectedItem.id);
+                await expect(item.id).toHaveAttribute('href', expectedItem.link);
+                await expect(item.id).toHaveAttribute('target', '_blank');
+                await expect(item.id).toBeEnabled();
+
+                // * Assert Repository
+                await expect(item.repo).toHaveText(`(${expectedItem.repo})`);
+
+                // * Assert Description
+                for (const r of expectedItem.descriptionRegex) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await expect(item.description).toHaveText(r);
+                }
             });
 
             test('Your review PRs', async ({page, pw}) => {
@@ -88,7 +113,32 @@ export default {
                 await expect(rhs.title).toHaveAttribute('rel', 'noopener noreferrer');
 
                 // * Assert RHS item count is correct
-                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.REVIEW_PR]));
+                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.REVIEW_PR].count));
+
+                // # Get first item
+                const item = await rhs.getItem(0);
+                const expectedItem = expectedData[GithubRHSCategory.REVIEW_PR].firstItem;
+
+                // * Assert Title / Link
+                await expect(item.title).toHaveText(expectedItem.title);
+                await expect(item.title).toHaveAttribute('href', expectedItem.link);
+                await expect(item.title).toHaveAttribute('target', '_blank');
+                await expect(item.title).toBeEnabled();
+
+                // * Assert ID
+                await expect(item.id).toHaveText(expectedItem.id);
+                await expect(item.id).toHaveAttribute('href', expectedItem.link);
+                await expect(item.id).toHaveAttribute('target', '_blank');
+                await expect(item.id).toBeEnabled();
+
+                // * Assert Repository
+                await expect(item.repo).toHaveText(`(${expectedItem.repo})`);
+
+                // * Assert Description
+                for (const r of expectedItem.descriptionRegex) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await expect(item.description).toHaveText(r);
+                }
             });
 
             test('Your assignments', async ({page, pw}) => {
@@ -125,7 +175,31 @@ export default {
                 await expect(rhs.title).toHaveAttribute('rel', 'noopener noreferrer');
 
                 // * Assert RHS item count is correct
-                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.ASSIGNMENTS]));
+                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.ASSIGNMENTS].count));
+
+                const item = await rhs.getItem(0);
+                const expectedItem = expectedData[GithubRHSCategory.ASSIGNMENTS].firstItem;
+
+                // * Assert Title / Link
+                await expect(item.title).toHaveText(expectedItem.title);
+                await expect(item.title).toHaveAttribute('href', expectedItem.link);
+                await expect(item.title).toHaveAttribute('target', '_blank');
+                await expect(item.title).toBeEnabled();
+
+                // * Assert ID
+                await expect(item.id).toHaveText(expectedItem.id);
+                await expect(item.id).toHaveAttribute('href', expectedItem.link);
+                await expect(item.id).toHaveAttribute('target', '_blank');
+                await expect(item.id).toBeEnabled();
+
+                // * Assert Repository
+                await expect(item.repo).toHaveText(`(${expectedItem.repo})`);
+
+                // * Assert Description
+                for (const r of expectedItem.descriptionRegex) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await expect(item.description).toHaveText(r);
+                }
             });
 
             test('Unread notifications', async ({page, pw}) => {
@@ -162,7 +236,28 @@ export default {
                 await expect(rhs.title).toHaveAttribute('rel', 'noopener noreferrer');
 
                 // * Assert RHS item count is correct
-                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.UNREAD]));
+                await expect(rhs.items).toHaveCount(Number(expectedData[GithubRHSCategory.UNREAD].count));
+
+                const item = await rhs.getItem(0);
+                const expectedItem = expectedData[GithubRHSCategory.UNREAD].firstItem;
+
+                // * Assert Title / Link
+                await expect(item.title).toHaveText(expectedItem.title);
+                await expect(item.title).toHaveAttribute('href', expectedItem.link);
+                await expect(item.title).toHaveAttribute('target', '_blank');
+                await expect(item.title).toBeEnabled();
+
+                // * Assert ID does not exist
+                await expect(item.id).not.toBeVisible();
+
+                // * Assert Repository
+                await expect(item.repo).toHaveText(`(${expectedItem.repo})`);
+
+                // * Assert Description
+                for (const r of expectedItem.descriptionRegex) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await expect(item.description).toHaveText(r);
+                }
             });
         });
     },

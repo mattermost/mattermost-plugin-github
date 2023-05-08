@@ -53,14 +53,14 @@ export default {
                 // * Assert that description are there for each section
                 // Singular/plurals are not taken into account: ticket separated at https://mattermost.atlassian.net/browse/MM-52416
                 // Counters may vary and should be explicitely changed once the test accounts are set
-                await expect(todo.getDesc(GithubRHSCategory.OPEN_PR)).toHaveText(`You have ${expectedData[GithubRHSCategory.OPEN_PR]} open pull requests:`);
-                await expect(todo.getDesc(GithubRHSCategory.ASSIGNMENTS)).toHaveText(`You have ${expectedData[GithubRHSCategory.ASSIGNMENTS]} assignments:`);
-                await expect(todo.getDesc(GithubRHSCategory.REVIEW_PR)).toHaveText(`You have ${expectedData[GithubRHSCategory.REVIEW_PR]} pull requests awaiting your review:`);
-                await expect(todo.getDesc(GithubRHSCategory.UNREAD)).toHaveText(`You have ${expectedData[GithubRHSCategory.UNREAD]} unread messages:`);
+                await expect(todo.getDesc(GithubRHSCategory.OPEN_PR)).toHaveText(`You have ${expectedData[GithubRHSCategory.OPEN_PR].count} open pull requests:`);
+                await expect(todo.getDesc(GithubRHSCategory.ASSIGNMENTS)).toHaveText(`You have ${expectedData[GithubRHSCategory.ASSIGNMENTS].count} assignments:`);
+                await expect(todo.getDesc(GithubRHSCategory.REVIEW_PR)).toHaveText(`You have ${expectedData[GithubRHSCategory.REVIEW_PR].count} pull requests awaiting your review:`);
+                await expect(todo.getDesc(GithubRHSCategory.UNREAD)).toHaveText(`You have ${expectedData[GithubRHSCategory.UNREAD].count} unread messages:`);
 
                 // * Assert the open pull request list has 1 items
                 const openPr = await todo.getList(GithubRHSCategory.OPEN_PR);
-                await expect(openPr.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.OPEN_PR]));
+                await expect(openPr.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.OPEN_PR].count));
 
                 // * Assert the open pull request links are correct <REPO> <PR>
                 await expect(openPr.locator('li').nth(0).locator('a').nth(0)).toHaveAttribute('href', repoRegex);
@@ -68,7 +68,7 @@ export default {
 
                 // * Assert the review request list has 1 items
                 const reviewPr = await todo.getList(GithubRHSCategory.REVIEW_PR);
-                await expect(reviewPr.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.REVIEW_PR]));
+                await expect(reviewPr.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.REVIEW_PR].count));
 
                 // * Assert the pull request links are correct <REPO> <PR>
                 await expect(reviewPr.locator('li').nth(0).locator('a').nth(0)).toHaveAttribute('href', repoRegex);
@@ -76,7 +76,7 @@ export default {
 
                 // * Assert the assignments list has 1 items
                 const assignments = await todo.getList(GithubRHSCategory.ASSIGNMENTS);
-                await expect(assignments.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.ASSIGNMENTS]));
+                await expect(assignments.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.ASSIGNMENTS].count));
 
                 // * Assert the assignments links are correct <REPO> <ISSUE>
                 await expect(assignments.locator('li').nth(0).locator('a').nth(0)).toHaveAttribute('href', repoRegex);
@@ -84,7 +84,7 @@ export default {
 
                 // * Assert the unread has 1 items
                 const unread = await todo.getList(GithubRHSCategory.UNREAD);
-                await expect(unread.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.UNREAD]));
+                await expect(unread.locator('li')).toHaveCount(Number(expectedData[GithubRHSCategory.UNREAD].count));
 
                 // # Refresh
                 await page.reload();

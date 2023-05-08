@@ -144,6 +144,7 @@ function GithubItems(props: GithubItemsProps) {
         if (item.html_url) {
             title = (
                 <a
+                    data-testid='github-item-title'
                     href={item.html_url}
                     target='_blank'
                     aria-label={titleText}
@@ -156,6 +157,7 @@ function GithubItems(props: GithubItemsProps) {
                 number = (
                     <strong>
                         <a
+                            data-testid='github-item-id'
                             href={item.html_url}
                             target='_blank'
                             rel='noopener noreferrer'
@@ -195,6 +197,7 @@ function GithubItems(props: GithubItemsProps) {
             case 'success':
                 status = (
                     <span
+                        data-testid='github-item-status-success'
                         title={'Success'}
                         aria-label={'Success'}
                         role={'note'}
@@ -220,6 +223,7 @@ function GithubItems(props: GithubItemsProps) {
                         }
                     >
                         <span
+                            data-testid='github-item-status-pending'
                             style={{...style.icon, ...style.iconPending}}
                         >
                             <DotIcon/>
@@ -243,6 +247,7 @@ function GithubItems(props: GithubItemsProps) {
                         }
                     >
                         <span
+                            data-testid='github-item-status-default'
                             style={{...style.icon, ...style.iconFailed}}
                         >
                             <CrossIcon/>
@@ -293,10 +298,15 @@ function GithubItems(props: GithubItemsProps) {
                     </strong>
                 </div>
                 <div>
-                    {number} <span className='light'>{'(' + repoName + ')'}</span>
+                    {number}
+                    <span
+                        className='light'
+                        data-testid='github-item-repo'
+                    >{'(' + repoName + ')'}</span>
                 </div>
                 {labels}
                 <div
+                    data-testid='github-item-description'
                     className='light'
                     style={style.subtitle}
                 >

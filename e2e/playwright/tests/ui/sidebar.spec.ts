@@ -74,50 +74,10 @@ export default {
                 await expect(sidebar.refresh).toBeEnabled();
 
                 // * Assert counters before refresh
-                await expect(sidebar.getCounter(GithubRHSCategory.OPEN_PR)).toHaveText(expectedData[GithubRHSCategory.OPEN_PR]);
-                await expect(sidebar.getCounter(GithubRHSCategory.REVIEW_PR)).toHaveText(expectedData[GithubRHSCategory.REVIEW_PR]);
-                await expect(sidebar.getCounter(GithubRHSCategory.ASSIGNMENTS)).toHaveText(expectedData[GithubRHSCategory.ASSIGNMENTS]);
-                await expect(sidebar.getCounter(GithubRHSCategory.UNREAD)).toHaveText(expectedData[GithubRHSCategory.UNREAD]);
-            });
-        });
-    },
-    unconnected: () => {
-        test.describe('left sidebar', () => {
-            test('from non connected account', async ({page, pw}) => {
-                const {adminClient, adminUser} = await pw.getAdminClient();
-                if (adminUser === null) {
-                    throw new Error('can not get adminUser');
-                }
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
-                await page.goto(dmURL, {waitUntil: 'load'});
-
-                const sidebar = new Sidebar(page);
-
-                // * Unconnected version of icon should be visible
-                await expect(sidebar.containerUnconnected).toBeVisible();
-
-                // * Unconnected version of icon should have the connect link
-                await expect(sidebar.containerUnconnected).toHaveAttribute('href', '/plugins/github/oauth/connect');
-            });
-        });
-    },
-    noSetup: () => {
-        test.describe('left sidebar', () => {
-            test('before doing setup', async ({page, pw}) => {
-                const {adminClient, adminUser} = await pw.getAdminClient();
-                if (adminUser === null) {
-                    throw new Error('can not get adminUser');
-                }
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
-                await page.goto(dmURL, {waitUntil: 'load'});
-
-                const sidebar = new Sidebar(page);
-
-                // * Unconnected version of icon should be visible
-                await expect(sidebar.containerUnconnected).toBeVisible();
-
-                // * Unconnected version of icon should have the connect link
-                await expect(sidebar.containerUnconnected).toHaveAttribute('href', '/plugins/github/oauth/connect');
+                await expect(sidebar.getCounter(GithubRHSCategory.OPEN_PR)).toHaveText(expectedData[GithubRHSCategory.OPEN_PR].count);
+                await expect(sidebar.getCounter(GithubRHSCategory.REVIEW_PR)).toHaveText(expectedData[GithubRHSCategory.REVIEW_PR].count);
+                await expect(sidebar.getCounter(GithubRHSCategory.ASSIGNMENTS)).toHaveText(expectedData[GithubRHSCategory.ASSIGNMENTS].count);
+                await expect(sidebar.getCounter(GithubRHSCategory.UNREAD)).toHaveText(expectedData[GithubRHSCategory.UNREAD].count);
             });
         });
     },

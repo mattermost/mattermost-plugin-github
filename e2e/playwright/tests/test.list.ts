@@ -37,4 +37,3 @@ test.describe(core.disconnect);
 test.describe(me.unconnected);
 test.describe(todo.unconnected);
 test.describe(autocomplete.unconnected);
-test.describe(sidebar.unconnected);
