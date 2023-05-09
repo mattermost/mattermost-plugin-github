@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-api/cluster"
+	"github.com/mattermost/mattermost-plugin-github/server/app"
 	"github.com/mattermost/mattermost-plugin-github/server/config"
 )
 
@@ -45,7 +46,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 		}
 
 		for _, key := range keys {
-			var tryInfo GitHubUserInfo
+			var tryInfo app.GitHubUserInfo
 			err = p.client.KV.Get(key, &tryInfo)
 			if err != nil {
 				p.client.Log.Warn("failed to inspect key", "key", key, "error",
@@ -61,7 +62,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 				continue
 			}
 
-			info, errResp := p.GetGitHubUserInfo(tryInfo.UserID)
+			info, errResp := app.GetGitHubUserInfo(tryInfo.UserID)
 			if errResp != nil {
 				p.client.Log.Warn("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
 					"error", errResp.Error())

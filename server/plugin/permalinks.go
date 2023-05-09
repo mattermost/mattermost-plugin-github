@@ -20,10 +20,6 @@ const permalinkReqTimeout = 5 * time.Second
 // while replacing a permalink.
 const maxPreviewLines = 10
 
-// permalinkLineContext shows the number of lines before and after to show
-// if the link points to a single line.
-const permalinkLineContext = 3
-
 // replacement holds necessary info to replace github permalinks
 // in messages with a code preview block.
 type replacement struct {

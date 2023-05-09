@@ -6,10 +6,11 @@ import (
 	"unicode"
 
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-plugin-api/experimental/command"
+	commandapi "github.com/mattermost/mattermost-plugin-api/experimental/command"
 	"github.com/mattermost/mattermost-plugin-github/server/api"
+	"github.com/mattermost/mattermost-plugin-github/server/app"
 	"github.com/mattermost/mattermost-plugin-github/server/config"
-	serverplugin "github.com/mattermost/mattermost-plugin-github/server/plugin"
+	"github.com/mattermost/mattermost-plugin-github/server/template"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
@@ -38,7 +39,7 @@ type Runner struct {
 	context      *plugin.Context
 	args         *model.CommandArgs
 	pluginClient *pluginapi.Client
-	serverPlugin serverplugin.Plugin
+	app          *app.App
 	// poster             bot.Poster
 	// playbookRunService app.PlaybookRunService
 	// playbookService    app.PlaybookService
@@ -71,7 +72,7 @@ func (r *Runner) isValid() error {
 
 func (r *Runner) postCommandResponse(args *model.CommandArgs, text string) {
 	post := &model.Post{
-		UserId:    r.serverPlugin.BotUserID,
+		UserId:    r.app.BotUserID,
 		ChannelId: args.ChannelId,
 		RootId:    args.RootId,
 		Message:   text,
@@ -94,8 +95,8 @@ func arrayDifference(a, b []string) []string {
 	return diff
 }
 
-func (r *Runner) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *serverplugin.GitHubUserInfo) string {
-	message, err := renderTemplate("helpText", r.configService.GetConfiguration())
+func (r *Runner) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *app.GitHubUserInfo) string {
+	message, err := template.RenderTemplate("helpText", r.configService.GetConfiguration())
 	if err != nil {
 		r.pluginClient.Log.Warn("Failed to render help template", "error", err.Error())
 		return "Encountered an error posting help text."
@@ -123,7 +124,7 @@ func (r *Runner) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "about" {
-		text, err := command.BuildInfo(*r.configService.GetManifest())
+		text, err := commandapi.BuildInfo(*r.configService.GetManifest())
 		if err != nil {
 			text = errors.Wrap(err, "failed to get build info").Error()
 		}

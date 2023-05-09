@@ -1,4 +1,4 @@
-package plugin
+package app
 
 import (
 	"context"
@@ -126,7 +126,7 @@ func (s *Subscription) RenderStyle() string {
 	return s.Flags.RenderStyle
 }
 
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
+func (a *App) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
 	if owner == "" {
 		return errors.Errorf("invalid repository")
 	}
@@ -134,11 +134,11 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 
-	if err := p.checkOrg(owner); err != nil {
+	if err := a.CheckOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
 	}
 
-	if flags.ExcludeOrgMembers && !p.isOrganizationLocked() {
+	if flags.ExcludeOrgMembers && !a.IsOrganizationLocked() {
 		return errors.New("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
 	}
 
@@ -164,7 +164,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	}
 
 	if err != nil {
-		p.client.Log.Warn("Failed to get repository or org for subscribe action", "error", err.Error())
+		a.client.Log.Warn("Failed to get repository or org for subscribe action", "error", err.Error())
 		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
@@ -176,24 +176,24 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		Flags:      flags,
 	}
 
-	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
+	if err := a.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
 		return errors.Wrap(err, "could not add subscription")
 	}
 
 	return nil
 }
 
-func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
+func (a *App) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
 	if org == "" {
 		return errors.New("invalid organization")
 	}
 
-	return p.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
+	return a.Subscribe(ctx, githubClient, userID, org, "", channelID, features, flags)
 }
 
-func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
+func (a *App) GetSubscriptionsByChannel(channelID string) ([]*Subscription, error) {
 	var filteredSubs []*Subscription
-	subs, err := p.GetSubscriptions()
+	subs, err := a.GetSubscriptions()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get subscriptions")
 	}
@@ -217,8 +217,8 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 	return filteredSubs, nil
 }
 
-func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
-	subs, err := p.GetSubscriptions()
+func (a *App) AddSubscription(repo string, sub *Subscription) error {
+	subs, err := a.GetSubscriptions()
 	if err != nil {
 		return errors.Wrap(err, "could not get subscriptions")
 	}
@@ -243,7 +243,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 
 	subs.Repositories[repo] = repoSubs
 
-	err = p.StoreSubscriptions(subs)
+	err = a.StoreSubscriptions(subs)
 	if err != nil {
 		return errors.Wrap(err, "could not store subscriptions")
 	}
@@ -251,10 +251,10 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 	return nil
 }
 
-func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
+func (a *App) GetSubscriptions() (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
-	err := p.client.KV.Get(SubscriptionsKey, &subscriptions)
+	err := a.client.KV.Get(SubscriptionsKey, &subscriptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get subscriptions from KVStore")
 	}
@@ -267,19 +267,19 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	return subscriptions, nil
 }
 
-func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
-	if _, err := p.client.KV.Set(SubscriptionsKey, s); err != nil {
+func (a *App) StoreSubscriptions(s *Subscriptions) error {
+	if _, err := a.client.KV.Set(SubscriptionsKey, s); err != nil {
 		return errors.Wrap(err, "could not store subscriptions in KV store")
 	}
 
 	return nil
 }
 
-func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
+func (a *App) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
 	name = strings.ToLower(name)
 	org := strings.Split(name, "/")[0]
-	subs, err := p.GetSubscriptions()
+	subs, err := a.GetSubscriptions()
 	if err != nil {
 		return nil
 	}
@@ -303,7 +303,7 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	subsToReturn := []*Subscription{}
 
 	for _, sub := range subsForRepo {
-		if repo.GetPrivate() && !p.permissionToRepo(sub.CreatorID, name) {
+		if repo.GetPrivate() && !a.permissionToRepo(sub.CreatorID, name) {
 			continue
 		}
 		subsToReturn = append(subsToReturn, sub)
@@ -312,8 +312,8 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	return subsToReturn
 }
 
-func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	config := p.configService.GetConfiguration()
+func (a *App) Unsubscribe(channelID string, repo string) error {
+	config := a.config.GetConfiguration()
 
 	owner, repo := parseOwnerAndRepo(repo, config.GetBaseURL())
 	if owner == "" && repo == "" {
@@ -325,7 +325,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
-	subs, err := p.GetSubscriptions()
+	subs, err := a.GetSubscriptions()
 	if err != nil {
 		return errors.Wrap(err, "could not get subscriptions")
 	}
@@ -346,7 +346,7 @@ func (p *Plugin) Unsubscribe(channelID string, repo string) error {
 
 	if removed {
 		subs.Repositories[repoWithOwner] = repoSubs
-		if err := p.StoreSubscriptions(subs); err != nil {
+		if err := a.StoreSubscriptions(subs); err != nil {
 			return errors.Wrap(err, "could not store subscriptions")
 		}
 	}

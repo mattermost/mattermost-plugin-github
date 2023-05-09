@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/go-github/github"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost-server/v6/telemetry"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 )

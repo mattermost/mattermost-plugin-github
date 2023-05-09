@@ -3,34 +3,27 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/url"
-	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-plugin-github/server/api"
 	"github.com/mattermost/mattermost-plugin-github/server/app"
 	"github.com/mattermost/mattermost-plugin-github/server/command"
 	"github.com/mattermost/mattermost-plugin-github/server/config"
+	"github.com/mattermost/mattermost-plugin-github/server/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
-	"golang.org/x/oauth2"
 
 	root "github.com/mattermost/mattermost-plugin-github"
 )
 
 const (
-	githubTokenKey       = "_githubtoken"
-	GithubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
 	mm34646MutexKey = "mm34646_token_reset_mutex"
@@ -41,9 +34,6 @@ const (
 	wsEventRefresh = "refresh"
 
 	WSEventRefresh = "refresh"
-
-	notificationReasonSubscribed = "subscribed"
-	dailySummary                 = "_dailySummary"
 )
 
 var (
@@ -55,6 +45,8 @@ type Plugin struct {
 	plugin.MattermostPlugin
 	client *pluginapi.Client
 
+	app app.App
+
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
 
@@ -64,8 +56,7 @@ type Plugin struct {
 
 	router *mux.Router
 
-	telemetryClient telemetry.Client
-	tracker         telemetry.Tracker
+	tracker telemetry.Tracker
 
 	BotUserID   string
 	poster      poster.Poster
@@ -75,11 +66,6 @@ type Plugin struct {
 
 	// githubPermalinkRegex is used to parse github permalinks in post messages.
 	githubPermalinkRegex *regexp.Regexp
-
-	webhookBroker *WebhookBroker
-	oauthBroker   *OAuthBroker
-
-	emojiMap map[string]string
 }
 
 // NewPlugin returns an instance of a Plugin.
@@ -106,30 +92,6 @@ func NewPlugin() *Plugin {
 	return p
 }
 
-func (p *Plugin) createGithubEmojiMap() {
-	baseGithubEmojiMap := map[string]string{
-		"+1":         "+1",
-		"-1":         "-1",
-		"thumbsup":   "+1",
-		"thumbsdown": "-1",
-		"laughing":   "laugh",
-		"confused":   "confused",
-		"heart":      "heart",
-		"tada":       "hooray",
-		"rocket":     "rocket",
-		"eyes":       "eyes",
-	}
-
-	p.emojiMap = map[string]string{}
-	for systemEmoji := range model.SystemEmojis {
-		for mmBase, ghBase := range baseGithubEmojiMap {
-			if strings.HasPrefix(systemEmoji, mmBase) {
-				p.emojiMap[systemEmoji] = ghBase
-			}
-		}
-	}
-}
-
 func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
 	userInfo, apiErr := p.GetGitHubUserInfo(userID)
 	if apiErr != nil {
@@ -137,49 +99,6 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 	}
 
 	return p.GithubConnectUser(ctx, userInfo), nil
-}
-
-func (p *Plugin) GithubConnectUser(ctx context.Context, info *app.GitHubUserInfo) *github.Client {
-	tok := *info.Token
-	return p.githubConnectToken(tok)
-}
-
-func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
-	config := p.config.GetConfiguration()
-
-	client, err := GetGitHubClient(token, config)
-	if err != nil {
-		p.client.Log.Warn("Failed to create GitHub client", "error", err.Error())
-		return nil
-	}
-
-	return client
-}
-
-func GetGitHubClient(token oauth2.Token, config *config.Configuration) (*github.Client, error) {
-	ts := oauth2.StaticTokenSource(&token)
-	tc := oauth2.NewClient(context.Background(), ts)
-
-	return getGitHubClient(tc, config)
-}
-
-func getGitHubClient(authenticatedClient *http.Client, config *config.Configuration) (*github.Client, error) {
-	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
-		return github.NewClient(authenticatedClient), nil
-	}
-
-	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
-	baseURL.Path = path.Join(baseURL.Path, "api", "v3")
-
-	uploadURL, _ := url.Parse(config.EnterpriseUploadURL)
-	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
-
-	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), authenticatedClient)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
 }
 
 func (p *Plugin) setDefaultConfiguration() error {
@@ -249,18 +168,14 @@ func (p *Plugin) OnActivate() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to ensure github bot")
 	}
-	err = p.config.UpdateConfiguration(func(c *config.Configuration) {
-		c.BotUserID = botID
-	})
-	if err != nil {
-		return errors.Wrapf(err, "failed save bot to config")
-	}
+
+	//TODO: Initialize p.app
 	p.BotUserID = botID
 
 	p.poster = poster.NewPoster(&p.client.Post, p.BotUserID)
 	p.FlowManager = p.NewFlowManager()
 
-	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
+	registerGitHubToUsernameMappingCallback(p.app.GetGitHubToUsernameMapping)
 
 	go func() {
 		resetErr := p.forceResetAllMM34646()
@@ -272,166 +187,12 @@ func (p *Plugin) OnActivate() error {
 }
 
 func (p *Plugin) OnDeactivate() error {
-	p.webhookBroker.Close()
-	p.oauthBroker.Close()
+	p.app.WebhookBroker.Close()
+	p.app.OauthBroker.Close()
 	if err := p.telemetryClient.Close(); err != nil {
 		p.API.LogWarn("Telemetry client failed to close", "error", err.Error())
 	}
 	return nil
-}
-
-func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo string, id float64, objectType string, ok bool) {
-	post, err := p.client.Post.GetPost(reaction.PostId)
-	if err != nil {
-		p.client.Log.Debug("Error fetching post for reaction", "error", err.Error())
-		return org, repo, id, objectType, false
-	}
-
-	// Getting the Github repository from notification post props
-	repo, ok = post.GetProp(postPropGithubRepo).(string)
-	if !ok || repo == "" {
-		return org, repo, id, objectType, false
-	}
-
-	orgRepo := strings.Split(repo, "/")
-	if len(orgRepo) != 2 {
-		p.client.Log.Debug("Invalid organization repository")
-		return org, repo, id, objectType, false
-	}
-
-	org, repo = orgRepo[0], orgRepo[1]
-
-	// Getting the Github object id from notification post props
-	id, ok = post.GetProp(postPropGithubObjectID).(float64)
-	if !ok || id == 0 {
-		return org, repo, id, objectType, false
-	}
-
-	// Getting the Github object type from notification post props
-	objectType, ok = post.GetProp(postPropGithubObjectType).(string)
-	if !ok || objectType == "" {
-		return org, repo, id, objectType, false
-	}
-
-	return org, repo, id, objectType, true
-}
-
-func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reaction) {
-	githubEmoji := p.emojiMap[reaction.EmojiName]
-	if githubEmoji == "" {
-		p.client.Log.Warn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
-		return
-	}
-
-	owner, repo, id, objectType, ok := p.getPostPropsForReaction(reaction)
-	if !ok {
-		return
-	}
-
-	info, appErr := p.GetGitHubUserInfo(reaction.UserId)
-	if appErr != nil {
-		if appErr.ID != api.ApiErrorIDNotConnected {
-			p.client.Log.Debug("Error in getting user info", "error", appErr.Error())
-		}
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), api.RequestTimeout)
-	defer cancel()
-	ghClient := p.GithubConnectUser(ctx, info)
-	switch objectType {
-	case githubObjectTypeIssueComment:
-		if _, _, err := ghClient.Reactions.CreateIssueCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
-			p.client.Log.Debug("Error occurred while creating issue comment reaction", "error", err.Error())
-			return
-		}
-	case githubObjectTypeIssue:
-		if _, _, err := ghClient.Reactions.CreateIssueReaction(context.Background(), owner, repo, int(id), githubEmoji); err != nil {
-			p.client.Log.Debug("Error occurred while creating issue reaction", "error", err.Error())
-			return
-		}
-	case githubObjectTypePRReviewComment:
-		if _, _, err := ghClient.Reactions.CreatePullRequestCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
-			p.client.Log.Debug("Error occurred while creating PR review comment reaction", "error", err.Error())
-			return
-		}
-	default:
-		return
-	}
-}
-
-func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.Reaction) {
-	githubEmoji := p.emojiMap[reaction.EmojiName]
-	if githubEmoji == "" {
-		p.client.Log.Warn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
-		return
-	}
-
-	owner, repo, id, objectType, ok := p.getPostPropsForReaction(reaction)
-	if !ok {
-		return
-	}
-
-	info, appErr := p.GetGitHubUserInfo(reaction.UserId)
-	if appErr != nil {
-		if appErr.ID != api.ApiErrorIDNotConnected {
-			p.client.Log.Debug("Error in getting user info", "error", appErr.Error())
-		}
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), api.RequestTimeout)
-	defer cancel()
-	ghClient := p.GithubConnectUser(ctx, info)
-	switch objectType {
-	case githubObjectTypeIssueComment:
-		reactions, _, err := ghClient.Reactions.ListIssueCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
-		if err != nil {
-			p.client.Log.Debug("Error getting issue comment reaction list", "error", err.Error())
-			return
-		}
-
-		for _, reactionObj := range reactions {
-			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
-				if _, err = ghClient.Reactions.DeleteIssueCommentReaction(context.Background(), owner, repo, int64(id), reactionObj.GetID()); err != nil {
-					p.client.Log.Debug("Error occurred while removing issue comment reaction", "error", err.Error())
-				}
-				return
-			}
-		}
-	case githubObjectTypeIssue:
-		reactions, _, err := ghClient.Reactions.ListIssueReactions(context.Background(), owner, repo, int(id), &github.ListOptions{})
-		if err != nil {
-			p.client.Log.Debug("Error getting issue reaction list", "error", err.Error())
-			return
-		}
-
-		for _, reactionObj := range reactions {
-			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
-				if _, err = ghClient.Reactions.DeleteIssueReaction(context.Background(), owner, repo, int(id), reactionObj.GetID()); err != nil {
-					p.client.Log.Debug("Error occurred while removing issue reaction", "error", err.Error())
-				}
-				return
-			}
-		}
-	case githubObjectTypePRReviewComment:
-		reactions, _, err := ghClient.Reactions.ListPullRequestCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
-		if err != nil {
-			p.client.Log.Debug("Error getting PR review comment reaction list", "error", err.Error())
-			return
-		}
-
-		for _, reactionObj := range reactions {
-			if info.UserID == reaction.UserId && p.emojiMap[reaction.EmojiName] == reactionObj.GetContent() {
-				if _, err = ghClient.Reactions.DeletePullRequestCommentReaction(context.Background(), owner, repo, int64(id), reactionObj.GetID()); err != nil {
-					p.client.Log.Debug("Error occurred while removing PR review comment reaction", "error", err.Error())
-				}
-				return
-			}
-		}
-	default:
-		return
-	}
 }
 
 func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
@@ -498,38 +259,15 @@ func (p *Plugin) StoreGitHubUserInfo(info *app.GitHubUserInfo) error {
 
 	info.Token.AccessToken = encryptedToken
 
-	if _, err := p.client.KV.Set(info.UserID+githubTokenKey, info); err != nil {
+	if _, err := p.client.KV.Set(info.UserID+app.GithubTokenKey, info); err != nil {
 		return errors.Wrap(err, "error occurred while trying to store user info into KV store")
 	}
 
 	return nil
 }
 
-func (p *Plugin) GetGitHubUserInfo(userID string) (*app.GitHubUserInfo, *api.APIErrorResponse) {
-	config := p.config.GetConfiguration()
-
-	var userInfo *app.GitHubUserInfo
-	err := p.client.KV.Get(userID+githubTokenKey, &userInfo)
-	if err != nil {
-		return nil, &api.APIErrorResponse{ID: "", Message: "Unable to get user info.", StatusCode: http.StatusInternalServerError}
-	}
-	if userInfo == nil {
-		return nil, &api.APIErrorResponse{ID: api.ApiErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
-	}
-
-	unencryptedToken, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken)
-	if err != nil {
-		p.client.Log.Warn("Failed to decrypt access token", "error", err.Error())
-		return nil, &api.APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
-	}
-
-	userInfo.Token.AccessToken = unencryptedToken
-
-	return userInfo, nil
-}
-
 func (p *Plugin) StoreGitHubToUserIDMapping(githubUsername, userID string) error {
-	_, err := p.client.KV.Set(githubUsername+GithubUsernameKey, []byte(userID))
+	_, err := p.client.KV.Set(githubUsername+app.GithubUsernameKey, []byte(userID))
 	if err != nil {
 		return errors.Wrap(err, "encountered error saving github username mapping")
 	}
@@ -537,34 +275,17 @@ func (p *Plugin) StoreGitHubToUserIDMapping(githubUsername, userID string) error
 	return nil
 }
 
-func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
-	var data []byte
-	_ = p.client.KV.Get(githubUsername+GithubUsernameKey, data)
-
-	return string(data)
-}
-
-// getGitHubToUsernameMapping maps a GitHub username to the corresponding Mattermost username, if any.
-func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
-	user, _ := p.client.User.Get(p.getGitHubToUserIDMapping(githubUsername))
-	if user == nil {
-		return ""
-	}
-
-	return user.Username
-}
-
 func (p *Plugin) DisconnectGitHubAccount(userID string) {
-	userInfo, _ := p.GetGitHubUserInfo(userID)
+	userInfo, _ := p.app.GetGitHubUserInfo(userID)
 	if userInfo == nil {
 		return
 	}
 
-	if err := p.client.KV.Delete(userID + githubTokenKey); err != nil {
+	if err := p.client.KV.Delete(userID + app.GithubTokenKey); err != nil {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
-	if err := p.client.KV.Delete(userInfo.GitHubUsername + GithubUsernameKey); err != nil {
+	if err := p.client.KV.Delete(userInfo.GitHubUsername + app.GithubUsernameKey); err != nil {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
@@ -587,285 +308,6 @@ func (p *Plugin) DisconnectGitHubAccount(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
-}
-
-// CreateBotDMPost posts a direct message using the bot account.
-// Any error are not returned and instead logged.
-func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
-	channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
-	if err != nil {
-		p.client.Log.Warn("Couldn't get bot's DM channel", "userID", userID, "error", err.Error())
-		return
-	}
-
-	post := &model.Post{
-		UserId:    p.BotUserID,
-		ChannelId: channel.Id,
-		Message:   message,
-		Type:      postType,
-	}
-
-	if err = p.client.Post.CreatePost(post); err != nil {
-		p.client.Log.Warn("Failed to create DM post", "userID", userID, "post", post, "error", err.Error())
-		return
-	}
-}
-
-func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error) {
-	previousSummary, err := p.GetDailySummaryText(userID)
-	if err != nil {
-		return false, err
-	}
-	if previousSummary == text {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
-	_, err := p.client.KV.Set(userID+dailySummary, []byte(summaryText))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
-	var summaryByte []byte
-	err := p.client.KV.Get(userID+dailySummary, summaryByte)
-	if err != nil {
-		return "", err
-	}
-
-	return string(summaryByte), nil
-}
-
-func (p *Plugin) PostToDo(info *app.GitHubUserInfo, userID string) error {
-	ctx := context.Background()
-	text, err := p.GetToDo(ctx, info.GitHubUsername, p.GithubConnectUser(ctx, info))
-	if err != nil {
-		return err
-	}
-
-	if info.Settings.DailyReminderOnChange {
-		isSameSummary, err := p.CheckIfDuplicateDailySummary(userID, text)
-		if err != nil {
-			return err
-		}
-		if isSameSummary {
-			return nil
-		}
-		err = p.StoreDailySummaryText(userID, text)
-		if err != nil {
-			return err
-		}
-	}
-	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
-	return nil
-}
-
-func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
-	config := p.config.GetConfiguration()
-	baseURL := config.GetBaseURL()
-
-	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "Error occurred while searching for reviews")
-	}
-
-	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "error occurred while listing notifications")
-	}
-
-	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "error occurred while searching for PRs")
-	}
-
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "error occurred while searching for assignments")
-	}
-
-	text := "##### Unread Messages\n"
-
-	notificationCount := 0
-	notificationContent := ""
-	for _, n := range notifications {
-		if n.GetReason() == notificationReasonSubscribed {
-			continue
-		}
-
-		if n.GetRepository() == nil {
-			p.client.Log.Warn("Unable to get repository for notification in todo list. Skipping.")
-			continue
-		}
-
-		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
-			continue
-		}
-
-		notificationSubject := n.GetSubject()
-		notificationType := notificationSubject.GetType()
-		switch notificationType {
-		case "RepositoryVulnerabilityAlert":
-			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL(), ""))
-			notificationContent += fmt.Sprintf("* %v\n", message)
-		default:
-			issueURL := n.GetSubject().GetURL()
-			issueNumIndex := strings.LastIndex(issueURL, "/")
-			issueNum := issueURL[issueNumIndex+1:]
-			subjectURL := n.GetSubject().GetURL()
-			if n.GetSubject().GetLatestCommentURL() != "" {
-				subjectURL = n.GetSubject().GetLatestCommentURL()
-			}
-
-			notificationTitle := notificationSubject.GetTitle()
-			notificationURL := fixGithubNotificationSubjectURL(subjectURL, issueNum)
-			notificationContent += getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType)
-		}
-
-		notificationCount++
-	}
-
-	if notificationCount == 0 {
-		text += "You don't have any unread messages.\n"
-	} else {
-		text += fmt.Sprintf("You have %v unread messages:\n", notificationCount)
-		text += notificationContent
-	}
-
-	text += "##### Review Requests\n"
-
-	if issueResults.GetTotal() == 0 {
-		text += "You don't have any pull requests awaiting your review.\n"
-	} else {
-		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
-
-		for _, pr := range issueResults.Issues {
-			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "")
-		}
-	}
-
-	text += "##### Your Open Pull Requests\n"
-
-	if yourPrs.GetTotal() == 0 {
-		text += "You don't have any open pull requests.\n"
-	} else {
-		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
-
-		for _, pr := range yourPrs.Issues {
-			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "")
-		}
-	}
-
-	text += "##### Your Assignments\n"
-
-	if yourAssignments.GetTotal() == 0 {
-		text += "You don't have any assignments.\n"
-	} else {
-		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
-
-		for _, assign := range yourAssignments.Issues {
-			text += getToDoDisplayText(baseURL, assign.GetTitle(), assign.GetHTMLURL(), "")
-		}
-	}
-
-	return text, nil
-}
-
-func (p *Plugin) HasUnreads(info *app.GitHubUserInfo) bool {
-	username := info.GitHubUsername
-	ctx := context.Background()
-	githubClient := p.GithubConnectUser(ctx, info)
-	config := p.config.GetConfiguration()
-
-	query := getReviewSearchQuery(username, config.GitHubOrg)
-	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to search for review", "query", query, "error", err.Error())
-		return false
-	}
-
-	query = getYourPrsSearchQuery(username, config.GitHubOrg)
-	yourPrs, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to search for PRs", "query", query, "error", "error", err.Error())
-		return false
-	}
-
-	query = getYourAssigneeSearchQuery(username, config.GitHubOrg)
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to search for assignments", "query", query, "error", "error", err.Error())
-		return false
-	}
-
-	relevantNotifications := false
-	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to list notifications", "error", err.Error())
-		return false
-	}
-
-	for _, n := range notifications {
-		if n.GetReason() == notificationReasonSubscribed {
-			continue
-		}
-
-		if n.GetRepository() == nil {
-			p.client.Log.Warn("Unable to get repository for notification in todo list. Skipping.")
-			continue
-		}
-
-		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
-			continue
-		}
-
-		relevantNotifications = true
-		break
-	}
-
-	if issues.GetTotal() == 0 && !relevantNotifications && yourPrs.GetTotal() == 0 && yourAssignments.GetTotal() == 0 {
-		return false
-	}
-
-	return true
-}
-
-func (p *Plugin) checkOrg(org string) error {
-	config := p.config.GetConfiguration()
-
-	configOrg := strings.TrimSpace(config.GitHubOrg)
-	if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
-		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
-	}
-
-	return nil
-}
-
-func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
-	if organization == "" {
-		return false
-	}
-
-	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
-	if err != nil {
-		p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
-		return false
-	}
-
-	return isMember
-}
-
-func (p *Plugin) isOrganizationLocked() bool {
-	config := p.config.GetConfiguration()
-	configOrg := strings.TrimSpace(config.GitHubOrg)
-
-	return configOrg != ""
 }
 
 func (p *Plugin) sendRefreshEvent(userID string) {

@@ -38,7 +38,6 @@ type Configuration struct {
 	EnableCodePreview           string `json:"enablecodepreview"`
 	EnableWebhookEventLogging   bool   `json:"enablewebhookeventlogging"`
 	UsePreregisteredApplication bool   `json:"usepreregisteredapplication"`
-	BotUserID                   string `json:"bot_user_id"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {

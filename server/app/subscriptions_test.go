@@ -1,4 +1,4 @@
-package plugin
+package app
 
 import (
 	"encoding/json"

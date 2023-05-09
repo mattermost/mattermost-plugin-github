@@ -408,7 +408,7 @@ func lookupMattermostUsername(githubUsername string) string {
 	return gitHubToUsernameMappingCallback(githubUsername)
 }
 
-func renderTemplate(name string, data interface{}) (string, error) {
+func RenderTemplate(name string, data interface{}) (string, error) {
 	var output bytes.Buffer
 	t := masterTemplate.Lookup(name)
 	if t == nil {

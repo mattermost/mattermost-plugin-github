@@ -1,6 +1,7 @@
 package command
 
 import (
+	"github.com/mattermost/mattermost-plugin-github/server/app"
 	serverplugin "github.com/mattermost/mattermost-plugin-github/server/plugin"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -60,7 +61,7 @@ func (r *Runner) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 					"error", err.Error())
 			}
 		} else {
-			err := r.pluginClient.KV.Delete(userInfo.GitHubUsername + r.serverPlugin.GithubUsernameKey)
+			err := r.pluginClient.KV.Delete(userInfo.GitHubUsername + app.GithubUsernameKey)
 			if err != nil {
 				r.pluginClient.Log.Warn("Failed to delete GitHub to userID mapping",
 					"userID", userInfo.UserID,

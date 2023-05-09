@@ -49,13 +49,13 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 	fm := &FlowManager{
 		client:           p.client,
 		pluginURL:        *p.client.Configuration.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id,
-		botUserID:        p.BotUserID,
+		botUserID:        p.app.BotUserID,
 		router:           p.router,
-		getConfiguration: p.configService.GetConfiguration,
+		getConfiguration: p.config.GetConfiguration,
 		getGitHubClient:  p.GetGitHubClient,
 
-		pingBroker: p.webhookBroker,
-		tracker:    p,
+		pingBroker: p.app.WebhookBroker,
+		tracker:    p.tracker,
 	}
 
 	fm.setupFlow = fm.newFlow("setup").WithSteps(
@@ -654,7 +654,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 
 	config := fm.getConfiguration()
 
-	org, repo := ParseOwnerAndRepo(repoOrg, config.GetBaseURL())
+	org, repo := parseOwnerAndRepo(repoOrg, config.GetBaseURL())
 	if org == "" && repo == "" {
 		return "", nil, nil, errors.New("invalid format")
 	}

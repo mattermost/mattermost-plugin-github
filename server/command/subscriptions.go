@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/mattermost/mattermost-plugin-github/server/app"
 	serverplugin "github.com/mattermost/mattermost-plugin-github/server/plugin"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/mattermost/mattermost-server/v6/plugin"
@@ -96,10 +97,10 @@ func (r *Runner) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
 			return "Feature list cannot contain both issue and issue_creations"
 		}
-		if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+		if SliceContainsString(fs, app.FeaturePulls) && SliceContainsString(fs, featurePullsMerged) {
 			return "Feature list cannot contain both pulls and pulls_merged"
 		}
-		ok, ifs := validateFeatures(fs)
+		ok, ifs := r.app.ValidateFeatures(fs)
 		if !ok {
 			msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
 			if len(ifs) == 0 {
@@ -112,7 +113,7 @@ func (r *Runner) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	ctx := context.Background()
 	githubClient := r.serverPlugin.GithubConnectUser(ctx, userInfo)
 
-	owner, repo := r.serverPlugin.ParseOwnerAndRepo(parameters[0], config.GetBaseURL())
+	owner, repo := r.serverPlugin.parseOwnerAndRepo(parameters[0], config.GetBaseURL())
 	if repo == "" {
 		if err := r.serverPlugin.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
 			return err.Error()

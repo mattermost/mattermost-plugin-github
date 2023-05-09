@@ -1,4 +1,4 @@
-package plugin
+package app
 
 import (
 	"bufio"
@@ -17,6 +17,10 @@ import (
 
 	"github.com/pkg/errors"
 )
+
+// permalinkLineContext shows the number of lines before and after to show
+// if the link points to a single line.
+const permalinkLineContext = 3
 
 func getMentionSearchQuery(username, org string) string {
 	return buildSearchQuery("is:open mentions:%v archived:false %v", username, org)
