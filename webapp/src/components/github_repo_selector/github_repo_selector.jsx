@@ -38,7 +38,7 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     onChangeForOrg = (_, org) => {
-        if (this.state.org != org) {
+        if (this.state.org !== org) {
             this.setState({org: org}, () => {this.props.actions.getReposByOrg(org)});
             this.props.onChange(null);
         }
