@@ -39,7 +39,8 @@ export default class GithubRepoSelector extends PureComponent {
 
     onChangeForOrg = (_, org) => {
         if (this.state.org !== org) {
-            this.setState({org: org}, () => {this.props.actions.getReposByOrg(org)});
+            this.setState({org});
+            this.props.actions.getReposByOrg(org);
             this.props.onChange(null);
         }
     }
@@ -53,7 +54,8 @@ export default class GithubRepoSelector extends PureComponent {
         const orgOptions  = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}));
         orgOptions.unshift({value: "", label: "your owned repositories"});
         const repoOptions = this.props.yourReposByOrg.map((item) => ({value: item.full_name, label: item.name}));
-        let orgSelector, helperTextForRepoSelector;
+        let orgSelector = null;
+        let helperTextForRepoSelector = 'Returns GitHub repositories connected to the user account';
         // If there are no organanizations for authenticated user, then don't show organization selector
         if (orgOptions.length > 1   ) {
             orgSelector = (
@@ -79,8 +81,6 @@ export default class GithubRepoSelector extends PureComponent {
                 </div>
             )
             helperTextForRepoSelector = 'Returns GitHub repositories under selected organizations'
-        } else {
-            helperTextForRepoSelector = 'Returns GitHub repositories connected to the user account'
         }
 
         return (

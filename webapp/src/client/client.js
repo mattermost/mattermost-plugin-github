@@ -52,7 +52,7 @@ export default class Client {
     }
 
     getRepositoriesByOrganization = async (organization) => {
-        return this.doGet(`${this.url}/reposByOrg?organization=${organization}`);
+        return this.doGet(`${this.url}/repos_by_org?organization=${organization}`);
     }
 
     getLabels = async (repo) => {

@@ -106,7 +106,7 @@ function yourPrs(state = [], action) {
 
 function yourOrgs(state = [], action) {
     switch (action.type) {
-    case ActionTypes.RECEIVED_ORGANIZATIONs:
+    case ActionTypes.RECEIVED_ORGANIZATIONS:
         return action.data;
     default:
         return state;

@@ -104,7 +104,7 @@ export function getOrgs() {
         }
 
         dispatch({
-            type: ActionTypes.RECEIVED_ORGANIZATIONs,
+            type: ActionTypes.RECEIVED_ORGANIZATIONS,
             data,
         });
 

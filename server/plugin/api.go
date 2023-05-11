@@ -147,7 +147,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/milestones", p.checkAuth(p.attachUserContext(p.getMilestones), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/assignees", p.checkAuth(p.attachUserContext(p.getAssignees), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/organizations", p.checkAuth(p.attachUserContext(p.getOrganizations), ResponseTypePlain)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/reposByOrg", p.checkAuth(p.attachUserContext(p.getReposByOrg), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/repos_by_org", p.checkAuth(p.attachUserContext(p.getReposByOrg), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.checkAuth(p.attachUserContext(p.getRepositories), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.checkAuth(p.attachUserContext(p.updateSettings), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/issue", p.checkAuth(p.attachUserContext(p.getIssueByNumber), ResponseTypePlain)).Methods(http.MethodGet)
@@ -1255,15 +1255,22 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 }
 
 func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
-	opt := github.ListOptions{PerPage: 50}
+	var allOrgs []*github.Organization
+	var err error
 
-	allOrgs, err := getOrganizationList(c.Ctx, "", githubClient, opt)
-	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to list organizations")
-		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch organizations", StatusCode: http.StatusInternalServerError})
-		return
+	org := p.getConfiguration().GitHubOrg
+
+	if org == "" {
+		githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+		allOrgs, err = getOrganizationList(c.Ctx, "", githubClient, github.ListOptions{PerPage: 50})
+		if err != nil {
+			c.Log.WithError(err).Warnf("Failed to list organizations")
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch organizations", StatusCode: http.StatusInternalServerError})
+			return
+		}
+	} else {
+		allOrgs = append(allOrgs, &github.Organization{Login: &org})
 	}
 	// Only send down fields to client that are needed
 	type OrganizationResponse struct {

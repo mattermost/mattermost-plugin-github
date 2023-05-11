@@ -5,7 +5,7 @@ import {id as pluginId} from '../manifest';
 
 export default {
     RECEIVED_REPOSITORIES: pluginId + '_received_repositories',
-    RECEIVED_ORGANIZATIONs: pluginId + '_received_organizations',
+    RECEIVED_ORGANIZATIONS: pluginId + '_received_organizations',
     RECEIVED_REPOSITORIES_BY_ORGANIZATION: pluginId + '_received_repositories_by_organization',
     RECEIVED_REVIEWS: pluginId + '_received_reviews',
     RECEIVED_REVIEWS_DETAILS: pluginId + '_received_reviews_details',
