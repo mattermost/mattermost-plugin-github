@@ -155,6 +155,13 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 
 * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review.
 * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders.
+* __Setup GitHub integration__ - Use `/github setup` to configure the integration between GitHub and Mattermost. This command has the following subcommands:
+
+    - `/github setup oauth`: Sets up the OAuth2 application in GitHub, establishing the necessary authorization connection between GitHub and Mattermost.
+
+    - `/github setup webhook`: Creates a webhook from GitHub to Mattermost, allowing real-time notifications and updates from GitHub to be sent to Mattermost channels.
+
+    - `/github setup announce`: Sends a message to designated channels in Mattermost, announcing the availability of the GitHub integration for team members to use.
 * __And more!__ - Run `/github help` to see what else the slash command can do.
 
 ## Frequently Asked Questions
