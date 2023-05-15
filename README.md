@@ -61,6 +61,8 @@ GitHub plugin configuration starts by registering an OAuth app in GitHub and end
 
 **Note:** If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL.
 
+You can use the `/github setup` command to streamline the configuration process.
+
 ### Step 1: Register an OAuth Application in GitHub
 
 You must first register the Mattermost GitHub Plugin as an authorized OAuth app regardless of whether you're setting up the GitHub plugin as a system admin or a Mattermost user.
