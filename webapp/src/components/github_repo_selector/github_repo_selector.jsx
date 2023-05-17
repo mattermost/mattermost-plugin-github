@@ -53,11 +53,14 @@ export default class GithubRepoSelector extends PureComponent {
     render() {
         const orgOptions  = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}));
         orgOptions.unshift({value: "", label: "your owned repositories"});
+
         const repoOptions = this.props.yourReposByOrg.map((item) => ({value: item.full_name, label: item.name}));
+
         let orgSelector = null;
         let helperTextForRepoSelector = 'Returns GitHub repositories connected to the user account';
+
         // If there are no organanizations for authenticated user, then don't show organization selector
-        if (orgOptions.length > 1   ) {
+        if (orgOptions.length > 1) {
             orgSelector = (
                 <div>
                     <ReactSelectSetting
