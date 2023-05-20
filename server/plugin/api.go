@@ -1259,6 +1259,11 @@ func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http
 	var allOrgs []*github.Organization
 	var err error
 
+	includeLoggedInUser := r.URL.Query().Get("includeLoggedInUser")
+	if includeLoggedInUser == "true" {
+		allOrgs = append(allOrgs, &github.Organization{Login: &c.GHInfo.GitHubUsername})
+	}
+
 	org := p.getConfiguration().GitHubOrg
 
 	if org == "" {

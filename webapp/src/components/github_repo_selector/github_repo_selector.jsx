@@ -9,7 +9,7 @@ import ReactSelectSetting from 'components/react_select_setting';
 const initialState = {
     invalid: false,
     error: null,
-    org: "",
+    org: '',
 };
 
 export default class GithubRepoSelector extends PureComponent {
@@ -33,8 +33,8 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     componentDidMount() {
-        this.props.actions.getOrgs();
-        this.props.actions.getReposByOrg("");
+        this.props.actions.getOrgs(true);
+        this.props.actions.getReposByOrg('');
     }
 
     onChangeForOrg = (_, org) => {
@@ -51,9 +51,7 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     render() {
-        const orgOptions  = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}));
-        orgOptions.unshift({value: "", label: "your owned repositories"});
-
+        const orgOptions  = this.props.yourOrgs.map((item, i) => (i === 0 ? {value: '', label: item.login} : {value: item.login, label: item.login}));
         const repoOptions = this.props.yourReposByOrg.map((item) => ({value: item.full_name, label: item.name}));
 
         let orgSelector = null;
