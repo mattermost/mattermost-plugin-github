@@ -88,7 +88,6 @@ export function getReviewsDetails(prList) {
     };
 }
 
-
 export function getOrgs(includeLoggedInUser) {
     return async (dispatch, getState) => {
         let data;

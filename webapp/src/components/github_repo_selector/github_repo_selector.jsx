@@ -51,7 +51,7 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     render() {
-        const orgOptions  = this.props.yourOrgs.map((item, i) => (i === 0 ? {value: '', label: item.login} : {value: item.login, label: item.login}));
+        const orgOptions = this.props.yourOrgs.map((item, i) => (i === 0 ? {value: '', label: item.login} : {value: item.login, label: item.login}));
         const repoOptions = this.props.yourReposByOrg.map((item) => ({value: item.full_name, label: item.name}));
 
         let orgSelector = null;
@@ -72,16 +72,16 @@ export default class GithubRepoSelector extends PureComponent {
                         key={'org'}
                         theme={this.props.theme}
                         addValidate={this.props.addValidate}
-                        formatGroupLabel="user repositories"
+                        formatGroupLabel='user repositories'
                         removeValidate={this.props.removeValidate}
                         value={orgOptions.find((option) => option.value === this.state.org)}
                     />
                     <div className={'help-text'}>
-                            {'Returns GitHub organizations connected to the user account'} <br/><br/>
+                        {'Returns GitHub organizations connected to the user account'} <br/><br/>
                     </div>
                 </div>
-            )
-            helperTextForRepoSelector = 'Returns GitHub repositories under selected organizations'
+            );
+            helperTextForRepoSelector = 'Returns GitHub repositories under selected organizations';
         }
 
         return (

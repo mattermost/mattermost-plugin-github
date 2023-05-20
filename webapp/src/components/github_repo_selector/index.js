@@ -20,7 +20,7 @@ function mapDispatchToProps(dispatch) {
     return {
         actions: bindActionCreators({
             getOrgs,
-            getReposByOrg
+            getReposByOrg,
         }, dispatch),
     };
 }
