@@ -1319,7 +1319,7 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 				}
 			} else {
 				c.Log.WithError(err).Warnf("Failed to list repositories")
-				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: statusCode})
 				return
 			}
 		}
