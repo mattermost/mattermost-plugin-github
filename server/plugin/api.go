@@ -1257,23 +1257,21 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http.Request) {
 
 	var allOrgs []*github.Organization
-	var err error
-
-	includeLoggedInUser := r.URL.Query().Get("includeLoggedInUser")
-	if includeLoggedInUser == "true" {
-		allOrgs = append(allOrgs, &github.Organization{Login: &c.GHInfo.GitHubUsername})
-	}
-
 	org := p.getConfiguration().GitHubOrg
 
 	if org == "" {
+		includeLoggedInUser := r.URL.Query().Get("includeLoggedInUser")
+		if includeLoggedInUser == "true" {
+			allOrgs = append(allOrgs, &github.Organization{Login: &c.GHInfo.GitHubUsername})
+		}
 		githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-		allOrgs, err = getOrganizationList(c.Ctx, "", githubClient, github.ListOptions{PerPage: 50})
+		orgList, err := getOrganizationList(c.Ctx, "", githubClient, github.ListOptions{PerPage: 50})
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to list organizations")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch organizations", StatusCode: http.StatusInternalServerError})
 			return
 		}
+		allOrgs = append(allOrgs, orgList...)
 	} else {
 		allOrgs = append(allOrgs, &github.Organization{Login: &org})
 	}
