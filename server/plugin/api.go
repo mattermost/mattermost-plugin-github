@@ -1277,12 +1277,16 @@ func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http
 	}
 	// Only send down fields to client that are needed
 	type OrganizationResponse struct {
-		Login string `json:"login,omitempty"`
+		Login          string `json:"login,omitempty"`
+		IsLoggedInUser bool   `json:"isLoggedInUser,omitempty"`
 	}
 
 	resp := make([]OrganizationResponse, len(allOrgs))
 	for i, r := range allOrgs {
 		resp[i].Login = r.GetLogin()
+		if resp[i].Login == c.GHInfo.GitHubUsername {
+			resp[i].IsLoggedInUser = true
+		}
 	}
 
 	p.writeJSON(w, resp)
