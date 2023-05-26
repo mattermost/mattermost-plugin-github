@@ -696,38 +696,6 @@ func (p *Plugin) getUnreadsData(c *UserContext) []*FilteredNotification {
 	return filteredNotifications
 }
 
-func (p *Plugin) getReviewsData(c *UserContext) []*github.Issue {
-	config := p.getConfiguration()
-
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-	username := c.GHInfo.GitHubUsername
-
-	query := getReviewSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
-	if err != nil {
-		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for review")
-		return []*github.Issue{}
-	}
-
-	return result.Issues
-}
-
-func (p *Plugin) getYourPrsData(c *UserContext) []*github.Issue {
-	config := p.getConfiguration()
-
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-	username := c.GHInfo.GitHubUsername
-
-	query := getYourPrsSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
-	if err != nil {
-		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for PRs")
-		return []*github.Issue{}
-	}
-
-	return result.Issues
-}
-
 func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
@@ -970,27 +938,25 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getYourAssignmentsData(c *UserContext) []*github.Issue {
-	config := p.getConfiguration()
+func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue) {
+	var err error
+	graphQLClient := p.graphQLConnect(c.GHInfo)
 
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-
-	username := c.GHInfo.GitHubUsername
-	query := getYourAssigneeSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
+	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData()
 	if err != nil {
-		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for assignments")
-		return []*github.Issue{}
+		c.Log.WithError(err).Warnf("Failed to search for LHS data")
+		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}
 	}
 
-	return result.Issues
+	return reviewResp, assignmentResp, openPRResp
 }
 
 func (p *Plugin) getSidebarData(c *UserContext) *SidebarContent {
+	reviweResp, assignmentResp, openPRResp := p.getLHSData(c)
 	return &SidebarContent{
-		Assignments: p.getYourAssignmentsData(c),
-		PRs:         p.getYourPrsData(c),
-		Reviews:     p.getReviewsData(c),
+		Assignments: assignmentResp,
+		PRs:         openPRResp,
+		Reviews:     reviweResp,
 		Unreads:     p.getUnreadsData(c),
 	}
 }

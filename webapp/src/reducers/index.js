@@ -77,7 +77,7 @@ function clientId(state = '', action) {
     }
 }
 
-function reviewsDetails(state = [], action) {
+function reviewDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REVIEWS_DETAILS:
         return action.data;
@@ -111,7 +111,7 @@ function yourRepos(state = [], action) {
     }
 }
 
-function yourPrsDetails(state = [], action) {
+function yourPrDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
         return action.data;
@@ -218,9 +218,9 @@ export default combineReducers({
     userSettings,
     configuration,
     clientId,
-    reviewsDetails,
+    reviewDetails,
     yourRepos,
-    yourPrsDetails,
+    yourPrDetails,
     mentions,
     githubUsers,
     rhsPluginAction,

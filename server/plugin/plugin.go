@@ -24,6 +24,7 @@ import (
 	"golang.org/x/oauth2"
 
 	root "github.com/mattermost/mattermost-plugin-github"
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql"
 )
 
 const (
@@ -158,6 +159,11 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
 	tok := *info.Token
 	return p.githubConnectToken(tok)
+}
+
+func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
+	conf := p.getConfiguration()
+	return graphql.NewClient(p.API, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
