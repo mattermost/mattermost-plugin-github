@@ -88,11 +88,11 @@ export function getReviewsDetails(prList) {
     };
 }
 
-export function getOrgs(includeLoggedInUser) {
+export function getOrgs() {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client.getOrganizations(includeLoggedInUser);
+            data = await Client.getOrganizations();
         } catch (error) {
             return {error: data};
         }

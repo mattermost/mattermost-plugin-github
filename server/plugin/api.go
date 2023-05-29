@@ -1277,16 +1277,12 @@ func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http
 	}
 	// Only send down fields to client that are needed
 	type OrganizationResponse struct {
-		Login          string `json:"login,omitempty"`
-		IsLoggedInUser bool   `json:"isLoggedInUser,omitempty"`
+		Login string `json:"login,omitempty"`
 	}
 
 	resp := make([]OrganizationResponse, len(allOrgs))
 	for i, r := range allOrgs {
 		resp[i].Login = r.GetLogin()
-		if resp[i].Login == c.GHInfo.GitHubUsername {
-			resp[i].IsLoggedInUser = true
-		}
 	}
 
 	p.writeJSON(w, resp)
@@ -1299,12 +1295,19 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	org := r.URL.Query().Get("organization")
 
+	if org == "" {
+		err := errors.New("organization query param is empty")
+		c.Log.WithError(err).Warnf("Failed to list repositories")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
 	var allRepos []*github.Repository
 	var err error
 	var statusCode int
 
-	// if organization is not given then return repos where authenticated user is owner
-	if org == "" {
+	// if organization is username of authenticated user then return repos where authenticated user is owner
+	if org == c.GHInfo.GitHubUsername {
 		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, github.RepositoryListOptions{ListOptions: opt, Affiliation: "owner"})
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to list repositories")
