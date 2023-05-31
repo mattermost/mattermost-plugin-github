@@ -1,9 +1,11 @@
 package graphql
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/google/go-github/v41/github"
+	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 )
 
@@ -17,7 +19,7 @@ const (
 	queryParamAssigneeQueryArg = "assigneeQueryArg"
 )
 
-func (c *Client) GetLHSData() ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
+func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
 	params := map[string]interface{}{
 		queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
 		queryParamReviewPRQueryArg:  githubv4.String(fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
@@ -41,8 +43,8 @@ func (c *Client) GetLHSData() ([]*github.Issue, []*github.Issue, []*github.Issue
 			break
 		}
 
-		if err := c.executeQuery(&mainQuery, params); err != nil {
-			return nil, nil, nil, err
+		if err := c.executeQuery(&mainQuery, params, ctx); err != nil {
+			return nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
 		}
 
 		if !flagPR {

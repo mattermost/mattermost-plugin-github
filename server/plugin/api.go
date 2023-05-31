@@ -63,8 +63,8 @@ type FilteredNotification struct {
 }
 
 type SidebarContent struct {
-	Reviews     []*github.Issue         `json:"reviews"`
 	PRs         []*github.Issue         `json:"prs"`
+	Reviews     []*github.Issue         `json:"reviews"`
 	Assignments []*github.Issue         `json:"assignments"`
 	Unreads     []*FilteredNotification `json:"unreads"`
 }
@@ -938,31 +938,38 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue) {
-	var err error
+func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, err error) {
 	graphQLClient := p.graphQLConnect(c.GHInfo)
 
-	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData()
+	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to search for LHS data")
-		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}
+		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
 	}
 
-	return reviewResp, assignmentResp, openPRResp
+	return reviewResp, assignmentResp, openPRResp, nil
 }
 
-func (p *Plugin) getSidebarData(c *UserContext) *SidebarContent {
-	reviweResp, assignmentResp, openPRResp := p.getLHSData(c)
+func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
+	reviweResp, assignmentResp, openPRResp, err := p.getLHSData(c)
+	if err != nil {
+		return nil, err
+	}
+
 	return &SidebarContent{
-		Assignments: assignmentResp,
 		PRs:         openPRResp,
+		Assignments: assignmentResp,
 		Reviews:     reviweResp,
 		Unreads:     p.getUnreadsData(c),
-	}
+	}, nil
 }
 
 func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	sidebarContent := p.getSidebarData(c)
+	sidebarContent, err := p.getSidebarData(c)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to search for the sidebar data")
+		return
+	}
+
 	p.writeJSON(w, sidebarContent)
 }
 

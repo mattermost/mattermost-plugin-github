@@ -24,7 +24,7 @@ import (
 	"golang.org/x/oauth2"
 
 	root "github.com/mattermost/mattermost-plugin-github"
-	"github.com/mattermost/mattermost-plugin-github/server/plugin/internal/graphql"
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
 const (
@@ -163,7 +163,7 @@ func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *g
 
 func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
-	return graphql.NewClient(p.API, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
+	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
@@ -1002,7 +1002,11 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		GHInfo:  info,
 	}
 
-	sidebarContent := p.getSidebarData(userContext)
+	sidebarContent, err := p.getSidebarData(userContext)
+	if err != nil {
+		p.API.LogWarn("Failed to get the sidebar data", "error", err.Error())
+		return
+	}
 
 	contentMap, err := sidebarContent.toMap()
 	if err != nil {
