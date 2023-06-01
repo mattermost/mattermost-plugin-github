@@ -25,7 +25,7 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 	httpClient := oauth2.NewClient(context.Background(), ts)
 	var client Client
 
-	if enterpriseBaseURL == "" || orgName == "" {
+	if enterpriseBaseURL == "" {
 		client = Client{
 			username: username,
 			client:   githubv4.NewClient(httpClient),
@@ -53,7 +53,7 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 }
 
 // executeQuery takes a query struct and sends it to Github GraphQL API via helper package.
-func (c *Client) executeQuery(qry interface{}, params map[string]interface{}, ctx context.Context) error {
+func (c *Client) executeQuery(ctx context.Context, qry interface{}, params map[string]interface{}) error {
 	if err := c.client.Query(ctx, qry, params); err != nil {
 		return errors.Wrap(err, "error in executing query")
 	}

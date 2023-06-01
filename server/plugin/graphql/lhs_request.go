@@ -43,7 +43,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 			break
 		}
 
-		if err := c.executeQuery(&mainQuery, params, ctx); err != nil {
+		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
 			return nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
 		}
 
