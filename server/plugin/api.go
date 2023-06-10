@@ -1255,7 +1255,6 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 }
 
 func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http.Request) {
-
 	var allOrgs []*github.Organization
 	org := p.getConfiguration().GitHubOrg
 
