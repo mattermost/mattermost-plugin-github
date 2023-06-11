@@ -356,7 +356,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	if action != actionOpened && action != actionMarkedReadyForReview && action != actionLabeled && action != actionClosed {
 		return
 	}
-	fmt.Sprintf("event: ", event)
 	pr := event.GetPullRequest()
 	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
