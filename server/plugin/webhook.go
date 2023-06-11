@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -18,16 +19,17 @@ import (
 )
 
 const (
-	actionOpened    = "opened"
-	actionClosed    = "closed"
-	actionReopened  = "reopened"
-	actionSubmitted = "submitted"
-	actionLabeled   = "labeled"
-	actionAssigned  = "assigned"
+	actionOpened               = "opened"
+	actionMarkedReadyForReview = "ready_for_review"
+	actionClosed               = "closed"
+	actionReopened             = "reopened"
+	actionSubmitted            = "submitted"
+	actionLabeled              = "labeled"
+	actionAssigned             = "assigned"
 
-	actionCreated = "created"
-	actionDeleted = "deleted"
-	actionEdited  = "edited"
+	actionCreated              = "created"
+	actionDeleted              = "deleted"
+	actionEdited               = "edited"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -351,11 +353,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != actionOpened && action != actionLabeled && action != actionClosed {
+	if action != actionOpened && action != actionMarkedReadyForReview && action != actionLabeled && action != actionClosed {
 		return
 	}
-
+	fmt.Sprintf("event: ", event)
 	pr := event.GetPullRequest()
+	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(pr.Labels))
 	for i, v := range pr.Labels {
@@ -421,13 +424,24 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == actionOpened {
-			newPRMessage, err := renderTemplate("newPR", GetEventWithRenderConfig(event, sub))
+			prNotificationType := isPRInDraftState ? "newDraftPR" : "newReadyToReviewPR"
+			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
 				return
 			}
 
 			post.Message = p.sanitizeDescription(newPRMessage)
+		}
+
+		if action == actionMarkedReadyForReview {
+			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(markedReadyToReviewPRMessage)
 		}
 
 		if action == actionClosed {

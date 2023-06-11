@@ -183,9 +183,35 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- end -}}
 `))
 
-	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
+	template.Must(masterTemplate.New("newDraftPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+{{- else -}}
+#### {{.Event.GetPullRequest.GetTitle}}
+##### {{template "eventRepoPullRequest" .Event}}
+#new-pull-request by {{template "user" .Event.GetSender}}
+{{- end }}
+`))
+
+	template.Must(masterTemplate.New("newReadyToReviewPR").Funcs(funcMap).Parse(`
+{{ if eq .Config.Style "collapsed" -}}
+{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+{{- else -}}
+#### {{.Event.GetPullRequest.GetTitle}}
+##### {{template "eventRepoPullRequest" .Event}}
+#new-pull-request by {{template "user" .Event.GetSender}}
+{{- if ne .Config.Style "skip-body" -}}
+{{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
+{{- template "assignee" .Event.GetPullRequest }}
+
+{{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{- end -}}
+{{- end }}
+`))
+
+	template.Must(masterTemplate.New("markedReadyToReviewPR").Funcs(funcMap).Parse(`
+{{ if eq .Config.Style "collapsed" -}}
+{{template "repo" .Event.GetRepo}} Pull request {{template "pullRequest" .Event.GetPullRequest}} was marked ready for review by {{template "user" .Event.GetSender}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
