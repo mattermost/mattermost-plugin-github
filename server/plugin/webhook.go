@@ -6,7 +6,6 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -27,9 +26,9 @@ const (
 	actionLabeled              = "labeled"
 	actionAssigned             = "assigned"
 
-	actionCreated              = "created"
-	actionDeleted              = "deleted"
-	actionEdited               = "edited"
+	actionCreated = "created"
+	actionDeleted = "deleted"
+	actionEdited  = "edited"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -423,7 +422,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == actionOpened {
-			prNotificationType := isPRInDraftState ? "newDraftPR" : "newReadyToReviewPR"
+			prNotificationType := "newReadyToReviewPR"
+			if isPRInDraftState {
+				prNotificationType = "newDraftPR"
+			}
 			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
