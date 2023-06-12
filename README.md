@@ -152,6 +152,7 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
      - `--render-style`: notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported 
      values are `collapsed`, `skip-body` or `default` (same as omitting the flag).
+     - `--exclude`: comma-separated list of the repositories to exclude from getting the subscription notifications like `mattermost/mattermost-server`. Only supported for subscriptions to an organization.
    
 * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review.
 * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders.
