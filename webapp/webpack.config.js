@@ -1,10 +1,12 @@
 const exec = require('child_process').exec;
 
 const path = require('path');
+const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
 
 const NPM_TARGET = process.env.npm_lifecycle_event; //eslint-disable-line no-process-env
+const E2E_TESTING = process.env.E2E_TESTING; //eslint-disable-line no-process-env
 let mode = 'production';
 let devtool = '';
 if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
@@ -12,7 +14,10 @@ if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
     devtool = 'source-map';
 }
 
-const plugins = [];
+const plugins = [
+    new webpack.DefinePlugin({__E2E_TESTING__: E2E_TESTING}),
+];
+
 if (NPM_TARGET === 'build:watch' || NPM_TARGET === 'debug:watch') {
     plugins.push({
         apply: (compiler) => {

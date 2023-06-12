@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
@@ -190,10 +191,15 @@ func (p *Plugin) setConfiguration(configuration *Configuration) {
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
+	if p.client == nil {
+		p.client = pluginapi.NewClient(p.API, p.Driver)
+	}
+
 	var configuration = new(Configuration)
 
 	// Load the public configuration fields from the Mattermost server configuration.
-	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
+	err := p.client.Configuration.LoadPluginConfiguration(configuration)
+	if err != nil {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
 
@@ -208,19 +214,14 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to get command")
 	}
 
-	err = p.API.RegisterCommand(command)
+	err = p.client.SlashCommand.Register(command)
 	if err != nil {
 		return errors.Wrap(err, "failed to register command")
 	}
-
-	enableDiagnostics := false
-	if config := p.API.GetConfig(); config != nil {
-		if configValue := config.LogSettings.EnableDiagnostics; configValue != nil {
-			enableDiagnostics = *configValue
-		}
+	// Some config changes require reloading tracking config
+	if p.tracker != nil {
+		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.client.Configuration.GetConfig()))
 	}
-
-	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
 
 	return nil
 }
@@ -230,7 +231,7 @@ func (p *Plugin) sendWebsocketEventIfNeeded(oldConfig, newConfig *Configuration)
 	// Hence, an unnecessary websocket event is sent.
 	// Given that oldConfig is never nil, that case is hard to catch.
 	if !reflect.DeepEqual(oldConfig.ClientConfiguration(), newConfig.ClientConfiguration()) {
-		p.API.PublishWebSocketEvent(
+		p.client.Frontend.PublishWebSocketEvent(
 			WSEventConfigUpdate,
 			newConfig.ClientConfiguration(),
 			&model.WebsocketBroadcast{},

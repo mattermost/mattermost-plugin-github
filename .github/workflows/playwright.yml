@@ -1,0 +1,172 @@
+name: Playwright Tests
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  TERM: xterm
+  GO_VERSION: 1.19.6
+  NODE_VERSION: 16.15.0
+
+jobs:
+  playwright-run:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:11.13
+        env:
+          POSTGRES_USER: mmuser
+          POSTGRES_PASSWORD: mostest
+          POSTGRES_DB: mattermost_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      minio:
+        image: minio/minio:RELEASE.2019-10-11T00-38-09Z
+        env:
+          MINIO_ACCESS_KEY: minioaccesskey
+          MINIO_SECRET_KEY: miniosecretkey
+          MINIO_SSE_MASTER_KEY: "my-minio-key:6368616e676520746869732070617373776f726420746f206120736563726574"
+      inbucket:
+        image: mattermost/inbucket:release-1.2.0
+        ports:
+          - 10080:10080
+          - 10110:10110
+          - 10025:10025
+      elasticsearch:
+        image: mattermost/mattermost-elasticsearch-docker:7.0.0
+        env:
+          http.host: "0.0.0.0"
+          http.port: 9200
+          http.cors.enabled: "true"
+          http.cors.allow-origin: "http://localhost:1358,http://127.0.0.1:1358"
+          http.cors.allow-headers: "X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization"
+          http.cors.allow-credentials: "true"
+          transport.host: "127.0.0.1"
+          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+        ports:
+          - 9200:9200
+      mattermost-server:
+        image: mattermost/mattermost-enterprise-edition:master
+        env:
+          DB_HOST: postgres
+          DB_PORT_NUMBER: 5432
+          MM_DBNAME: mattermost_test
+          MM_USERNAME: mmuser
+          MM_PASSWORD: mostest
+          CI_INBUCKET_HOST: inbucket
+          CI_INBUCKET_PORT: 10080
+          CI_MINIO_HOST: minio
+          IS_CI: true
+          MM_CLUSTERSETTINGS_READONLYCONFIG: false
+          MM_EMAILSETTINGS_SMTPSERVER: inbucket
+          MM_EMAILSETTINGS_SMTPPORT: 10025
+          MM_ELASTICSEARCHSETTINGS_CONNECTIONURL: http://elasticsearch:9200
+          MM_EXPERIMENTALSETTINGS_USENEWSAMLLIBRARY: true
+          MM_SQLSETTINGS_DATASOURCE: "postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10"
+          MM_SQLSETTINGS_DRIVERNAME: postgres
+          MM_PLUGINSETTINGS_ENABLEUPLOADS: true
+          MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+          MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: false
+          MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: false
+          MM_FEATUREFLAGS_AppsEnabled: true
+
+        ports:
+          - 8065:8065
+          - 4000:4000
+    env:
+      TYPE: NONE
+      PULL_REQUEST: ""
+      HEADLESS: true
+      DASHBOARD_ENABLE: false
+      FULL_REPORT: false
+      MM_SERVICESETTINGS_SITEURL: http://localhost:8065
+      MM_ADMIN_EMAIL: sysadmin@sample.mattermost.com
+      MM_ADMIN_USERNAME: sysadmin
+      MM_ADMIN_PASSWORD: Sys@dmin-sample1
+      TEST_DATABASE_URL: postgres://mmuser:mostest@localhost:5432/mattermost_test
+      MM_SERVICESETTINGS_ENABLEDEVELOPER: true
+    steps:
+      - name: ci/checkout-repo
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+
+      - name: ci/setup-go
+        uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+          cache: true
+
+      - name: ci/setup-node
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+          cache-dependency-path: webapp/package-lock.json
+
+      - name: ci/create-admin-user
+        run: |
+          STATUSCODE=$(curl -X POST -H "Content-Type: application/json" -d '{"email": "'${MM_ADMIN_EMAIL}'", "username": "'${MM_ADMIN_USERNAME}'", "password": "'${MM_ADMIN_PASSWORD}'"}' ${MM_SERVICESETTINGS_SITEURL}/api/v4/users -w "%{http_code}" -o /dev/stderr)
+          if test $STATUSCODE -ne 201; then exit 1; fi
+
+      - name: ci/install-go-dependencies
+        run: go mod tidy
+      - name: ci/install-npm-dependencies
+        run: cd webapp && npm ci
+
+      - name: ci/build-and-install-plugin
+        run: make deploy
+        env:
+          PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
+          E2E_TESTING: true
+
+      - name: ci/setup-node
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
+        with:
+          node-version: "16"
+          cache: "npm"
+          cache-dependency-path: e2e/playwright/package-lock.json
+
+      - name: ci/install-tests-deps
+        run: |
+          cd e2e/playwright
+          ./setup-environment
+
+      - name: ci/tsc
+        run: |
+          cd e2e/playwright
+          npm run tsc
+
+      - name: ci/lint
+        run: |
+          cd e2e/playwright
+          npm run lint
+
+      - name: ci/run-playwright-tests
+        run: |
+          cd e2e/playwright
+          npm run test-ci
+        env:
+          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.MM_GITHUB_PLUGIN_E2E_TOKEN }}
+          PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
+
+      - name: ci/move-artifacts
+        if: success() || failure()
+        run: |
+          cd e2e/playwright
+          mkdir results
+          mv playwright-report results
+
+      - uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: test-results
+          path: e2e/playwright/results

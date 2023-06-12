@@ -16,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
+	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -86,13 +87,13 @@ const (
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		p.API.LogWarn("Failed to marshal JSON response", "error", err.Error())
+		p.client.Log.Warn("Failed to marshal JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	_, err = w.Write(b)
 	if err != nil {
-		p.API.LogWarn("Failed to write JSON response", "error", err.Error())
+		p.client.Log.Warn("Failed to write JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -101,7 +102,7 @@ func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) {
 	b, err := json.Marshal(apiErr)
 	if err != nil {
-		p.API.LogWarn("Failed to marshal API error", "error", err.Error())
+		p.client.Log.Warn("Failed to marshal API error", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -110,7 +111,7 @@ func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) 
 
 	_, err = w.Write(b)
 	if err != nil {
-		p.API.LogWarn("Failed to write JSON response", "error", err.Error())
+		p.client.Log.Warn("Failed to write JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -158,7 +159,7 @@ func (p *Plugin) withRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if x := recover(); x != nil {
-				p.API.LogWarn("Recovered from a panic",
+				p.client.Log.Warn("Recovered from a panic",
 					"url", r.URL.String(),
 					"error", x,
 					"stack", string(debug.Stack()))
@@ -192,7 +193,7 @@ func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) 
 			case ResponseTypePlain:
 				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			default:
-				p.API.LogDebug("Unknown ResponseType detected")
+				p.client.Log.Debug("Unknown ResponseType detected")
 			}
 			return
 		}
@@ -286,14 +287,8 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		PrivateAllowed: privateAllowed,
 	}
 
-	stateBytes, err := json.Marshal(state)
+	_, err := p.client.KV.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
-		http.Error(w, "json marshal failed", http.StatusInternalServerError)
-		return
-	}
-
-	appErr := p.API.KVSetWithExpiry(githubOauthKey+state.Token, stateBytes, TokenTTL)
-	if appErr != nil {
 		http.Error(w, "error setting stored state", http.StatusBadRequest)
 		return
 	}
@@ -347,27 +342,21 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	stateToken := r.URL.Query().Get("state")
 
-	storedState, appErr := p.API.KVGet(githubOauthKey + stateToken)
-	if appErr != nil {
-		c.Log.Warnf("Failed to get state token", "error", appErr.Error())
+	var state OAuthState
+	err := p.client.KV.Get(githubOauthKey+stateToken, &state)
+	if err != nil {
+		c.Log.Warnf("Failed to get state token", "error", err.Error())
 
-		rErr = errors.Wrap(appErr, "missing stored state")
+		rErr = errors.Wrap(err, "missing stored state")
 		http.Error(w, rErr.Error(), http.StatusBadRequest)
 		return
 	}
-	var state OAuthState
 
-	if err := json.Unmarshal(storedState, &state); err != nil {
-		rErr = errors.Wrap(err, "json unmarshal failed")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	err = p.client.KV.Delete(githubOauthKey + stateToken)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to delete state token")
 
-	appErr = p.API.KVDelete(githubOauthKey + stateToken)
-	if appErr != nil {
-		c.Log.WithError(appErr).Warnf("Failed to delete state token")
-
-		rErr = errors.Wrap(appErr, "error deleting stored state")
+		rErr = errors.Wrap(err, "error deleting stored state")
 		http.Error(w, rErr.Error(), http.StatusBadRequest)
 		return
 	}
@@ -407,6 +396,9 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		http.Error(w, rErr.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// track the successful connection
+	p.TrackUserEvent("account_connected", c.UserID, nil)
 
 	userInfo := &GitHubUserInfo{
 		UserID:         state.UserID,
@@ -480,7 +472,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	config := p.getConfiguration()
 
-	p.API.PublishWebSocketEvent(
+	p.client.Frontend.PublishWebSocketEvent(
 		wsEventConnect,
 		map[string]interface{}{
 			"connected":           true,
@@ -618,7 +610,8 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 
 	privateRepoStoreKey := info.UserID + githubPrivateRepoKey
 	if config.EnablePrivateRepo && !info.AllowedPrivateRepos {
-		val, err := p.API.KVGet(privateRepoStoreKey)
+		var val []byte
+		err := p.client.KV.Get(privateRepoStoreKey, &val)
 		if err != nil {
 			c.Log.WithError(err).Warnf("Unable to get private repo key value")
 			return
@@ -632,7 +625,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 			} else {
 				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect private`."), "")
 			}
-			err := p.API.KVSet(privateRepoStoreKey, []byte("1"))
+			_, err := p.client.KV.Set(privateRepoStoreKey, []byte("1"))
 			if err != nil {
 				c.Log.WithError(err).Warnf("Unable to set private repo key value")
 			}
@@ -849,7 +842,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 }
 
 func (p *Plugin) getPermaLink(postID string) string {
-	siteURL := *p.API.GetConfig().ServiceSettings.SiteURL
+	siteURL := *p.client.Configuration.GetConfig().ServiceSettings.SiteURL
 
 	return fmt.Sprintf("%v/_redirect/pl/%v", siteURL, postID)
 }
@@ -916,8 +909,8 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
-	post, appErr := p.API.GetPost(req.PostID)
-	if appErr != nil {
+	post, err := p.client.Post.GetPost(req.PostID)
+	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID, StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -965,8 +958,8 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		UserId:    c.UserID,
 	}
 
-	_, appErr = p.API.CreatePost(reply)
-	if appErr != nil {
+	err = p.client.Post.CreatePost(reply)
+	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostID, StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1203,41 +1196,75 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 	p.writeJSON(w, allMilestones)
 }
 
+func getRepositoryList(c context.Context, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, error) {
+	var allRepos []*github.Repository
+	for {
+		repos, resp, err := githubClient.Repositories.List(c, userName, &github.RepositoryListOptions{ListOptions: opt})
+		if err != nil {
+			return nil, err
+		}
+
+		allRepos = append(allRepos, repos...)
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opt.Page = resp.NextPage
+	}
+
+	return allRepos, nil
+}
+
+func getRepositoryListByOrg(c context.Context, org string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, int, error) {
+	var allRepos []*github.Repository
+	for {
+		repos, resp, err := githubClient.Repositories.ListByOrg(c, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
+		if err != nil {
+			return nil, resp.StatusCode, err
+		}
+
+		allRepos = append(allRepos, repos...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	return allRepos, http.StatusOK, nil
+}
+
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	org := p.getConfiguration().GitHubOrg
 
 	var allRepos []*github.Repository
+	var err error
+	var statusCode int
 	opt := github.ListOptions{PerPage: 50}
 
 	if org == "" {
-		for {
-			repos, resp, err := githubClient.Repositories.List(c.Ctx, "", &github.RepositoryListOptions{ListOptions: opt})
-			if err != nil {
+		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, opt)
+		if err != nil {
+			c.Log.WithError(err).Warnf("Failed to list repositories")
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+			return
+		}
+	} else {
+		allRepos, statusCode, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
+		if err != nil {
+			if statusCode == http.StatusNotFound {
+				allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
+				if err != nil {
+					c.Log.WithError(err).Warnf("Failed to list repositories")
+					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+					return
+				}
+			} else {
 				c.Log.WithError(err).Warnf("Failed to list repositories")
 				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 				return
 			}
-			allRepos = append(allRepos, repos...)
-			if resp.NextPage == 0 {
-				break
-			}
-			opt.Page = resp.NextPage
-		}
-	} else {
-		for {
-			repos, resp, err := githubClient.Repositories.ListByOrg(c.Ctx, org, &github.RepositoryListByOrgOptions{Sort: "full_name", ListOptions: opt})
-			if err != nil {
-				c.Log.WithError(err).Warnf("Failed to list repositories by org")
-				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-				return
-			}
-			allRepos = append(allRepos, repos...)
-			if resp.NextPage == 0 {
-				break
-			}
-			opt.Page = resp.NextPage
 		}
 	}
 
@@ -1272,6 +1299,7 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 
 	// get data for the issue from the request body and fill IssueRequest object
 	issue := &IssueRequest{}
+
 	if err := json.NewDecoder(r.Body).Decode(&issue); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding JSON body")
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
@@ -1297,9 +1325,9 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	var post *model.Post
 	permalink := ""
 	if issue.PostID != "" {
-		var appErr *model.AppError
-		post, appErr = p.API.GetPost(issue.PostID)
-		if appErr != nil {
+		var err error
+		post, err = p.client.Post.GetPost(issue.PostID)
+		if err != nil {
 			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID, StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1337,8 +1365,8 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 	*ghIssue.Body = ghIssue.GetBody() + mmMessage
 
-	currentUser, appErr := p.API.GetUser(c.UserID)
-	if appErr != nil {
+	currentUser, err := p.client.User.Get(c.UserID)
+	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1387,12 +1415,12 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 
 	if post != nil {
-		_, appErr = p.API.CreatePost(reply)
+		err = p.client.Post.CreatePost(reply)
 	} else {
-		p.API.SendEphemeralPost(c.UserID, reply)
+		p.client.Post.SendEphemeralPost(c.UserID, reply)
 	}
-	if appErr != nil {
-		c.Log.WithError(appErr).Warnf("failed to create notification post")
+	if err != nil {
+		c.Log.WithError(err).Warnf("failed to create notification post")
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post, postID: " + issue.PostID + ", channelID: " + channelID, StatusCode: http.StatusInternalServerError})
 		return
 	}
