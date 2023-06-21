@@ -138,7 +138,7 @@ func (s *Subscription) RenderStyle() string {
 
 func (s *Subscription) excludedRepoForSub(repo *github.Repository) bool {
 	for _, repository := range s.Flags.ExcludeRepository {
-		if repository == *repo.FullName {
+		if repository == repo.GetFullName() {
 			return true
 		}
 	}
