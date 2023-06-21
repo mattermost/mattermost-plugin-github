@@ -184,16 +184,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("newDraftPR").Funcs(funcMap).Parse(`
-{{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
-{{- else -}}
-#### {{.Event.GetPullRequest.GetTitle}}
-##### {{template "eventRepoPullRequest" .Event}}
-#new-pull-request by {{template "user" .Event.GetSender}}
-{{- end }}
+{{template "repo" .Event.GetRepo}} New draft pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
 `))
 
-	template.Must(masterTemplate.New("newReadyToReviewPR").Funcs(funcMap).Parse(`
+	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
 {{- else -}}

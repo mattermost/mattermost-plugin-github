@@ -422,7 +422,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == actionOpened {
-			prNotificationType := "newReadyToReviewPR"
+			prNotificationType := "newPR"
 			if isPRInDraftState {
 				prNotificationType = "newDraftPR"
 			}
