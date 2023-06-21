@@ -36,7 +36,11 @@ func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
 	case flagRenderStyle:
 		s.RenderStyle = value
 	case flagExcludeRepository:
-		s.ExcludeRepository = strings.Split(value, ",")
+		repos := strings.Split(value, ",")
+		for i := range repos {
+			repos[i] = strings.TrimSpace(repos[i])
+		}
+		s.ExcludeRepository = repos
 	}
 
 	return nil
