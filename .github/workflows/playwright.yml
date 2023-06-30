@@ -2,10 +2,10 @@ name: Playwright Tests
 on:
   schedule:
     - cron: "0 0 * * *"
-  pull_request:
-  push:
-    branches:
-      - master
+  workflow_run:
+    workflows: ["ci"]
+    types:
+      - completed
 
 env:
   TERM: xterm

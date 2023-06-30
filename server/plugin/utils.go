@@ -351,3 +351,23 @@ func isValidURL(rawURL string) error {
 
 	return nil
 }
+
+// lastN returns the last n characters of a string, with the rest replaced by *.
+// At most 3 characters are replaced. The rest is cut off.
+func lastN(s string, n int) string {
+	if n < 0 {
+		return ""
+	}
+
+	out := []byte(s)
+	if len(out) > n+3 {
+		out = out[len(out)-n-3:]
+	}
+	for i := range out {
+		if i < len(out)-n {
+			out[i] = '*'
+		}
+	}
+
+	return string(out)
+}

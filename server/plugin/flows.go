@@ -221,6 +221,8 @@ func (fm *FlowManager) StartSetupWizard(userID string, delegatedFrom string) err
 		return err
 	}
 
+	fm.client.Log.Debug("Started setup wizard", "userID", userID, "delegatedFrom", delegatedFrom)
+
 	fm.trackStartSetupWizard(userID, delegatedFrom != "")
 
 	return nil
