@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/go-github/v41/github"
 	"github.com/pkg/errors"
@@ -40,7 +39,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 	flagPR, flagAssignee, flagOpenPR := false, false, false
 
 	for {
-		if flagPR && flagOpenPR && flagAssignee {
+		if flagPR && flagAssignee && flagOpenPR {
 			break
 		}
 
@@ -50,7 +49,6 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 
 		if !flagPR {
 			for _, resp := range mainQuery.PullRequest.Nodes {
-				resp := resp
 				pr := getPR(&resp)
 				resultPR = append(resultPR, pr)
 			}
@@ -64,7 +62,6 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 
 		if !flagAssignee {
 			for _, resp := range mainQuery.Assignee.Nodes {
-				resp := resp
 				issue := getIssue(&resp)
 				resultAssignee = append(resultAssignee, issue)
 			}
@@ -78,7 +75,6 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 
 		if !flagOpenPR {
 			for _, resp := range mainQuery.OpenPullRequest.Nodes {
-				resp := resp
 				pr := getPR(&resp)
 				resultOpenPR = append(resultOpenPR, pr)
 			}
@@ -97,25 +93,33 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 func getPR(prResp *prSearchNodes) *github.Issue {
 	resp := prResp.PullRequest
 
-	return getGithubIssue(int(resp.Number), resp.Repository.URL.String(), string(resp.Title), (string)(resp.Author.Login), resp.URL.String(), resp.CreatedAt.Time, resp.UpdatedAt.Time)
+	return getGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt)
 }
 
 func getIssue(assignmentResp *assignmentSearchNodes) *github.Issue {
 	resp := assignmentResp.PullRequest
 
-	return getGithubIssue(int(resp.Number), resp.Repository.URL.String(), string(resp.Title), (string)(resp.Author.Login), resp.URL.String(), resp.CreatedAt.Time, resp.UpdatedAt.Time)
+	return getGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt)
 }
 
-func getGithubIssue(prNumber int, repositoryURL, title, login, htmlURL string, createdAt, updatedAt time.Time) *github.Issue {
+func getGithubIssue(prNumber githubv4.Int, title, login githubv4.String, repositoryURL, htmlURL githubv4.URI, createdAt, updatedAt githubv4.DateTime) *github.Issue {
+	number := int(prNumber)
+	repoURL := repositoryURL.String()
+	issuetitle := string(title)
+	userLogin := (string)(login)
+	url := htmlURL.String()
+	createdAtTime := createdAt.Time
+	updatedAtTime := updatedAt.Time
+
 	return &github.Issue{
-		Number:        &prNumber,
-		RepositoryURL: &repositoryURL,
-		Title:         &title,
-		CreatedAt:     &createdAt,
-		UpdatedAt:     &updatedAt,
+		Number:        &number,
+		RepositoryURL: &repoURL,
+		Title:         &issuetitle,
+		CreatedAt:     &createdAtTime,
+		UpdatedAt:     &updatedAtTime,
 		User: &github.User{
-			Login: &login,
+			Login: &userLogin,
 		},
-		HTMLURL: &htmlURL,
+		HTMLURL: &url,
 	}
 }
