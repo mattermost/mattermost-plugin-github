@@ -48,8 +48,8 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		}
 
 		if !flagPR {
-			for _, resp := range mainQuery.PullRequest.Nodes {
-				resp := resp
+			for i := range mainQuery.PullRequest.Nodes {
+				resp := mainQuery.PullRequest.Nodes[i]
 				pr := getPR(&resp)
 				resultPR = append(resultPR, pr)
 			}
@@ -62,8 +62,8 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		}
 
 		if !flagAssignee {
-			for _, resp := range mainQuery.Assignee.Nodes {
-				resp := resp
+			for i := range mainQuery.Assignee.Nodes {
+				resp := mainQuery.Assignee.Nodes[i]
 				issue := getIssue(&resp)
 				resultAssignee = append(resultAssignee, issue)
 			}
@@ -76,8 +76,8 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		}
 
 		if !flagOpenPR {
-			for _, resp := range mainQuery.OpenPullRequest.Nodes {
-				resp := resp
+			for i := range mainQuery.OpenPullRequest.Nodes {
+				resp := mainQuery.OpenPullRequest.Nodes[i]
 				pr := getPR(&resp)
 				resultOpenPR = append(resultOpenPR, pr)
 			}
