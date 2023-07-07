@@ -436,8 +436,14 @@ func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.React
 }
 
 func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error {
+	conf := p.getConfiguration()
+
 	// Don't start wizard if OAuth is configured
-	if p.getConfiguration().IsOAuthConfigured() {
+	if conf.IsOAuthConfigured() {
+		p.client.Log.Debug("OAuth is configured, skipping setup wizard",
+			"GitHubOAuthClientID", lastN(conf.GitHubOAuthClientID, 4),
+			"GitHubOAuthClientSecret", lastN(conf.GitHubOAuthClientSecret, 4),
+			"UsePreregisteredApplication", conf.UsePreregisteredApplication)
 		return nil
 	}
 

@@ -58,6 +58,15 @@ export default class SidebarButtons extends React.PureComponent {
             return;
         }
 
+        // Avoid refreshing data on each test when doing e2e testing.
+        // It requires __E2E_TESTING__ env/webpack-flag set and skip_github_fetch query param.
+        // Otherwise we'll load app on each test consuming 3 searches from 30 rate limit.
+        const params = new URLSearchParams(window.location.search);
+        // eslint-disable-next-line no-undef
+        if (__E2E_TESTING__ && params.get('skip_github_fetch') === 'true') {
+            return;
+        }
+
         if (e) {
             e.preventDefault();
         }
