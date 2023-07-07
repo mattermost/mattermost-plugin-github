@@ -6,13 +6,13 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v41 v41.0.0
 	github.com/gorilla/mux v1.8.0
-	github.com/mattermost/mattermost-plugin-api v0.1.3-0.20230323124751-86c7be7ffbac
+	github.com/mattermost/mattermost-plugin-api v0.1.3
 	// mmgoget: github.com/mattermost/mattermost-server/v6@v7.5.0 is replaced by -> github.com/mattermost/mattermost-server/v6@21aec2741b
 	github.com/mattermost/mattermost-server/v6 v6.0.0-20221109191448-21aec2741bfe
 	github.com/microcosm-cc/bluemonday v1.0.19
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
+	golang.org/x/oauth2 v0.4.0
 )
 
 require (
@@ -83,8 +83,8 @@ require (
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220817144833-d7fd3f11b9b1 // indirect
-	google.golang.org/grpc v1.48.0 // indirect
+	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
+	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect

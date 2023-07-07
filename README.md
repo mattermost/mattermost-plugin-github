@@ -35,7 +35,7 @@ This repository is licensed under the [Apache 2.0 License](https://github.com/ma
 
 ## About the GitHub Plugin
 
-The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration. 
+The Mattermost GitHub plugin uses a webhook to connect your GitHub account to Mattermost to listen for incoming GitHub events. Events notifications are via DM in Mattermost. The Events don’t need separate configuration.
 
 After a System Admin has configured the GitHub plugin, run `/github connect` in a Mattermost channel to connect your Mattermost and GitHub accounts.
 
@@ -57,9 +57,11 @@ This guide assumes:
 
 ## Configuration
 
-GitHub plugin configuration starts by registering an OAuth app in GitHub and ends in Mattermost. 
+GitHub plugin configuration starts by registering an OAuth app in GitHub and ends in Mattermost.
 
 **Note:** If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL.
+
+You can use the `/github setup` command to streamline the configuration process.
 
 ### Step 1: Register an OAuth Application in GitHub
 
@@ -69,7 +71,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app 
 2. Set the following values:
    - **Application name:** `Mattermost GitHub Plugin - <your company name>`
    - **Homepage URL:** `https://github.com/mattermost/mattermost-plugin-github`
-   - **Authorization callback URL:** `https://your-mattermost-url.com/plugins/github/oauth/complete`, replacing `https://your-mattermost-url.com` with your Mattermost URL. This value needs to match the Mattermost server URL that you or your users users log in to. 
+   - **Authorization callback URL:** `https://your-mattermost-url.com/plugins/github/oauth/complete`, replacing `https://your-mattermost-url.com` with your Mattermost URL. This value needs to match the Mattermost server URL that you or your users users log in to.
 3. Submit.
 4. Click **Generate a new client secret** and provide your GitHub password to continue.
 5. Copy the **Client ID** and **Client Secret** in the resulting screen.
@@ -108,13 +110,13 @@ To prevent this, either:
 
 or
 
-- If the user is an existing user account you want to preserve, change its username and restart the Mattermost server. Once restarted, the plugin will create a bot 
+- If the user is an existing user account you want to preserve, change its username and restart the Mattermost server. Once restarted, the plugin will create a bot
 account with the name `github`.
 
 **Note:** For `v0.9.0` and earlier of the GitHub plugin, instead of using bot accounts, set the username the plugin is attached to in **System Console > Plugins > GitHub**.
 
 #### Generate a Key
-  
+
 Open **System Console > Plugins > GitHub** and do the following:
 
 1. Generate a new value for **At Rest Encryption Key**.
@@ -134,7 +136,7 @@ Once configuration is complete, run the `/github connect` slash command from any
 
 When you’ve tested the plugin and confirmed it’s working, notify your team so they can connect their GitHub account to Mattermost and get started. Copy and paste the text below, edit it to suit your requirements, and send it out.
 
-> Hi team, 
+> Hi team,
 
 > We've set up the Mattermost GitHub plugin, so you can get notifications from GitHub in Mattermost. To get started, run the `/github connect` slash command from any channel within Mattermost to connect your Mattermost account with GitHub. Then, take a look at the [slash commands](#slash-commands) section for details about how to use the plugin.
 
@@ -150,11 +152,15 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
   - The following flags are supported:
      - `--features`: comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:"labelname". Defaults to pulls,issues,creates,deletes.
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
-     - `--render-style`: notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported 
+     - `--render-style`: notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported
      values are `collapsed`, `skip-body` or `default` (same as omitting the flag).
-   
+
 * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review.
 * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders.
+* __Setup GitHub integration__ - Use `/github setup` to configure the integration between GitHub and Mattermost. This command has the following subcommands:
+    - `/github setup oauth`: Sets up the OAuth2 application in GitHub, establishing the necessary authorization connection between GitHub and Mattermost.
+    - `/github setup webhook`: Creates a webhook from GitHub to Mattermost, allowing real-time notifications and updates from GitHub to be sent to Mattermost channels.
+    - `/github setup announce`: Sends a message to designated channels in Mattermost, announcing the availability of the GitHub integration for team members to use.
 * __And more!__ - Run `/github help` to see what else the slash command can do.
 
 ## Frequently Asked Questions
@@ -182,3 +188,7 @@ GitHub user tokens are AES encrypted with an At Rest Encryption Key configured i
 ## Development
 
 This plugin contains both a server and web app portion. Read our documentation about the [Developer Workflow](https://developers.mattermost.com/extend/plugins/developer-workflow/) and [Developer Setup](https://developers.mattermost.com/extend/plugins/developer-setup/) for more information about developing and extending plugins.
+
+### Playwright e2e tests
+
+In order to get your environment set up to run [Playwright](https://playwright.dev) tests, please see the setup guide at [e2e/playwright](/e2e/playwright#readme).

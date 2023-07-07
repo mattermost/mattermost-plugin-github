@@ -1,3 +1,5 @@
+GO_BUILD_FLAGS ?=
+
 # Ensure that go is installed. Note that this is independent of whether or not a server is being
 # built, since the build script itself uses go.
 ifeq ($(GO),)
