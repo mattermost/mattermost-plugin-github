@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	GithubListOptionsPerPageValue = 50
+	PerPageValue = 50
 )
 
 var validFeatures = map[string]bool{
@@ -282,7 +282,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 func (p *Plugin) checkIfConfiguredWebhookExists(githubClient *github.Client, repo, owner string, ctx context.Context) (bool, error) {
 	found := false
 	opt := &github.ListOptions{
-		PerPage: GithubListOptionsPerPageValue,
+		PerPage: PerPageValue,
 	}
 	siteURL := *p.client.Configuration.GetConfig().ServiceSettings.SiteURL
 
