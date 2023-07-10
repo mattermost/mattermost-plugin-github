@@ -950,7 +950,7 @@ func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignm
 }
 
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
-	reviweResp, assignmentResp, openPRResp, err := p.getLHSData(c)
+	reviewResp, assignmentResp, openPRResp, err := p.getLHSData(c)
 	if err != nil {
 		return nil, err
 	}
@@ -958,7 +958,7 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 	return &SidebarContent{
 		PRs:         openPRResp,
 		Assignments: assignmentResp,
-		Reviews:     reviweResp,
+		Reviews:     reviewResp,
 		Unreads:     p.getUnreadsData(c),
 	}, nil
 }
