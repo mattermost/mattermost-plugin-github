@@ -62,16 +62,16 @@ type (
 )
 
 var mainQuery struct {
-	PullRequest struct {
+	ReviewRequests struct {
 		IssueCount int
 		Nodes      []prSearchNodes
 		PageInfo   struct {
 			EndCursor   githubv4.String
 			HasNextPage bool
 		}
-	} `graphql:"pullRequest: search(first:100, after:$reviewCursor, query: $prReviewQueryArg, type: ISSUE)"`
+	} `graphql:"pullRequest: search(first:100, after:$reviewsCursor, query: $prReviewQueryArg, type: ISSUE)"`
 
-	Assignee struct {
+	Assignments struct {
 		IssueCount int
 		Nodes      []assignmentSearchNodes
 		PageInfo   struct {
@@ -80,7 +80,7 @@ var mainQuery struct {
 		}
 	} `graphql:"assignee: search(first:100, after:$assignmentsCursor, query: $assigneeQueryArg, type: ISSUE)"`
 
-	OpenPullRequest struct {
+	OpenPullRequests struct {
 		IssueCount int
 		Nodes      []prSearchNodes
 		PageInfo   struct {

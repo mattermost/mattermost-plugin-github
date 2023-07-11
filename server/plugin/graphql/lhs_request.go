@@ -35,11 +35,11 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		params[queryParamAssigneeQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", c.org, params[queryParamAssigneeQueryArg]))
 	}
 
-	var resultPR, resultAssignee, resultOpenPR []*github.Issue
-	allPRsFetched, allAssigneesFetched, allopenPRsFetched := false, false, false
+	var resultReview, resultAssignee, resultOpenPR []*github.Issue
+	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched := false, false, false
 
 	for {
-		if allPRsFetched && allAssigneesFetched && allopenPRsFetched {
+		if allReviewRequestsFetched && allAssignmentsFetched && allOpenPRsFetched {
 			break
 		}
 
@@ -47,50 +47,50 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 			return nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
 		}
 
-		if !allPRsFetched {
-			for i := range mainQuery.PullRequest.Nodes {
-				resp := mainQuery.PullRequest.Nodes[i]
+		if !allReviewRequestsFetched {
+			for i := range mainQuery.ReviewRequests.Nodes {
+				resp := mainQuery.ReviewRequests.Nodes[i]
 				pr := getPR(&resp)
-				resultPR = append(resultPR, pr)
+				resultReview = append(resultReview, pr)
 			}
 
-			if !mainQuery.PullRequest.PageInfo.HasNextPage {
-				allPRsFetched = true
+			if !mainQuery.ReviewRequests.PageInfo.HasNextPage {
+				allReviewRequestsFetched = true
 			}
 
-			params[queryParamReviewsCursor] = githubv4.NewString(mainQuery.PullRequest.PageInfo.EndCursor)
+			params[queryParamReviewsCursor] = githubv4.NewString(mainQuery.ReviewRequests.PageInfo.EndCursor)
 		}
 
-		if !allAssigneesFetched {
-			for i := range mainQuery.Assignee.Nodes {
-				resp := mainQuery.Assignee.Nodes[i]
+		if !allAssignmentsFetched {
+			for i := range mainQuery.Assignments.Nodes {
+				resp := mainQuery.Assignments.Nodes[i]
 				issue := getIssue(&resp)
 				resultAssignee = append(resultAssignee, issue)
 			}
 
-			if !mainQuery.Assignee.PageInfo.HasNextPage {
-				allAssigneesFetched = true
+			if !mainQuery.Assignments.PageInfo.HasNextPage {
+				allAssignmentsFetched = true
 			}
 
-			params[queryParamAssignmentsCursor] = githubv4.NewString(mainQuery.Assignee.PageInfo.EndCursor)
+			params[queryParamAssignmentsCursor] = githubv4.NewString(mainQuery.Assignments.PageInfo.EndCursor)
 		}
 
-		if !allopenPRsFetched {
-			for i := range mainQuery.OpenPullRequest.Nodes {
-				resp := mainQuery.OpenPullRequest.Nodes[i]
+		if !allOpenPRsFetched {
+			for i := range mainQuery.OpenPullRequests.Nodes {
+				resp := mainQuery.OpenPullRequests.Nodes[i]
 				pr := getPR(&resp)
 				resultOpenPR = append(resultOpenPR, pr)
 			}
 
-			if !mainQuery.OpenPullRequest.PageInfo.HasNextPage {
-				allopenPRsFetched = true
+			if !mainQuery.OpenPullRequests.PageInfo.HasNextPage {
+				allOpenPRsFetched = true
 			}
 
-			params[queryParamOpenPRsCursor] = githubv4.NewString(mainQuery.OpenPullRequest.PageInfo.EndCursor)
+			params[queryParamOpenPRsCursor] = githubv4.NewString(mainQuery.OpenPullRequests.PageInfo.EndCursor)
 		}
 	}
 
-	return resultPR, resultAssignee, resultOpenPR, nil
+	return resultReview, resultAssignee, resultOpenPR, nil
 }
 
 func getPR(prResp *prSearchNodes) *github.Issue {
