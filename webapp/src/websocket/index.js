@@ -5,15 +5,14 @@ import ActionTypes from '../action_types';
 import Constants from '../constants';
 import {
     getConnected,
-    getReviews,
-    getUnreads,
-    getYourAssignments,
-    getYourPrs,
+    getSidebarContent,
     openCreateIssueModalWithoutPost,
 } from '../actions';
 
 import {id as pluginId} from '../manifest';
 
+let timeoutId;
+const RECONNECT_JITTER_MAX_TIME_IN_SEC = 10;
 export function handleConnect(store) {
     return (msg) => {
         if (!msg.data) {
@@ -66,21 +65,28 @@ export function handleReconnect(store, reminder = false) {
     return async () => {
         const {data} = await getConnected(reminder)(store.dispatch, store.getState);
         if (data && data.connected) {
-            getReviews()(store.dispatch, store.getState);
-            getUnreads()(store.dispatch, store.getState);
-            getYourPrs()(store.dispatch, store.getState);
-            getYourAssignments()(store.dispatch, store.getState);
+            if (typeof timeoutId === 'number') {
+                clearTimeout(timeoutId);
+            }
+
+            const rand = Math.floor(Math.random() * RECONNECT_JITTER_MAX_TIME_IN_SEC) + 1;
+            timeoutId = setTimeout(() => {
+                getSidebarContent()(store.dispatch, store.getState);
+                timeoutId = undefined; //eslint-disable-line no-undefined
+            }, rand * 1000);
         }
     };
 }
 
 export function handleRefresh(store) {
-    return () => {
+    return (msg) => {
         if (store.getState()[`plugins-${pluginId}`].connected) {
-            getReviews()(store.dispatch, store.getState);
-            getUnreads()(store.dispatch, store.getState);
-            getYourPrs()(store.dispatch, store.getState);
-            getYourAssignments()(store.dispatch, store.getState);
+            const {data} = msg;
+
+            store.dispatch({
+                type: ActionTypes.RECEIVED_SIDEBAR_CONTENT,
+                data,
+            });
         }
     };
 }

@@ -5,13 +5,10 @@ import {id as pluginId} from '../manifest';
 
 export default {
     RECEIVED_REPOSITORIES: pluginId + '_received_repositories',
-    RECEIVED_REVIEWS: pluginId + '_received_reviews',
     RECEIVED_REVIEWS_DETAILS: pluginId + '_received_reviews_details',
-    RECEIVED_YOUR_PRS: pluginId + '_received_your_prs',
     RECEIVED_YOUR_PRS_DETAILS: pluginId + '_received_your_prs_details',
-    RECEIVED_YOUR_ASSIGNMENTS: pluginId + '_received_your_assignments',
+    RECEIVED_SIDEBAR_CONTENT: pluginId + '_received_sidebar_content',
     RECEIVED_MENTIONS: pluginId + '_received_mentions',
-    RECEIVED_UNREADS: pluginId + '_received_unreads',
     RECEIVED_CONNECTED: pluginId + '_received_connected',
     RECEIVED_CONFIGURATION: pluginId + '_received_configuration',
     RECEIVED_GITHUB_USER: pluginId + '_received_github_user',
