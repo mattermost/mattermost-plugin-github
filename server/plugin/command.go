@@ -279,7 +279,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	return txt
 }
 
-func (p *Plugin) checkIfConfiguredWebhookExists(githubClient *github.Client, repo, owner string, ctx context.Context) (bool, error) {
+func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, repo, owner string) (bool, error) {
 	found := false
 	opt := &github.ListOptions{
 		PerPage: PerPageValue,
@@ -299,13 +299,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(githubClient *github.Client, rep
 
 		if err != nil {
 			p.API.LogWarn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "Error", err.Error())
-			// Breaking from the loop if the repo or org is not found
-			if githubResponse.StatusCode == 404 && strings.Contains(err.Error(), "404 Not Found") {
-				found = true
-				break
-			} else {
-				return found, err
-			}
+			return found, err
 		}
 
 		for _, hook := range githubHooks {
@@ -326,6 +320,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(githubClient *github.Client, rep
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	const errorNoWebhookFound = "\nNo webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
+	const errorWebhookToUser = "\nNot able to get the list of webhooks. This feature is not available for subscription to a user."
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
@@ -387,8 +382,11 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 		subOrgMsg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 
-		found, err := p.checkIfConfiguredWebhookExists(githubClient, repo, owner, ctx)
+		found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 		if err != nil {
+			if strings.Contains(err.Error(), "404 Not Found") {
+				return errorWebhookToUser
+			}
 			return errors.Wrap(err, "failed to get the list of webhooks").Error()
 		}
 
@@ -412,8 +410,11 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
 	}
 
-	found, err := p.checkIfConfiguredWebhookExists(githubClient, repo, owner, ctx)
+	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 	if err != nil {
+		if strings.Contains(err.Error(), "404 Not Found") {
+			return errorWebhookToUser
+		}
 		return errors.Wrap(err, "failed to get the list of webhooks").Error()
 	}
 
