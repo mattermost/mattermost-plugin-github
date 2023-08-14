@@ -57,6 +57,18 @@ type PRDetails struct {
 	Reviews            []*github.PullRequestReview `json:"reviews"`
 }
 
+type FilteredNotification struct {
+	github.Notification
+	HTMLURL string `json:"html_url"`
+}
+
+type SidebarContent struct {
+	PRs         []*github.Issue         `json:"prs"`
+	Reviews     []*github.Issue         `json:"reviews"`
+	Assignments []*github.Issue         `json:"assignments"`
+	Unreads     []*FilteredNotification `json:"unreads"`
+}
+
 type Context struct {
 	Ctx    context.Context
 	UserID string
@@ -134,15 +146,11 @@ func (p *Plugin) initializeAPI() {
 
 	apiRouter.HandleFunc("/user", p.checkAuth(p.attachContext(p.getGitHubUser), ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/todo", p.checkAuth(p.attachUserContext(p.postToDo), ResponseTypeJSON)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/reviews", p.checkAuth(p.attachUserContext(p.getReviews), ResponseTypePlain)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/yourprs", p.checkAuth(p.attachUserContext(p.getYourPrs), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/prsdetails", p.checkAuth(p.attachUserContext(p.getPrsDetails), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/searchissues", p.checkAuth(p.attachUserContext(p.searchIssues), ResponseTypePlain)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/yourassignments", p.checkAuth(p.attachUserContext(p.getYourAssignments), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/createissue", p.checkAuth(p.attachUserContext(p.createIssue), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/createissuecomment", p.checkAuth(p.attachUserContext(p.createIssueComment), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.checkAuth(p.attachUserContext(p.getMentions), ResponseTypePlain)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/unreads", p.checkAuth(p.attachUserContext(p.getUnreads), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/labels", p.checkAuth(p.attachUserContext(p.getLabels), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/milestones", p.checkAuth(p.attachUserContext(p.getMilestones), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/assignees", p.checkAuth(p.attachUserContext(p.getAssignees), ResponseTypePlain)).Methods(http.MethodGet)
@@ -150,6 +158,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/settings", p.checkAuth(p.attachUserContext(p.updateSettings), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/issue", p.checkAuth(p.attachUserContext(p.getIssueByNumber), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/pr", p.checkAuth(p.attachUserContext(p.getPrByNumber), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/lhs-content", p.checkAuth(p.attachUserContext(p.getSidebarContent), ResponseTypePlain)).Methods(http.MethodGet)
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
@@ -651,22 +660,16 @@ func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Requ
 	p.writeJSON(w, result.Issues)
 }
 
-func (p *Plugin) getUnreads(c *UserContext, w http.ResponseWriter, r *http.Request) {
+func (p *Plugin) getUnreadsData(c *UserContext) []*FilteredNotification {
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	notifications, _, err := githubClient.Activity.ListNotifications(c.Ctx, &github.NotificationListOptions{})
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to list notifications")
-		return
+		return nil
 	}
 
-	type filteredNotification struct {
-		github.Notification
-
-		HTMLUrl string `json:"html_url"`
-	}
-
-	filteredNotifications := []*filteredNotification{}
+	filteredNotifications := []*FilteredNotification{}
 	for _, n := range notifications {
 		if n.GetReason() == notificationReasonSubscribed {
 			continue
@@ -684,45 +687,13 @@ func (p *Plugin) getUnreads(c *UserContext, w http.ResponseWriter, r *http.Reque
 			subjectURL = n.GetSubject().GetLatestCommentURL()
 		}
 
-		filteredNotifications = append(filteredNotifications, &filteredNotification{
+		filteredNotifications = append(filteredNotifications, &FilteredNotification{
 			Notification: *n,
-			HTMLUrl:      fixGithubNotificationSubjectURL(subjectURL, issueNum),
+			HTMLURL:      fixGithubNotificationSubjectURL(subjectURL, issueNum),
 		})
 	}
 
-	p.writeJSON(w, filteredNotifications)
-}
-
-func (p *Plugin) getReviews(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
-
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-	username := c.GHInfo.GitHubUsername
-
-	query := getReviewSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
-	if err != nil {
-		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for review")
-		return
-	}
-
-	p.writeJSON(w, result.Issues)
-}
-
-func (p *Plugin) getYourPrs(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
-
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-	username := c.GHInfo.GitHubUsername
-
-	query := getYourPrsSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
-	if err != nil {
-		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for PRs")
-		return
-	}
-
-	p.writeJSON(w, result.Issues)
+	return filteredNotifications
 }
 
 func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -967,20 +938,39 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getYourAssignments(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
+func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, err error) {
+	graphQLClient := p.graphQLConnect(c.GHInfo)
 
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-
-	username := c.GHInfo.GitHubUsername
-	query := getYourAssigneeSearchQuery(username, config.GitHubOrg)
-	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
+	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
 	if err != nil {
-		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for assignments")
+		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
+	}
+
+	return reviewResp, assignmentResp, openPRResp, nil
+}
+
+func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
+	reviewResp, assignmentResp, openPRResp, err := p.getLHSData(c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SidebarContent{
+		PRs:         openPRResp,
+		Assignments: assignmentResp,
+		Reviews:     reviewResp,
+		Unreads:     p.getUnreadsData(c),
+	}, nil
+}
+
+func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	sidebarContent, err := p.getSidebarData(c)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to search for the sidebar data")
 		return
 	}
 
-	p.writeJSON(w, result.Issues)
+	p.writeJSON(w, sidebarContent)
 }
 
 func (p *Plugin) postToDo(c *UserContext, w http.ResponseWriter, r *http.Request) {
