@@ -824,13 +824,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	switch event.GetReview().GetState() {
+	switch strings.ToUpper(event.GetReview().GetState()) {
 	case "APPROVED":
-	case "approved":
 	case "COMMENTED":
-	case "commented":
 	case "CHANGES_REQUESTED":
-	case "changes_requested":
 	default:
 		p.client.Log.Debug("Unhandled review state", "state", event.GetReview().GetState())
 		return
