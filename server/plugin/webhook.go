@@ -824,7 +824,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	switch event.GetReview().GetState() {
+	switch strings.ToUpper(event.GetReview().GetState()) {
 	case "APPROVED":
 	case "COMMENTED":
 	case "CHANGES_REQUESTED":
