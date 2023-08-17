@@ -18,12 +18,13 @@ import (
 )
 
 const (
-	actionOpened    = "opened"
-	actionClosed    = "closed"
-	actionReopened  = "reopened"
-	actionSubmitted = "submitted"
-	actionLabeled   = "labeled"
-	actionAssigned  = "assigned"
+	actionOpened               = "opened"
+	actionMarkedReadyForReview = "ready_for_review"
+	actionClosed               = "closed"
+	actionReopened             = "reopened"
+	actionSubmitted            = "submitted"
+	actionLabeled              = "labeled"
+	actionAssigned             = "assigned"
 
 	actionCreated = "created"
 	actionDeleted = "deleted"
@@ -351,11 +352,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != actionOpened && action != actionLabeled && action != actionClosed {
+	if action != actionOpened && action != actionMarkedReadyForReview && action != actionLabeled && action != actionClosed {
 		return
 	}
-
 	pr := event.GetPullRequest()
+	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(pr.Labels))
 	for i, v := range pr.Labels {
@@ -421,13 +422,27 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == actionOpened {
-			newPRMessage, err := renderTemplate("newPR", GetEventWithRenderConfig(event, sub))
+			prNotificationType := "newPR"
+			if isPRInDraftState {
+				prNotificationType = "newDraftPR"
+			}
+			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
 				return
 			}
 
 			post.Message = p.sanitizeDescription(newPRMessage)
+		}
+
+		if action == actionMarkedReadyForReview {
+			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(markedReadyToReviewPRMessage)
 		}
 
 		if action == actionClosed {
