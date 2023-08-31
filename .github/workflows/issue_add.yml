@@ -1,0 +1,19 @@
+name: issue_add
+
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  repository-projects: read
+
+jobs:
+  add-to-project:
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v0.5.0
+        with:
+          project-url: https://github.com/orgs/mattermost/projects/25
+          github-token: ${{ secrets.GITHUB_TOKEN }}
