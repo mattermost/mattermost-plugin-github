@@ -6,7 +6,7 @@ on:
       - opened
 
 permissions:
-  repository-projects: read
+  repository-projects: write
 
 jobs:
   add-to-project:
