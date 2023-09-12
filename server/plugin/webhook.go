@@ -459,7 +459,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
-	return strings.TrimSpace(policy.Sanitize(description))
+	// Replacing the unicodes with the respective special characters to have proper rendering in code block.
+	result := strings.ReplaceAll(policy.Sanitize(description), "&#39;", "'")
+	result = strings.ReplaceAll(result, "&#34;", "\"")
+	result = strings.ReplaceAll(result, "&amp;", "&")
+	return strings.TrimSpace(result)
 }
 
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
