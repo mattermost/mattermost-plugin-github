@@ -463,6 +463,8 @@ func (p *Plugin) sanitizeDescription(description string) string {
 	result := strings.ReplaceAll(policy.Sanitize(description), "&#39;", "'")
 	result = strings.ReplaceAll(result, "&#34;", "\"")
 	result = strings.ReplaceAll(result, "&amp;", "&")
+	result = strings.ReplaceAll(result, "&gt;", ">")
+	result = strings.ReplaceAll(result, "&lt;", "<")
 	return strings.TrimSpace(result)
 }
 
