@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-github/v41/github"
+	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -218,9 +220,10 @@ func TestInsideLink(t *testing.T) {
 
 func TestGetToDoDisplayText(t *testing.T) {
 	type input struct {
-		title     string
-		url       string
-		notifType string
+		title      string
+		url        string
+		notifType  string
+		repository *github.Repository
 	}
 	tcs := []struct {
 		name string
@@ -233,6 +236,7 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"Issue title with less than 80 characters",
 				"https://github.com/mattermost/repo/issues/42",
 				"",
+				nil,
 			},
 			want: "* [mattermost/repo](https://github.com/mattermost/repo) [Issue title with less than 80 characters](https://github.com/mattermost/repo/issues/42)\n",
 		},
@@ -242,14 +246,31 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"This is an issue title which has with more than 80 characters and is completely random",
 				"https://github.com/mattermost/mattermost-plugin-github/issues/42",
 				"Issue",
+				nil,
 			},
 			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Issue [This is an issue title which has with more than 80 characters and is completely...](https://github.com/mattermost/mattermost-plugin-github/issues/42)\n",
+		},
+		{
+			name: "title longer than threshold, multi-word repo name & Issue notification type",
+			in: input{
+				"Test discussion title!",
+				"",
+				"Discussion",
+				&github.Repository{
+					HTMLURL: model.NewString("https://github.com/mattermost/mattermost-plugin-github"),
+					Owner: &github.User{
+						Login: model.NewString("mattermost"),
+					},
+					Name: model.NewString("mattermost-plugin-github"),
+				},
+			},
+			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Discussion : Test discussion title!\n",
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			got := getToDoDisplayText("https://github.com/", tc.in.title, tc.in.url, tc.in.notifType)
+			got := getToDoDisplayText("https://github.com/", tc.in.title, tc.in.url, tc.in.notifType, tc.in.repository)
 			assert.Equal(t, tc.want, got)
 		})
 	}
