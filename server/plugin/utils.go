@@ -337,7 +337,7 @@ func getToDoDisplayText(baseURL, title, url, notifType string, repository *githu
 
 	titlePart = fmt.Sprintf(": %s", title)
 	if url != "" {
-		titlePart = fmt.Sprintf("[%s](%s)", title, url)
+		titlePart = fmt.Sprintf(": [%s](%s)", title, url)
 	}
 
 	if notifType == "" {
