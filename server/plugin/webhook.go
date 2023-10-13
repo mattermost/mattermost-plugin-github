@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"strings"
@@ -459,12 +460,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
-	// Replacing the unicodes with the respective special characters to have proper rendering in code block.
-	result := strings.ReplaceAll(policy.Sanitize(description), "&#39;", "'")
-	result = strings.ReplaceAll(result, "&#34;", "\"")
-	result = strings.ReplaceAll(result, "&amp;", "&")
-	result = strings.ReplaceAll(result, "&gt;", ">")
-	result = strings.ReplaceAll(result, "&lt;", "<")
+	result := policy.Sanitize(description)
+	html.UnescapeString(result)
 	return strings.TrimSpace(result)
 }
 
