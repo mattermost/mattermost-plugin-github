@@ -460,8 +460,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 func (p *Plugin) sanitizeDescription(description string) string {
 	var policy = bluemonday.StrictPolicy()
 	policy.SkipElementsContent("details")
-	result := policy.Sanitize(description)
-	html.UnescapeString(result)
+	result := html.UnescapeString(policy.Sanitize(description))
 	return strings.TrimSpace(result)
 }
 
