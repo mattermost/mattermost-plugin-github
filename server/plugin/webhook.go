@@ -458,10 +458,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 }
 
 func (p *Plugin) sanitizeDescription(description string) string {
-	var policy = bluemonday.StrictPolicy()
-	policy.SkipElementsContent("details")
-	result := html.UnescapeString(policy.Sanitize(description))
-	return strings.TrimSpace(result)
+	if strings.Contains(description, "<details>") {
+		var policy = bluemonday.StrictPolicy()
+		policy.SkipElementsContent("details")
+		description = html.UnescapeString(policy.Sanitize(description))
+	}
+	return strings.TrimSpace(description)
 }
 
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
