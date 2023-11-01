@@ -18,36 +18,36 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getMentionSearchQuery(username, org string) string {
-	return buildSearchQuery("is:open mentions:%v archived:false %v", username, org)
+func getMentionSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:open mentions:%v archived:false %v", username, orgs)
 }
 
-func getReviewSearchQuery(username, org string) string {
-	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, org)
+func getReviewSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, orgs)
 }
 
-func getYourPrsSearchQuery(username, org string) string {
-	return buildSearchQuery("is:pr is:open author:%v archived:false %v", username, org)
+func getYourPrsSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:pr is:open author:%v archived:false %v", username, orgs)
 }
 
-func getYourAssigneeSearchQuery(username, org string) string {
-	return buildSearchQuery("is:open assignee:%v archived:false %v", username, org)
+func getYourAssigneeSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:open assignee:%v archived:false %v", username, orgs)
 }
 
-func getIssuesSearchQuery(org, searchTerm string) string {
+func getIssuesSearchQuery(orgs []string, searchTerm string) string {
 	query := "is:open is:issue archived:false %v %v"
 	orgField := ""
-	if len(org) != 0 {
-		orgField = fmt.Sprintf("org:%v", org)
+	if len(orgs) != 0 {
+		orgField = fmt.Sprintf("orgs:%v", orgs)
 	}
 
 	return fmt.Sprintf(query, orgField, searchTerm)
 }
 
-func buildSearchQuery(query, username, org string) string {
+func buildSearchQuery(query string, username string, orgs []string) string {
 	orgField := ""
-	if len(org) != 0 {
-		orgField = fmt.Sprintf("org:%v", org)
+	if len(orgs) != 0 {
+		orgField = fmt.Sprintf("orgs:%v", strings.Join(orgs, " "))
 	}
 
 	return fmt.Sprintf(query, username, orgField)

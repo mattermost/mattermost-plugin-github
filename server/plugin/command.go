@@ -682,15 +682,15 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
 	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
-	if config.GitHubOrg != "" {
-		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
+	for _, org := range config.GitHubOrgs {
+		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member-"+org, "Events triggered by organization members of "+org+" will not be delivered (the organization config should be set, otherwise this flag has no effect)", false, []model.AutocompleteListItem{
 			{
 				Item:     "true",
-				HelpText: "Exclude posts from members of the configured organization",
+				HelpText: "Exclude posts from members of the " + org + " organization",
 			},
 			{
 				Item:     "false",
-				HelpText: "Include posts from members of the configured organization",
+				HelpText: "Include posts from members of the " + org + " organization",
 			},
 		})
 	}

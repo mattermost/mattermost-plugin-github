@@ -163,7 +163,8 @@ func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *g
 
 func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
-	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
+	// an issue here to check of graphql client
+	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrgs, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
@@ -784,7 +785,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
 
-	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrgs), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "Error occurred while searching for reviews")
 	}
@@ -794,12 +795,12 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", errors.Wrap(err, "error occurred while listing notifications")
 	}
 
-	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrgs), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "error occurred while searching for PRs")
 	}
 
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrgs), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "error occurred while searching for assignments")
 	}
@@ -897,21 +898,21 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	githubClient := p.githubConnectUser(ctx, info)
 	config := p.getConfiguration()
 
-	query := getReviewSearchQuery(username, config.GitHubOrg)
+	query := getReviewSearchQuery(username, config.GitHubOrgs)
 	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for review", "query", query, "error", err.Error())
 		return false
 	}
 
-	query = getYourPrsSearchQuery(username, config.GitHubOrg)
+	query = getYourPrsSearchQuery(username, config.GitHubOrgs)
 	yourPrs, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for PRs", "query", query, "error", "error", err.Error())
 		return false
 	}
 
-	query = getYourAssigneeSearchQuery(username, config.GitHubOrg)
+	query = getYourAssigneeSearchQuery(username, config.GitHubOrgs)
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for assignments", "query", query, "error", "error", err.Error())
@@ -953,23 +954,28 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
-	configOrg := strings.TrimSpace(config.GitHubOrg)
-	if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
-		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
+	for _, org := range config.GitHubOrgs {
+		configOrg := strings.TrimSpace(org)
+		if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
+			return errors.Errorf("only repositories in the %v organization are supported", configOrg)
+		}
 	}
-
 	return nil
 }
 
-func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
-	if organization == "" {
-		return false
-	}
+func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organizations []string) bool {
+	var isMember bool
+	for _, org := range organizations {
+		if org == "" {
+			return false
+		}
 
-	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
-	if err != nil {
-		p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
-		return false
+		isMember, _, err := githubClient.Organizations.IsMember(context.Background(), org, *user.Login)
+		if err != nil {
+			p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
+			return false
+		}
+		isMember = isMember || true
 	}
 
 	return isMember
@@ -977,8 +983,10 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 
 func (p *Plugin) isOrganizationLocked() bool {
 	config := p.getConfiguration()
-	configOrg := strings.TrimSpace(config.GitHubOrg)
-
+	configOrg := ""
+	for _, org := range config.GitHubOrgs {
+		configOrg = strings.TrimSpace(org)
+	}
 	return configOrg != ""
 }
 

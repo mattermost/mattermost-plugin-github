@@ -39,7 +39,7 @@ func (p *Plugin) SendDailyTelemetry() {
 		"connected_user_count":          connectedUserCount,
 		"is_oauth_configured":           config.IsOAuthConfigured(),
 		"is_sass":                       config.IsSASS(),
-		"is_organization_locked":        config.GitHubOrg != "",
+		"is_organization_locked":        config.GitHubOrgs,
 		"enable_private_repo":           config.EnablePrivateRepo,
 		"enable_code_preview":           config.EnableCodePreview,
 		"connect_to_private_by_default": config.ConnectToPrivateByDefault,

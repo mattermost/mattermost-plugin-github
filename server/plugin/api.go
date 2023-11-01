@@ -488,7 +488,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			"github_username":     userInfo.GitHubUsername,
 			"github_client_id":    config.GitHubOAuthClientID,
 			"enterprise_base_url": config.EnterpriseBaseURL,
-			"organization":        config.GitHubOrg,
+			"organizations":       config.GitHubOrgs,
 			"configuration":       config.ClientConfiguration(),
 		},
 		&model.WebsocketBroadcast{UserId: state.UserID},
@@ -565,7 +565,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		GitHubUsername      string                 `json:"github_username"`
 		GitHubClientID      string                 `json:"github_client_id"`
 		EnterpriseBaseURL   string                 `json:"enterprise_base_url,omitempty"`
-		Organization        string                 `json:"organization"`
+		Organizations       []string               `json:"organization"`
 		UserSettings        *UserSettings          `json:"user_settings"`
 		ClientConfiguration map[string]interface{} `json:"configuration"`
 	}
@@ -573,7 +573,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	resp := &ConnectedResponse{
 		Connected:           false,
 		EnterpriseBaseURL:   config.EnterpriseBaseURL,
-		Organization:        config.GitHubOrg,
+		Organizations:       config.GitHubOrgs,
 		ClientConfiguration: p.getConfiguration().ClientConfiguration(),
 	}
 
@@ -649,7 +649,7 @@ func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Requ
 
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 	username := c.GHInfo.GitHubUsername
-	query := getMentionSearchQuery(username, config.GitHubOrg)
+	query := getMentionSearchQuery(username, config.GitHubOrgs)
 
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
@@ -802,7 +802,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	searchTerm := r.FormValue("term")
-	query := getIssuesSearchQuery(config.GitHubOrg, searchTerm)
+	query := getIssuesSearchQuery(config.GitHubOrgs, searchTerm)
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for issues")
@@ -1226,34 +1226,36 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
-	org := p.getConfiguration().GitHubOrg
+	orgs := p.getConfiguration().GitHubOrgs
 
 	var allRepos []*github.Repository
 	var err error
 	var statusCode int
 	opt := github.ListOptions{PerPage: 50}
 
-	if org == "" {
-		allRepos, err = getRepositoryList(c.Ctx, "", githubClient, opt)
-		if err != nil {
-			c.Log.WithError(err).Warnf("Failed to list repositories")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-			return
-		}
-	} else {
-		allRepos, statusCode, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
-		if err != nil {
-			if statusCode == http.StatusNotFound {
-				allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
-				if err != nil {
+	for _, org := range orgs {
+		if org == "" {
+			allRepos, err = getRepositoryList(c.Ctx, "", githubClient, opt)
+			if err != nil {
+				c.Log.WithError(err).Warnf("Failed to list repositories")
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+				return
+			}
+		} else {
+			allRepos, statusCode, err = getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
+			if err != nil {
+				if statusCode == http.StatusNotFound {
+					allRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
+					if err != nil {
+						c.Log.WithError(err).Warnf("Failed to list repositories")
+						p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+						return
+					}
+				} else {
 					c.Log.WithError(err).Warnf("Failed to list repositories")
 					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 					return
 				}
-			} else {
-				c.Log.WithError(err).Warnf("Failed to list repositories")
-				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-				return
 			}
 		}
 	}

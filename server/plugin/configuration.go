@@ -25,19 +25,19 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	GitHubOrg                   string `json:"githuborg"`
-	GitHubOAuthClientID         string `json:"githuboauthclientid"`
-	GitHubOAuthClientSecret     string `json:"githuboauthclientsecret"`
-	WebhookSecret               string `json:"webhooksecret"`
-	EnableLeftSidebar           bool   `json:"enableleftsidebar"`
-	EnablePrivateRepo           bool   `json:"enableprivaterepo"`
-	ConnectToPrivateByDefault   bool   `json:"connecttoprivatebydefault"`
-	EncryptionKey               string `json:"encryptionkey"`
-	EnterpriseBaseURL           string `json:"enterprisebaseurl"`
-	EnterpriseUploadURL         string `json:"enterpriseuploadurl"`
-	EnableCodePreview           string `json:"enablecodepreview"`
-	EnableWebhookEventLogging   bool   `json:"enablewebhookeventlogging"`
-	UsePreregisteredApplication bool   `json:"usepreregisteredapplication"`
+	GitHubOrgs                  []string `json:"githuborgs"`
+	GitHubOAuthClientID         string   `json:"githuboauthclientid"`
+	GitHubOAuthClientSecret     string   `json:"githuboauthclientsecret"`
+	WebhookSecret               string   `json:"webhooksecret"`
+	EnableLeftSidebar           bool     `json:"enableleftsidebar"`
+	EnablePrivateRepo           bool     `json:"enableprivaterepo"`
+	ConnectToPrivateByDefault   bool     `json:"connecttoprivatebydefault"`
+	EncryptionKey               string   `json:"encryptionkey"`
+	EnterpriseBaseURL           string   `json:"enterprisebaseurl"`
+	EnterpriseUploadURL         string   `json:"enterpriseuploadurl"`
+	EnableCodePreview           string   `json:"enablecodepreview"`
+	EnableWebhookEventLogging   bool     `json:"enablewebhookeventlogging"`
+	UsePreregisteredApplication bool     `json:"usepreregisteredapplication"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {
@@ -98,7 +98,10 @@ func (c *Configuration) sanitize() {
 	c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/")
 
 	// Trim spaces around org and OAuth credentials
-	c.GitHubOrg = strings.TrimSpace(c.GitHubOrg)
+	for i := range c.GitHubOrgs {
+		c.GitHubOrgs[i] = strings.TrimSpace(c.GitHubOrgs[i])
+	}
+
 	c.GitHubOAuthClientID = strings.TrimSpace(c.GitHubOAuthClientID)
 	c.GitHubOAuthClientSecret = strings.TrimSpace(c.GitHubOAuthClientSecret)
 }

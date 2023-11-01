@@ -103,7 +103,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			p := NewPlugin()
 			p.setConfiguration(
 				&Configuration{
-					GitHubOrg:               "mockOrg",
+					GitHubOrgs:              []string{"mockOrg"},
 					GitHubOAuthClientID:     "mockID",
 					GitHubOAuthClientSecret: "mockSecret",
 					WebhookSecret:           "",
@@ -156,7 +156,7 @@ func TestGetToken(t *testing.T) {
 			p := NewPlugin()
 			p.setConfiguration(
 				&Configuration{
-					GitHubOrg:               "mockOrg",
+					GitHubOrgs:              []string{"mockOrg"},
 					GitHubOAuthClientID:     "mockID",
 					GitHubOAuthClientSecret: "mockSecret",
 					EncryptionKey:           "mockKey",
@@ -190,7 +190,7 @@ func TestGetConfig(t *testing.T) {
 	authorizedHeader.Add("Mattermost-Plugin-ID", "somePluginId")
 
 	config := &Configuration{
-		GitHubOrg:               "mockOrg",
+		GitHubOrgs:              []string{"mockOrg"},
 		GitHubOAuthClientID:     "mockID",
 		GitHubOAuthClientSecret: "mockSecret",
 		EncryptionKey:           "mockKey",
