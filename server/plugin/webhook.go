@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"strings"
@@ -398,9 +399,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 }
 
 func (p *Plugin) sanitizeDescription(description string) string {
-	var policy = bluemonday.StrictPolicy()
-	policy.SkipElementsContent("details")
-	return strings.TrimSpace(policy.Sanitize(description))
+	if strings.Contains(description, "<details>") {
+		var policy = bluemonday.StrictPolicy()
+		policy.SkipElementsContent("details")
+		description = html.UnescapeString(policy.Sanitize(description))
+	}
+	return strings.TrimSpace(description)
 }
 
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
