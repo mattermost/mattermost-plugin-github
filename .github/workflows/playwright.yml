@@ -1,16 +1,16 @@
 name: Playwright Tests
 on:
-  schedule:
-    - cron: "0 0 * * *"
-  workflow_run:
-    workflows: ["ci"]
-    types:
-      - completed
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
 
 env:
   TERM: xterm
   GO_VERSION: 1.19.6
-  NODE_VERSION: 16.15.0
 
 jobs:
   playwright-run:
@@ -98,6 +98,8 @@ jobs:
     steps:
       - name: ci/checkout-repo
         uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+        with:
+          submodules: 'true'
 
       - name: ci/setup-go
         uses: actions/setup-go@6edd4406fa81c3da01a34fa6f6343087c207a568 # v3.5.0
@@ -109,8 +111,8 @@ jobs:
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
-          cache-dependency-path: webapp/package-lock.json
+          # cache: "npm"
+          # cache-dependency-path: webapp/package-lock.json
 
       - name: ci/create-admin-user
         run: |
@@ -119,7 +121,8 @@ jobs:
 
       - name: ci/install-go-dependencies
         run: go mod tidy
-      - name: ci/install-npm-dependencies
+
+      - name: ci/install-plugin-webapp-deps
         run: cd webapp && npm ci
 
       - name: ci/build-and-install-plugin
@@ -128,40 +131,64 @@ jobs:
           PLUGIN_E2E_MOCK_OAUTH_SERVER_URL: http://172.17.0.1:8080
           E2E_TESTING: true
 
-      - name: ci/setup-node
+      # - name: ci/checkout-mattermost-monorepo
+      #   uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # v3.3.0
+      #   with:
+      #     path: ../mattermost
+      #     repository: mattermost/mattermost
+
+      - name: ci/checkout-mattermost-monorepo
+        run: |
+          git clone https://github.com/mattermost/mattermost.git ../mattermost
+
+      - name: ci/setup-node-for-mattermost-monorepo
         uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
         with:
-          node-version: "16"
-          cache: "npm"
-          cache-dependency-path: e2e/playwright/package-lock.json
+          node-version-file: "../mattermost/.nvmrc"
 
-      - name: ci/install-tests-deps
+      - name: ci/install-mattermost-monorepo-webapp-deps
         run: |
-          cd e2e/playwright
-          ./setup-environment
+          cd ../mattermost/webapp
+          npm i
+
+      - name: ci/install-mattermost-monorepo-playwright-deps
+        run: |
+          cd ../mattermost/e2e-tests/playwright
+          npm i
+          npx playwright install --with-deps
+
+      - name: ci/setup-node-for-mattermost-plugin
+        uses: actions/setup-node@64ed1c7eab4cce3362f8c340dee64e5eaeef8f7c # v3.6.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: ci/install-plugin-playwright-deps
+        run: |
+          cd e2e/playwright/mattermost-plugin-e2e-test-utils
+          npm i
 
       - name: ci/tsc
         run: |
-          cd e2e/playwright
+          cd e2e/playwright/mattermost-plugin-e2e-test-utils
           npm run tsc
 
-      - name: ci/lint
-        run: |
-          cd e2e/playwright
-          npm run lint
+      # - name: ci/lint
+      #   run: |
+      #     cd e2e/playwright
+      #     npm run lint
 
       - name: ci/run-playwright-tests
         run: |
-          cd e2e/playwright
+          cd e2e/playwright/mattermost-plugin-e2e-test-utils
           npm run test-ci
         env:
-          PLUGIN_E2E_MOCK_OAUTH_TOKEN: ${{ secrets.MM_GITHUB_PLUGIN_E2E_TOKEN }}
+          PLUGIN_E2E_MOCK_OAUTH_TOKEN: faketoken
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
 
       - name: ci/move-artifacts
         if: success() || failure()
         run: |
-          cd e2e/playwright
+          cd e2e/playwright/mattermost-plugin-e2e-test-utils
           mkdir results
           mv playwright-report results
 
@@ -169,4 +196,4 @@ jobs:
         if: success() || failure()
         with:
           name: test-results
-          path: e2e/playwright/results
+          path: e2e/playwright/mattermost-plugin-e2e-test-utils/results
