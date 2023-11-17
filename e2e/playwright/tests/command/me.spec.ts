@@ -14,6 +14,7 @@ import {
     getBotTagFromPost,
     getPostAuthor,
 } from '../../support/components/post';
+import {postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
 
 const mmGithubHandle = 'MM-Github-Plugin';
 
@@ -32,14 +33,14 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
-                await c.postMessage('/github me');
-                await c.sendMessage();
+                await postMessage('/github me', page);
+                // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
                 await waitForNewMessages(page);
 
                 // # Get last post
-                const post = await c.getLastPost();
+                const post = await c.centerView.getLastPost();
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
@@ -77,14 +78,14 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
-                await c.postMessage('/github me');
-                await c.sendMessage();
+                await postMessage('/github me', page);
+                // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
                 await waitForNewMessages(page);
 
                 // # Get last post
-                const post = await c.getLastPost();
+                const post = await c.centerView.getLastPost();
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
@@ -116,14 +117,14 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
-                await c.postMessage('/github me');
-                await c.sendMessage();
+                await postMessage('/github me', page);
+                // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
                 await waitForNewMessages(page);
 
                 // # Get last post
-                const post = await c.getLastPost();
+                const post = await c.centerView.getLastPost();
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot

@@ -33,14 +33,15 @@ export const submitDialog = async (page: Page) => {
 };
 
 export const postMessage = async (message: string, c: ChannelsPage, page: Page) => {
-    await c.postMessage(message);
+    await c.centerView.postCreate.input.waitFor();
+    await c.centerView.postCreate.postMessage(message);
     await page.getByTestId('SendMessageButton').click();
 };
 
 export const clickPostAction = async (name: string, c: ChannelsPage) => {
     // We need to wait for the next post to come up, since this opening a new tab and OAuth redirect can take an undeterminate
     // https://mattermost.atlassian.net/browse/MM-51906
-    const postElement = await c.getLastPost();
+    const postElement = await c.centerView.getLastPost();
     await postElement.container.getByText(name).last().click();
 };
 

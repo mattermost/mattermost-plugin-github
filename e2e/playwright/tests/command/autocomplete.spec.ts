@@ -9,6 +9,7 @@ import {test, expect} from '@e2e-support/test_fixture';
 
 import {SlashCommandSuggestions} from '../../support/components/slash_commands';
 import {getGithubBotDMPageURL} from '../../support/utils';
+import {fillMessage, postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
 
 const completeCommands = [
     {position: 1, cmd: 'connect'},
@@ -33,11 +34,11 @@ export default {
                 const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
                 await page.goto(dmURL, {waitUntil: 'load'});
 
-                const c = new pages.ChannelsPage(page);
+                // const c = new pages.ChannelsPage(page);
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
-                await c.postMessage('/github');
+                await postMessage('/github', page);
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -62,7 +63,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
-                await c.postMessage('/github ');
+                await postMessage('/github ', page);
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -90,7 +91,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
-                await c.postMessage('/github');
+                await postMessage('/github', page);
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -116,7 +117,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
-                await c.postMessage('/github ');
+                await postMessage('/github ', page);
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -143,7 +144,8 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
-                await c.postMessage('/github');
+                await fillMessage('/github', page);
+                // await postMessage('/github', page);
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -166,7 +168,8 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
-                await c.postMessage('/github ');
+                await fillMessage('/github ', page);
+                // await postMessage('/github ', page);
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
