@@ -7,11 +7,12 @@
 // ***************************************************************
 import {test, expect} from '@e2e-support/test_fixture';
 
-import TodoMessage, {GithubRHSCategory} from '../../support/components/todo_message';
 import {messages} from '../../support/constants';
-import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
-import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
-import {postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
+
+import TodoMessage, {GithubRHSCategory} from '../../support/components/todo_message';
+
+import {getBotDMPageURL, waitForNewMessages, postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
+import {getBotTagFromPost, getPostAuthor} from '../../mattermost-plugin-e2e-test-utils/support/components/post';
 
 const repoRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+/;
 const prRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+\/pull\/\d+/;
@@ -26,13 +27,14 @@ export default {
                     throw new Error('can not get adminUser');
                 }
 
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                const dmURL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
                 await postMessage('/github todo', page);
+
                 // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -103,13 +105,14 @@ export default {
                     throw new Error('can not get adminUser');
                 }
 
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                const dmURL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
                 await postMessage('/github todo', page);
+
                 // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -142,13 +145,14 @@ export default {
                     throw new Error('can not get adminUser');
                 }
 
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                const dmURL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
                 await postMessage('/github todo', page);
+
                 // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want

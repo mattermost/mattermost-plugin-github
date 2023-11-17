@@ -182,7 +182,6 @@ jobs:
           cd e2e/playwright/mattermost-plugin-e2e-test-utils
           npm run test-ci
         env:
-          PLUGIN_E2E_MOCK_OAUTH_TOKEN: faketoken
           PW_BASE_URL: ${{ env.MM_SERVICESETTINGS_SITEURL }}
 
       - name: ci/move-artifacts

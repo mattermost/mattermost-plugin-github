@@ -9,12 +9,12 @@
 import {expect, test} from '@e2e-support/test_fixture';
 
 import {messages} from '../../support/constants';
-import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
+
+import {getBotDMPageURL, waitForNewMessages, postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
 import {
     getBotTagFromPost,
     getPostAuthor,
-} from '../../support/components/post';
-import {postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
+} from '../../mattermost-plugin-e2e-test-utils/support/components/post';
 
 const mmGithubHandle = 'MM-Github-Plugin';
 
@@ -27,13 +27,14 @@ export default {
                     throw new Error('can not get adminUser');
                 }
 
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                const dmURL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
                 await postMessage('/github me', page);
+
                 // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -72,13 +73,14 @@ export default {
                     throw new Error('can not get adminUser');
                 }
 
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                const dmURL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
                 await postMessage('/github me', page);
+
                 // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -111,13 +113,14 @@ export default {
                     throw new Error('can not get adminUser');
                 }
 
-                const dmURL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+                const dmURL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
                 await page.goto(dmURL, {waitUntil: 'load'});
 
                 const c = new pages.ChannelsPage(page);
 
                 // # Run comand
                 await postMessage('/github me', page);
+
                 // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want

@@ -8,7 +8,7 @@
 
 import {expect, test} from '@e2e-support/test_fixture';
 
-import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDMPageURL, getSlackAttachmentLocatorId, getPostMessageLocatorId, waitForNewMessages} from '../support/utils';
+import {fillTextField, postMessage, submitDialog, clickPostAction, getBotDMPageURL, getSlackAttachmentLocatorId, getPostMessageLocatorId, waitForNewMessages} from '../mattermost-plugin-e2e-test-utils/support/utils';
 
 const GITHUB_CONNECT_LINK = '/plugins/github/oauth/connect';
 const TEST_CLIENT_ID = 'a'.repeat(20);
@@ -22,13 +22,13 @@ export default {
                 throw new Error('can not get adminUser');
             }
 
-            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+            const URL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
 
             // # Run setup command
-            await postMessage('/github setup', c, page);
+            await postMessage('/github setup', page);
 
             // # Wait for new messages to ensure the last post is the one we want
             // await waitForNewMessages(page);
@@ -42,8 +42,8 @@ export default {
             await clickPostAction('Continue', c);
 
             // # Fill out interactive dialog for GitHub client id and client secret
-            await fillTextField('client_id', TEST_CLIENT_ID, page);
-            await fillTextField('client_secret', TEST_CLIENT_SECRET, page);
+            await fillTextField('client_idinput', TEST_CLIENT_ID, page);
+            await fillTextField('client_secretinput', TEST_CLIENT_SECRET, page);
             await submitDialog(page);
 
             await page.waitForTimeout(500);
@@ -78,13 +78,13 @@ export default {
                 throw new Error('can not get adminUser');
             }
 
-            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+            const URL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
 
             // # Run connect command
-            await postMessage('/github connect', c, page);
+            await postMessage('/github connect', page);
 
             // # Wait for new messages to ensure the last post is the one we want
             await waitForNewMessages(page);
@@ -119,13 +119,13 @@ export default {
                 throw new Error('can not get adminUser');
             }
 
-            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+            const URL = await getBotDMPageURL(adminClient, '', adminUser.id, 'github');
             await page.goto(URL, {waitUntil: 'load'});
 
             const c = new pages.ChannelsPage(page);
 
             // # Run connect command
-            await postMessage('/github disconnect', c, page);
+            await postMessage('/github disconnect', page);
 
             // # Wait for new messages to ensure the last post is the one we want
             await waitForNewMessages(page);
