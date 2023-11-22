@@ -839,7 +839,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 
 			notificationTitle := notificationSubject.GetTitle()
 			notificationURL := fixGithubNotificationSubjectURL(subjectURL, issueNum)
-			notificationContent += getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType)
+			notificationContent += getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType, n.GetRepository())
 		}
 
 		notificationCount++
@@ -860,7 +860,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "")
+			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil)
 		}
 	}
 
@@ -872,7 +872,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
-			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "")
+			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil)
 		}
 	}
 
@@ -884,7 +884,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
-			text += getToDoDisplayText(baseURL, assign.GetTitle(), assign.GetHTMLURL(), "")
+			text += getToDoDisplayText(baseURL, assign.GetTitle(), assign.GetHTMLURL(), "", nil)
 		}
 	}
 
