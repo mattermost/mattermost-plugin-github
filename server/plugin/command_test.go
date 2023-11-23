@@ -78,8 +78,8 @@ func TestValidateFeatures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ok, fs := validateFeatures(tt.args)
 			got := output{ok, fs}
-			errMsg := fmt.Sprintf("validateFeatures() = %v, want %v", got, tt.want)
-			assert.EqualValues(t, tt.want, got, errMsg)
+			testFailureMessage := fmt.Sprintf("validateFeatures() = %v, want %v", got, tt.want)
+			assert.EqualValues(t, tt.want, got, testFailureMessage)
 		})
 	}
 }
@@ -192,8 +192,8 @@ func TestParseCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			command, action, parameters := parseCommand(tc.input)
 			got := output{command, action, parameters}
-			errMsg := fmt.Sprintf("validateFeatures() = %v, want %v", got, tc.want)
-			assert.EqualValues(t, tc.want, got, errMsg)
+			testFailureMessage := fmt.Sprintf("validateFeatures() = %v, want %v", got, tc.want)
+			assert.EqualValues(t, tc.want, got, testFailureMessage)
 		})
 	}
 }
@@ -234,8 +234,8 @@ func TestCheckConflictingFeatures(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ok, fs := checkFeatureConflict(tt.args)
 			got := output{ok, fs}
-			errMsg := fmt.Sprintf("checkFeatureConflict() = %v, want %v", got, tt.want)
-			assert.EqualValues(t, tt.want, got, errMsg)
+			testFailureMessage := fmt.Sprintf("checkFeatureConflict() = %v, want %v", got, tt.want)
+			assert.EqualValues(t, tt.want, got, testFailureMessage)
 		})
 	}
 }
