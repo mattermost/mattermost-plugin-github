@@ -396,6 +396,10 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return subOrgMsg
 	}
 
+	if len(flags.ExcludeRepository) > 0 {
+		return "Exclude repository feature is only available to subscriptions of an organization."
+	}
+
 	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
 		return err.Error()
 	}
@@ -780,6 +784,8 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 			HelpText: "Notifications come in a one-line format, without enlarged fonts or advanced layouts.",
 		},
 	})
+
+	subscriptionsAdd.AddNamedTextArgument("exclude", "Comma separated list of the repositories to exclude getting the notifications. Only supported for subscriptions to an organization", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	subscriptions.AddCommand(subscriptionsAdd)
 	subscriptionsDelete := model.NewAutocompleteData("delete", "[owner/repo]", "Unsubscribe the current channel from an organization or repository")
