@@ -12,15 +12,17 @@ import (
 )
 
 const (
-	SubscriptionsKey     = "subscriptions"
-	flagExcludeOrgMember = "exclude-org-member"
-	flagRenderStyle      = "render-style"
-	flagFeatures         = "features"
+	SubscriptionsKey      = "subscriptions"
+	flagExcludeOrgMember  = "exclude-org-member"
+	flagRenderStyle       = "render-style"
+	flagFeatures          = "features"
+	flagExcludeRepository = "exclude"
 )
 
 type SubscriptionFlags struct {
 	ExcludeOrgMembers bool
 	RenderStyle       string
+	ExcludeRepository []string
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
@@ -33,6 +35,12 @@ func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
 		s.ExcludeOrgMembers = parsed
 	case flagRenderStyle:
 		s.RenderStyle = value
+	case flagExcludeRepository:
+		repos := strings.Split(value, ",")
+		for i := range repos {
+			repos[i] = strings.TrimSpace(repos[i])
+		}
+		s.ExcludeRepository = repos
 	}
 
 	return nil
@@ -48,6 +56,11 @@ func (s SubscriptionFlags) String() string {
 
 	if s.RenderStyle != "" {
 		flag := "--" + flagRenderStyle + " " + s.RenderStyle
+		flags = append(flags, flag)
+	}
+
+	if len(s.ExcludeRepository) > 0 {
+		flag := "--" + flagExcludeRepository + " " + strings.Join(s.ExcludeRepository, ",")
 		flags = append(flags, flag)
 	}
 
@@ -125,6 +138,15 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 
 func (s *Subscription) RenderStyle() string {
 	return s.Flags.RenderStyle
+}
+
+func (s *Subscription) excludedRepoForSub(repo *github.Repository) bool {
+	for _, repository := range s.Flags.ExcludeRepository {
+		if repository == repo.GetFullName() {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
@@ -305,6 +327,9 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 
 	for _, sub := range subsForRepo {
 		if repo.GetPrivate() && !p.permissionToRepo(sub.CreatorID, name) {
+			continue
+		}
+		if sub.excludedRepoForSub(repo) {
 			continue
 		}
 		subsToReturn = append(subsToReturn, sub)
