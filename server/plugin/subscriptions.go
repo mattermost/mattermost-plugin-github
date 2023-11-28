@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	SubscriptionsKey     = "subscriptions"
-	flagExcludeOrgMember = "exclude-org-member"
-	flagRenderStyle      = "render-style"
-	flagFeatures         = "features"
+	SubscriptionsKey      = "subscriptions"
+	flagExcludeOrgMember  = "exclude-org-member"
+	flagRenderStyle       = "render-style"
+	flagFeatures          = "features"
 	flagExcludeRepository = "exclude"
 )
 
