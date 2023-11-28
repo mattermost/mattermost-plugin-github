@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
 	pluginapi "github.com/mattermost/mattermost-plugin-api"
+	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
 	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
 	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
 	"github.com/mattermost/mattermost-server/v6/model"
@@ -22,6 +24,7 @@ import (
 	"golang.org/x/oauth2"
 
 	root "github.com/mattermost/mattermost-plugin-github"
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
 const (
@@ -156,6 +159,11 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
 	tok := *info.Token
 	return p.githubConnectToken(tok)
+}
+
+func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
+	conf := p.getConfiguration()
+	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
@@ -975,11 +983,62 @@ func (p *Plugin) isOrganizationLocked() bool {
 }
 
 func (p *Plugin) sendRefreshEvent(userID string) {
+	eventLogger := logger.New(p.API).With(logger.LogContext{
+		"userid": userID,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+
+	context := &Context{
+		Ctx:    ctx,
+		UserID: userID,
+		Log:    eventLogger,
+	}
+
+	defer cancel()
+
+	info, apiErr := p.getGitHubUserInfo(context.UserID)
+	if apiErr != nil {
+		p.API.LogWarn("Failed to get github user info", "error", apiErr.Error())
+		return
+	}
+
+	userContext := &UserContext{
+		Context: *context,
+		GHInfo:  info,
+	}
+
+	sidebarContent, err := p.getSidebarData(userContext)
+	if err != nil {
+		p.API.LogWarn("Failed to get the sidebar data", "error", err.Error())
+		return
+	}
+
+	contentMap, err := sidebarContent.toMap()
+	if err != nil {
+		p.API.LogWarn("Failed to convert sidebar content to map", "error", err.Error())
+		return
+	}
+
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventRefresh,
-		nil,
+		contentMap,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
+}
+
+func (s *SidebarContent) toMap() (map[string]interface{}, error) {
+	var m map[string]interface{}
+	bytes, err := json.Marshal(&s)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = json.Unmarshal(bytes, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,

@@ -5,46 +5,22 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
 import {getReviewsDetails, getYourPrsDetails} from '../../actions';
-import {id as pluginId} from '../../manifest';
+
+import {getSidebarData} from 'src/selectors';
 
 import SidebarRight from './sidebar_right.jsx';
 
-function mapPrsToDetails(prs, details) {
-    if (!prs) {
-        return [];
-    }
-
-    return prs.map((pr) => {
-        let foundDetails;
-        if (details) {
-            foundDetails = details.find((prDetails) => {
-                return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
-            });
-        }
-        if (!foundDetails) {
-            return pr;
-        }
-
-        return {
-            ...pr,
-            status: foundDetails.status,
-            mergeable: foundDetails.mergeable,
-            requestedReviewers: foundDetails.requestedReviewers,
-            reviews: foundDetails.reviews,
-        };
-    });
-}
-
 function mapStateToProps(state) {
+    const {username, reviews, yourPrs, yourAssignments, unreads, enterpriseURL, org, rhsState} = getSidebarData(state);
     return {
-        username: state[`plugins-${pluginId}`].username,
-        reviews: mapPrsToDetails(state[`plugins-${pluginId}`].reviews, state[`plugins-${pluginId}`].reviewsDetails),
-        yourPrs: mapPrsToDetails(state[`plugins-${pluginId}`].yourPrs, state[`plugins-${pluginId}`].yourPrsDetails),
-        yourAssignments: state[`plugins-${pluginId}`].yourAssignments,
-        unreads: state[`plugins-${pluginId}`].unreads,
-        enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
-        org: state[`plugins-${pluginId}`].organization,
-        rhsState: state[`plugins-${pluginId}`].rhsState,
+        username,
+        reviews,
+        yourPrs,
+        yourAssignments,
+        unreads,
+        enterpriseURL,
+        org,
+        rhsState,
     };
 }
 

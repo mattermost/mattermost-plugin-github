@@ -1,6 +1,6 @@
 module github.com/mattermost/mattermost-plugin-github
 
-go 1.18
+go 1.21
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
@@ -12,7 +12,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.19
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/oauth2 v0.4.0
+	golang.org/x/oauth2 v0.7.0
 )
 
 require (
@@ -28,7 +28,7 @@ require (
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.4 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
@@ -65,6 +65,8 @@ require (
 	github.com/rudderlabs/analytics-go v3.3.2+incompatible // indirect
 	github.com/segmentio/backo-go v1.0.1 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/shurcooL/githubv4 v0.0.0-20230424031643-6cea62ecd5a9
+	github.com/shurcooL/graphql v0.0.0-20220606043923-3cf50f8a0a29 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/stretchr/objx v0.4.0 // indirect
@@ -78,14 +80,14 @@ require (
 	github.com/wiggin77/srslog v1.0.1 // indirect
 	github.com/xtgo/uuid v0.0.0-20140804021211-a0b114877d4c // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
-	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/grpc v1.53.0 // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/grpc v1.56.3 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

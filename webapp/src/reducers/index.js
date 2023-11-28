@@ -77,16 +77,7 @@ function clientId(state = '', action) {
     }
 }
 
-function reviews(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_REVIEWS:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
-function reviewsDetails(state = [], action) {
+function reviewDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REVIEWS_DETAILS:
         return action.data;
@@ -95,9 +86,16 @@ function reviewsDetails(state = [], action) {
     }
 }
 
-function yourPrs(state = [], action) {
+const defaultSidebarContent = {
+    reviews: [],
+    prs: [],
+    assignments: [],
+    unreads: [],
+};
+
+function sidebarContent(state = defaultSidebarContent, action) {
     switch (action.type) {
-    case ActionTypes.RECEIVED_YOUR_PRS:
+    case ActionTypes.RECEIVED_SIDEBAR_CONTENT:
         return action.data;
     default:
         return state;
@@ -113,18 +111,9 @@ function yourRepos(state = [], action) {
     }
 }
 
-function yourPrsDetails(state = [], action) {
+function yourPrDetails(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
-function yourAssignments(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_YOUR_ASSIGNMENTS:
         return action.data;
     default:
         return state;
@@ -134,15 +123,6 @@ function yourAssignments(state = [], action) {
 function mentions(state = [], action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_MENTIONS:
-        return action.data;
-    default:
-        return state;
-    }
-}
-
-function unreads(state = [], action) {
-    switch (action.type) {
-    case ActionTypes.RECEIVED_UNREADS:
         return action.data;
     default:
         return state;
@@ -238,14 +218,10 @@ export default combineReducers({
     userSettings,
     configuration,
     clientId,
-    reviews,
-    reviewsDetails,
-    yourPrs,
+    reviewDetails,
     yourRepos,
-    yourPrsDetails,
-    yourAssignments,
+    yourPrDetails,
     mentions,
-    unreads,
     githubUsers,
     rhsPluginAction,
     rhsState,
@@ -253,4 +229,5 @@ export default combineReducers({
     createIssueModal,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
+    sidebarContent,
 });

@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"html"
 	"io"
 	"net/http"
 	"strings"
@@ -18,12 +19,13 @@ import (
 )
 
 const (
-	actionOpened    = "opened"
-	actionClosed    = "closed"
-	actionReopened  = "reopened"
-	actionSubmitted = "submitted"
-	actionLabeled   = "labeled"
-	actionAssigned  = "assigned"
+	actionOpened               = "opened"
+	actionMarkedReadyForReview = "ready_for_review"
+	actionClosed               = "closed"
+	actionReopened             = "reopened"
+	actionSubmitted            = "submitted"
+	actionLabeled              = "labeled"
+	actionAssigned             = "assigned"
 
 	actionCreated = "created"
 	actionDeleted = "deleted"
@@ -351,11 +353,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != actionOpened && action != actionLabeled && action != actionClosed {
+	if action != actionOpened && action != actionMarkedReadyForReview && action != actionLabeled && action != actionClosed {
 		return
 	}
-
 	pr := event.GetPullRequest()
+	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(pr.Labels))
 	for i, v := range pr.Labels {
@@ -421,13 +423,27 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == actionOpened {
-			newPRMessage, err := renderTemplate("newPR", GetEventWithRenderConfig(event, sub))
+			prNotificationType := "newPR"
+			if isPRInDraftState {
+				prNotificationType = "newDraftPR"
+			}
+			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
 				return
 			}
 
 			post.Message = p.sanitizeDescription(newPRMessage)
+		}
+
+		if action == actionMarkedReadyForReview {
+			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(markedReadyToReviewPRMessage)
 		}
 
 		if action == actionClosed {
@@ -442,9 +458,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 }
 
 func (p *Plugin) sanitizeDescription(description string) string {
-	var policy = bluemonday.StrictPolicy()
-	policy.SkipElementsContent("details")
-	return strings.TrimSpace(policy.Sanitize(description))
+	if strings.Contains(description, "<details>") {
+		var policy = bluemonday.StrictPolicy()
+		policy.SkipElementsContent("details")
+		description = html.UnescapeString(policy.Sanitize(description))
+	}
+	return strings.TrimSpace(description)
 }
 
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
@@ -824,7 +843,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	switch event.GetReview().GetState() {
+	switch strings.ToUpper(event.GetReview().GetState()) {
 	case "APPROVED":
 	case "COMMENTED":
 	case "CHANGES_REQUESTED":

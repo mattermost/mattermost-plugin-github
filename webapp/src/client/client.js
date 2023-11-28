@@ -15,28 +15,16 @@ export default class Client {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
 
-    getReviews = async () => {
-        return this.doGet(`${this.url}/reviews`);
-    }
-
-    getYourPrs = async () => {
-        return this.doGet(`${this.url}/yourprs`);
+    getSidebarContent = async () => {
+        return this.doGet(`${this.url}/lhs-content`);
     }
 
     getPrsDetails = async (prList) => {
         return this.doPost(`${this.url}/prsdetails`, prList);
     }
 
-    getYourAssignments = async () => {
-        return this.doGet(`${this.url}/yourassignments`);
-    }
-
     getMentions = async () => {
         return this.doGet(`${this.url}/mentions`);
-    }
-
-    getUnreads = async () => {
-        return this.doGet(`${this.url}/unreads`);
     }
 
     getGitHubUser = async (userID) => {
