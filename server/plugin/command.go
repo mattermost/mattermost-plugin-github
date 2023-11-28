@@ -434,12 +434,12 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 		subOrgMsg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 
-		found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
-		if err != nil {
-			if strings.Contains(err.Error(), "404 Not Found") {
+		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
+		if foundErr != nil {
+			if strings.Contains(foundErr.Error(), "404 Not Found") {
 				return errorWebhookToUser
 			}
-			return errors.Wrap(err, "failed to get the list of webhooks").Error()
+			return errors.Wrap(foundErr, "failed to get the list of webhooks").Error()
 		}
 
 		if !found {
