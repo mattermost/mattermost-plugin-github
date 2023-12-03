@@ -84,7 +84,6 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 	fm.oauthFlow = fm.newFlow("oauth").WithSteps(
 		fm.stepEnterprise(),
 		fm.stepOAuthInfo(),
-		fm.stepOAuthInfo(),
 		fm.stepOAuthInput(),
 		fm.stepOAuthConnect().Terminal(),
 
@@ -220,6 +219,8 @@ func (fm *FlowManager) StartSetupWizard(userID string, delegatedFrom string) err
 	if err != nil {
 		return err
 	}
+
+	fm.client.Log.Debug("Started setup wizard", "userID", userID, "delegatedFrom", delegatedFrom)
 
 	fm.trackStartSetupWizard(userID, delegatedFrom != "")
 
@@ -472,7 +473,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"	- Authorization callback URL: `%s/oauth/complete`\n"+
 		"3. Select **Register application**\n"+
 		"4. Select **Generate a new client secret**.\n"+
-		"5. Enter your **GitHub password**. (if prompted)",
+		"5. If prompted, complete 2FA.",
 		fm.pluginURL,
 	)
 

@@ -88,7 +88,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			httpTest: httpTestString,
 			request: testutils.Request{
 				Method: http.MethodGet,
-				URL:    "/api/v1/reviews",
+				URL:    "/api/v1/lhs-content",
 				Body:   nil,
 			},
 			expectedResponse: testutils.ExpectedResponse{

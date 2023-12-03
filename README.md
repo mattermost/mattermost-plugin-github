@@ -61,6 +61,8 @@ GitHub plugin configuration starts by registering an OAuth app in GitHub and end
 
 **Note:** If you're using GitHub Enterprise, replace all GitHub links below with your GitHub Enterprise URL.
 
+You can use the `/github setup` command to streamline the configuration process.
+
 ### Step 1: Register an OAuth Application in GitHub
 
 You must first register the Mattermost GitHub Plugin as an authorized OAuth app regardless of whether you're setting up the GitHub plugin as a system admin or a Mattermost user.
@@ -140,7 +142,7 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
 
 ## Slash Commands
 
-* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [executing commands](https://docs.mattermost.com/help/messaging/executing-commands.html) documentation for more details.
+* __Autocomplete slash commands__ - Explore all the available slash commands by typing `/` in the text input box - the autocomplete suggestions help by providing a format example in black text and a short description of the slash command in grey text. Visit the [documentation](https://docs.mattermost.com/channels/run-slash-commands.html) for more details.
 * __Subscribe to a repository__ - Use `/github subscriptions add` to subscribe a Mattermost channel to receive notifications for new pull requests, issues, branch creation, and more in a GitHub repository.
 
    - For instance, to post notifications for issues, issue comments, and pull requests matching the label `Help Wanted` from `mattermost/mattermost-server`, use:
@@ -152,9 +154,14 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
      - `--render-style`: notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported
      values are `collapsed`, `skip-body` or `default` (same as omitting the flag).
-
+     - `--exclude`: comma-separated list of the repositories to exclude from getting the subscription notifications like `mattermost/mattermost-server`. Only supported for subscriptions to an organization.
+   
 * __Get to do items__ - Use `/github todo` to get an ephemeral message with items to do in GitHub, including a list of unread messages and pull requests awaiting your review.
 * __Update settings__ - Use `/github settings` to update your settings for notifications and daily reminders.
+* __Setup GitHub integration__ - Use `/github setup` to configure the integration between GitHub and Mattermost. This command has the following subcommands:
+    - `/github setup oauth`: Sets up the OAuth2 application in GitHub, establishing the necessary authorization connection between GitHub and Mattermost.
+    - `/github setup webhook`: Creates a webhook from GitHub to Mattermost, allowing real-time notifications and updates from GitHub to be sent to Mattermost channels.
+    - `/github setup announce`: Sends a message to designated channels in Mattermost, announcing the availability of the GitHub integration for team members to use.
 * __And more!__ - Run `/github help` to see what else the slash command can do.
 
 ## Frequently Asked Questions

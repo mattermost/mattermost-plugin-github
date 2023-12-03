@@ -8,163 +8,134 @@
 
 import {expect, test} from '@e2e-support/test_fixture';
 
-import '../support/init_test';
-
-import {
-    fillTextField,
-    postMessage,
-    submitDialog,
-    clickPostAction,
-    screenshot,
-    getSlackAttachmentLocatorId,
-    getPostMessageLocatorId,
-    DEFAULT_WAIT_MILLIS,
-} from '../support/utils';
+import {fillTextField, postMessage, submitDialog, clickPostAction, getGithubBotDMPageURL, getSlackAttachmentLocatorId, getPostMessageLocatorId, waitForNewMessages} from '../support/utils';
 
 const GITHUB_CONNECT_LINK = '/plugins/github/oauth/connect';
 const TEST_CLIENT_ID = 'a'.repeat(20);
 const TEST_CLIENT_SECRET = 'b'.repeat(40);
 
-test('/github setup', async ({pw, pages, page: originalPage}) => {
-    // # Log in
-    const {adminUser} = await pw.getAdminClient();
-    const {page} = await pw.testBrowser.login(adminUser);
-    await originalPage.close();
+export default {
+    setup: () => {
+        test('/github setup', async ({pw, page, pages}) => {
+            const {adminClient, adminUser} = await pw.getAdminClient();
+            if (adminUser === null) {
+                throw new Error('can not get adminUser');
+            }
 
-    // # Navigate to Channels
-    const c = new pages.ChannelsPage(page);
-    await c.goto();
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+            await page.goto(URL, {waitUntil: 'load'});
 
-    // # Run setup command
-    await postMessage('/github setup', c, page);
+            const c = new pages.ChannelsPage(page);
 
-    // # Go to github bot DM channel
-    const teamName = page.url().split('/')[3];
-    await c.goto(teamName, 'messages/@github');
+            // # Run setup command
+            await postMessage('/github setup', c, page);
 
-    // # Go through prompts of setup flow
-    let choices: string[] = [
-        'Continue',
-        "I'll do it myself",
-        'No',
-        'Continue',
-        'Continue',
-    ];
+            // # Wait for new messages to ensure the last post is the one we want
+            // await waitForNewMessages(page);
+            await page.waitForTimeout(1000);
 
-    let i = 0;
-    for (const choice of choices) {
-        i++;
-        await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
-        await screenshot(`post_action_before_${i}`, page);
-        await clickPostAction(choice, c);
-        await screenshot(`post_action_after_${i}`, page);
-    }
+            // # Go through prompts of setup flow
+            await clickPostAction('Continue', c);
+            await clickPostAction("I'll do it myself", c);
+            await clickPostAction('No', c);
+            await clickPostAction('Continue', c);
+            await clickPostAction('Continue', c);
 
-    // # Fill out interactive dialog for GitHub client id and client secret
-    await fillTextField('client_id', TEST_CLIENT_ID, page);
-    await fillTextField('client_secret', TEST_CLIENT_SECRET, page);
-    await submitDialog(page);
+            // # Fill out interactive dialog for GitHub client id and client secret
+            await fillTextField('client_id', TEST_CLIENT_ID, page);
+            await fillTextField('client_secret', TEST_CLIENT_SECRET, page);
+            await submitDialog(page);
 
-    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
+            await page.waitForTimeout(500);
 
-    const post = await c.getLastPost();
-    const postId = await post.getId();
-    const locatorId = getSlackAttachmentLocatorId(postId);
+            const post = await c.getLastPost();
+            const postId = await post.getId();
+            const locatorId = getSlackAttachmentLocatorId(postId);
 
-    const text = await page.locator(locatorId).innerText();
-    expect(text).toEqual('Go here to connect your account.');
+            const text = await page.locator(locatorId).innerText();
+            expect(text).toEqual('Go here to connect your account.');
 
-    await screenshot('github_setup/show_connect_link', page);
+            // * Verify connect link has correct URL
+            const connectLinkLocator = `${locatorId} a`;
+            const href = await page.
+                locator(connectLinkLocator).
+                getAttribute('href');
+            expect(href).toMatch(GITHUB_CONNECT_LINK);
 
-    // * Verify connect link has correct URL
-    const connectLinkLocator = `${locatorId} a`;
-    const href = await page.locator(connectLinkLocator).getAttribute('href');
-    expect(href).toMatch(GITHUB_CONNECT_LINK);
+            await page.click(connectLinkLocator);
 
-    await screenshot(`connect_click_before`, page);
-    await page.click(connectLinkLocator);
-    await screenshot(`connect_click_after`, page);
+            // # Say no to "Create a webhook"
+            await clickPostAction('No', c);
 
-    // # Say no to "Create a webhook"
-    await screenshot(`webhook_question_before`, page);
-    await clickPostAction('No', c);
-    await screenshot(`webhook_question_aftrt`, page);
+            // # Say no to "Broadcast to channel"
+            await clickPostAction('Not now', c);
+        });
+    },
+    connect: () => {
+        test('/github connect', async ({pages, page, pw}) => {
+            const {adminClient, adminUser} = await pw.getAdminClient();
+            if (adminUser === null) {
+                throw new Error('can not get adminUser');
+            }
 
-    // # Say no to "Broadcast to channel"
-    await screenshot(`broadcast_question_before`, page);
-    await clickPostAction('Not now', c);
-    await screenshot(`broadcast_question_after`, page);
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+            await page.goto(URL, {waitUntil: 'load'});
 
-    await screenshot('github_setup/done', page);
-    await page.close();
-});
+            const c = new pages.ChannelsPage(page);
 
-test('/github connect', async ({pw, pages, page: originalPage}) => {
-    // # Log in
-    const {adminUser} = await pw.getAdminClient();
-    const {page} = await pw.testBrowser.login(adminUser);
-    await originalPage.close();
+            // # Run connect command
+            await postMessage('/github connect', c, page);
 
-    // # Navigate to Channels
-    const c = new pages.ChannelsPage(page);
-    await c.goto();
+            // # Wait for new messages to ensure the last post is the one we want
+            await waitForNewMessages(page);
 
-    // # Run connect command
-    await postMessage('/github connect', c, page);
-    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
+            let post = await c.getLastPost();
+            let postId = await post.getId();
+            let locatorId = getPostMessageLocatorId(postId);
 
-    let post = await c.getLastPost();
-    let postId = await post.getId();
-    let locatorId = getPostMessageLocatorId(postId);
+            let text = await page.locator(locatorId).innerText();
+            expect(text).toEqual('Click here to link your GitHub account.');
 
-    let text = await page.locator(locatorId).innerText();
-    expect(text).toEqual('Click here to link your GitHub account.');
+            // * Verify connect link has correct URL
+            const connectLinkLocator = `${locatorId} a`;
+            const href = await page.locator(connectLinkLocator).getAttribute('href');
+            expect(href).toMatch(GITHUB_CONNECT_LINK);
 
-    await screenshot('github_connect/show_connect_link', page);
+            await page.click(connectLinkLocator);
+            await page.waitForTimeout(2000);
 
-    // * Verify connect link has correct URL
-    const connectLinkLocator = `${locatorId} a`;
-    const href = await page.locator(connectLinkLocator).getAttribute('href');
-    expect(href).toMatch(GITHUB_CONNECT_LINK);
+            post = await c.getLastPost();
+            postId = await post.getId();
+            locatorId = getPostMessageLocatorId(postId);
 
-    await page.click(connectLinkLocator);
-    await screenshot('github_connect/after_clicking_connect_link', page);
+            text = await page.locator(locatorId).innerText();
+            expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
+        });
+    },
+    disconnect: () => {
+        test('/github disconnect', async ({pages, page, pw}) => {
+            const {adminClient, adminUser} = await pw.getAdminClient();
+            if (adminUser === null) {
+                throw new Error('can not get adminUser');
+            }
 
-    // # Go to github bot DM channel
-    const teamName = page.url().split('/')[3];
-    await c.goto(teamName, 'messages/@github');
-    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
+            const URL = await getGithubBotDMPageURL(adminClient, '', adminUser.id);
+            await page.goto(URL, {waitUntil: 'load'});
 
-    post = await c.getLastPost();
-    postId = await post.getId();
-    locatorId = getPostMessageLocatorId(postId);
+            const c = new pages.ChannelsPage(page);
 
-    text = await page.locator(locatorId).innerText();
-    expect(text).toContain('Welcome to the Mattermost GitHub Plugin!');
+            // # Run connect command
+            await postMessage('/github disconnect', c, page);
 
-    await screenshot('github_connect/after_navigate_to_github_plugin', page);
-    await page.close();
-});
+            // # Wait for new messages to ensure the last post is the one we want
+            await waitForNewMessages(page);
 
-test('/github issue create', async ({pw, pages, page: originalPage}) => {
-    // # Log in
-    const {adminUser} = await pw.getAdminClient();
-    const {page} = await pw.testBrowser.login(adminUser);
-    await originalPage.close();
+            const post = await c.getLastPost();
+            const postId = await post.getId();
+            const locatorId = getPostMessageLocatorId(postId);
+            const text = await page.locator(locatorId).innerText();
+            await expect(text).toContain('Disconnected your GitHub account');
+        });
+    },
+};
 
-    // # Navigate to Channels
-    const c = new pages.ChannelsPage(page);
-    await c.goto();
-
-    // # Run create command
-    await postMessage('/github issue create', c, page);
-    await page.waitForTimeout(DEFAULT_WAIT_MILLIS);
-
-    await screenshot('github_issue_create/ran_create_command', page);
-
-    // * Check that Create Issue modal is shown
-    await expect(page.getByRole('heading', {
-        name: 'Create GitHub Issue'
-    })).toBeVisible();
-    await page.close();
-});

@@ -20,7 +20,7 @@ export const makeOAuthServer = ({
     expiryAlgorithm,
 }: OAuthServerOptions): express.Express => {
     if (!mockOAuthAccessToken) {
-        throw new Error(`MockOAuthServer: Please provide an OAuth access token to use`);
+        throw new Error('MockOAuthServer: Please provide an OAuth access token to use');
     }
 
     if (expiryAlgorithm !== ExpiryAlgorithms.NO_EXPIRY) {
@@ -29,14 +29,15 @@ export const makeOAuthServer = ({
 
     const app = express();
 
+    // eslint-disable-next-line new-cap
     const oauthRouter = express.Router();
 
-    oauthRouter.get('/authorize', function (req, res) {
+    oauthRouter.get('/authorize', (req, res) => {
         const query = req.url.split('?')[1];
         res.redirect(`${mattermostSiteURL}/plugins/${pluginId}/oauth/complete?${query}&code=1234`);
     });
 
-    oauthRouter.post('/access_token', function (req, res) {
+    oauthRouter.post('/access_token', (req, res) => {
         const token = {
             access_token: mockOAuthAccessToken,
             token_type: 'bearer',
@@ -49,4 +50,4 @@ export const makeOAuthServer = ({
     app.use(authorizeURLPrefix, oauthRouter);
 
     return app;
-}
+};
