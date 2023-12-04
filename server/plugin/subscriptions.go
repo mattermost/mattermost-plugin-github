@@ -83,6 +83,10 @@ func (s *Subscription) Pulls() bool {
 	return strings.Contains(s.Features.String(), featurePulls)
 }
 
+func (s *Subscription) PullsCreated() bool {
+	return strings.Contains(s.Features.String(), featurePullsCreated)
+}
+
 func (s *Subscription) PullsMerged() bool {
 	return strings.Contains(s.Features.String(), "pulls_merged")
 }
