@@ -353,9 +353,16 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != actionOpened && action != actionReopened && action != actionMarkedReadyForReview && action != actionLabeled && action != actionClosed {
+	switch action {
+	case actionOpened,
+		actionReopened,
+		actionMarkedReadyForReview,
+		actionLabeled,
+		actionClosed:
+	default:
 		return
 	}
+
 	pr := event.GetPullRequest()
 	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
