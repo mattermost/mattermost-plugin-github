@@ -315,7 +315,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != actionOpened && action != actionLabeled && action != actionClosed {
+	switch action {
+	case actionOpened,
+		actionReopened,
+		actionLabeled,
+		actionClosed:
+	default:
 		return
 	}
 
@@ -385,6 +390,16 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		if action == actionOpened {
 			post.Message = p.sanitizeDescription(newPRMessage)
+		}
+
+		if action == actionReopened {
+			reopenedPRMessage, err := renderTemplate("reopenedPR", event)
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(reopenedPRMessage)
 		}
 
 		if action == actionClosed {
