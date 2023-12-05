@@ -226,6 +226,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- end }} by {{template "user" .GetSender}}.
 `))
 
+	template.Must(masterTemplate.New("reopenedPR").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} Pull request {{template "pullRequest" .GetPullRequest}} was reopened by {{template "user" .GetSender}}.
+`))
+
 	template.Must(masterTemplate.New("pullRequestLabelled").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
