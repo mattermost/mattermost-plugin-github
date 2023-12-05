@@ -393,6 +393,22 @@ func TestClosedPRMessageTemplate(t *testing.T) {
 	})
 }
 
+func TestReopenedPRMessageTemplate(t *testing.T) {
+	t.Run("reopened", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was reopened by [panda](https://github.com/panda).
+`
+
+		actual, err := renderTemplate("reopenedPR", &github.PullRequestEvent{
+			Repo:        &repo,
+			PullRequest: &pullRequest,
+			Sender:      &user,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+}
+
 func TestPullRequestLabelledTemplate(t *testing.T) {
 	expected := `
 #### Leverage git-get-head

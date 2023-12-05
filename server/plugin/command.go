@@ -18,6 +18,7 @@ const (
 	featureIssues        = "issues"
 	featurePulls         = "pulls"
 	featurePullsMerged   = "pulls_merged"
+	featurePullsCreated  = "pulls_created"
 	featurePushes        = "pushes"
 	featureCreates       = "creates"
 	featureDeletes       = "deletes"
@@ -35,12 +36,27 @@ var validFeatures = map[string]bool{
 	featureIssues:        true,
 	featurePulls:         true,
 	featurePullsMerged:   true,
+	featurePullsCreated:  true,
 	featurePushes:        true,
 	featureCreates:       true,
 	featureDeletes:       true,
 	featureIssueComments: true,
 	featurePullReviews:   true,
 	featureStars:         true,
+}
+
+type Features string
+
+func (features Features) String() string {
+	return string(features)
+}
+
+func (features Features) FormattedString() string {
+	return "`" + strings.Join(strings.Split(features.String(), ","), "`, `") + "`"
+}
+
+func (features Features) ToSlice() []string {
+	return strings.Split(string(features), ",")
 }
 
 // validateFeatures returns false when 1 or more given features
@@ -70,6 +86,21 @@ func validateFeatures(features []string) (bool, []string) {
 		valid = false
 	}
 	return valid, invalidFeatures
+}
+
+// checkFeatureConflict returns false when given features
+// cannot be added together along with a list of the conflicting features.
+func checkFeatureConflict(fs []string) (bool, []string) {
+	if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+		return false, []string{featureIssues, featureIssueCreation}
+	}
+	if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+		return false, []string{featurePulls, featurePullsMerged}
+	}
+	if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsCreated) {
+		return false, []string{featurePulls, featurePullsCreated}
+	}
+	return true, nil
 }
 
 func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
@@ -269,7 +300,7 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	}
 	for _, sub := range subs {
 		subFlags := sub.Flags.String()
-		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features)
+		txt += fmt.Sprintf("* `%s` - %s", strings.Trim(sub.Repository, "/"), sub.Features.String())
 		if subFlags != "" {
 			txt += fmt.Sprintf(" %s", subFlags)
 		}
@@ -277,6 +308,21 @@ func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandA
 	}
 
 	return txt
+}
+
+func (p *Plugin) createPost(channelID, userID, message string) error {
+	post := &model.Post{
+		ChannelId: channelID,
+		UserId:    userID,
+		Message:   message,
+	}
+
+	if _, appErr := p.API.CreatePost(post); appErr != nil {
+		p.API.LogWarn("Error while creating post", "Post", post, "Error", appErr.Error())
+		return appErr
+	}
+
+	return nil
 }
 
 func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, repo, owner string) (bool, error) {
@@ -321,15 +367,14 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	const errorNoWebhookFound = "\nNo webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
 	const errorWebhookToUser = "\nNot able to get the list of webhooks. This feature is not available for subscription to a user."
+	subscriptionEvents := Features("pulls,issues,creates,deletes")
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
-
 	config := p.getConfiguration()
+	baseURL := config.getBaseURL()
 
-	features := "pulls,issues,creates,deletes"
 	flags := SubscriptionFlags{}
-
 	if len(parameters) > 1 {
 		flagParams := parameters[1:]
 
@@ -346,7 +391,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			parsedFlag := parseFlag(flag)
 
 			if parsedFlag == flagFeatures {
-				features = value
+				subscriptionEvents = Features(value)
 				continue
 			}
 			if err := flags.AddFlag(parsedFlag, value); err != nil {
@@ -354,13 +399,17 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 			}
 		}
 
-		fs := strings.Split(features, ",")
-		if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
-			return "Feature list cannot contain both issue and issue_creations"
+		fs := subscriptionEvents.ToSlice()
+
+		ok, conflictingFs := checkFeatureConflict(fs)
+
+		if !ok {
+			if len(conflictingFs) == 2 {
+				return fmt.Sprintf("Feature list cannot contain both %s and %s", conflictingFs[0], conflictingFs[1])
+			}
+			return fmt.Sprintf("Conflicting feature(s) provided: %s", strings.Join(conflictingFs, ","))
 		}
-		if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
-			return "Feature list cannot contain both pulls and pulls_merged"
-		}
+
 		ok, ifs := validateFeatures(fs)
 		if !ok {
 			msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
@@ -373,21 +422,45 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
+	user, appErr := p.API.GetUser(args.UserId)
+	if appErr != nil {
+		return errors.Wrap(appErr, "failed to get the user").Error()
+	}
 
-	owner, repo := parseOwnerAndRepo(parameters[0], config.getBaseURL())
+	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
+	previousSubscribedEvents, err := p.getSubscribedFeatures(args.ChannelId, owner, repo)
+	if err != nil {
+		return errors.Wrap(err, "failed to get the subscribed events").Error()
+	}
+
+	var previousSubscribedEventMessage string
+	if previousSubscribedEvents != "" {
+		previousSubscribedEventMessage = fmt.Sprintf("\nThe previous subscription with: %s was overwritten.\n", previousSubscribedEvents.FormattedString())
+	}
+
 	if repo == "" {
-		if err := p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, features, flags); err != nil {
-			return err.Error()
+		if err = p.SubscribeOrg(ctx, githubClient, args.UserId, owner, args.ChannelId, subscriptionEvents, flags); err != nil {
+			return errors.Wrap(err, "failed to get the subscribed org").Error()
+		}
+		orgLink := baseURL + owner
+		subscriptionSuccess := fmt.Sprintf("@%v subscribed this channel to [%s](%s) with the following events: %s.", user.Username, owner, orgLink, subscriptionEvents.FormattedString())
+
+		if previousSubscribedEvents != "" {
+			subscriptionSuccess += previousSubscribedEventMessage
+		}
+
+		if err = p.createPost(args.ChannelId, p.BotUserID, subscriptionSuccess); err != nil {
+			return fmt.Sprintf("%s error creating the public post: %s", subscriptionSuccess, err.Error())
 		}
 
 		subOrgMsg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 
-		found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
-		if err != nil {
-			if strings.Contains(err.Error(), "404 Not Found") {
+		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
+		if foundErr != nil {
+			if strings.Contains(foundErr.Error(), "404 Not Found") {
 				return errorWebhookToUser
 			}
-			return errors.Wrap(err, "failed to get the list of webhooks").Error()
+			return errors.Wrap(foundErr, "failed to get the list of webhooks").Error()
 		}
 
 		if !found {
@@ -400,18 +473,25 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		return "Exclude repository feature is only available to subscriptions of an organization."
 	}
 
-	if err := p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, features, flags); err != nil {
-		return err.Error()
+	if err = p.Subscribe(ctx, githubClient, args.UserId, owner, repo, args.ChannelId, subscriptionEvents, flags); err != nil {
+		return errors.Wrap(err, "failed to create a subscription").Error()
 	}
 	repoLink := config.getBaseURL() + owner + "/" + repo
 
-	msg := fmt.Sprintf("Successfully subscribed to [%s](%s).", repo, repoLink)
+	msg := fmt.Sprintf("@%v subscribed this channel to [%s/%s](%s) with the following events: %s", user.Username, owner, repo, repoLink, subscriptionEvents.FormattedString())
+	if previousSubscribedEvents != "" {
+		msg += previousSubscribedEventMessage
+	}
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
 		p.client.Log.Warn("Failed to fetch repository", "error", err.Error())
 	} else if ghRepo != nil && ghRepo.GetPrivate() {
 		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+	}
+
+	if err = p.createPost(args.ChannelId, p.BotUserID, msg); err != nil {
+		return fmt.Sprintf("%s\nError creating the public post: %s", msg, appErr.Error())
 	}
 
 	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
@@ -429,19 +509,73 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	return msg
 }
 
+func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features, error) {
+	var previousFeatures Features
+	subs, err := p.GetSubscriptionsByChannel(channelID)
+	if err != nil {
+		return previousFeatures, err
+	}
+
+	for _, sub := range subs {
+		fullRepoName := repo
+		if owner != "" {
+			fullRepoName = owner + "/" + repo
+		}
+
+		if sub.Repository == fullRepoName {
+			previousFeatures = sub.Features
+			return previousFeatures, nil
+		}
+	}
+
+	return previousFeatures, nil
+}
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
 
 	repo := parameters[0]
+	config := p.getConfiguration()
+	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
+	if owner == "" && repo == "" {
+		return "invalid repository"
+	}
 
-	if err := p.Unsubscribe(args.ChannelId, repo); err != nil {
-		p.client.Log.Warn("Failed to unsubscribe", "repo", repo, "error", err.Error())
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
+	if err := p.Unsubscribe(args.ChannelId, repo, owner); err != nil {
+		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
-	return fmt.Sprintf("Successfully unsubscribed from %s.", repo)
+	baseURL := config.getBaseURL()
+	user, appErr := p.API.GetUser(args.UserId)
+	if appErr != nil {
+		p.API.LogWarn("Error while fetching user details", "Error", appErr.Error())
+		return fmt.Sprintf("error while fetching user details: %s", appErr.Error())
+	}
+
+	unsubscribeMessage := ""
+	if repo == "" {
+		orgLink := baseURL + owner
+		unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s](%s)", user.Username, owner, orgLink)
+
+		if err := p.createPost(args.ChannelId, p.BotUserID, unsubscribeMessage); err != nil {
+			return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, err.Error())
+		}
+
+		return ""
+	}
+
+	repoLink := baseURL + owner + "/" + repo
+	unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s/%s](%s)", user.Username, owner, repo, repoLink)
+
+	if err := p.createPost(args.ChannelId, p.BotUserID, unsubscribeMessage); err != nil {
+		return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, err.Error())
+	}
+
+	return ""
 }
 
 func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
@@ -755,7 +889,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{

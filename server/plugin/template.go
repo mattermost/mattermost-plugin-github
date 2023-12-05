@@ -226,6 +226,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- end }} by {{template "user" .GetSender}}.
 `))
 
+	template.Must(masterTemplate.New("reopenedPR").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} Pull request {{template "pullRequest" .GetPullRequest}} was reopened by {{template "user" .GetSender}}.
+`))
+
 	template.Must(masterTemplate.New("pullRequestLabelled").Funcs(funcMap).Parse(`
 #### {{.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .}}
@@ -387,6 +391,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issues` - includes new and closed issues\n" +
 		"    	* `pulls` - includes new and closed pull requests\n" +
 		"    	* `pulls_merged` - includes merged pull requests only\n" +
+		"    	* `pulls_created` - includes new pull requests only\n" +
 		"    	* `pushes` - includes pushes\n" +
 		"    	* `creates` - includes branch and tag creations\n" +
 		"    	* `deletes` - includes branch and tag deletions\n" +

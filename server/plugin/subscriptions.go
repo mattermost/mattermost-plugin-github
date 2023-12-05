@@ -70,7 +70,7 @@ func (s SubscriptionFlags) String() string {
 type Subscription struct {
 	ChannelID  string
 	CreatorID  string
-	Features   string
+	Features   Features
 	Flags      SubscriptionFlags
 	Repository string
 }
@@ -80,51 +80,55 @@ type Subscriptions struct {
 }
 
 func (s *Subscription) Pulls() bool {
-	return strings.Contains(s.Features, featurePulls)
+	return strings.Contains(s.Features.String(), featurePulls)
+}
+
+func (s *Subscription) PullsCreated() bool {
+	return strings.Contains(s.Features.String(), featurePullsCreated)
 }
 
 func (s *Subscription) PullsMerged() bool {
-	return strings.Contains(s.Features, "pulls_merged")
+	return strings.Contains(s.Features.String(), "pulls_merged")
 }
 
 func (s *Subscription) IssueCreations() bool {
-	return strings.Contains(s.Features, "issue_creations")
+	return strings.Contains(s.Features.String(), "issue_creations")
 }
 
 func (s *Subscription) Issues() bool {
-	return strings.Contains(s.Features, featureIssues)
+	return strings.Contains(s.Features.String(), featureIssues)
 }
 
 func (s *Subscription) Pushes() bool {
-	return strings.Contains(s.Features, "pushes")
+	return strings.Contains(s.Features.String(), "pushes")
 }
 
 func (s *Subscription) Creates() bool {
-	return strings.Contains(s.Features, "creates")
+	return strings.Contains(s.Features.String(), "creates")
 }
 
 func (s *Subscription) Deletes() bool {
-	return strings.Contains(s.Features, "deletes")
+	return strings.Contains(s.Features.String(), "deletes")
 }
 
 func (s *Subscription) IssueComments() bool {
-	return strings.Contains(s.Features, "issue_comments")
+	return strings.Contains(s.Features.String(), "issue_comments")
 }
 
 func (s *Subscription) PullReviews() bool {
-	return strings.Contains(s.Features, "pull_reviews")
+	return strings.Contains(s.Features.String(), "pull_reviews")
 }
 
 func (s *Subscription) Stars() bool {
-	return strings.Contains(s.Features, featureStars)
+	return strings.Contains(s.Features.String(), featureStars)
 }
 
 func (s *Subscription) Label() string {
-	if !strings.Contains(s.Features, "label:") {
+	if !strings.Contains(s.Features.String(), "label:") {
 		return ""
 	}
 
-	labelSplit := strings.Split(s.Features, "\"")
+	labelSplit := strings.Split(s.Features.String(), "\"")
 	if len(labelSplit) < 3 {
 		return ""
 	}
@@ -149,7 +153,7 @@ func (s *Subscription) excludedRepoForSub(repo *github.Repository) bool {
 	return false
 }
 
-func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID, features string, flags SubscriptionFlags) error {
+func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID string, features Features, flags SubscriptionFlags) error {
 	if owner == "" {
 		return errors.Errorf("invalid repository")
 	}
@@ -206,7 +210,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	return nil
 }
 
-func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID, features string, flags SubscriptionFlags) error {
+func (p *Plugin) SubscribeOrg(ctx context.Context, githubClient *github.Client, userID, org, channelID string, features Features, flags SubscriptionFlags) error {
 	if org == "" {
 		return errors.New("invalid organization")
 	}
@@ -338,17 +342,7 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	return subsToReturn
 }
 
-func (p *Plugin) Unsubscribe(channelID string, repo string) error {
-	config := p.getConfiguration()
-
-	owner, repo := parseOwnerAndRepo(repo, config.getBaseURL())
-	if owner == "" && repo == "" {
-		return errors.New("invalid repository")
-	}
-
-	owner = strings.ToLower(owner)
-	repo = strings.ToLower(repo)
-
+func (p *Plugin) Unsubscribe(channelID, repo, owner string) error {
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()

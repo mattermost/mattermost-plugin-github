@@ -353,9 +353,16 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != actionOpened && action != actionMarkedReadyForReview && action != actionLabeled && action != actionClosed {
+	switch action {
+	case actionOpened,
+		actionReopened,
+		actionMarkedReadyForReview,
+		actionLabeled,
+		actionClosed:
+	default:
 		return
 	}
+
 	pr := event.GetPullRequest()
 	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
@@ -376,11 +383,15 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
-		if !sub.Pulls() && !sub.PullsMerged() {
+		if !sub.Pulls() && !sub.PullsMerged() && !sub.PullsCreated() {
 			continue
 		}
 
 		if sub.PullsMerged() && action != actionClosed {
+			continue
+		}
+
+		if sub.PullsCreated() && action != actionOpened {
 			continue
 		}
 
@@ -434,6 +445,16 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 
 			post.Message = p.sanitizeDescription(newPRMessage)
+		}
+
+		if action == actionReopened {
+			reopenedPRMessage, err := renderTemplate("reopenedPR", event)
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(reopenedPRMessage)
 		}
 
 		if action == actionMarkedReadyForReview {
