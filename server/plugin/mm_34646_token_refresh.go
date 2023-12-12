@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-github/v41/github"
 	"github.com/pkg/errors"
 
-	"github.com/mattermost/mattermost-plugin-api/cluster"
+	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 )
 
 const pageSize = 100
