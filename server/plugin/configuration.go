@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 )
 
@@ -193,10 +192,7 @@ func (p *Plugin) setConfiguration(configuration *Configuration) {
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
-	if p.client == nil {
-		p.client = pluginapi.NewClient(p.API, p.Driver)
-		p.store = &p.client.KV
-	}
+	p.ensurePluginAPIClient()
 
 	var configuration = new(Configuration)
 

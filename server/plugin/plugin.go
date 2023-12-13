@@ -157,6 +157,13 @@ func (p *Plugin) createGithubEmojiMap() {
 	}
 }
 
+func (p *Plugin) ensurePluginAPIClient() {
+	if p.client == nil {
+		p.client = pluginapi.NewClient(p.API, p.Driver)
+		p.store = &p.client.KV
+	}
+}
+
 func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Client, error) {
 	userInfo, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
@@ -238,10 +245,7 @@ func (p *Plugin) setDefaultConfiguration() error {
 }
 
 func (p *Plugin) OnActivate() error {
-	if p.client == nil {
-		p.client = pluginapi.NewClient(p.API, p.Driver)
-		p.store = &p.client.KV
-	}
+	p.ensurePluginAPIClient()
 
 	siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
 	if siteURL == nil || *siteURL == "" {
@@ -763,11 +767,7 @@ func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
 
 func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	var summaryByte []byte
-<<<<<<< HEAD
-	err := p.client.KV.Get(userID+dailySummary, &summaryByte)
-=======
-	err := p.store.Get(userID+dailySummary, summaryByte)
->>>>>>> f941316 (Adopt memorystore for tests)
+	err := p.store.Get(userID+dailySummary, &summaryByte)
 	if err != nil {
 		return "", err
 	}
