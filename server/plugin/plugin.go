@@ -67,9 +67,18 @@ var (
 	testOAuthServerURL = ""
 )
 
+type kvStore interface {
+	Set(key string, value any, options ...pluginapi.KVSetOption) (bool, error)
+	ListKeys(page int, count int, options ...pluginapi.ListKeysOption) ([]string, error)
+	Get(key string, o any) error
+	Delete(key string) error
+}
+
 type Plugin struct {
 	plugin.MattermostPlugin
 	client *pluginapi.Client
+
+	store kvStore
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -231,6 +240,7 @@ func (p *Plugin) setDefaultConfiguration() error {
 func (p *Plugin) OnActivate() error {
 	if p.client == nil {
 		p.client = pluginapi.NewClient(p.API, p.Driver)
+		p.store = &p.client.KV
 	}
 
 	siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
@@ -602,7 +612,7 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 
 	info.Token.AccessToken = encryptedToken
 
-	if _, err := p.client.KV.Set(info.UserID+githubTokenKey, info); err != nil {
+	if _, err := p.store.Set(info.UserID+githubTokenKey, info); err != nil {
 		return errors.Wrap(err, "error occurred while trying to store user info into KV store")
 	}
 
@@ -613,7 +623,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 	config := p.getConfiguration()
 
 	var userInfo *GitHubUserInfo
-	err := p.client.KV.Get(userID+githubTokenKey, &userInfo)
+	err := p.store.Get(userID+githubTokenKey, &userInfo)
 	if err != nil {
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to get user info.", StatusCode: http.StatusInternalServerError}
 	}
@@ -633,7 +643,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 }
 
 func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error {
-	_, err := p.client.KV.Set(githubUsername+githubUsernameKey, []byte(userID))
+	_, err := p.store.Set(githubUsername+githubUsernameKey, []byte(userID))
 	if err != nil {
 		return errors.Wrap(err, "encountered error saving github username mapping")
 	}
@@ -643,7 +653,7 @@ func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error
 
 func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	var data []byte
-	err := p.client.KV.Get(githubUsername+githubUsernameKey, &data)
+	err := p.store.Get(githubUsername+githubUsernameKey, &data)
 	if err != nil {
 		p.API.LogWarn("Error occurred while getting the user ID from KV store using the Github username", "Error", err.Error())
 		return ""
@@ -668,11 +678,11 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		return
 	}
 
-	if err := p.client.KV.Delete(userID + githubTokenKey); err != nil {
+	if err := p.store.Delete(userID + githubTokenKey); err != nil {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
-	if err := p.client.KV.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
+	if err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
@@ -743,7 +753,7 @@ func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error)
 }
 
 func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
-	_, err := p.client.KV.Set(userID+dailySummary, []byte(summaryText))
+	_, err := p.store.Set(userID+dailySummary, []byte(summaryText))
 	if err != nil {
 		return err
 	}
@@ -753,7 +763,11 @@ func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
 
 func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	var summaryByte []byte
+<<<<<<< HEAD
 	err := p.client.KV.Get(userID+dailySummary, &summaryByte)
+=======
+	err := p.store.Get(userID+dailySummary, summaryByte)
+>>>>>>> f941316 (Adopt memorystore for tests)
 	if err != nil {
 		return "", err
 	}

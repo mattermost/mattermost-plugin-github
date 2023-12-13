@@ -843,7 +843,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
 	var mutedUsernameBytes []byte
-	err := p.client.KV.Get(userID+"-muted-users", &mutedUsernameBytes)
+	err := p.store.Get(userID+"-muted-users", &mutedUsernameBytes)
 	if err != nil {
 		p.client.Log.Warn("Failed to get muted users", "userID", userID)
 		return false

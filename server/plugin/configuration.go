@@ -195,6 +195,7 @@ func (p *Plugin) setConfiguration(configuration *Configuration) {
 func (p *Plugin) OnConfigurationChange() error {
 	if p.client == nil {
 		p.client = pluginapi.NewClient(p.API, p.Driver)
+		p.store = &p.client.KV
 	}
 
 	var configuration = new(Configuration)

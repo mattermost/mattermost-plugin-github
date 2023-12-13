@@ -20,7 +20,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 
 	time.Sleep(delayToStart)
 	var data []byte
-	err := p.client.KV.Get(mm34646DoneKey, &data)
+	err := p.store.Get(mm34646DoneKey, &data)
 	if err != nil {
 		return errors.Wrap(err, "failed check whether MM-34646 refresh is already done")
 	}
@@ -38,14 +38,14 @@ func (p *Plugin) forceResetAllMM34646() error {
 
 	for page := 0; ; page++ {
 		var keys []string
-		keys, err = p.client.KV.ListKeys(page, pageSize)
+		keys, err = p.store.ListKeys(page, pageSize)
 		if err != nil {
 			return err
 		}
 
 		for _, key := range keys {
 			var tryInfo GitHubUserInfo
-			err = p.client.KV.Get(key, &tryInfo)
+			err = p.store.Get(key, &tryInfo)
 			if err != nil {
 				p.client.Log.Warn("failed to inspect key", "key", key, "error",
 					err.Error())
@@ -82,7 +82,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 		}
 	}
 
-	_, err = p.client.KV.Set(mm34646DoneKey, []byte("done"))
+	_, err = p.store.Set(mm34646DoneKey, []byte("done"))
 	if err != nil {
 		return err
 	}

@@ -281,7 +281,7 @@ func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
 func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	var subscriptions *Subscriptions
 
-	err := p.client.KV.Get(SubscriptionsKey, &subscriptions)
+	err := p.store.Get(SubscriptionsKey, &subscriptions)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get subscriptions from KVStore")
 	}
@@ -295,7 +295,7 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 }
 
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
-	if _, err := p.client.KV.Set(SubscriptionsKey, s); err != nil {
+	if _, err := p.store.Set(SubscriptionsKey, s); err != nil {
 		return errors.Wrap(err, "could not store subscriptions in KV store")
 	}
 

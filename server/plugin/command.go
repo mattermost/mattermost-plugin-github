@@ -132,7 +132,7 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	var mutedUsernameBytes []byte
-	err := p.client.KV.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
+	err := p.store.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
 	if err != nil {
 		return nil
 	}
@@ -184,7 +184,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 		mutedUsers = username
 	}
 
-	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
+	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
 	if err != nil {
 		return "Error occurred saving list of muted users"
 	}
@@ -197,7 +197,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
 
-	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
+	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
 	if err != nil {
 		return "Error occurred unmuting users"
 	}
@@ -206,7 +206,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 }
 
 func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
-	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(""))
+	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
 	}
@@ -663,7 +663,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 					"error", err.Error())
 			}
 		} else {
-			err := p.client.KV.Delete(userInfo.GitHubUsername + githubUsernameKey)
+			err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey)
 			if err != nil {
 				p.client.Log.Warn("Failed to delete GitHub to userID mapping",
 					"userID", userInfo.UserID,
