@@ -164,7 +164,7 @@ func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *g
 func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
 	// an issue here to check of graphql client
-	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrgs, conf.EnterpriseBaseURL)
+	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
