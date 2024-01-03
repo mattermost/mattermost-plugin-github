@@ -644,7 +644,7 @@ func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	var data []byte
 	err := p.client.KV.Get(githubUsername+githubUsernameKey, &data)
 	if err != nil {
-		p.API.LogError("Error occurred while getting the user ID from KV store using the Github username", "Error", err.Error())
+		p.API.LogWarn("Error occurred while getting the user ID from KV store using the Github username", "Error", err.Error())
 		return ""
 	}
 
