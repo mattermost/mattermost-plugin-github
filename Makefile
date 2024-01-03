@@ -190,7 +190,7 @@ detach: setup-attach
 .PHONY: test
 test: webapp/node_modules
 ifneq ($(HAS_SERVER),)
-	$(GO) test -v $(GO_TEST_FLAGS) ./server/...
+	$(GO) test -v $(GO_TEST_FLAGS) ./...
 endif
 ifneq ($(HAS_WEBAPP),)
 	cd webapp && $(NPM) run test;
@@ -200,7 +200,7 @@ endif
 .PHONY: coverage
 coverage: webapp/node_modules
 ifneq ($(HAS_SERVER),)
-	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./server/...
+	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./...
 	$(GO) tool cover -html=server/coverage.txt
 endif
 
