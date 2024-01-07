@@ -118,6 +118,13 @@
                 "type": "bool",
                 "help_text": "Allow the plugin to log the webhook event. The log level needs to be set to DEBUG.",
                 "default": false
+            },
+            {
+                "key": "PushedCommitsAuthor",
+                "display_name": "Pushed commits events: show Author instead of Committer:",
+                "type": "bool",
+                "help_text": "In \"Pushed commits\" event message, show commit Author instead of commit Committer. This may be useful when Author and Committer are commonly two different persons.",
+                "default": false
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
