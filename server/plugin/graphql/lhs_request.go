@@ -64,7 +64,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		if !allAssignmentsFetched {
 			for i := range mainQuery.Assignments.Nodes {
 				resp := mainQuery.Assignments.Nodes[i]
-				issue := getIssue(&resp)
+				issue := newIssueFromAssignmentResponse(&resp)
 				resultAssignee = append(resultAssignee, issue)
 			}
 
@@ -97,14 +97,14 @@ func getPR(prResp *prSearchNodes) *github.Issue {
 	resp := prResp.PullRequest
 	labels := getGithubLabels(resp.Labels.Nodes)
 
-	return getGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title)
+	return newGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title)
 }
 
-func getIssue(assignmentResp *assignmentSearchNodes) *github.Issue {
+func newIssueFromAssignmentResponse(assignmentResp *assignmentSearchNodes) *github.Issue {
 	resp := assignmentResp.PullRequest
 	labels := getGithubLabels(resp.Labels.Nodes)
 
-	return getGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title)
+	return newGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title)
 }
 
 func getGithubLabels(labels []labelNode) []*github.Label {
@@ -121,12 +121,12 @@ func getGithubLabels(labels []labelNode) []*github.Label {
 	return githubLabels
 }
 
-func getGithubIssue(prNumber githubv4.Int, title, login githubv4.String, repositoryURL, htmlURL githubv4.URI, createdAt, updatedAt githubv4.DateTime, labels []*github.Label, milestone githubv4.String) *github.Issue {
+func newGithubIssue(prNumber githubv4.Int, title, login githubv4.String, repositoryURL, htmlURL githubv4.URI, createdAt, updatedAt githubv4.DateTime, labels []*github.Label, milestone githubv4.String) *github.Issue {
 	number := int(prNumber)
 	repoURL := repositoryURL.String()
 	issuetitle := string(title)
-	userLogin := (string)(login)
-	milestoneTitle := (string)(milestone)
+	userLogin := string(login)
+	milestoneTitle := string(milestone)
 	url := htmlURL.String()
 	createdAtTime := createdAt.Time
 	updatedAtTime := updatedAt.Time
