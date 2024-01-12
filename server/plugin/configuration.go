@@ -38,7 +38,7 @@ type Configuration struct {
 	EnableCodePreview           string `json:"enablecodepreview"`
 	EnableWebhookEventLogging   bool   `json:"enablewebhookeventlogging"`
 	UsePreregisteredApplication bool   `json:"usepreregisteredapplication"`
-	PushedCommitsAuthor         bool   `json:"pushedcommitsauthor"`
+	ShowAuthorInCommitNotification         bool   `json:"showauthorIncommitnotification"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {
