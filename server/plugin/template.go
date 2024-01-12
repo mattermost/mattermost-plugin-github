@@ -33,7 +33,7 @@ var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
 var gitHubUsernameRegex = regexp.MustCompile(gitHubUsernameRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
-var pushedCommitsAuthor bool
+var showAuthorInCommitNotification bool
 
 func init() {
 	var funcMap = sprig.TxtFuncMap()
@@ -106,7 +106,7 @@ func init() {
 	}
 
 	funcMap["commitAuthor"] = func(commit *github.HeadCommit) *github.CommitAuthor {
-		if !pushedCommitsAuthor {
+		if !showAuthorInCommitNotification {
 			return commit.GetCommitter()
 		} else {
 			return commit.GetAuthor()
@@ -443,8 +443,8 @@ func lookupMattermostUsername(githubUsername string) string {
 	return gitHubToUsernameMappingCallback(githubUsername)
 }
 
-func setPushedCommitsAuthor(value bool) {
-	pushedCommitsAuthor = value
+func setShowAuthorInCommitNotification(value bool) {
+	showAuthorInCommitNotification = value
 }
 
 func renderTemplate(name string, data interface{}) (string, error) {

@@ -657,7 +657,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		return
 	}
 
-	setPushedCommitsAuthor(p.configuration.PushedCommitsAuthor)
+	setShowAuthorInCommitNotification(p.configuration.ShowAuthorInCommitNotification)
 	pushedCommitsMessage, err := renderTemplate("pushedCommits", event)
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
