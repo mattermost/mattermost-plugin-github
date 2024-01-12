@@ -120,10 +120,10 @@
                 "default": false
             },
             {
-                "key": "PushedCommitsAuthor",
-                "display_name": "Pushed commits events: show Author instead of Committer:",
+                "key": "ShowAuthorInCommitNotification",
+                "display_name": "Show Author in commit notification:",
                 "type": "bool",
-                "help_text": "In \"Pushed commits\" event message, show commit Author instead of commit Committer. This may be useful when Author and Committer are commonly two different persons.",
+                "help_text": "In `Pushed commits` event notification, show commit author instead of commit committer.",
                 "default": false
             }
         ],
