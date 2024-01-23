@@ -753,9 +753,9 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 	t.Run("single commit, with 'Show Author in commit notifications'", func(t *testing.T) {
 		showAuthorInCommitNotification = true
-		defer func() {
+		t.Cleanup(func() {
 			showAuthorInCommitNotification = false
-		}()
+		})
 
 		expected := `
 [panda](https://github.com/panda) pushed [1 new commit](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
