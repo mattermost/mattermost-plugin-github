@@ -6,7 +6,7 @@ import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 
-import {id as pluginId} from 'manifest';
+import manifest from 'manifest';
 import {openAttachCommentToIssueModal} from 'actions';
 
 import AttachCommentToIssuePostMenuAction from './attach_comment_to_issue';
@@ -17,7 +17,7 @@ const mapStateToProps = (state, ownProps) => {
 
     return {
         isSystemMessage: systemMessage,
-        connected: state[`plugins-${pluginId}`].connected,
+        connected: state[`plugins-${manifest.id}`].connected,
     };
 };
 

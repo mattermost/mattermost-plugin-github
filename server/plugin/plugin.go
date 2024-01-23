@@ -24,7 +24,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 
-	root "github.com/mattermost/mattermost-plugin-github"
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
@@ -60,8 +59,6 @@ const (
 )
 
 var (
-	Manifest model.Manifest = root.Manifest
-
 	// testOAuthServerURL is the URL for the oauthServer used for testing purposes
 	// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
 	testOAuthServerURL = ""

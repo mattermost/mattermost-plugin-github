@@ -6,11 +6,12 @@ import {bindActionCreators} from 'redux';
 
 import {getConnected, updateRhsState, getSidebarContent} from '../../actions';
 
-import {id as pluginId} from '../../manifest';
+import manifest from '../../manifest';
 
 import SidebarButtons from './sidebar_buttons.jsx';
 
 function mapStateToProps(state) {
+    const {id: pluginId} = manifest;
     return {
         connected: state[`plugins-${pluginId}`].connected,
         clientId: state[`plugins-${pluginId}`].clientId,
