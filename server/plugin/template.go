@@ -106,11 +106,11 @@ func init() {
 	}
 
 	funcMap["commitAuthor"] = func(commit *github.HeadCommit) *github.CommitAuthor {
-		if !showAuthorInCommitNotification {
-			return commit.GetCommitter()
-		} else {
+		if showAuthorInCommitNotification {
 			return commit.GetAuthor()
 		}
+		
+		return commit.GetCommitter()
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
