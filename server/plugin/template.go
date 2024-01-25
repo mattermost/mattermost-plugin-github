@@ -109,7 +109,7 @@ func init() {
 		if showAuthorInCommitNotification {
 			return commit.GetAuthor()
 		}
-		
+
 		return commit.GetCommitter()
 	}
 
