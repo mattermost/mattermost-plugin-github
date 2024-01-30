@@ -120,7 +120,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                 <span>{'#' + data.number}</span>
                             </a>
                             <div className='markdown-text mt-1 mb-1'>
-                                <ReactMarkdown>{`${data.body.substring(0, maxTicketDescriptionLength).trim()}${data.body.length > maxTicketDescriptionLength ? '...' : ''}`}</ReactMarkdown>
+                                <ReactMarkdown>{data.body && `${data.body.substring(0, maxTicketDescriptionLength).trim()}${data.body.length > maxTicketDescriptionLength ? '...' : ''}`}</ReactMarkdown>
                             </div>
 
                             {/* base <- head */}
