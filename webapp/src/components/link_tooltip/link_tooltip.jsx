@@ -89,6 +89,14 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
         let date = new Date(data.created_at);
         date = date.toDateString();
 
+        let description = '';
+        if (data.body) {
+            description = data.body.substring(0, maxTicketDescriptionLength).trim();
+            if (description.length > maxTicketDescriptionLength) {
+                description += '...';
+            }
+        }
+
         return (
             <div className='github-tooltip'>
                 <div
@@ -120,7 +128,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                 <span>{'#' + data.number}</span>
                             </a>
                             <div className='markdown-text mt-1 mb-1'>
-                                <ReactMarkdown>{data.body && `${data.body.substring(0, maxTicketDescriptionLength).trim()}${data.body.length > maxTicketDescriptionLength ? '...' : ''}`}</ReactMarkdown>
+                                <ReactMarkdown linkTarget='_blank'>{description}</ReactMarkdown>
                             </div>
 
                             {/* base <- head */}
