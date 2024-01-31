@@ -589,7 +589,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if sub.IssueCreations() && action != actionOpened {
+		if sub.IssueCreations() && action == actionClosed {
 			continue
 		}
 
