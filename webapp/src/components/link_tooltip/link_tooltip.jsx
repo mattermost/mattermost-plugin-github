@@ -92,7 +92,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
         let description = '';
         if (data.body) {
             description = data.body.substring(0, maxTicketDescriptionLength).trim();
-            if (description.length > maxTicketDescriptionLength) {
+            if (data.body.length > maxTicketDescriptionLength) {
                 description += '...';
             }
         }
