@@ -66,13 +66,13 @@
 }
 
 .github-tooltip .tooltip-info .markdown-text {
+    max-height: 150px;
     line-height: 1.25;
+    overflow: hidden;
     word-break: break-word;
     word-wrap: break-word;
     overflow-wrap: break-word;
     font-size: 12px;
-    max-height: 150px;
-    overflow: hidden;
 }
 
 .github-tooltip .tooltip-info .markdown-text::-webkit-scrollbar {
