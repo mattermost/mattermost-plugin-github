@@ -339,7 +339,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	}
 
 	githubClient := p.githubConnectUser(context.Background(), info)
-	organization := p.getConfiguration().GitHubOrg
+	organization := p.getConfiguration().GitHubOrgs
 
 	return p.isUserOrganizationMember(githubClient, user, organization)
 }

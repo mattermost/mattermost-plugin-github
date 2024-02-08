@@ -84,7 +84,9 @@ func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
 
 	config := &plugin.Configuration{}
 	err = json.Unmarshal(respBody, config)
-	config.GitHubOrg = strings.TrimSpace(config.GitHubOrg)
+	for _, org := range config.GitHubOrgs {
+		org = strings.TrimSpace(org)
+	}
 	config.GitHubOAuthClientID = strings.TrimSpace(config.GitHubOAuthClientID)
 	config.GitHubOAuthClientSecret = strings.TrimSpace(config.GitHubOAuthClientSecret)
 	if err != nil {

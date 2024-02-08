@@ -20,7 +20,7 @@ type Client struct {
 }
 
 // NewClient creates and returns Client. The third party package that queries GraphQL is initialized here.
-func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgName, enterpriseBaseURL string) *Client {
+func NewClient(logger pluginapi.LogService, token oauth2.Token, username, enterpriseBaseURL string) *Client {
 	ts := oauth2.StaticTokenSource(&token)
 	httpClient := oauth2.NewClient(context.Background(), ts)
 	var client Client
@@ -30,7 +30,6 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 			username: username,
 			client:   githubv4.NewClient(httpClient),
 			logger:   logger,
-			org:      orgName,
 		}
 	} else {
 		baseURL, err := url.Parse(enterpriseBaseURL)
@@ -44,7 +43,6 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 		client = Client{
 			client:   githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
 			username: username,
-			org:      orgName,
 			logger:   logger,
 		}
 	}
