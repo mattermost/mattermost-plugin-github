@@ -15,6 +15,11 @@ type (
 		Login githubv4.String
 	}
 
+	labelNode struct {
+		Name  githubv4.String
+		Color githubv4.String
+	}
+
 	prSearchNodes struct {
 		PullRequest struct {
 			Body              githubv4.String
@@ -27,6 +32,12 @@ type (
 			Title             githubv4.String
 			Author            authorQuery
 			URL               githubv4.URI
+			Labels            struct {
+				Nodes []labelNode
+			} `graphql:"labels(first:100)"`
+			Milestone struct {
+				Title githubv4.String
+			}
 		} `graphql:"... on PullRequest"`
 	}
 )
@@ -44,6 +55,12 @@ type (
 			Title             githubv4.String
 			Author            authorQuery
 			URL               githubv4.URI
+			Labels            struct {
+				Nodes []labelNode
+			} `graphql:"labels(first:100)"`
+			Milestone struct {
+				Title githubv4.String
+			}
 		} `graphql:"... on Issue"`
 
 		PullRequest struct {
@@ -57,6 +74,12 @@ type (
 			Title             githubv4.String
 			Author            authorQuery
 			URL               githubv4.URI
+			Labels            struct {
+				Nodes []labelNode
+			} `graphql:"labels(first:100)"`
+			Milestone struct {
+				Title githubv4.String
+			}
 		} `graphql:"... on PullRequest"`
 	}
 )

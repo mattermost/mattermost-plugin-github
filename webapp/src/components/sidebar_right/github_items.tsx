@@ -111,7 +111,7 @@ function GithubItems(props: GithubItemsProps) {
         }
 
         let milestone: JSX.Element | null = null;
-        if (item.milestone) {
+        if (item.milestone?.title) {
             milestone = (
                 <span
                     title={item.milestone.title}
@@ -316,7 +316,7 @@ function getGithubLabels(labels: Label[]) {
     return labels.map((label) => {
         return (
             <Badge
-                key={label.id}
+                key={label.name}
                 aria-label={label.name}
                 role={'note'}
                 style={{...itemStyle, ...{backgroundColor: `#${label.color}`, color: getLabelFontColor(label.color)}}}

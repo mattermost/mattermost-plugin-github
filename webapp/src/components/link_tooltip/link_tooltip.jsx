@@ -7,6 +7,8 @@ import ReactMarkdown from 'react-markdown';
 import Client from 'client';
 import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 
+const maxTicketDescriptionLength = 160;
+
 export const LinkTooltip = ({href, connected, show, theme}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
@@ -87,6 +89,14 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
         let date = new Date(data.created_at);
         date = date.toDateString();
 
+        let description = '';
+        if (data.body) {
+            description = data.body.substring(0, maxTicketDescriptionLength).trim();
+            if (data.body.length > maxTicketDescriptionLength) {
+                description += '...';
+            }
+        }
+
         return (
             <div className='github-tooltip'>
                 <div
@@ -118,10 +128,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                 <span>{'#' + data.number}</span>
                             </a>
                             <div className='markdown-text mt-1 mb-1'>
-                                <ReactMarkdown
-                                    source={data.body}
-                                    linkTarget='_blank'
-                                />
+                                <ReactMarkdown linkTarget='_blank'>{description}</ReactMarkdown>
                             </div>
 
                             {/* base <- head */}
@@ -140,14 +147,6 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                     </span>
                                 </div>
                             )}
-
-                            <div className='see-more mt-1'>
-                                <a
-                                    href={href}
-                                    target='_blank'
-                                    rel='noopener noreferrer'
-                                >{'See more'}</a>
-                            </div>
 
                             {/* Labels */}
                             <div className='labels mt-3'>
