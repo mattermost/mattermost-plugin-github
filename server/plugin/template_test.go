@@ -750,6 +750,41 @@ func TestPushedCommitsTemplate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+
+	t.Run("single commit, with 'Show Author in commit notifications'", func(t *testing.T) {
+		showAuthorInCommitNotification = true
+		t.Cleanup(func() {
+			showAuthorInCommitNotification = false
+		})
+
+		expected := `
+[panda](https://github.com/panda) pushed [1 new commit](https://github.com/mattermost/mattermost-plugin-github/compare/master...branch) to [\[mattermost-plugin-github:branch\]](https://github.com/mattermost/mattermost-plugin-github/tree/branch):
+[` + "`a10867`" + `](https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240) Leverage git-get-head - lion
+`
+
+		actual, err := renderTemplate("pushedCommits", &github.PushEvent{
+			Repo:   &pushEventRepository,
+			Sender: &user,
+			Forced: bToP(false),
+			Commits: []*github.HeadCommit{
+				{
+					ID:      sToP("a10867b14bb761a232cd80139fbd4c0d33264240"),
+					URL:     sToP("https://github.com/mattermost/mattermost-plugin-github/commit/a10867b14bb761a232cd80139fbd4c0d33264240"),
+					Message: sToP("Leverage git-get-head"),
+					Committer: &github.CommitAuthor{
+						Name: sToP("panda"),
+					},
+					Author: &github.CommitAuthor{
+						Name: sToP("lion"),
+					},
+				},
+			},
+			Compare: sToP("https://github.com/mattermost/mattermost-plugin-github/compare/master...branch"),
+			Ref:     sToP("refs/heads/branch"),
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestCreateMessageTemplate(t *testing.T) {
