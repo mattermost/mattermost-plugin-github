@@ -33,62 +33,6 @@ const notificationReasons = {
     team_mention:	'You were on a team that was mentioned.',
 };
 
-interface Label {
-    id: number;
-    name: string;
-    color: CSS.Properties;
-}
-
-interface User {
-    login: string;
-}
-
-interface Review {
-    state: string;
-    user: User;
-}
-
-interface Item {
-    url: string;
-    number: number;
-
-    id: number;
-    title: string;
-    created_at: string;
-    updated_at: string;
-    html_url: string;
-    repository_url?: string;
-    user: User;
-    owner?: User;
-    milestone?: {
-        title: string;
-    }
-    repository?: {
-        full_name: string;
-    }
-    labels?: Label[];
-
-    // PRs
-    status?: string;
-    mergeable?: boolean;
-    requestedReviewers?: string[];
-    reviews?: Review[];
-
-    // Assignments
-    pullRequest?: unknown;
-
-    // Notifications
-    subject?: {
-        title: string;
-    }
-    reason?: keyof typeof notificationReasons;
-}
-
-interface GithubItemsProps {
-    items: Item[];
-    theme: Theme;
-}
-
 function GithubItems(props: GithubItemsProps) {
     const style = getStyle(props.theme);
 
@@ -306,7 +250,7 @@ function GithubItems(props: GithubItemsProps) {
                     {item.reason ? (<>
                         {(item.created_at || userName || milestone) && (<br/>)}
                         {item.updated_at && (formatTimeSince(item.updated_at) + ' ago')}{<br/>}
-                        {notificationReasons[item.reason]}
+                        {notificationReasons[item.reason as keyof typeof notificationReasons]}
                     </>) : null }
                 </div>
                 {reviews}

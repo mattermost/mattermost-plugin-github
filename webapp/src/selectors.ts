@@ -2,15 +2,11 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {createSelector} from 'reselect';
 
-import {id as pluginId} from './manifest';
+import {GlobalState} from './types/store';
 
-const emptyArray = [];
+const getPluginState = (state: GlobalState) => state['plugins-github'] || {};
 
-const getPluginState = (state) => state['plugins-' + pluginId] || {};
-
-export const isEnabled = (state) => getPluginState(state).enabled;
-
-export const getServerRoute = (state) => {
+export const getServerRoute = (state: GlobalState) => {
     const config = getConfig(state);
     let basePath = '';
     if (config && config.SiteURL) {
@@ -23,15 +19,15 @@ export const getServerRoute = (state) => {
     return basePath;
 };
 
-function mapPrsToDetails(prs, details) {
+function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
     if (!prs) {
         return [];
     }
 
-    return prs.map((pr) => {
+    return prs.map((pr: GithubIssueData) => {
         let foundDetails;
         if (details) {
-            foundDetails = details.find((prDetails) => {
+            foundDetails = details.find((prDetails: PrsDetailsData) => {
                 return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
             });
         }
@@ -55,14 +51,14 @@ export const getSidebarData = createSelector(
         const {username, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
         return {
             username,
-            reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
-            yourPrs: mapPrsToDetails(sidebarContent.prs || emptyArray, yourPrDetails),
-            yourAssignments: sidebarContent.assignments || emptyArray,
-            unreads: sidebarContent.unreads || emptyArray,
+            reviews: mapPrsToDetails(sidebarContent.reviews || [], reviewDetails),
+            yourPrs: mapPrsToDetails(sidebarContent.prs || [], yourPrDetails),
+            yourAssignments: sidebarContent.assignments || [],
+            unreads: sidebarContent.unreads || [],
             org: organization,
             rhsState,
         };
     },
 );
 
-export const configuration = (state) => getPluginState(state).configuration;
+export const configuration = (state: GlobalState) => getPluginState(state).configuration;
