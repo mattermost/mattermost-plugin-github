@@ -64,6 +64,10 @@ var (
 	// testOAuthServerURL is the URL for the oauthServer used for testing purposes
 	// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
 	testOAuthServerURL = ""
+	// testOAuthServerURL = "http://localhost:8080"
+
+	testGithubApiURL = "http://localhost:3000"
+	// testGithubApiURL = "http://localhost:3000"
 )
 
 type Plugin struct {
@@ -178,9 +182,52 @@ func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
 	return client
 }
 
+type TestHttpClient struct {
+	originalClient *http.Client
+}
+
+func (t *TestHttpClient) Do2(req *http.Request) (*http.Response, error) {
+	req.Header.Add("ORIGINAL_HOST", req.Host)
+	req.Host = testGithubApiURL
+	return t.Do(req)
+}
+
+func (t *TestHttpClient) Do(req *http.Request) (*http.Response, error) {
+	return &http.Response{}, nil
+}
+
+// This type implements the http.RoundTripper interface
+type TestHarnessRoundTripper struct {
+	Proxied http.RoundTripper
+	hostURL string
+}
+
+func (rt TestHarnessRoundTripper) RoundTrip(req *http.Request) (res *http.Response, e error) {
+	req.Header.Add("ORIGINAL_HOST", req.Host)
+	u, _ := url.Parse(testGithubApiURL)
+	req.URL.Host = u.Host
+	req.URL.Scheme = u.Scheme
+
+	res, e = rt.Proxied.RoundTrip(req)
+
+	// Handle the result.
+	if e != nil {
+		fmt.Printf("Error: %v", e)
+	} else {
+		fmt.Printf("Received %v response\n", res.Status)
+	}
+
+	return
+}
+
 func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client, error) {
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(context.Background(), ts)
+
+	if testGithubApiURL != "" {
+		// tc = &TestHttpClient{tc}
+		tc.Transport = TestHarnessRoundTripper{tc.Transport, testGithubApiURL}
+	}
 
 	return getGitHubClient(tc, config)
 }
@@ -530,6 +577,9 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 	if testOAuthServerURL != "" {
 		baseURL = testOAuthServerURL + "/"
 	}
+	ptof("testOAuthServerURL: " + testOAuthServerURL)
+	ptof("testOAuthServerURL: " + testGithubApiURL)
+	ptof(baseURL)
 
 	authURL, _ := url.Parse(baseURL)
 	tokenURL, _ := url.Parse(baseURL)
