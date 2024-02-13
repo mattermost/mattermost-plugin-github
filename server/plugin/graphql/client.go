@@ -5,10 +5,11 @@ import (
 	"net/url"
 	"path"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 )
 
 // Client encapsulates the third party package that communicates with Github GraphQL API

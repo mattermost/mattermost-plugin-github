@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v41/github"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func TestParseGitHubUsernameFromText(t *testing.T) {

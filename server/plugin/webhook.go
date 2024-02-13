@@ -14,8 +14,9 @@ import (
 	"time"
 
 	"github.com/google/go-github/v41/github"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 const (

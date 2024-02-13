@@ -14,14 +14,15 @@ import (
 
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 
 	root "github.com/mattermost/mattermost-plugin-github"
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
