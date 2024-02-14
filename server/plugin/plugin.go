@@ -299,7 +299,7 @@ func (p *Plugin) OnDeactivate() error {
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
 	if err := p.telemetryClient.Close(); err != nil {
-		p.API.LogWarn("Telemetry client failed to close", "error", err.Error())
+		p.client.Log.Warn("Telemetry client failed to close", "error", err.Error())
 	}
 	return nil
 }
@@ -659,7 +659,7 @@ func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	var data []byte
 	err := p.store.Get(githubUsername+githubUsernameKey, &data)
 	if err != nil {
-		p.API.LogWarn("Error occurred while getting the user ID from KV store using the Github username", "Error", err.Error())
+		p.client.Log.Warn("Error occurred while getting the user ID from KV store using the Github username", "error", err.Error())
 		return ""
 	}
 
@@ -1018,7 +1018,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	info, apiErr := p.getGitHubUserInfo(context.UserID)
 	if apiErr != nil {
-		p.API.LogWarn("Failed to get github user info", "error", apiErr.Error())
+		p.client.Log.Warn("Failed to get github user info", "error", apiErr.Error())
 		return
 	}
 
@@ -1029,13 +1029,13 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	sidebarContent, err := p.getSidebarData(userContext)
 	if err != nil {
-		p.API.LogWarn("Failed to get the sidebar data", "error", err.Error())
+		p.client.Log.Warn("Failed to get the sidebar data", "error", err.Error())
 		return
 	}
 
 	contentMap, err := sidebarContent.toMap()
 	if err != nil {
-		p.API.LogWarn("Failed to convert sidebar content to map", "error", err.Error())
+		p.client.Log.Warn("Failed to convert sidebar content to map", "error", err.Error())
 		return
 	}
 

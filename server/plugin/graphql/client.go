@@ -36,7 +36,7 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 	} else {
 		baseURL, err := url.Parse(enterpriseBaseURL)
 		if err != nil {
-			logger.Debug("Not able to parse the URL", "Error", err.Error())
+			logger.Debug("Not able to parse the URL", "error", err.Error())
 			return nil
 		}
 
