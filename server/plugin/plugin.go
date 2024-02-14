@@ -640,7 +640,11 @@ func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error
 
 func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	var data []byte
-	_ = p.client.KV.Get(githubUsername+githubUsernameKey, data)
+	err := p.client.KV.Get(githubUsername+githubUsernameKey, &data)
+	if err != nil {
+		p.API.LogWarn("Error occurred while getting the user ID from KV store using the Github username", "Error", err.Error())
+		return ""
+	}
 
 	return string(data)
 }
@@ -746,7 +750,7 @@ func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
 
 func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	var summaryByte []byte
-	err := p.client.KV.Get(userID+dailySummary, summaryByte)
+	err := p.client.KV.Get(userID+dailySummary, &summaryByte)
 	if err != nil {
 		return "", err
 	}

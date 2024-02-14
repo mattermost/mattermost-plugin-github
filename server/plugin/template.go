@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/google/go-github/v41/github"
 	"github.com/pkg/errors"
 )
 
@@ -32,6 +33,7 @@ var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
 var gitHubUsernameRegex = regexp.MustCompile(gitHubUsernameRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
+var showAuthorInCommitNotification bool
 
 func init() {
 	var funcMap = sprig.TxtFuncMap()
@@ -101,6 +103,14 @@ func init() {
 			dict[key] = values[i+1]
 		}
 		return dict, nil
+	}
+
+	funcMap["commitAuthor"] = func(commit *github.HeadCommit) *github.CommitAuthor {
+		if showAuthorInCommitNotification {
+			return commit.GetAuthor()
+		}
+
+		return commit.GetCommitter()
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
@@ -273,7 +283,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} {{if .GetForced}}force-{{end}}pushed [{{len .Commits}} new commit{{if ne (len .Commits) 1}}s{{end}}]({{.GetCompare}}) to [\[{{.GetRepo.GetFullName}}:{{.GetRef | trimRef}}\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef | trimRef}}):
 {{range .Commits -}}
-[` + "`{{.GetID | substr 0 6}}`" + `]({{.GetURL}}) {{.GetMessage}} - {{.GetCommitter.GetName}}
+[` + "`{{.GetID | substr 0 6}}`" + `]({{.GetURL}}) {{.GetMessage}} - {{with . | commitAuthor}}{{.GetName}}{{end}}
 {{end -}}
 `))
 
@@ -431,6 +441,10 @@ func lookupMattermostUsername(githubUsername string) string {
 	}
 
 	return gitHubToUsernameMappingCallback(githubUsername)
+}
+
+func setShowAuthorInCommitNotification(value bool) {
+	showAuthorInCommitNotification = value
 }
 
 func renderTemplate(name string, data interface{}) (string, error) {
