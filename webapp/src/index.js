@@ -15,11 +15,12 @@ import Client from './client';
 import {getConnected, setShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 import {getServerRoute} from './selectors';
-import {id as pluginId} from './manifest';
+import manifest from './manifest';
 
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
 const activityTimeout = 60 * 60 * 1000; // 1 hour
+const {id: pluginId} = manifest;
 
 class PluginClass {
     async initialize(registry, store) {

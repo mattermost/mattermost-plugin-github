@@ -1,5 +1,8 @@
 node_modules
+bin/
 dist/
+webapp/src/manifest.ts
+server/plugin/manifest.go
 
 # Mac
 .DS_Store
@@ -9,3 +12,6 @@ dist/
 
 # Jetbrains
 .idea/
+
+# VS Code
+.vscode

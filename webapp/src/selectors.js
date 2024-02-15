@@ -2,11 +2,11 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {createSelector} from 'reselect';
 
-import {id as pluginId} from './manifest';
+import manifest from './manifest';
 
 const emptyArray = [];
 
-const getPluginState = (state) => state['plugins-' + pluginId] || {};
+const getPluginState = (state) => state['plugins-' + manifest.id] || {};
 
 export const isEnabled = (state) => getPluginState(state).enabled;
 

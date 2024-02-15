@@ -55,7 +55,7 @@
     "jest": "26.4.2",
     "jest-canvas-mock": "2.2.0",
     "jest-junit": "11.1.0",
-    "node-sass": "8.0.0",
+    "sass": "1.60.0",
     "sass-loader": "10.4.1",
     "style-loader": "1.2.1",
     "typescript": "4.0.3",
