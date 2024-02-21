@@ -184,6 +184,7 @@ func (wb *WebhookBroker) Close() {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	p.API.LogDebug("Received webhook event.")
 	config := p.getConfiguration()
 
 	body, err := io.ReadAll(r.Body)
@@ -231,6 +232,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			p.webhookBroker.publishPing(event, false)
 		}
 	case *github.PullRequestEvent:
+		p.API.LogDebug("Event type PullRequestEvent received.")
 		repo = event.GetRepo()
 		handler = func() {
 			p.postPullRequestEvent(event)
@@ -252,12 +254,14 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 			p.handleCommentAssigneeNotification(event)
 		}
 	case *github.PullRequestReviewEvent:
+		p.API.LogDebug("Event type PullRequestEvent received.")
 		repo = event.GetRepo()
 		handler = func() {
 			p.postPullRequestReviewEvent(event)
 			p.handlePullRequestReviewNotification(event)
 		}
 	case *github.PullRequestReviewCommentEvent:
+		p.API.LogDebug("Event type PullRequestReviewCommentEvent received.")
 		repo = event.GetRepo()
 		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
@@ -350,6 +354,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
+		p.API.LogDebug("No subscription found for the event.", "Event", event.GetAction())
 		return
 	}
 
@@ -385,18 +390,22 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	for _, sub := range subs {
 		if !sub.Pulls() && !sub.PullsMerged() && !sub.PullsCreated() {
+			p.API.LogDebug("Rejecting event for current channel as subscription is not present for PR events.", "Channel", sub.ChannelID)
 			continue
 		}
 
 		if sub.PullsMerged() && action != actionClosed {
+			p.API.LogDebug("Rejecting event for current channel as event is for PR closed but the subscription is present for event PR merged.", "Channel", sub.ChannelID)
 			continue
 		}
 
 		if sub.PullsCreated() && action != actionOpened {
+			p.API.LogDebug("Rejecting event for current channel as event is for PR opened but the subscription is present for event PR created.", "Channel", sub.ChannelID)
 			continue
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			p.API.LogDebug("Rejecting event for current channel due to exlcude config org member condition.", "Channel", sub.ChannelID)
 			continue
 		}
 
@@ -477,6 +486,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
+
+	p.API.LogDebug("Event Completed.", "Event", "postPullRequestEvent")
 }
 
 func (p *Plugin) sanitizeDescription(description string) string {
@@ -543,6 +554,8 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 
 		p.sendRefreshEvent(userID)
 	}
+
+	p.API.LogDebug("Event Completed.", "Event", "handlePRDescriptionMentionNotification")
 }
 
 func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
@@ -858,6 +871,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
+		p.API.LogDebug("No subscription found for the event", "Function", "postPullRequestReviewEvent")
 		return
 	}
 
@@ -894,10 +908,12 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 
 	for _, sub := range subs {
 		if !sub.PullReviews() {
+			p.API.LogDebug("Rejecting event for current channel as subscription is not present for PR events.", "Channel", sub.ChannelID)
 			continue
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			p.API.LogDebug("Rejecting event for current channel due to exlcude config org member condition.", "Channel", sub.ChannelID)
 			continue
 		}
 
@@ -919,6 +935,8 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
+
+	p.API.LogDebug("Event Completed", "Function", "postPullRequestReviewEvent")
 }
 
 func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
@@ -926,6 +944,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
+		p.API.LogDebug("No subscription found for the event.", "Event", event.GetAction())
 		return
 	}
 
@@ -955,10 +974,12 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 	for _, sub := range subs {
 		if !sub.PullReviews() {
+			p.API.LogDebug("Rejecting event for current channel as subscription is not present for PR events.", "Channel", sub.ChannelID)
 			continue
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			p.API.LogDebug("Rejecting event for current channel due to exlcude config org member condition.", "Channel", sub.ChannelID)
 			continue
 		}
 
@@ -980,6 +1001,8 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
+
+	p.API.LogDebug("Event Completed", "Event", "postPullRequestReviewCommentEvent")
 }
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
@@ -1203,6 +1226,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	case "review_requested":
 		requestedReviewer = event.GetRequestedReviewer().GetLogin()
 		if requestedReviewer == sender {
+			p.API.LogDebug("Rejecting review request event as requested reviewer and event sender are same.")
 			return
 		}
 		requestedUserID = p.getGitHubToUserIDMapping(requestedReviewer)
@@ -1211,6 +1235,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		}
 	case actionClosed:
 		if author == sender {
+			p.API.LogDebug("Rejecting close event as author and event sender are same.")
 			return
 		}
 		authorUserID = p.getGitHubToUserIDMapping(author)
@@ -1219,6 +1244,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		}
 	case actionReopened:
 		if author == sender {
+			p.API.LogDebug("Rejecting reopen event as author and event sender are same.")
 			return
 		}
 		authorUserID = p.getGitHubToUserIDMapping(author)
@@ -1228,6 +1254,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	case actionAssigned:
 		assignee := event.GetPullRequest().GetAssignee().GetLogin()
 		if assignee == sender {
+			p.API.LogDebug("Rejecting assigned event as author and event sender are same.")
 			return
 		}
 		assigneeUserID = p.getGitHubToUserIDMapping(assignee)
@@ -1251,6 +1278,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	}
 
 	p.postIssueNotification(message, authorUserID, assigneeUserID)
+	p.API.LogDebug("Event Completed.", "Event", "handlePullRequestNotification")
 }
 
 func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
@@ -1339,6 +1367,7 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)
+	p.API.LogDebug("Event Completed", "Event", "handlePullRequestReviewNotification")
 }
 
 func (p *Plugin) postStarEvent(event *github.StarEvent) {
