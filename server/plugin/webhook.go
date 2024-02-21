@@ -405,7 +405,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
-			p.API.LogDebug("Rejecting event for current channel due to exlcude config org member condition.", "Channel", sub.ChannelID)
+			p.API.LogDebug("Rejecting event for current channel due to exclude config org member condition.", "Channel", sub.ChannelID)
 			continue
 		}
 
@@ -913,7 +913,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
-			p.API.LogDebug("Rejecting event for current channel due to exlcude config org member condition.", "Channel", sub.ChannelID)
+			p.API.LogDebug("Rejecting event for current channel due to exclude config org member condition.", "Channel", sub.ChannelID)
 			continue
 		}
 
@@ -979,7 +979,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
-			p.API.LogDebug("Rejecting event for current channel due to exlcude config org member condition.", "Channel", sub.ChannelID)
+			p.API.LogDebug("Rejecting event for current channel due to exclude config org member condition.", "Channel", sub.ChannelID)
 			continue
 		}
 
