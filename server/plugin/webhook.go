@@ -441,8 +441,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			if label != "" && label == eventLabel {
 				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
 				if err != nil {
-					p.logForDocsRepoDebugging(repo.GetFullName(), "Failed to render template", "error", err.Error())
-					p.client.Log.Warn("Failed to render template", "error", err.Error())
+					p.client.Log.Warn("Failed to render template", "repo", repo.GetFullName(), "error", err.Error())
 					return
 				}
 
@@ -459,8 +458,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
-				p.logForDocsRepoDebugging(repo.GetFullName(), "Failed to render template", "error", err.Error())
-				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				p.client.Log.Warn("Failed to render template", "repo", repo.GetFullName(), "error", err.Error())
 				return
 			}
 
@@ -470,8 +468,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == actionReopened {
 			reopenedPRMessage, err := renderTemplate("reopenedPR", event)
 			if err != nil {
-				p.logForDocsRepoDebugging(repo.GetFullName(), "Failed to render template", "error", err.Error())
-				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				p.client.Log.Warn("Failed to render template", "repo", repo.GetFullName(), "error", err.Error())
 				return
 			}
 
@@ -481,8 +478,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == actionMarkedReadyForReview {
 			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
 			if err != nil {
-				p.logForDocsRepoDebugging(repo.GetFullName(), "Failed to render template", "error", err.Error())
-				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				p.client.Log.Warn("Failed to render template", "repo", repo.GetFullName(), "error", err.Error())
 				return
 			}
 
@@ -495,8 +491,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if err := p.client.Post.CreatePost(post); err != nil {
-			p.logForDocsRepoDebugging(repo.GetFullName(), "Error webhook post", "post", post, "error", err.Error())
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "post", post, "repo", repo.GetFullName(), "error", err.Error())
 		}
 	}
 
