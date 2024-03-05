@@ -1,12 +1,11 @@
 package plugin
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 )
 
@@ -18,17 +17,19 @@ func CheckError(t *testing.T, wantErr bool, err error) {
 	assert.Equal(t, wantErr, err != nil, message)
 }
 
-// pluginWithMockedSubs returns mocked plugin for given subscriptions
-func pluginWithMockedSubs(subscriptions []*Subscription) *Plugin {
+// pluginWithSubs returns a plugin with given subscriptions.
+func pluginWithSubs(t *testing.T, subscriptions []*Subscription) *Plugin {
 	p := NewPlugin()
-	mockPluginAPI := &plugintest.API{}
-
-	subs := Subscriptions{Repositories: map[string][]*Subscription{}}
-	subs.Repositories[""] = subscriptions
-	jsn, _ := json.Marshal(subs)
-	mockPluginAPI.On("KVGet", SubscriptionsKey).Return(jsn, nil)
-	p.SetAPI(mockPluginAPI)
 	p.client = pluginapi.NewClient(p.API, p.Driver)
+
+	store := &pluginapi.MemoryStore{}
+	p.store = store
+
+	for _, sub := range subscriptions {
+		err := p.AddSubscription(sub.Repository, sub)
+		require.NoError(t, err)
+	}
+
 	return p
 }
 
@@ -58,7 +59,7 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 		{
 			name: "basic test",
 			args: args{channelID: "1"},
-			plugin: pluginWithMockedSubs([]*Subscription{
+			plugin: pluginWithSubs(t, []*Subscription{
 				{
 					ChannelID:  "1",
 					Repository: "asd",
@@ -78,14 +79,14 @@ func TestPlugin_GetSubscriptionsByChannel(t *testing.T) {
 		{
 			name:    "test empty",
 			args:    args{channelID: "1"},
-			plugin:  pluginWithMockedSubs([]*Subscription{}),
+			plugin:  pluginWithSubs(t, []*Subscription{}),
 			want:    wantedSubscriptions([]string{}, "1"),
 			wantErr: false,
 		},
 		{
 			name: "test shuffled",
 			args: args{channelID: "1"},
-			plugin: pluginWithMockedSubs([]*Subscription{
+			plugin: pluginWithSubs(t, []*Subscription{
 				{
 					ChannelID:  "1",
 					Repository: "c",

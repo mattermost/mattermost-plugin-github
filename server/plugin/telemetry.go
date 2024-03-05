@@ -56,7 +56,7 @@ func (p *Plugin) getConnectedUserCount() (int64, error) {
 	var count int64
 
 	for i := 0; ; i++ {
-		keys, err := p.client.KV.ListKeys(i, keysPerPage, pluginapi.WithChecker(checker))
+		keys, err := p.store.ListKeys(i, keysPerPage, pluginapi.WithChecker(checker))
 		if err != nil {
 			return 0, errors.Wrapf(err, "failed to list keys - page, %d", i)
 		}

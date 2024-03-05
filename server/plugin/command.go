@@ -132,7 +132,7 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 
 func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	var mutedUsernameBytes []byte
-	err := p.client.KV.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
+	err := p.store.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
 	if err != nil {
 		return nil
 	}
@@ -184,7 +184,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 		mutedUsers = username
 	}
 
-	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
+	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
 	if err != nil {
 		return "Error occurred saving list of muted users"
 	}
@@ -197,7 +197,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
 
-	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
+	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
 	if err != nil {
 		return "Error occurred unmuting users"
 	}
@@ -206,7 +206,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 }
 
 func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
-	_, err := p.client.KV.Set(userInfo.UserID+"-muted-users", []byte(""))
+	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
 	}
@@ -318,9 +318,9 @@ func (p *Plugin) createPost(channelID, userID, message string) error {
 		Message:   message,
 	}
 
-	if _, appErr := p.API.CreatePost(post); appErr != nil {
-		p.API.LogWarn("Error while creating post", "Post", post, "Error", appErr.Error())
-		return appErr
+	if err := p.client.Post.CreatePost(post); err != nil {
+		p.client.Log.Warn("Error while creating post", "post", post, "error", err.Error())
+		return err
 	}
 
 	return nil
@@ -345,7 +345,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 		}
 
 		if err != nil {
-			p.API.LogWarn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "Error", err.Error())
+			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", err.Error())
 			return found, err
 		}
 
@@ -423,9 +423,9 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
-	user, appErr := p.API.GetUser(args.UserId)
-	if appErr != nil {
-		return errors.Wrap(appErr, "failed to get the user").Error()
+	user, err := p.client.User.Get(args.UserId)
+	if err != nil {
+		return errors.Wrap(err, "failed to get the user").Error()
 	}
 
 	owner, repo := parseOwnerAndRepo(parameters[0], baseURL)
@@ -492,7 +492,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	}
 
 	if err = p.createPost(args.ChannelId, p.BotUserID, msg); err != nil {
-		return fmt.Sprintf("%s\nError creating the public post: %s", msg, appErr.Error())
+		return fmt.Sprintf("%s\nError creating the public post: %s", msg, err.Error())
 	}
 
 	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
@@ -546,15 +546,15 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 	if err := p.Unsubscribe(args.ChannelId, repo, owner); err != nil {
-		p.API.LogWarn("Failed to unsubscribe", "repo", repo, "error", err.Error())
+		p.client.Log.Warn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
 
 	baseURL := config.getBaseURL()
-	user, appErr := p.API.GetUser(args.UserId)
-	if appErr != nil {
-		p.API.LogWarn("Error while fetching user details", "Error", appErr.Error())
-		return fmt.Sprintf("error while fetching user details: %s", appErr.Error())
+	user, err := p.client.User.Get(args.UserId)
+	if err != nil {
+		p.client.Log.Warn("Error while fetching user details", "error", err.Error())
+		return fmt.Sprintf("error while fetching user details: %s", err.Error())
 	}
 
 	unsubscribeMessage := ""
@@ -663,7 +663,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 					"error", err.Error())
 			}
 		} else {
-			err := p.client.KV.Delete(userInfo.GitHubUsername + githubUsernameKey)
+			err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey)
 			if err != nil {
 				p.client.Log.Warn("Failed to delete GitHub to userID mapping",
 					"userID", userInfo.UserID,
