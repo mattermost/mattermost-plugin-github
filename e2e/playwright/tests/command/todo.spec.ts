@@ -11,6 +11,7 @@ import TodoMessage, {GithubRHSCategory} from '../../support/components/todo_mess
 import {messages} from '../../support/constants';
 import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
+import {postMessage} from '../../mattermost-plugin-e2e-test-utils/support/utils';
 
 const repoRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+/;
 const prRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+\/pull\/\d+/;
@@ -31,14 +32,14 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
-                await c.postMessage('/github todo');
-                await c.sendMessage();
+                await postMessage('/github todo', page);
+                // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
                 await waitForNewMessages(page);
 
                 // # Get last post
-                const post = await c.getLastPost();
+                const post = await c.centerView.getLastPost();
                 const postId = await post.getId();
 
                 const todo = new TodoMessage(post.container);
@@ -108,14 +109,14 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
-                await c.postMessage('/github todo');
-                await c.sendMessage();
+                await postMessage('/github todo', page);
+                // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
                 await waitForNewMessages(page);
 
                 // # Get last post
-                const post = await c.getLastPost();
+                const post = await c.centerView.getLastPost();
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot
@@ -147,14 +148,14 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
-                await c.postMessage('/github todo');
-                await c.sendMessage();
+                await postMessage('/github todo', page);
+                // await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
                 await waitForNewMessages(page);
 
                 // # Get last post
-                const post = await c.getLastPost();
+                const post = await c.centerView.getLastPost();
                 const postId = await post.getId();
 
                 // * Verify that message is sent by the github bot

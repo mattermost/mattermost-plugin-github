@@ -48,7 +48,7 @@ export default {
 
             await page.waitForTimeout(500);
 
-            const post = await c.getLastPost();
+            const post = await c.centerView.getLastPost();
             const postId = await post.getId();
             const locatorId = getSlackAttachmentLocatorId(postId);
 
@@ -89,7 +89,7 @@ export default {
             // # Wait for new messages to ensure the last post is the one we want
             await waitForNewMessages(page);
 
-            let post = await c.getLastPost();
+            let post = await c.centerView.getLastPost();
             let postId = await post.getId();
             let locatorId = getPostMessageLocatorId(postId);
 
@@ -104,7 +104,7 @@ export default {
             await page.click(connectLinkLocator);
             await page.waitForTimeout(2000);
 
-            post = await c.getLastPost();
+            post = await c.centerView.getLastPost();
             postId = await post.getId();
             locatorId = getPostMessageLocatorId(postId);
 
@@ -130,7 +130,7 @@ export default {
             // # Wait for new messages to ensure the last post is the one we want
             await waitForNewMessages(page);
 
-            const post = await c.getLastPost();
+            const post = await c.centerView.getLastPost();
             const postId = await post.getId();
             const locatorId = getPostMessageLocatorId(postId);
             const text = await page.locator(locatorId).innerText();
@@ -138,4 +138,3 @@ export default {
         });
     },
 };
-
