@@ -80,7 +80,7 @@ func validateFeatures(features []string) (bool, []string) {
 	if valid && hasLabel {
 		// must have "pulls" or "issues" in features when using a label
 		for _, f := range features {
-			if f == featurePulls || f == featureIssues {
+			if f == featurePulls || f == featureIssues || f == featureIssueCreation {
 				return valid, invalidFeatures
 			}
 		}
@@ -415,7 +415,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if !ok {
 			msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
 			if len(ifs) == 0 {
-				msg = "Feature list must have \"pulls\" or \"issues\" when using a label."
+				msg = "Feature list must have \"pulls\", \"issues\" or \"issue_creations\" when using a label."
 			}
 			return msg
 		}
