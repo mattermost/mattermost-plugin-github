@@ -5,10 +5,11 @@ import (
 	"net/url"
 	"path"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 )
 
 // Client encapsulates the third party package that communicates with Github GraphQL API
@@ -35,7 +36,7 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 	} else {
 		baseURL, err := url.Parse(enterpriseBaseURL)
 		if err != nil {
-			logger.Debug("Not able to parse the URL", "Error", err.Error())
+			logger.Debug("Not able to parse the URL", "error", err.Error())
 			return nil
 		}
 

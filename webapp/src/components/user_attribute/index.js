@@ -6,11 +6,12 @@ import {bindActionCreators} from 'redux';
 
 import {getGitHubUser} from '../../actions';
 
-import {id as pluginId} from '../../manifest';
+import manifest from '../../manifest';
 
 import UserAttribute from './user_attribute.jsx';
 
 function mapStateToProps(state, ownProps) {
+    const {id: pluginId} = manifest;
     const id = ownProps.user ? ownProps.user.id : '';
     const user = state[`plugins-${pluginId}`].githubUsers[id] || {};
 

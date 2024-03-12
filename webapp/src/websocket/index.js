@@ -9,7 +9,7 @@ import {
     openCreateIssueModalWithoutPost,
 } from '../actions';
 
-import {id as pluginId} from '../manifest';
+import manifest from '../manifest';
 
 let timeoutId;
 const RECONNECT_JITTER_MAX_TIME_IN_SEC = 10;
@@ -80,7 +80,7 @@ export function handleReconnect(store, reminder = false) {
 
 export function handleRefresh(store) {
     return (msg) => {
-        if (store.getState()[`plugins-${pluginId}`].connected) {
+        if (store.getState()[`plugins-${manifest.id}`].connected) {
             const {data} = msg;
 
             store.dispatch({

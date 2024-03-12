@@ -16,11 +16,11 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
-	"github.com/mattermost/mattermost-plugin-api/experimental/flow"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/flow"
 )
 
 const (
@@ -296,7 +296,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		PrivateAllowed: privateAllowed,
 	}
 
-	_, err := p.client.KV.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
+	_, err := p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
 		http.Error(w, "error setting stored state", http.StatusBadRequest)
 		return
@@ -352,7 +352,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	stateToken := r.URL.Query().Get("state")
 
 	var state OAuthState
-	err := p.client.KV.Get(githubOauthKey+stateToken, &state)
+	err := p.store.Get(githubOauthKey+stateToken, &state)
 	if err != nil {
 		c.Log.Warnf("Failed to get state token", "error", err.Error())
 
@@ -361,7 +361,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		return
 	}
 
-	err = p.client.KV.Delete(githubOauthKey + stateToken)
+	err = p.store.Delete(githubOauthKey + stateToken)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to delete state token")
 
@@ -620,7 +620,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	privateRepoStoreKey := info.UserID + githubPrivateRepoKey
 	if config.EnablePrivateRepo && !info.AllowedPrivateRepos {
 		var val []byte
-		err := p.client.KV.Get(privateRepoStoreKey, &val)
+		err := p.store.Get(privateRepoStoreKey, &val)
 		if err != nil {
 			c.Log.WithError(err).Warnf("Unable to get private repo key value")
 			return
@@ -634,7 +634,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 			} else {
 				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect private`."), "")
 			}
-			_, err := p.client.KV.Set(privateRepoStoreKey, []byte("1"))
+			_, err := p.store.Set(privateRepoStoreKey, []byte("1"))
 			if err != nil {
 				c.Log.WithError(err).Warnf("Unable to set private repo key value")
 			}

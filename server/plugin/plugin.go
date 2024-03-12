@@ -14,16 +14,16 @@ import (
 
 	"github.com/google/go-github/v41/github"
 	"github.com/gorilla/mux"
-	pluginapi "github.com/mattermost/mattermost-plugin-api"
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/logger"
-	"github.com/mattermost/mattermost-plugin-api/experimental/bot/poster"
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
-	"github.com/mattermost/mattermost-server/v6/model"
-	"github.com/mattermost/mattermost-server/v6/plugin"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
-	root "github.com/mattermost/mattermost-plugin-github"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
+
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
@@ -59,16 +59,23 @@ const (
 )
 
 var (
-	Manifest model.Manifest = root.Manifest
-
 	// testOAuthServerURL is the URL for the oauthServer used for testing purposes
 	// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
 	testOAuthServerURL = ""
 )
 
+type kvStore interface {
+	Set(key string, value any, options ...pluginapi.KVSetOption) (bool, error)
+	ListKeys(page int, count int, options ...pluginapi.ListKeysOption) ([]string, error)
+	Get(key string, o any) error
+	Delete(key string) error
+}
+
 type Plugin struct {
 	plugin.MattermostPlugin
 	client *pluginapi.Client
+
+	store kvStore
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -144,6 +151,13 @@ func (p *Plugin) createGithubEmojiMap() {
 				p.emojiMap[systemEmoji] = ghBase
 			}
 		}
+	}
+}
+
+func (p *Plugin) ensurePluginAPIClient() {
+	if p.client == nil {
+		p.client = pluginapi.NewClient(p.API, p.Driver)
+		p.store = &p.client.KV
 	}
 }
 
@@ -228,9 +242,7 @@ func (p *Plugin) setDefaultConfiguration() error {
 }
 
 func (p *Plugin) OnActivate() error {
-	if p.client == nil {
-		p.client = pluginapi.NewClient(p.API, p.Driver)
-	}
+	p.ensurePluginAPIClient()
 
 	siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
 	if siteURL == nil || *siteURL == "" {
@@ -284,7 +296,7 @@ func (p *Plugin) OnDeactivate() error {
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
 	if err := p.telemetryClient.Close(); err != nil {
-		p.API.LogWarn("Telemetry client failed to close", "error", err.Error())
+		p.client.Log.Warn("Telemetry client failed to close", "error", err.Error())
 	}
 	return nil
 }
@@ -601,7 +613,7 @@ func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 
 	info.Token.AccessToken = encryptedToken
 
-	if _, err := p.client.KV.Set(info.UserID+githubTokenKey, info); err != nil {
+	if _, err := p.store.Set(info.UserID+githubTokenKey, info); err != nil {
 		return errors.Wrap(err, "error occurred while trying to store user info into KV store")
 	}
 
@@ -612,7 +624,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 	config := p.getConfiguration()
 
 	var userInfo *GitHubUserInfo
-	err := p.client.KV.Get(userID+githubTokenKey, &userInfo)
+	err := p.store.Get(userID+githubTokenKey, &userInfo)
 	if err != nil {
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to get user info.", StatusCode: http.StatusInternalServerError}
 	}
@@ -632,7 +644,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 }
 
 func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error {
-	_, err := p.client.KV.Set(githubUsername+githubUsernameKey, []byte(userID))
+	_, err := p.store.Set(githubUsername+githubUsernameKey, []byte(userID))
 	if err != nil {
 		return errors.Wrap(err, "encountered error saving github username mapping")
 	}
@@ -642,9 +654,9 @@ func (p *Plugin) storeGitHubToUserIDMapping(githubUsername, userID string) error
 
 func (p *Plugin) getGitHubToUserIDMapping(githubUsername string) string {
 	var data []byte
-	err := p.client.KV.Get(githubUsername+githubUsernameKey, &data)
+	err := p.store.Get(githubUsername+githubUsernameKey, &data)
 	if err != nil {
-		p.API.LogWarn("Error occurred while getting the user ID from KV store using the Github username", "Error", err.Error())
+		p.client.Log.Warn("Error occurred while getting the user ID from KV store using the Github username", "error", err.Error())
 		return ""
 	}
 
@@ -667,11 +679,11 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		return
 	}
 
-	if err := p.client.KV.Delete(userID + githubTokenKey); err != nil {
+	if err := p.store.Delete(userID + githubTokenKey); err != nil {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
-	if err := p.client.KV.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
+	if err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
@@ -742,7 +754,7 @@ func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error)
 }
 
 func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
-	_, err := p.client.KV.Set(userID+dailySummary, []byte(summaryText))
+	_, err := p.store.Set(userID+dailySummary, []byte(summaryText))
 	if err != nil {
 		return err
 	}
@@ -752,7 +764,7 @@ func (p *Plugin) StoreDailySummaryText(userID, summaryText string) error {
 
 func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	var summaryByte []byte
-	err := p.client.KV.Get(userID+dailySummary, &summaryByte)
+	err := p.store.Get(userID+dailySummary, &summaryByte)
 	if err != nil {
 		return "", err
 	}
@@ -1003,7 +1015,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	info, apiErr := p.getGitHubUserInfo(context.UserID)
 	if apiErr != nil {
-		p.API.LogWarn("Failed to get github user info", "error", apiErr.Error())
+		p.client.Log.Warn("Failed to get github user info", "error", apiErr.Error())
 		return
 	}
 
@@ -1014,13 +1026,13 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	sidebarContent, err := p.getSidebarData(userContext)
 	if err != nil {
-		p.API.LogWarn("Failed to get the sidebar data", "error", err.Error())
+		p.client.Log.Warn("Failed to get the sidebar data", "error", err.Error())
 		return
 	}
 
 	contentMap, err := sidebarContent.toMap()
 	if err != nil {
-		p.API.LogWarn("Failed to convert sidebar content to map", "error", err.Error())
+		p.client.Log.Warn("Failed to convert sidebar content to map", "error", err.Error())
 		return
 	}
 
