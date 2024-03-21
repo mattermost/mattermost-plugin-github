@@ -404,6 +404,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 		}
 
+		if !contained && label != "" {
+			continue
+		}
+
 		repoName := strings.ToLower(repo.GetFullName())
 		prNumber := event.GetPullRequest().Number
 
@@ -415,10 +419,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		post.AddProp(postPropGithubRepo, repoName)
 		post.AddProp(postPropGithubObjectID, prNumber)
 		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
-
-		if !contained && label != "" {
-			continue
-		}
 
 		if action == actionLabeled {
 			if label != "" && label == eventLabel {
@@ -504,12 +504,6 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Message: message,
-		Type:    "custom_git_mention",
-	}
-
 	for _, username := range mentionedUsernames {
 		// Don't notify user of their own comment
 		if username == event.GetSender().GetLogin() {
@@ -533,6 +527,12 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 		channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
 		if err != nil {
 			continue
+		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Message: message,
+			Type:    "custom_git_mention",
 		}
 
 		post.ChannelId = channel.Id
@@ -665,12 +665,6 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_push",
-		Message: pushedCommitsMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Pushes() {
 			continue
@@ -678,6 +672,12 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
+		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Type:    "custom_git_push",
+			Message: pushedCommitsMessage,
 		}
 
 		post.ChannelId = sub.ChannelID
@@ -706,12 +706,6 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_create",
-		Message: newCreateMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Creates() {
 			continue
@@ -719,6 +713,12 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
+		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Type:    "custom_git_create",
+			Message: newCreateMessage,
 		}
 
 		post.ChannelId = sub.ChannelID
@@ -790,18 +790,6 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_comment",
-	}
-
-	repoName := strings.ToLower(repo.GetFullName())
-	commentID := event.GetComment().GetID()
-
-	post.AddProp(postPropGithubRepo, repoName)
-	post.AddProp(postPropGithubObjectID, commentID)
-	post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
-
 	labels := make([]string, len(event.GetIssue().Labels))
 	for i, v := range event.GetIssue().Labels {
 		labels[i] = v.GetName()
@@ -828,6 +816,18 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		if !contained && label != "" {
 			continue
 		}
+
+		post := &model.Post{
+			UserId: p.BotUserID,
+			Type:   "custom_git_comment",
+		}
+
+		repoName := strings.ToLower(repo.GetFullName())
+		commentID := event.GetComment().GetID()
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, commentID)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
 
 		if event.GetAction() == actionCreated {
 			post.Message = message
@@ -881,12 +881,6 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_pull_review",
-		Message: newReviewMessage,
-	}
-
 	labels := make([]string, len(event.GetPullRequest().Labels))
 	for i, v := range event.GetPullRequest().Labels {
 		labels[i] = v.GetName()
@@ -912,6 +906,12 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 
 		if !contained && label != "" {
 			continue
+		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Type:    "custom_git_pull_review",
+			Message: newReviewMessage,
 		}
 
 		post.ChannelId = sub.ChannelID
@@ -935,19 +935,6 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_pull_review_comment",
-		Message: newReviewMessage,
-	}
-
-	repoName := strings.ToLower(repo.GetFullName())
-	commentID := event.GetComment().GetID()
-
-	post.AddProp(postPropGithubRepo, repoName)
-	post.AddProp(postPropGithubObjectID, commentID)
-	post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
-
 	labels := make([]string, len(event.GetPullRequest().Labels))
 	for i, v := range event.GetPullRequest().Labels {
 		labels[i] = v.GetName()
@@ -974,6 +961,19 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		if !contained && label != "" {
 			continue
 		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Type:    "custom_git_pull_review_comment",
+			Message: newReviewMessage,
+		}
+
+		repoName := strings.ToLower(repo.GetFullName())
+		commentID := event.GetComment().GetID()
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, commentID)
+		post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -1001,12 +1001,6 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
-	}
-
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Message: message,
-		Type:    "custom_git_mention",
 	}
 
 	assignees := event.GetIssue().Assignees
@@ -1047,6 +1041,12 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
 		if err != nil {
 			continue
+		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Message: message,
+			Type:    "custom_git_mention",
 		}
 
 		post.ChannelId = channel.Id
@@ -1356,12 +1356,6 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_star",
-		Message: newStarMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Stars() {
 			continue
@@ -1369,6 +1363,12 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
+		}
+
+		post := &model.Post{
+			UserId:  p.BotUserID,
+			Type:    "custom_git_star",
+			Message: newStarMessage,
 		}
 
 		post.ChannelId = sub.ChannelID
