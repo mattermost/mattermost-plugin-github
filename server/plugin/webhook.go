@@ -378,11 +378,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_pr",
-	}
-
 	for _, sub := range subs {
 		if !sub.Pulls() && !sub.PullsMerged() && !sub.PullsCreated() {
 			continue
@@ -411,6 +406,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		repoName := strings.ToLower(repo.GetFullName())
 		prNumber := event.GetPullRequest().Number
+
+		post := &model.Post{
+			UserId: p.BotUserID,
+			Type:   "custom_git_pr",
+		}
 
 		post.AddProp(postPropGithubRepo, repoName)
 		post.AddProp(postPropGithubObjectID, prNumber)
