@@ -1,9 +1,11 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {DispatchFunc, GetStateFunc} from 'mattermost-redux/types/actions';
+import {DispatchFunc} from 'mattermost-redux/types/actions';
 
-import {GlobalState} from '../types/store';
+import {getPluginState} from '../selectors';
+
+import {GetStateFunc} from '../types/store';
 
 import Client from '../client';
 import ActionTypes from '../action_types';
@@ -221,7 +223,7 @@ export function getGitHubUser(userID: string) {
             return {};
         }
 
-        const user = (getState() as GlobalState)['plugins-github'].githubUsers[userID];
+        const user = getPluginState(getState()).githubUsers[userID];
         if (user && user.last_try && Date.now() - user.last_try < GITHUB_USER_GET_TIMEOUT_MILLISECONDS) {
             return {};
         }

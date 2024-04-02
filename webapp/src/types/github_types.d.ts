@@ -1,4 +1,4 @@
-type Label = {
+type GithubLabel = {
     id: number;
     name: string;
     color: CSS.Properties;
@@ -124,4 +124,14 @@ type APIError = {
     id?: string;
     message: string;
     status_code: number;
+}
+
+type SidebarData = {
+    username: string;
+    reviews: GithubIssueData[];
+    yourPrs: GithubIssueData[];
+    yourAssignments: GithubIssueData[],
+    unreads: UnreadsData[]
+    org: organization,
+    rhsState?: string | null
 }

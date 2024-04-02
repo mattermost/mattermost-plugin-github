@@ -4,7 +4,9 @@ import {createSelector} from 'reselect';
 
 import {GlobalState} from './types/store';
 
-const getPluginState = (state: GlobalState) => state['plugins-github'] || {};
+const emptyArray: GithubIssueData[] | UnreadsData[] = [];
+
+export const getPluginState = (state: GlobalState) => state['plugins-github'] || {};
 
 export const getServerRoute = (state: GlobalState) => {
     const config = getConfig(state);
@@ -47,14 +49,14 @@ function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
 
 export const getSidebarData = createSelector(
     getPluginState,
-    (pluginState) => {
+    (pluginState): SidebarData => {
         const {username, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
         return {
             username,
-            reviews: mapPrsToDetails(sidebarContent.reviews || [], reviewDetails),
-            yourPrs: mapPrsToDetails(sidebarContent.prs || [], yourPrDetails),
-            yourAssignments: sidebarContent.assignments || [],
-            unreads: sidebarContent.unreads || [],
+            reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
+            yourPrs: mapPrsToDetails(sidebarContent.prs || emptyArray, yourPrDetails),
+            yourAssignments: sidebarContent.assignments || emptyArray,
+            unreads: sidebarContent.unreads || emptyArray,
             org: organization,
             rhsState,
         };

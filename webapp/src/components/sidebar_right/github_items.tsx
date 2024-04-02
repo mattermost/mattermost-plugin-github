@@ -312,7 +312,7 @@ const getStyle = makeStyleFromTheme((theme) => {
     };
 });
 
-function getGithubLabels(labels: Label[]) {
+function getGithubLabels(labels: GithubLabel[]) {
     return labels.map((label) => {
         return (
             <Badge
