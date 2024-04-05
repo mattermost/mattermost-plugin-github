@@ -26,6 +26,7 @@ const (
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
 	featureStars         = "stars"
+	featureReleases      = "releases"
 )
 
 const (
@@ -44,6 +45,7 @@ var validFeatures = map[string]bool{
 	featureIssueComments: true,
 	featurePullReviews:   true,
 	featureStars:         true,
+	featureReleases:      true,
 }
 
 type Features string

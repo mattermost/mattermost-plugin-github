@@ -1407,6 +1407,42 @@ func TestPullRequestReviewNotification(t *testing.T) {
 	}))
 }
 
+func TestReleaseNotification(t *testing.T) {
+	t.Run("created", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) created a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
+
+		actual, err := renderTemplate("newReleaseEvent", &github.ReleaseEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCreated),
+			Release: &github.RepositoryRelease{
+				TagName: sToP("v0.0.1"),
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("deleted", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) deleted a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
+
+		actual, err := renderTemplate("newReleaseEvent", &github.ReleaseEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionDeleted),
+			Release: &github.RepositoryRelease{
+				TagName: sToP("v0.0.1"),
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+}
+
 func TestGitHubUsernameRegex(t *testing.T) {
 	stringAndMatchMap := map[string]string{
 		// Contain valid usernames

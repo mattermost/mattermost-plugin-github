@@ -282,6 +282,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		handler = func() {
 			p.postStarEvent(event)
 		}
+	case *github.ReleaseEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postReleaseEvent(event)
+		}
 	}
 
 	if handler == nil {
@@ -1374,6 +1379,42 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
+	if event.GetAction() != actionCreated && event.GetAction() != actionDeleted {
+		return
+	}
+
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	newReleaseMessage, err := renderTemplate("newReleaseEvent", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
+	post := &model.Post{
+		UserId:  p.BotUserID,
+		Type:    "custom_git_release",
+		Message: newReleaseMessage,
+	}
+
+	for _, sub := range subs {
+		if !sub.Release() {
+			continue
+		}
+
+		post.ChannelId = sub.ChannelID
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
 	}
 }
