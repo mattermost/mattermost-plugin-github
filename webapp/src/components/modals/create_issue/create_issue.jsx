@@ -161,7 +161,10 @@ export default class CreateIssueModal extends PureComponent {
         let issueTitleValidationError = null;
         if (this.state.showErrors && !this.state.issueTitleValid) {
             issueTitleValidationError = (
-                <p className='help-text error-text'>
+                <p 
+                    className='help-text error-text'
+                    style={{marginTop: '15px'}}
+                >
                     <span>{requiredMsg}</span>
                 </p>
             );
