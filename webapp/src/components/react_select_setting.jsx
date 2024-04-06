@@ -97,7 +97,7 @@ export default class ReactSelectSetting extends React.PureComponent {
         let validationError = null;
         if (this.props.required && this.state.invalid) {
             validationError = (
-                <p 
+                <p
                     className='help-text error-text'
                     style={{marginTop: '15px'}}
                 >
