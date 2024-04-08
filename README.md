@@ -95,7 +95,7 @@ As a system admin, you must create a webhook for each organization you want to r
    - **Content Type:** `application/json`
    - **Secret:** the webhook secret you copied previously.
 6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?".
-7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`, `Stars`.
+7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`, `Stars`, `Workflows`.
 7. Hit **Add Webhook** to save it.
 
 If you have multiple organizations, repeat the process starting from step 3 to create a webhook for each organization.
@@ -150,7 +150,7 @@ When you’ve tested the plugin and confirmed it’s working, notify your team s
    /github subscriptions add mattermost/mattermost-server --features issues,pulls,issue_comments,label:"Help Wanted"
    ```
   - The following flags are supported:
-     - `--features`: comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:"labelname". Defaults to pulls,issues,creates,deletes.
+     - `--features`: comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, workflows, label:"labelname". Defaults to pulls,issues,creates,deletes.
      - `--exclude-org-member`: events triggered by organization members will not be delivered. It will be locked to the organization provided in the plugin configuration and it will only work for users whose membership is public. Note that organization members and collaborators are not the same.
      - `--render-style`: notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported
      values are `collapsed`, `skip-body` or `default` (same as omitting the flag).

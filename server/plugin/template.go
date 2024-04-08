@@ -113,6 +113,16 @@ func init() {
 		return commit.GetCommitter()
 	}
 
+	funcMap["workflowJobFailedStep"] = func(steps []*github.TaskStep) string {
+		for _, step := range steps {
+			if step.GetConclusion() == workflowJobFail {
+				return step.GetName()
+			}
+		}
+
+		return ""
+	}
+
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
 
 	// The user template links to the corresponding GitHub user. If the GitHub user is a known
@@ -156,6 +166,11 @@ func init() {
 	// The issue links to the corresponding issue.
 	template.Must(masterTemplate.New("issue").Parse(
 		`[#{{.GetNumber}} {{.GetTitle}}]({{.GetHTMLURL}})`,
+	))
+
+	// The workflow job links to the corresponding workflow.
+	template.Must(masterTemplate.New("workflowJob").Parse(
+		`[{{.GetName}}]({{.GetHTMLURL}})`,
 	))
 
 	// The eventRepoIssue links to the corresponding issue. Note that, for some events, the
@@ -408,6 +423,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issue_comments` - includes new issue comments\n" +
 		"    	* `issue_creations` - includes new issues only \n" +
 		"    	* `pull_reviews` - includes pull request reviews\n" +
+		"    	* `workflows` - includes workflow job failures\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
@@ -429,6 +445,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- else }} unstarred
 {{- end }} by {{template "user" .GetSender}}
 It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
+
+	template.Must(masterTemplate.New("newWorkflowJob").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} {{template "workflowJob" .GetWorkflowJob}} workflow got failed (triggered by {{template "user" .GetSender}})
+Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
+Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowJob.GetHeadSHA}}`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {

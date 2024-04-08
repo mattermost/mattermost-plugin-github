@@ -1445,6 +1445,43 @@ func TestGitHubUsernameRegex(t *testing.T) {
 	}
 }
 
+func TestWorkflowJobNotification(t *testing.T) {
+	t.Run("failed", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [mock-workflow-job](https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890) workflow got failed (triggered by [panda](https://github.com/panda))
+Step failed: mock-job-2
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890`
+
+		actual, err := renderTemplate("newWorkflowJob", &github.WorkflowJobEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			WorkflowJob: &github.WorkflowJob{
+				Conclusion: sToP("failure"),
+				Name:       sToP("mock-workflow-job"),
+				HeadSHA:    sToP("1234567890"),
+				HTMLURL:    sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890"),
+				Steps: []*github.TaskStep{
+					{
+						Name:       sToP("mock-job-1"),
+						Conclusion: sToP("success"),
+					},
+					{
+						Name:       sToP("mock-job-2"),
+						Conclusion: sToP("failure"),
+					},
+					{
+						Name:       sToP("mock-job-3"),
+						Conclusion: sToP("success"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+}
+
 func sToP(s string) *string {
 	return &s
 }
