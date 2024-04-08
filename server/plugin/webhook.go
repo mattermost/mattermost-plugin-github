@@ -1401,18 +1401,18 @@ func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_release",
-		Message: newReleaseMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Release() {
 			continue
 		}
 
-		post.ChannelId = sub.ChannelID
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_release",
+			Message:   newReleaseMessage,
+			ChannelId: sub.ChannelID,
+		}
+
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
