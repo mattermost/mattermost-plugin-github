@@ -2,9 +2,11 @@ import {createSelector} from 'reselect';
 
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import {id as pluginId} from './manifest';
+import manifest from './manifest';
 
-const getPluginState = (state) => state['plugins-' + pluginId] || {};
+const emptyArray = [];
+
+const getPluginState = (state) => state['plugins-' + manifest.id] || {};
 
 export const isEnabled = (state) => getPluginState(state).enabled;
 
@@ -28,6 +30,48 @@ export const getCloseOrReopenIssueModalData = createSelector(
         return {
             visible: pluginState.isCloseOrReopenIssueModalVisible,
             messageData,
+        }
+    }
+)
+
+function mapPrsToDetails(prs, details) {
+    if (!prs) {
+        return [];
+    }
+
+    return prs.map((pr) => {
+        let foundDetails;
+        if (details) {
+            foundDetails = details.find((prDetails) => {
+                return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
+            });
+        }
+        if (!foundDetails) {
+            return pr;
+        }
+
+        return {
+            ...pr,
+            status: foundDetails.status,
+            mergeable: foundDetails.mergeable,
+            requestedReviewers: foundDetails.requestedReviewers,
+            reviews: foundDetails.reviews,
+        };
+    });
+}
+
+export const getSidebarData = createSelector(
+    getPluginState,
+    (pluginState) => {
+        const {username, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
+        return {
+            username,
+            reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
+            yourPrs: mapPrsToDetails(sidebarContent.prs || emptyArray, yourPrDetails),
+            yourAssignments: sidebarContent.assignments || emptyArray,
+            unreads: sidebarContent.unreads || emptyArray,
+            org: organization,
+            rhsState,
         };
     },
 );

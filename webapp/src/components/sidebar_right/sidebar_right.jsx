@@ -103,37 +103,38 @@ export default class SidebarRight extends React.PureComponent {
     render() {
         const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
         const orgQuery = this.props.org ? '+org%3A' + this.props.org : '';
+        const {yourPrs, reviews, unreads, yourAssignments, username, rhsState} = this.props;
 
         let title = '';
         let githubItems = [];
         let listUrl = '';
 
-        switch (this.props.rhsState) {
+        switch (rhsState) {
         case RHSStates.PRS:
 
-            githubItems = this.props.yourPrs;
+            githubItems = yourPrs;
             title = 'Your Open Pull Requests';
-            listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + this.props.username + '+archived%3Afalse' + orgQuery;
+            listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + username + '+archived%3Afalse' + orgQuery;
 
             break;
         case RHSStates.REVIEWS:
 
-            githubItems = this.props.reviews;
-            listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+review-requested%3A' + this.props.username + '+archived%3Afalse' + orgQuery;
+            githubItems = reviews;
+            listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+review-requested%3A' + username + '+archived%3Afalse' + orgQuery;
             title = 'Pull Requests Needing Review';
 
             break;
         case RHSStates.UNREADS:
 
-            githubItems = this.props.unreads;
+            githubItems = unreads;
             title = 'Unread Messages';
             listUrl = baseURL + '/notifications';
             break;
         case RHSStates.ASSIGNMENTS:
 
-            githubItems = this.props.yourAssignments;
+            githubItems = yourAssignments;
             title = 'Your Assignments';
-            listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + this.props.username + orgQuery;
+            listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + username + orgQuery;
             break;
         default:
             break;

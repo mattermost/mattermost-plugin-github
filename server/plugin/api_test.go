@@ -6,11 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mattermost/mattermost-server/v6/plugin"
-	"github.com/mattermost/mattermost-server/v6/plugin/plugintest"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+	
 	"github.com/mattermost/mattermost-plugin-github/server/constants"
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
@@ -38,6 +40,7 @@ func TestWithRecovery(t *testing.T) {
 		"error", "bad handler",
 		"stack", mock.Anything)
 	p.SetAPI(api)
+	p.client = pluginapi.NewClient(p.API, p.Driver)
 
 	ph := panicHandler{}
 	handler := p.withRecovery(ph)
@@ -88,7 +91,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			httpTest: httpTestString,
 			request: testutils.Request{
 				Method: http.MethodGet,
-				URL:    "/api/v1/reviews",
+				URL:    "/api/v1/lhs-content",
 				Body:   nil,
 			},
 			expectedResponse: testutils.ExpectedResponse{

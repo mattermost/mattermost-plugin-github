@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import {id as pluginId} from '../../../manifest';
+import manifest from '../../../manifest';
 import GitHubIcon from '../../icon';
 
 export default class AttachCommentToIssuePostMenuAction extends PureComponent {
@@ -26,7 +26,7 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
     };
 
     connectClick = () => {
-        window.open('/plugins/' + pluginId + '/user/connect', '_blank');
+        window.open('/plugins/' + manifest.id + '/user/connect', '_blank');
     };
 
     render() {

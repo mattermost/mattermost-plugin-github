@@ -4,7 +4,7 @@
 import Client from '../client';
 import ActionTypes from '../action_types';
 
-import {id as pluginId} from '../manifest';
+import manifest from '../manifest';
 
 export function getConnected(reminder = false) {
     return async (dispatch) => {
@@ -39,29 +39,6 @@ function checkAndHandleNotConnected(data) {
             return false;
         }
         return true;
-    };
-}
-
-export function getReviews() {
-    return async (dispatch, getState) => {
-        let data;
-        try {
-            data = await Client.getReviews();
-        } catch (error) {
-            return {error};
-        }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_REVIEWS,
-            data,
-        });
-
-        return {data};
     };
 }
 
@@ -111,11 +88,11 @@ export function getRepos() {
     };
 }
 
-export function getYourPrs() {
+export function getSidebarContent() {
     return async (dispatch, getState) => {
         let data;
         try {
-            data = await Client.getYourPrs();
+            data = await Client.getSidebarContent();
         } catch (error) {
             return {error};
         }
@@ -126,7 +103,7 @@ export function getYourPrs() {
         }
 
         dispatch({
-            type: ActionTypes.RECEIVED_YOUR_PRS,
+            type: ActionTypes.RECEIVED_SIDEBAR_CONTENT,
             data,
         });
 
@@ -229,29 +206,6 @@ export function getIssueInfo(owner, repo, issueNumber, postID) {
     };
 }
 
-export function getYourAssignments() {
-    return async (dispatch, getState) => {
-        let data;
-        try {
-            data = await Client.getYourAssignments();
-        } catch (error) {
-            return {error};
-        }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_YOUR_ASSIGNMENTS,
-            data,
-        });
-
-        return {data};
-    };
-}
-
 export function getMentions() {
     return async (dispatch, getState) => {
         let data;
@@ -275,29 +229,6 @@ export function getMentions() {
     };
 }
 
-export function getUnreads() {
-    return async (dispatch, getState) => {
-        let data;
-        try {
-            data = await Client.getUnreads();
-        } catch (error) {
-            return {error};
-        }
-
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
-        if (!connected) {
-            return {error: data};
-        }
-
-        dispatch({
-            type: ActionTypes.RECEIVED_UNREADS,
-            data,
-        });
-
-        return {data};
-    };
-}
-
 const GITHUB_USER_GET_TIMEOUT_MILLISECONDS = 1000 * 60 * 60; // 1 hour
 
 export function getGitHubUser(userID) {
@@ -306,7 +237,7 @@ export function getGitHubUser(userID) {
             return {};
         }
 
-        const user = getState()[`plugins-${pluginId}`].githubUsers[userID];
+        const user = getState()[`plugins-${manifest.id}`].githubUsers[userID];
         if (user && user.last_try && Date.now() - user.last_try < GITHUB_USER_GET_TIMEOUT_MILLISECONDS) {
             return {};
         }

@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
+	"github.com/google/go-github/v48/github"
 	"github.com/pkg/errors"
 )
 
@@ -32,6 +33,7 @@ var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
 var gitHubUsernameRegex = regexp.MustCompile(gitHubUsernameRegexPattern)
 var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
+var showAuthorInCommitNotification bool
 
 func init() {
 	var funcMap = sprig.TxtFuncMap()
@@ -101,6 +103,14 @@ func init() {
 			dict[key] = values[i+1]
 		}
 		return dict, nil
+	}
+
+	funcMap["commitAuthor"] = func(commit *github.HeadCommit) *github.CommitAuthor {
+		if showAuthorInCommitNotification {
+			return commit.GetAuthor()
+		}
+
+		return commit.GetCommitter()
 	}
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
@@ -183,9 +193,29 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- end -}}
 `))
 
+	template.Must(masterTemplate.New("newDraftPR").Funcs(funcMap).Parse(`
+{{template "repo" .Event.GetRepo}} New draft pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+`))
+
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+{{- else -}}
+#### {{.Event.GetPullRequest.GetTitle}}
+##### {{template "eventRepoPullRequest" .Event}}
+#new-pull-request by {{template "user" .Event.GetSender}}
+{{- if ne .Config.Style "skip-body" -}}
+{{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
+{{- template "assignee" .Event.GetPullRequest }}
+
+{{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{- end -}}
+{{- end }}
+`))
+
+	template.Must(masterTemplate.New("markedReadyToReviewPR").Funcs(funcMap).Parse(`
+{{ if eq .Config.Style "collapsed" -}}
+{{template "repo" .Event.GetRepo}} Pull request {{template "pullRequest" .Event.GetPullRequest}} was marked ready for review by {{template "user" .Event.GetSender}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
@@ -204,6 +234,10 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- if .GetPullRequest.GetMerged }} merged
 {{- else }} closed
 {{- end }} by {{template "user" .GetSender}}.
+`))
+
+	template.Must(masterTemplate.New("reopenedPR").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} Pull request {{template "pullRequest" .GetPullRequest}} was reopened by {{template "user" .GetSender}}.
 `))
 
 	template.Must(masterTemplate.New("pullRequestLabelled").Funcs(funcMap).Parse(`
@@ -249,7 +283,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 	template.Must(masterTemplate.New("pushedCommits").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} {{if .GetForced}}force-{{end}}pushed [{{len .Commits}} new commit{{if ne (len .Commits) 1}}s{{end}}]({{.GetCompare}}) to [\[{{.GetRepo.GetFullName}}:{{.GetRef | trimRef}}\]]({{.GetRepo.GetHTMLURL}}/tree/{{.GetRef | trimRef}}):
 {{range .Commits -}}
-[` + "`{{.GetID | substr 0 6}}`" + `]({{.GetURL}}) {{.GetMessage}} - {{.GetCommitter.GetName}}
+[` + "`{{.GetID | substr 0 6}}`" + `]({{.GetURL}}) {{.GetMessage}} - {{with . | commitAuthor}}{{.GetName}}{{end}}
 {{end -}}
 `))
 
@@ -367,6 +401,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issues` - includes new and closed issues\n" +
 		"    	* `pulls` - includes new and closed pull requests\n" +
 		"    	* `pulls_merged` - includes merged pull requests only\n" +
+		"    	* `pulls_created` - includes new pull requests only\n" +
 		"    	* `pushes` - includes pushes\n" +
 		"    	* `creates` - includes branch and tag creations\n" +
 		"    	* `deletes` - includes branch and tag deletions\n" +
@@ -406,6 +441,10 @@ func lookupMattermostUsername(githubUsername string) string {
 	}
 
 	return gitHubToUsernameMappingCallback(githubUsername)
+}
+
+func setShowAuthorInCommitNotification(value bool) {
+	showAuthorInCommitNotification = value
 }
 
 func renderTemplate(name string, data interface{}) (string, error) {

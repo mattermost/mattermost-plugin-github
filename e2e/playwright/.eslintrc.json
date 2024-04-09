@@ -1,0 +1,18 @@
+{
+    "extends": [
+        "../../webapp/.eslintrc.json"
+    ],
+    "overrides": [
+        {
+            "files": ["**/*.ts"],
+            "plugins": ["import"],
+            "parser": "@typescript-eslint/parser",
+            "rules": {
+                "import/no-unresolved": "off",
+                "max-nested-callbacks": "off",
+                "no-shadow": "off",
+                "@typescript-eslint/no-shadow": "error"
+            }
+        }
+    ]
+}

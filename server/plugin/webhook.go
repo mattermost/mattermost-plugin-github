@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"strings"
@@ -16,18 +17,9 @@ import (
 	"github.com/mattermost/mattermost-plugin-github/server/constants"
 
 	"github.com/google/go-github/v48/github"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/microcosm-cc/bluemonday"
-)
 
-const (
-	postPropGithubRepo       = "gh_repo"
-	postPropGithubObjectID   = "gh_object_id"
-	postPropGithubObjectType = "gh_object_type"
-
-	githubObjectTypeIssue           = "issue"
-	githubObjectTypeIssueComment    = "issue_comment"
-	githubObjectTypePRReviewComment = "pr_review_comment"
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -184,7 +176,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	signature := r.Header.Get("X-Hub-Signature")
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
-		p.API.LogWarn("Failed to verify webhook signature", "error", err.Error())
+		p.client.Log.Warn("Failed to verify webhook signature", "error", err.Error())
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
@@ -196,19 +188,19 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	event, err := github.ParseWebHook(github.WebHookType(r), body)
 	if err != nil {
-		p.API.LogDebug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
+		p.client.Log.Debug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
 		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
 
 	if config.EnableWebhookEventLogging {
-		bodyByte, appErr := json.Marshal(event)
-		if appErr != nil {
-			p.API.LogWarn("Error while Marshal Webhook Request", "error", appErr.Error())
+		bodyByte, err := json.Marshal(event)
+		if err != nil {
+			p.client.Log.Warn("Error while Marshal Webhook Request", "error", err.Error())
 			http.Error(w, "Error while Marshal Webhook Request", http.StatusBadRequest)
 			return
 		}
-		p.API.LogDebug("Webhook Event Log", "event", string(bodyByte))
+		p.client.Log.Debug("Webhook Event Log", "event", string(bodyByte))
 	}
 
 	var repo *github.Repository
@@ -309,7 +301,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 
 	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
 		if err != nil {
-			p.API.LogWarn("Failed fetch repository to check permission", "error", err.Error())
+			p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
 		}
 		return false
 	}
@@ -324,7 +316,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 
 	info, err := p.getGitHubUserInfo(subscription.CreatorID)
 	if err != nil {
-		p.API.LogWarn("Failed to exclude org member", "error", err.Message)
+		p.client.Log.Warn("Failed to exclude org member", "error", err.Message)
 		return false
 	}
 
@@ -343,11 +335,18 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	action := event.GetAction()
-	if action != constants.ActionOpened && action != constants.ActionLabeled && action != constants.ActionClosed {
+	switch action {
+	case constants.ActionOpened,
+	constants.ActionReopened,
+	constants.ActionMarkedReadyForReview,
+		constants.ActionLabeled,
+		constants.ActionClosed:
+	default:
 		return
 	}
 
 	pr := event.GetPullRequest()
+	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(pr.Labels))
 	for index, label := range pr.Labels {
@@ -356,7 +355,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	closedPRMessage, err := renderTemplate("closedPR", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -366,11 +365,15 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	}
 
 	for _, sub := range subs {
-		if !sub.Pulls() && !sub.PullsMerged() {
+		if !sub.Pulls() && !sub.PullsMerged() && !sub.PullsCreated() {
 			continue
 		}
 
 		if sub.PullsMerged() && action != constants.ActionClosed {
+			continue
+		}
+
+		if sub.PullsCreated() && action != constants.ActionOpened {
 			continue
 		}
 
@@ -390,9 +393,9 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		prNumber := event.GetPullRequest().Number
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, prNumber)
-		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
+		post.AddProp(constants.PostPropGithubRepo, repoName)
+		post.AddProp(constants.PostPropGithubObjectID, prNumber)
+		post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypeIssue)
 
 		if !contained && label != "" {
 			continue
@@ -402,7 +405,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			if label != "" && label == eventLabel {
 				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
 				if err != nil {
-					p.API.LogWarn("Failed to render template", "error", err.Error())
+					p.client.Log.Warn("Failed to render template", "error", err.Error())
 					return
 				}
 
@@ -413,13 +416,37 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if action == constants.ActionOpened {
-			newPRMessage, err := renderTemplate("newPR", GetEventWithRenderConfig(event, sub))
+			prNotificationType := "newPR"
+			if isPRInDraftState {
+				prNotificationType = "newDraftPR"
+			}
+			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
-				p.API.LogWarn("Failed to render template", "error", err.Error())
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
 				return
 			}
 
 			post.Message = p.sanitizeDescription(newPRMessage)
+		}
+
+		if action == constants.ActionReopened {
+			reopenedPRMessage, err := renderTemplate("reopenedPR", event)
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(reopenedPRMessage)
+		}
+
+		if action == constants.ActionMarkedReadyForReview {
+			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "error", err.Error())
+				return
+			}
+
+			post.Message = p.sanitizeDescription(markedReadyToReviewPRMessage)
 		}
 
 		if action == constants.ActionClosed {
@@ -427,16 +454,19 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err := p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
 
 func (p *Plugin) sanitizeDescription(description string) string {
-	var policy = bluemonday.StrictPolicy()
-	policy.SkipElementsContent("details")
-	return strings.TrimSpace(policy.Sanitize(description))
+	if strings.Contains(description, "<details>") {
+		var policy = bluemonday.StrictPolicy()
+		policy.SkipElementsContent("details")
+		description = html.UnescapeString(policy.Sanitize(description))
+	}
+	return strings.TrimSpace(description)
 }
 
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
@@ -451,7 +481,7 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 
 	message, err := renderTemplate("pullRequestMentionNotification", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -481,15 +511,15 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
+		channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
 		if err != nil {
 			continue
 		}
 
 		post.ChannelId = channel.Id
 
-		if _, err = p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 
 		p.sendRefreshEvent(userID)
@@ -541,7 +571,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if sub.IssueCreations() && action != constants.ActionOpened {
+		if sub.IssueCreations() && action != constants.ActionOpened && action != constants.ActionReopened && action != constants.ActionLabeled {
 			continue
 		}
 
@@ -551,7 +581,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 		renderedMessage, err := renderTemplate(issueTemplate, GetEventWithRenderConfig(event, sub))
 		if err != nil {
-			p.API.LogWarn("Failed to render template", "error", err.Error())
+			p.client.Log.Warn("Failed to render template", "error", err.Error())
 			return
 		}
 		renderedMessage = p.sanitizeDescription(renderedMessage)
@@ -587,9 +617,9 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		issueNumber := issue.Number
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, issueNumber)
-		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
+		post.AddProp(constants.PostPropGithubRepo, repoName)
+		post.AddProp(constants.PostPropGithubObjectID, issueNumber)
+		post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypeIssue)
 
 		label := sub.Label()
 
@@ -611,8 +641,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -631,9 +661,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		return
 	}
 
+	setShowAuthorInCommitNotification(p.configuration.ShowAuthorInCommitNotification)
 	pushedCommitsMessage, err := renderTemplate("pushedCommits", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -653,8 +684,8 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -674,7 +705,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 	newCreateMessage, err := renderTemplate("newCreateMessage", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -694,8 +725,8 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -717,7 +748,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 
 	newDeleteMessage, err := renderTemplate("newDeleteMessage", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -737,8 +768,8 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -758,7 +789,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 	message, err := renderTemplate("issueComment", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -770,9 +801,9 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	repoName := strings.ToLower(repo.GetFullName())
 	commentID := event.GetComment().GetID()
 
-	post.AddProp(postPropGithubRepo, repoName)
-	post.AddProp(postPropGithubObjectID, commentID)
-	post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
+	post.AddProp(constants.PostPropGithubRepo, repoName)
+	post.AddProp(constants.PostPropGithubObjectID, commentID)
+	post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypeIssueComment)
 
 	labels := make([]string, len(event.GetIssue().Labels))
 	for index, label := range event.GetIssue().Labels {
@@ -807,14 +838,19 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 		post.ChannelId = sub.ChannelID
 
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
 
 func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
-	mutedUsernameBytes, _ := p.API.KVGet(fmt.Sprintf("%s-muted-users", userID))
+	var mutedUsernameBytes []byte
+	if err := p.store.Get(fmt.Sprintf("%s-muted-users", userID), &mutedUsernameBytes); err != nil {
+		p.client.Log.Warn("Failed to get muted users", "userID", userID)
+		return false
+	}
+
 	mutedUsernames := string(mutedUsernameBytes)
 	return strings.Contains(mutedUsernames, sender)
 }
@@ -832,18 +868,18 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	switch event.GetReview().GetState() {
+	switch strings.ToUpper(event.GetReview().GetState()) {
 	case "APPROVED":
 	case "COMMENTED":
 	case "CHANGES_REQUESTED":
 	default:
-		p.API.LogDebug("Unhandled review state", "state", event.GetReview().GetState())
+		p.client.Log.Debug("Unhandled review state", "state", event.GetReview().GetState())
 		return
 	}
 
 	newReviewMessage, err := renderTemplate("pullRequestReviewEvent", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -881,8 +917,8 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -897,7 +933,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 	newReviewMessage, err := renderTemplate("newReviewComment", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -910,9 +946,9 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	repoName := strings.ToLower(repo.GetFullName())
 	commentID := event.GetComment().GetID()
 
-	post.AddProp(postPropGithubRepo, repoName)
-	post.AddProp(postPropGithubObjectID, commentID)
-	post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
+	post.AddProp(constants.PostPropGithubRepo, repoName)
+	post.AddProp(constants.PostPropGithubObjectID, commentID)
+	post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypePRReviewComment)
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
 	for index, label := range event.GetPullRequest().Labels {
@@ -942,8 +978,8 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }
@@ -965,7 +1001,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 
 	message, err := renderTemplate("commentMentionNotification", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -1010,14 +1046,14 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		channel, err := p.API.GetDirectChannel(userID, p.BotUserID)
+		channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
 		if err != nil {
 			continue
 		}
 
 		post.ChannelId = channel.Id
-		if _, err = p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error creating mention post", "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error creating mention post", "error", err.Error())
 		}
 
 		p.sendRefreshEvent(userID)
@@ -1056,18 +1092,18 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	case "issues":
 		templateName = "commentAuthorIssueNotification"
 	default:
-		p.API.LogDebug("Unhandled issue type", "type", splitURL[len(splitURL)-2])
+		p.client.Log.Debug("Unhandled issue type", "type", splitURL[len(splitURL)-2])
 		return
 	}
 
 	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
-		p.API.LogDebug("Commenter is muted, skipping notification")
+		p.client.Log.Debug("Commenter is muted, skipping notification")
 		return
 	}
 
 	message, err := renderTemplate(templateName, event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -1093,7 +1129,7 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 	case "issues":
 		templateName = "commentAssigneeIssueNotification"
 	default:
-		p.API.LogDebug("Unhandled issue type", "Type", eventType)
+		p.client.Log.Debug("Unhandled issue type", "Type", eventType)
 		return
 	}
 
@@ -1140,13 +1176,13 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 		}
 
 		if p.senderMutedByReceiver(assigneeID, event.GetSender().GetLogin()) {
-			p.API.LogDebug("Commenter is muted, skipping notification")
+			p.client.Log.Debug("Commenter is muted, skipping notification")
 			continue
 		}
 
 		message, err := renderTemplate(template, event)
 		if err != nil {
-			p.API.LogWarn("Failed to render template", "error", err.Error())
+			p.client.Log.Warn("Failed to render template", "error", err.Error())
 			continue
 		}
 		p.CreateBotDMPost(assigneeID, message, "custom_git_assignee")
@@ -1201,13 +1237,13 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 			assigneeUserID = ""
 		}
 	default:
-		p.API.LogDebug("Unhandled event action", "action", event.GetAction())
+		p.client.Log.Debug("Unhandled event action", "action", event.GetAction())
 		return
 	}
 
 	message, err := renderTemplate("pullRequestNotification", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -1253,13 +1289,13 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 			assigneeUserID = ""
 		}
 	default:
-		p.API.LogDebug("Unhandled event action", "action", event.GetAction())
+		p.client.Log.Debug("Unhandled event action", "action", event.GetAction())
 		return
 	}
 
 	message, err := renderTemplate("issueNotification", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -1299,7 +1335,7 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	message, err := renderTemplate("pullRequestReviewNotification", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -1318,7 +1354,7 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 
 	newStarMessage, err := renderTemplate("newRepoStar", event)
 	if err != nil {
-		p.API.LogWarn("Failed to render template", "error", err.Error())
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
@@ -1338,8 +1374,8 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		}
 
 		post.ChannelId = sub.ChannelID
-		if _, err := p.API.CreatePost(post); err != nil {
-			p.API.LogWarn("Error webhook post", "post", post, "error", err.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }

@@ -2,15 +2,13 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/go-github/v48/github"
 	"github.com/pkg/errors"
 
-	"github.com/mattermost/mattermost-plugin-api/cluster"
-
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
+	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 )
 
 const pageSize = 100
@@ -22,9 +20,10 @@ func (p *Plugin) forceResetAllMM34646() error {
 	ctx := context.Background()
 
 	time.Sleep(delayToStart)
-	data, appErr := p.API.KVGet(mm34646DoneKey)
-	if appErr != nil {
-		return errors.Wrap(appErr, "failed check whether MM-34646 refresh is already done")
+	var data []byte
+	err := p.store.Get(mm34646DoneKey, &data)
+	if err != nil {
+		return errors.Wrap(err, "failed check whether MM-34646 refresh is already done")
 	}
 	if len(data) > 0 {
 		// Already done
@@ -39,24 +38,21 @@ func (p *Plugin) forceResetAllMM34646() error {
 	defer m.Unlock()
 
 	for page := 0; ; page++ {
-		keys, appErr := p.API.KVList(page, pageSize)
-		if appErr != nil {
-			return appErr
+		var keys []string
+		keys, err = p.store.ListKeys(page, pageSize)
+		if err != nil {
+			return err
 		}
 
 		for _, key := range keys {
-			data, appErr := p.API.KVGet(key)
-			if appErr != nil {
-				p.API.LogWarn("failed to inspect key", "key", key, "error",
-					appErr.Error())
-				continue
-			}
-			tryInfo := serializer.GitHubUserInfo{}
-			err := json.Unmarshal(data, &tryInfo)
+			var tryInfo serializer.GitHubUserInfo
+			err = p.store.Get(key, &tryInfo)
 			if err != nil {
-				// too noisy to report
+				p.client.Log.Warn("failed to inspect key", "key", key, "error",
+					err.Error())
 				continue
 			}
+
 			if tryInfo.MM34646ResetTokenDone {
 				continue
 			}
@@ -67,14 +63,14 @@ func (p *Plugin) forceResetAllMM34646() error {
 
 			info, errResp := p.getGitHubUserInfo(tryInfo.UserID)
 			if errResp != nil {
-				p.API.LogWarn("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
+				p.client.Log.Warn("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
 					"error", errResp.Error())
 				continue
 			}
 
 			_, err = p.forceResetUserTokenMM34646(ctx, config, info)
 			if err != nil {
-				p.API.LogWarn("failed to reset GitHub user token", "key", key, "user_id", tryInfo.UserID,
+				p.client.Log.Warn("failed to reset GitHub user token", "key", key, "user_id", tryInfo.UserID,
 					"error", err.Error())
 				continue
 			}
@@ -87,7 +83,11 @@ func (p *Plugin) forceResetAllMM34646() error {
 		}
 	}
 
-	_ = p.API.KVSet(mm34646DoneKey, []byte("done"))
+	_, err = p.store.Set(mm34646DoneKey, []byte("done"))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -115,7 +115,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 	if err != nil {
 		return "", errors.Wrap(err, "failed to store updated serializer.GitHubUserInfo")
 	}
-	p.API.LogDebug("Updated user access token for MM-34646", "user_id", info.UserID)
+	p.client.Log.Debug("Updated user access token for MM-34646", "user_id", info.UserID)
 
 	return *a.Token, nil
 }

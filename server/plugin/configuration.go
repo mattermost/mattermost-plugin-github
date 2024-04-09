@@ -7,9 +7,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/mattermost/mattermost-plugin-api/experimental/telemetry"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
+
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 )
 
 // configuration captures the plugin's external configuration as exposed in the Mattermost server
@@ -24,19 +25,20 @@ import (
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
 type Configuration struct {
-	GitHubOrg                   string `json:"githuborg"`
-	GitHubOAuthClientID         string `json:"githuboauthclientid"`
-	GitHubOAuthClientSecret     string `json:"githuboauthclientsecret"`
-	WebhookSecret               string `json:"webhooksecret"`
-	EnableLeftSidebar           bool   `json:"enableleftsidebar"`
-	EnablePrivateRepo           bool   `json:"enableprivaterepo"`
-	ConnectToPrivateByDefault   bool   `json:"connecttoprivatebydefault"`
-	EncryptionKey               string `json:"encryptionkey"`
-	EnterpriseBaseURL           string `json:"enterprisebaseurl"`
-	EnterpriseUploadURL         string `json:"enterpriseuploadurl"`
-	EnableCodePreview           string `json:"enablecodepreview"`
-	EnableWebhookEventLogging   bool   `json:"enablewebhookeventlogging"`
-	UsePreregisteredApplication bool   `json:"usepreregisteredapplication"`
+	GitHubOrg                      string `json:"githuborg"`
+	GitHubOAuthClientID            string `json:"githuboauthclientid"`
+	GitHubOAuthClientSecret        string `json:"githuboauthclientsecret"`
+	WebhookSecret                  string `json:"webhooksecret"`
+	EnableLeftSidebar              bool   `json:"enableleftsidebar"`
+	EnablePrivateRepo              bool   `json:"enableprivaterepo"`
+	ConnectToPrivateByDefault      bool   `json:"connecttoprivatebydefault"`
+	EncryptionKey                  string `json:"encryptionkey"`
+	EnterpriseBaseURL              string `json:"enterprisebaseurl"`
+	EnterpriseUploadURL            string `json:"enterpriseuploadurl"`
+	EnableCodePreview              string `json:"enablecodepreview"`
+	EnableWebhookEventLogging      bool   `json:"enablewebhookeventlogging"`
+	UsePreregisteredApplication    bool   `json:"usepreregisteredapplication"`
+	ShowAuthorInCommitNotification bool   `json:"showauthorincommitnotification"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {
@@ -190,10 +192,13 @@ func (p *Plugin) setConfiguration(configuration *Configuration) {
 
 // OnConfigurationChange is invoked when configuration changes may have been made.
 func (p *Plugin) OnConfigurationChange() error {
+	p.ensurePluginAPIClient()
+
 	var configuration = new(Configuration)
 
 	// Load the public configuration fields from the Mattermost server configuration.
-	if err := p.API.LoadPluginConfiguration(configuration); err != nil {
+	err := p.client.Configuration.LoadPluginConfiguration(configuration)
+	if err != nil {
 		return errors.Wrap(err, "failed to load plugin configuration")
 	}
 
@@ -208,19 +213,14 @@ func (p *Plugin) OnConfigurationChange() error {
 		return errors.Wrap(err, "failed to get command")
 	}
 
-	err = p.API.RegisterCommand(command)
+	err = p.client.SlashCommand.Register(command)
 	if err != nil {
 		return errors.Wrap(err, "failed to register command")
 	}
-
-	enableDiagnostics := false
-	if config := p.API.GetConfig(); config != nil {
-		if configValue := config.LogSettings.EnableDiagnostics; configValue != nil {
-			enableDiagnostics = *configValue
-		}
+	// Some config changes require reloading tracking config
+	if p.tracker != nil {
+		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.client.Configuration.GetConfig()))
 	}
-
-	p.tracker = telemetry.NewTracker(p.telemetryClient, p.API.GetDiagnosticId(), p.API.GetServerVersion(), Manifest.Id, Manifest.Version, "github", enableDiagnostics)
 
 	return nil
 }
@@ -230,7 +230,7 @@ func (p *Plugin) sendWebsocketEventIfNeeded(oldConfig, newConfig *Configuration)
 	// Hence, an unnecessary websocket event is sent.
 	// Given that oldConfig is never nil, that case is hard to catch.
 	if !reflect.DeepEqual(oldConfig.ClientConfiguration(), newConfig.ClientConfiguration()) {
-		p.API.PublishWebSocketEvent(
+		p.client.Frontend.PublishWebSocketEvent(
 			WSEventConfigUpdate,
 			newConfig.ClientConfiguration(),
 			&model.WebsocketBroadcast{},

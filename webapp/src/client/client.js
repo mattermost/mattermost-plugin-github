@@ -4,7 +4,7 @@
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
-import {id as pluginId} from '../manifest';
+import manifest from '../manifest';
 
 export default class Client {
     getIssueInfo = async (owner, repo, issueNumber, postID) => {
@@ -12,35 +12,23 @@ export default class Client {
     }
 
     setServerRoute(url) {
-        this.url = url + `/plugins/${pluginId}/api/v1`;
+        this.url = url + `/plugins/${manifest.id}/api/v1`;
     }
 
     getConnected = async (reminder = false) => {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
     }
 
-    getReviews = async () => {
-        return this.doGet(`${this.url}/reviews`);
-    }
-
-    getYourPrs = async () => {
-        return this.doGet(`${this.url}/your_prs`);
+    getSidebarContent = async () => {
+        return this.doGet(`${this.url}/lhs-content`);
     }
 
     getPrsDetails = async (prList) => {
         return this.doPost(`${this.url}/prs_details`, prList);
     }
 
-    getYourAssignments = async () => {
-        return this.doGet(`${this.url}/your_assignments`);
-    }
-
     getMentions = async () => {
         return this.doGet(`${this.url}/mentions`);
-    }
-
-    getUnreads = async () => {
-        return this.doGet(`${this.url}/unreads`);
     }
 
     getGitHubUser = async (userID) => {

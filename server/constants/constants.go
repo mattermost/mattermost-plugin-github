@@ -43,4 +43,13 @@ const (
 	ActionCreated   = "created"
 	ActionDeleted   = "deleted"
 	ActionEdited    = "edited"
+	ActionMarkedReadyForReview = "ready_for_review"
+
+	PostPropGithubRepo       = "gh_repo"
+	PostPropGithubObjectID   = "gh_object_id"
+	PostPropGithubObjectType = "gh_object_type"
+
+	GithubObjectTypeIssue           = "issue"
+	GithubObjectTypeIssueComment    = "issue_comment"
+	GithubObjectTypePRReviewComment = "pr_review_comment"
 )

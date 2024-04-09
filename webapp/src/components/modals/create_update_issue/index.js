@@ -5,12 +5,13 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 
-import {id as pluginId} from 'manifest';
+import manifest from 'manifest';
 import {closeCreateOrUpdateIssueModal, createIssue, updateIssue, getIssueInfo} from 'actions';
 
 import CreateOrUpdateIssueModal from './create_update_issue';
 
 const mapStateToProps = (state) => {
+    const {id: pluginId} = manifest;
     const {postId, messageData} = state[`plugins-${pluginId}`].createOrUpdateIssueModal;
     const currentPostId = postId || messageData?.postId;
     const post = currentPostId ? getPost(state, currentPostId) : null;

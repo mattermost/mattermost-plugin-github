@@ -18,9 +18,9 @@ import (
 
 	"github.com/mattermost/mattermost-plugin-github/server/constants"
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
+	"github.com/mattermost/mattermost/server/public/model"
 
 	"github.com/google/go-github/v48/github"
-	"github.com/mattermost/mattermost-server/v6/model"
 	"github.com/pkg/errors"
 )
 
@@ -319,9 +319,17 @@ func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool)
 }
 
 // getToDoDisplayText returns the text to be displayed in todo listings.
-func getToDoDisplayText(baseURL, title, url, notifType string) string {
-	owner, repo := parseOwnerAndRepo(url, baseURL)
-	repoURL := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
+func getToDoDisplayText(baseURL, title, url, notifType string, repository *github.Repository) string {
+	var owner, repo, repoURL, titlePart string
+	if repository == nil {
+		owner, repo = parseOwnerAndRepo(url, baseURL)
+		repoURL = fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
+	} else {
+		owner = repository.GetOwner().GetLogin()
+		repo = repository.GetName()
+		repoURL = repository.GetHTMLURL()
+	}
+
 	repoWords := strings.Split(repo, "-")
 	if len(repo) > 20 && len(repoWords) > 1 {
 		repo = "..." + repoWords[len(repoWords)-1]
@@ -331,7 +339,11 @@ func getToDoDisplayText(baseURL, title, url, notifType string) string {
 	if len(title) > 80 {
 		title = strings.TrimSpace(title[:80]) + "..."
 	}
-	titlePart := fmt.Sprintf("[%s](%s)", title, url)
+
+	titlePart = fmt.Sprintf(": %s", title)
+	if url != "" {
+		titlePart = fmt.Sprintf(": [%s](%s)", title, url)
+	}
 
 	if notifType == "" {
 		return fmt.Sprintf("* %s %s\n", repoPart, titlePart)
@@ -492,4 +504,24 @@ func (p *Plugin) CloseOrReopenIssue(c *serializer.UserContext, w http.ResponseWr
 		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", post.Id), StatusCode: http.StatusInternalServerError})
 	}
 	p.writeJSON(w, issue)
+}
+
+// lastN returns the last n characters of a string, with the rest replaced by *.
+// At most 3 characters are replaced. The rest is cut off.
+func lastN(s string, n int) string {
+	if n < 0 {
+		return ""
+	}
+
+	out := []byte(s)
+	if len(out) > n+3 {
+		out = out[len(out)-n-3:]
+	}
+	for i := range out {
+		if i < len(out)-n {
+			out[i] = '*'
+		}
+	}
+
+	return string(out)
 }

@@ -1,0 +1,7 @@
+.env
+
+screenshots
+playwright-report
+test-results
+.auth-user.json
+.eslintcache

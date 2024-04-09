@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-github/v48/github"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func TestParseGitHubUsernameFromText(t *testing.T) {
@@ -218,9 +221,10 @@ func TestInsideLink(t *testing.T) {
 
 func TestGetToDoDisplayText(t *testing.T) {
 	type input struct {
-		title     string
-		url       string
-		notifType string
+		title      string
+		url        string
+		notifType  string
+		repository *github.Repository
 	}
 	tcs := []struct {
 		name string
@@ -233,8 +237,9 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"Issue title with less than 80 characters",
 				"https://github.com/mattermost/repo/issues/42",
 				"",
+				nil,
 			},
-			want: "* [mattermost/repo](https://github.com/mattermost/repo) [Issue title with less than 80 characters](https://github.com/mattermost/repo/issues/42)\n",
+			want: "* [mattermost/repo](https://github.com/mattermost/repo) : [Issue title with less than 80 characters](https://github.com/mattermost/repo/issues/42)\n",
 		},
 		{
 			name: "title longer than threshold, multi-word repo name & Issue notification type",
@@ -242,15 +247,54 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"This is an issue title which has with more than 80 characters and is completely random",
 				"https://github.com/mattermost/mattermost-plugin-github/issues/42",
 				"Issue",
+				nil,
 			},
-			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Issue [This is an issue title which has with more than 80 characters and is completely...](https://github.com/mattermost/mattermost-plugin-github/issues/42)\n",
+			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Issue : [This is an issue title which has with more than 80 characters and is completely...](https://github.com/mattermost/mattermost-plugin-github/issues/42)\n",
+		},
+		{
+			name: "title longer than threshold, multi-word repo name & Issue notification type",
+			in: input{
+				"Test discussion title!",
+				"",
+				"Discussion",
+				&github.Repository{
+					HTMLURL: model.NewString("https://github.com/mattermost/mattermost-plugin-github"),
+					Owner: &github.User{
+						Login: model.NewString("mattermost"),
+					},
+					Name: model.NewString("mattermost-plugin-github"),
+				},
+			},
+			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Discussion : Test discussion title!\n",
 		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			got := getToDoDisplayText("https://github.com/", tc.in.title, tc.in.url, tc.in.notifType)
+			got := getToDoDisplayText("https://github.com/", tc.in.title, tc.in.url, tc.in.notifType, tc.in.repository)
 			assert.Equal(t, tc.want, got)
 		})
+	}
+}
+
+func TestLastN(t *testing.T) {
+	tcs := []struct {
+		Text     string
+		N        int
+		Expected string
+	}{
+		{Text: "", N: -99, Expected: ""},
+		{Text: "", N: -1, Expected: ""},
+		{Text: "", N: 0, Expected: ""},
+		{Text: "", N: 1, Expected: ""},
+		{Text: "", N: 99, Expected: ""},
+		{Text: "abcdef", N: 4, Expected: "**cdef"},
+		{Text: "abcdefghi", N: 2, Expected: "***hi"},
+		{Text: "abcdefghi", N: 0, Expected: "***"},
+		{Text: "abcdefghi", N: 99, Expected: "abcdefghi"},
+	}
+
+	for _, tc := range tcs {
+		assert.Equal(t, tc.Expected, lastN(tc.Text, tc.N))
 	}
 }
