@@ -3,8 +3,8 @@ package serializer
 import (
 	"context"
 
-	"golang.org/x/oauth2"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
+	"golang.org/x/oauth2"
 )
 
 type Context struct {

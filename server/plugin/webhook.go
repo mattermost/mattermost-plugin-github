@@ -337,8 +337,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	action := event.GetAction()
 	switch action {
 	case constants.ActionOpened,
-	constants.ActionReopened,
-	constants.ActionMarkedReadyForReview,
+		constants.ActionReopened,
+		constants.ActionMarkedReadyForReview,
 		constants.ActionLabeled,
 		constants.ActionClosed:
 	default:

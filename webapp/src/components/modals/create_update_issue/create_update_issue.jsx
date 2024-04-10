@@ -205,16 +205,21 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
         }
 
         const theme = this.props.theme;
-        const {error, submitting, showErrors, issueTitleValid, issueTitle, issueDescription, repo} = this.state;
+        const {error, submitting, showErrors, issueTitle, issueDescription, repo} = this.state;
         const style = getStyle(theme);
-        const {repo_full_name} = this.props.messageData ?? {};
-        const modalTitle = repo_full_name ? 'Update GitHub Issue' : 'Create GitHub Issue';
+        const {repo_name, repo_owner} = this.props.messageData ?? {};
+        const modalTitle = repo_name ? 'Update GitHub Issue' : 'Create GitHub Issue';
 
         const requiredMsg = 'This field is required.';
         let issueTitleValidationError = null;
-        if (showErrors && !issueTitleValid) {
+        if (showErrors && !issueTitle) {
             issueTitleValidationError = (
-                <p className='help-text error-text'>
+                <p
+                    className='help-text error-text'
+                    style={{
+                        marginBottom: '15px',
+                    }}
+                >
                     <span>{requiredMsg}</span>
                 </p>
             );
@@ -229,14 +234,14 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
             );
         }
 
-        const component = repo_full_name ? (
+        const component = repo_name ? (
             <div>
                 <Input
                     label='Repository'
                     type='input'
                     required={true}
                     disabled={true}
-                    value={repo_full_name}
+                    value={`${repo_owner}/${repo_name}`}
                 />
 
                 <Input

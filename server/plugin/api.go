@@ -836,7 +836,11 @@ func (p *Plugin) createIssueComment(c *serializer.UserContext, w http.ResponseWr
 		rootID = post.RootId
 	}
 
-	permalinkReplyMessage := fmt.Sprintf("[Message](%v) attached to GitHub issue [#%v](%v)", permalink, req.Number, result.GetHTMLURL())
+	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v) from a [Message](%v)", req.Number, result.GetHTMLURL(), permalink)
+	if req.ShowAttachedMessage {
+		permalinkReplyMessage = fmt.Sprintf("[Message](%v) attached to GitHub issue [#%v](%v)", permalink, req.Number, result.GetHTMLURL())
+	}
+
 	reply := &model.Post{
 		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
@@ -972,8 +976,7 @@ func (p *Plugin) getIssueInfo(c *serializer.UserContext, w http.ResponseWriter, 
 
 	description := ""
 	if issue.Body != nil {
-		*issue.Body = mdCommentRegex.ReplaceAllString(issue.GetBody(), "")
-		description = *issue.Body
+		description = mdCommentRegex.ReplaceAllString(issue.GetBody(), "")
 	}
 
 	assignees := make([]string, len(issue.Assignees))
@@ -995,6 +998,7 @@ func (p *Plugin) getIssueInfo(c *serializer.UserContext, w http.ResponseWriter, 
 
 	post, appErr := p.API.GetPost(postID)
 	if appErr != nil {
+		p.client.Log.Error("Unable to get the post", "PostID", postID, "Error", appErr.Error())
 		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", postID), StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1288,6 +1292,7 @@ func (p *Plugin) updateIssue(c *serializer.UserContext, w http.ResponseWriter, r
 		var appErr *model.AppError
 		post, appErr = p.API.GetPost(issue.PostID)
 		if appErr != nil {
+			p.client.Log.Error("Unable to get the post", "PostID", issue.PostID, "Error", appErr.Error())
 			p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1313,6 +1318,7 @@ func (p *Plugin) updateIssue(c *serializer.UserContext, w http.ResponseWriter, r
 
 	currentUser, appErr := p.API.GetUser(c.UserID)
 	if appErr != nil {
+		p.client.Log.Error("Unable to get the user", "UserID", c.UserID, "Error", appErr.Error())
 		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: "failed to load current user", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1387,6 +1393,7 @@ func (p *Plugin) closeOrReopenIssue(c *serializer.UserContext, w http.ResponseWr
 
 	post, appErr := p.API.GetPost(req.PostID)
 	if appErr != nil {
+		p.client.Log.Error("Unable to get the post", "PostID", req.PostID, "Error", appErr.Error())
 		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", req.PostID), StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1396,6 +1403,7 @@ func (p *Plugin) closeOrReopenIssue(c *serializer.UserContext, w http.ResponseWr
 	}
 
 	if _, err := p.getUsername(post.UserId); err != nil {
+		p.client.Log.Error("Unable to get the username", "UserID", post.UserId, "Error", err.Error())
 		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1441,7 +1449,7 @@ func (p *Plugin) createIssue(c *serializer.UserContext, w http.ResponseWriter, r
 		var err error
 		post, err = p.client.Post.GetPost(issue.PostID)
 		if err != nil {
-			p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message:  fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
+			p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
 			return
 		}
 		if post == nil {

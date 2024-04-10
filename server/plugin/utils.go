@@ -16,12 +16,13 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
-	"github.com/mattermost/mattermost/server/public/model"
-
 	"github.com/google/go-github/v48/github"
 	"github.com/pkg/errors"
+
+	"github.com/mattermost/mattermost-plugin-github/server/constants"
+	"github.com/mattermost/mattermost-plugin-github/server/serializer"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func getMentionSearchQuery(username, org string) string {
@@ -427,7 +428,7 @@ func (p *Plugin) CreateCommentToIssue(c *serializer.UserContext, w http.Response
 		rootID = post.RootId
 	}
 
-	permalinkReplyMessage := fmt.Sprintf("[Comment](%v) attached to GitHub issue [#%v](%v)", permalink, issueNumber, result.GetHTMLURL())
+	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v) from a [message](%v)", issueNumber, result.GetHTMLURL(), permalink)
 	reply := &model.Post{
 		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,

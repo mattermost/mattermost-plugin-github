@@ -30,9 +30,9 @@ export const getCloseOrReopenIssueModalData = createSelector(
         return {
             visible: pluginState.isCloseOrReopenIssueModalVisible,
             messageData,
-        }
-    }
-)
+        };
+    },
+);
 
 function mapPrsToDetails(prs, details) {
     if (!prs) {

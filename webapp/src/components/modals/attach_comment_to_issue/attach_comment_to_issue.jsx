@@ -40,6 +40,11 @@ export default class AttachIssueModal extends PureComponent {
         }
 
         if (!this.state.issueValue) {
+            if (!this.state.comment.trim()) {
+                this.setState({error: 'This field is required.', submitting: false});
+                return;
+            }
+
             const {repo_owner, repo_name, issue_number} = this.props.messageData ?? {};
             const issue = {
                 owner: repo_owner,
@@ -90,7 +95,7 @@ export default class AttachIssueModal extends PureComponent {
         });
     };
 
-    handleIssueCommentChange = (comment) => this.setState({comment});
+    handleIssueCommentChange = (comment) => this.setState({comment, error: ''});
 
     handleClose = (e) => {
         if (e && e.preventDefault) {
@@ -127,7 +132,9 @@ export default class AttachIssueModal extends PureComponent {
                 <Input
                     label='Create a comment'
                     type='textarea'
+                    required={true}
                     onChange={this.handleIssueCommentChange}
+                    error={error}
                     value={comment}
                 />
             </div>
