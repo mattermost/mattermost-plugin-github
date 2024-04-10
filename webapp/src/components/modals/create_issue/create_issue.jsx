@@ -64,7 +64,7 @@ export default class CreateIssueModal extends PureComponent {
         const isValidTitle = this.state.issueTitle.trim().length !== 0;
         if (!this.validator.validate() || !isValidTitle) {
             this.setState({
-                issueTitleValid: Boolean(isValidTitle),
+                issueTitleValid: isValidTitle,
                 showErrors: true,
             });
             return;
