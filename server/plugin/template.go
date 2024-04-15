@@ -303,9 +303,9 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("pullRequestReviewEvent").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} {{template "user" .GetSender}}
-{{- if eq .GetReview.GetState "APPROVED"}} approved
-{{- else if eq .GetReview.GetState "COMMENTED"}} commented on
-{{- else if eq .GetReview.GetState "CHANGES_REQUESTED"}} requested changes on
+{{- if eq .GetReview.GetState "approved"}} approved
+{{- else if eq .GetReview.GetState "commented"}} commented on
+{{- else if eq .GetReview.GetState "changes_requested"}} requested changes on
 {{- end }} {{template "pullRequest" .GetPullRequest}}:
 
 {{.Review.GetBody | replaceAllGitHubUsernames}}
@@ -314,7 +314,6 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 	template.Must(masterTemplate.New("newReviewComment").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} New review comment by {{template "user" .GetSender}} on {{template "pullRequest" .GetPullRequest}}:
 
-{{.GetComment.GetDiffHunk}}
 {{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 

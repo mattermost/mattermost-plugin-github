@@ -937,7 +937,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 	post := &model.Post{
 		UserId:  p.BotUserID,
-		Type:    "custom_git_pull_review_comment",
+		Type:    "custom_git_pr_comment",
 		Message: newReviewMessage,
 	}
 
