@@ -1006,7 +1006,7 @@ Should this be here?
 			Repo:        &repo,
 			PullRequest: &pullRequest,
 			Comment: &github.PullRequestComment{
-				Body:     sToP("Should this be here?"),
+				Body: sToP("Should this be here?"),
 			},
 			Sender: &user,
 		})
@@ -1026,7 +1026,7 @@ Should this be here?
 			Repo:        &repo,
 			PullRequest: &pullRequest,
 			Comment: &github.PullRequestComment{
-				Body:     sToP("Should this be here?\n" + gitHubMentions),
+				Body: sToP("Should this be here?\n" + gitHubMentions),
 			},
 			Sender: &user,
 		})
