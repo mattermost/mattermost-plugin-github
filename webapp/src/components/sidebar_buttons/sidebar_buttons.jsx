@@ -14,6 +14,7 @@ export default class SidebarButtons extends React.PureComponent {
         connected: PropTypes.bool,
         clientId: PropTypes.string,
         enterpriseURL: PropTypes.string,
+        mentions: PropTypes.arrayOf(PropTypes.object),
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
@@ -117,6 +118,7 @@ export default class SidebarButtons extends React.PureComponent {
             return null;
         }
 
+        const mentions = this.props.mentions || [];
         const reviews = this.props.reviews || [];
         const yourPrs = this.props.yourPrs || [];
         const unreads = this.props.unreads || [];
@@ -152,6 +154,21 @@ export default class SidebarButtons extends React.PureComponent {
                         {' ' + yourPrs.length}
                     </a>
                 </OverlayTrigger>
+
+                <OverlayTrigger
+                    key='githubMentionsLink'
+                    placement={placement}
+                    overlay={<Tooltip id='mentionTooltip'>{'Mentions on Pull Requests'}</Tooltip>}
+                >
+                    <a
+                        onClick={() => this.openRHS(RHSStates.MENTIONS)}
+                        style={button}
+                    >
+                        <i className='fa fa-commenting'/>
+                        {' ' + mentions.length}
+                    </a>
+                </OverlayTrigger>
+
                 <OverlayTrigger
                     key='githubReviewsLink'
                     placement={placement}
