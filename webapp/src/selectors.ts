@@ -2,11 +2,12 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {createSelector} from 'reselect';
 
-import {GlobalState} from './types/store';
+import {GlobalState, PluginState} from './types/store';
+import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData} from './types/github_types';
 
 const emptyArray: GithubIssueData[] | UnreadsData[] = [];
 
-export const getPluginState = (state: GlobalState) => state['plugins-github'] || {};
+export const getPluginState = (state: GlobalState): PluginState => state['plugins-github'];
 
 export const getServerRoute = (state: GlobalState) => {
     const config = getConfig(state);

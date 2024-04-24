@@ -6,9 +6,10 @@ import * as React from 'react';
 import * as CSS from 'csstype';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
-import {Theme} from 'mattermost-redux/types/preferences';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
+
+import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -325,7 +326,7 @@ function getGithubLabels(labels: GithubLabel[]) {
     });
 }
 
-function getReviewText(item: Item, style: any, secondLine: boolean) {
+function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
     if (!item.reviews || !item.requestedReviewers) {
         return null;
     }

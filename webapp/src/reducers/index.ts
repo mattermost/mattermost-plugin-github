@@ -3,6 +3,8 @@
 
 import {combineReducers} from 'redux';
 
+import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData} from '../types/github_types';
+
 import ActionTypes from '../action_types';
 import Constants from '../constants';
 

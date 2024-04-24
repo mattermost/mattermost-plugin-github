@@ -1,34 +1,38 @@
-type GithubLabel = {
+import * as CSS from 'csstype';
+
+import {Theme} from 'mattermost-redux/types/preferences';
+
+export type GithubLabel = {
     id: number;
     name: string;
     color: CSS.Properties;
 }
 
-type User = {
+type GitHubUser = {
     login: string;
 }
 
-type Review = {
+export type Review = {
     state: string;
-    user: User;
+    user: GitHubUser;
 }
 
-type Item = PrsDetailsData & {
+export type GithubItem = PrsDetailsData & {
     id: number;
     title: string;
     created_at: string;
     updated_at: string;
     html_url: string;
     repository_url?: string;
-    user: User;
-    owner?: User;
+    user: GitHubUser;
+    owner?: GitHubUser;
     milestone?: {
         title: string;
     }
     repository?: {
         full_name: string;
     }
-    labels?: Label[];
+    labels?: GithubLabel[];
 
     // Assignments
     pullRequest?: unknown;
@@ -40,18 +44,18 @@ type Item = PrsDetailsData & {
     reason?: string;
 }
 
-type GithubItemsProps = {
-    items: Item[];
+export type GithubItemsProps = {
+    items: GithubItem[];
     theme: Theme;
 }
 
-type UserSettingsData = {
+export type UserSettingsData = {
     sidebar_buttons: string;
     daily_reminder: boolean;
     notifications: boolean;
 }
 
-type ConnectedData = {
+export type ConnectedData = {
     connected: boolean;
     github_username: string;
     github_client_id: string;
@@ -61,11 +65,11 @@ type ConnectedData = {
     configuration: Record<string, unknown>;
 }
 
-type ConfigurationData = {
+export type ConfigurationData = {
     left_sidebar_enabled: boolean;
 }
 
-type PrsDetailsData = {
+export type PrsDetailsData = {
     url: string;
     number: number;
     status?: string;
@@ -74,64 +78,64 @@ type PrsDetailsData = {
     reviews?: Review[];
 }
 
-type GithubIssueData = {
+export type GithubIssueData = {
     number: number;
     repository_url: string;
 }
 
-type YourReposData = {
+export type YourReposData = {
     name: string;
     full_name: string;
 }
 
-type UnreadsData = {
+export type UnreadsData = {
     html_url: string;
 }
 
-type SidebarContentData = {
+export type SidebarContentData = {
     prs: GithubIssueData[];
     reviews: GithubIssueData[];
     assignments: GithubIssueData[];
     unreads: UnreadsData[];
 }
 
-type MentionsData = {
+export type MentionsData = {
     id: number;
 }
 
-type GithubUsersData = {
+export type GithubUsersData = {
     username: string;
     last_try: number;
 }
 
-type ShowRhsPluginActionData = {
+export type ShowRhsPluginActionData = {
     type: string;
     state: string;
     pluggableId: string;
 }
 
-type CreateIssueModalData = {
+export type CreateIssueModalData = {
     title: string;
     channelId: string;
     postId: string;
 }
 
-type AttachCommentToIssueModalForPostIdData = {
+export type AttachCommentToIssueModalForPostIdData = {
     postId: string;
 }
 
-type APIError = {
+export type APIError = {
     id?: string;
     message: string;
     status_code: number;
 }
 
-type SidebarData = {
+export type SidebarData = {
     username: string;
     reviews: GithubIssueData[];
     yourPrs: GithubIssueData[];
     yourAssignments: GithubIssueData[],
     unreads: UnreadsData[]
-    org: organization,
+    org: string,
     rhsState?: string | null
 }

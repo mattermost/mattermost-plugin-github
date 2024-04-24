@@ -9,6 +9,7 @@ import {GetStateFunc} from '../types/store';
 
 import Client from '../client';
 import ActionTypes from '../action_types';
+import {APIError, PrsDetailsData, ShowRhsPluginActionData} from '../types/github_types';
 
 export function getConnected(reminder = false) {
     return async (dispatch: DispatchFunc) => {
