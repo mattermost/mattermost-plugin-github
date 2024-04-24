@@ -96,9 +96,10 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
             e.preventDefault();
         }
 
-        if (!this.validator.validate() || !this.state.issueTitle) {
+        const isValidTitle = this.state.issueTitle.trim().length !== 0;
+        if (!this.validator.validate() || !isValidTitle) {
             this.setState({
-                issueTitleValid: Boolean(this.state.issueTitle),
+                issueTitleValid: isValidTitle,
                 showErrors: true,
             });
             return;
