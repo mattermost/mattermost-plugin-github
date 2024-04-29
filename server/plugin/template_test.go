@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1453,8 +1453,8 @@ func iToP(i int) *int {
 	return &i
 }
 
-func tToP(t time.Time) *time.Time {
-	return &t
+func tToP(t time.Time) *github.Timestamp {
+	return &github.Timestamp{Time: t}
 }
 
 func bToP(b bool) *bool {
