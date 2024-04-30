@@ -1251,7 +1251,6 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 	} else {
 		orgsList, _ := getOrganizations(org)
 		for _, org := range orgsList {
-
 			orgRepos, statusCode, err := getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
 			if err != nil {
 				if statusCode == http.StatusNotFound {
