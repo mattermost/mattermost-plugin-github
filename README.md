@@ -120,7 +120,7 @@ account with the name `github`.
 Open **System Console > Plugins > GitHub** and do the following:
 
 1. Generate a new value for **At Rest Encryption Key**.
-2. (Optional) **GitHub Organization:** Lock the plugin to a single GitHub organization by setting this field to the name of your GitHub organization.
+2. (Optional) **GitHub Organization:** Lock the plugin to a single GitHub organizations by setting this field to the name of your GitHub organizations. Enter the comma-separated organizations in the field.
 3. (Optional) **Enable Private Repositories:** Allow the plugin to receive notifications from private repositories by setting this value to `true`.
 4. (**Enterprise Only**) **Enterprise Base URL** and **Enterprise Upload URL**: Set these values to your GitHub Enterprise URLs, e.g. `https://github.example.com`. The Base and Upload URLs are often the same. When enabled, existing users must reconnect their accounts to gain access to private repositories. Affected users will be notified by the plugin once private repositories are enabled.
 5. Hit **Save**.

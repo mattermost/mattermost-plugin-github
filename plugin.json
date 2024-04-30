@@ -54,9 +54,9 @@
             },
             {
                 "key": "GithubOrg",
-                "display_name": "GitHub Organization:",
+                "display_name": "GitHub Organizations:",
                 "type": "text",
-                "help_text": "(Optional) Set to lock the plugin to a single GitHub organization."
+                "help_text": "(Optional) Set to lock the plugin to a GitHub organizations. Enter the comma-separated organizations."
             },
             {
                 "key": "EnterpriseBaseURL",

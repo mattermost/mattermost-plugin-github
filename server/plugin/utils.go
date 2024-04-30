@@ -19,19 +19,19 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getMentionSearchQuery(username, org string) string {
+func getMentionSearchQuery(username string, org []string) string {
 	return buildSearchQuery("is:open mentions:%v archived:false %v", username, org)
 }
 
-func getReviewSearchQuery(username, org string) string {
+func getReviewSearchQuery(username string, org []string) string {
 	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, org)
 }
 
-func getYourPrsSearchQuery(username, org string) string {
+func getYourPrsSearchQuery(username string, org []string) string {
 	return buildSearchQuery("is:pr is:open author:%v archived:false %v", username, org)
 }
 
-func getYourAssigneeSearchQuery(username, org string) string {
+func getYourAssigneeSearchQuery(username string, org []string) string {
 	return buildSearchQuery("is:open assignee:%v archived:false %v", username, org)
 }
 
@@ -45,10 +45,12 @@ func getIssuesSearchQuery(org, searchTerm string) string {
 	return fmt.Sprintf(query, orgField, searchTerm)
 }
 
-func buildSearchQuery(query, username, org string) string {
+func buildSearchQuery(query, username string, orgs []string) string {
 	orgField := ""
-	if len(org) != 0 {
-		orgField = fmt.Sprintf("org:%v", org)
+	for _, org := range orgs {
+		if len(org) != 0 {
+			orgField = fmt.Sprintf("%s org:%s", orgField, org)
+		}
 	}
 
 	return fmt.Sprintf(query, username, orgField)
@@ -383,4 +385,23 @@ func lastN(s string, n int) string {
 	}
 
 	return string(out)
+}
+
+func getOrganizations(organizations string) ([]string, map[string]bool) {
+	if organizations == "" {
+		return nil, nil
+	}
+
+	list := strings.Split(organizations, ",")
+	orgMap := make(map[string]bool)
+	allOrgs := []string{}
+	for _, org := range list {
+		org = strings.TrimSpace(strings.ToLower(org))
+		if len(org) > 0 {
+			orgMap[org] = true
+			allOrgs = append(allOrgs, org)
+		}
+	}
+
+	return allOrgs, orgMap
 }

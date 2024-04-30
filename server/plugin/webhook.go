@@ -307,7 +307,9 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	if owner == "" {
 		return false
 	}
-	if err := p.checkOrg(owner); err != nil {
+
+	_, orgMap := getOrganizations(config.GitHubOrg)
+	if err := p.checkOrg(owner, config.GitHubOrg, orgMap); err != nil {
 		return false
 	}
 

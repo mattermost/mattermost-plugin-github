@@ -298,3 +298,42 @@ func TestLastN(t *testing.T) {
 		assert.Equal(t, tc.Expected, lastN(tc.Text, tc.N))
 	}
 }
+
+func TestGetOrganizations(t *testing.T) {
+	tcs := []struct {
+		Organizations   string
+		ExpectedOrgList []string
+		ExpectedOrgMap  map[string]bool
+	}{
+		{
+			Organizations:   "org-1,org-2",
+			ExpectedOrgList: []string{"org-1", "org-2"},
+			ExpectedOrgMap: map[string]bool{
+				"org-1": true,
+				"org-2": true,
+			},
+		},
+		{
+			Organizations:   "org-1,org-2,",
+			ExpectedOrgList: []string{"org-1", "org-2"},
+			ExpectedOrgMap: map[string]bool{
+				"org-1": true,
+				"org-2": true,
+			},
+		},
+		{
+			Organizations:   "org-1,     org-2    ",
+			ExpectedOrgList: []string{"org-1", "org-2"},
+			ExpectedOrgMap: map[string]bool{
+				"org-1": true,
+				"org-2": true,
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		orgList, orgMap := getOrganizations(tc.Organizations)
+		assert.Equal(t, tc.ExpectedOrgList, orgList)
+		assert.Equal(t, tc.ExpectedOrgMap, orgMap)
+	}
+}

@@ -27,11 +27,11 @@ function enterpriseURL(state = '', action) {
     }
 }
 
-function organization(state = '', action) {
+function organizations(state = '', action) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        if (action.data && action.data.organization) {
-            return action.data.organization;
+        if (action.data && action.data.organizations) {
+            return action.data.organizations;
         }
         return '';
     default:
@@ -213,7 +213,7 @@ const attachCommentToIssueModalForPostId = (state = '', action) => {
 export default combineReducers({
     connected,
     enterpriseURL,
-    organization,
+    organizations,
     username,
     userSettings,
     configuration,

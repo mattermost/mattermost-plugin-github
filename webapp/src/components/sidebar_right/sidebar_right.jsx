@@ -66,7 +66,7 @@ function shouldUpdateDetails(prs, prevPrs, targetState, currentState, prevState)
 export default class SidebarRight extends React.PureComponent {
     static propTypes = {
         username: PropTypes.string,
-        org: PropTypes.string,
+        orgs: PropTypes.string,
         enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
@@ -102,7 +102,8 @@ export default class SidebarRight extends React.PureComponent {
 
     render() {
         const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
-        const orgQuery = this.props.org ? '+org%3A' + this.props.org : '';
+        let orgQuery = "";
+        this.props.orgs.map((org) => orgQuery += ('+org%3A' + org));
         const {yourPrs, reviews, unreads, yourAssignments, username, rhsState} = this.props;
 
         let title = '';
