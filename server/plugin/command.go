@@ -458,7 +458,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 		if foundErr != nil {
 			if strings.Contains(foundErr.Error(), "404 Not Found") {
-				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorised to access webhooks.
+				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
 				return subOrgMsg
 			}
 			return errors.Wrap(foundErr, "failed to get the list of webhooks").Error()
@@ -498,7 +498,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
-			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorised to access webhooks.
+			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
 			return msg
 		}
 		return errors.Wrap(err, "failed to get the list of webhooks").Error()
