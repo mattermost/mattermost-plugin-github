@@ -1,6 +1,6 @@
 package serializer
 
-import "github.com/google/go-github/v48/github"
+import "github.com/google/go-github/v54/github"
 
 type FilteredNotification struct {
 	github.Notification

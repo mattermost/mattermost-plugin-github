@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v48/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 )
@@ -128,8 +128,8 @@ func newGithubIssue(prNumber githubv4.Int, title, login githubv4.String, reposit
 	userLogin := string(login)
 	milestoneTitle := string(milestone)
 	url := htmlURL.String()
-	createdAtTime := createdAt.Time
-	updatedAtTime := updatedAt.Time
+	createdAtTime := github.Timestamp{Time: createdAt.Time}
+	updatedAtTime := github.Timestamp{Time: updatedAt.Time}
 
 	return &github.Issue{
 		Number:        &number,

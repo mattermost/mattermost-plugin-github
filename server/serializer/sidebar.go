@@ -3,7 +3,7 @@ package serializer
 import (
 	"encoding/json"
 
-	"github.com/google/go-github/v48/github"
+	"github.com/google/go-github/v54/github"
 )
 
 type SidebarContent struct {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/go-github/v48/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost-plugin-github/server/serializer"
