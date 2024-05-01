@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
@@ -23,16 +24,17 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 )
 
 const (
-	githubTokenKey       = "_githubtoken"
-	githubOauthKey       = "githuboauthkey_"
-	githubUsernameKey    = "_githubusername"
-	githubPrivateRepoKey = "_githubprivate"
+	githubTokenKey                  = "_githubtoken"
+	githubOauthKey                  = "githuboauthkey_"
+	githubUsernameKey               = "_githubusername"
+	githubPrivateRepoKey            = "_githubprivate"
+	githubObjectTypeIssue           = "issue"
+	githubObjectTypeIssueComment    = "issue_comment"
+	githubObjectTypePRReviewComment = "pr_review_comment"
 
 	mm34646MutexKey = "mm34646_token_reset_mutex"
 	mm34646DoneKey  = "mm34646_token_reset_done"
@@ -57,6 +59,53 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+
+	apiErrorIDNotConnected = "not_connected"
+
+	// TokenTTL is the OAuth token expiry duration in seconds
+	tokenTTL = 600
+
+	requestTimeout         = 30 * time.Second
+	oauthCompleteTimeout   = 2 * time.Minute
+	headerMattermostUserID = "Mattermost-User-ID"
+	ownerQueryParam        = "owner"
+	repoQueryParam         = "repo"
+	numberQueryParam       = "number"
+	postIDQueryParam       = "postId"
+
+	issueStatus         = "status"
+	assigneesForProps   = "assignees"
+	labelsForProps      = "labels"
+	descriptionForProps = "description"
+	titleForProps       = "title"
+	issueNumberForProps = "issue_number"
+	issueURLForProps    = "issue_url"
+	repoOwnerForProps   = "repo_owner"
+	repoNameForProps    = "repo_name"
+
+	statusClose  = "Close"
+	statusReopen = "Reopen"
+
+	issueCompleted  = "completed"
+	issueNotPlanned = "not_planned"
+	issueClose      = "closed"
+	issueOpen       = "open"
+
+	// Actions of webhook events
+	actionOpened               = "opened"
+	actionClosed               = "closed"
+	actionReopened             = "reopened"
+	actionSubmitted            = "submitted"
+	actionLabeled              = "labeled"
+	actionAssigned             = "assigned"
+	actionCreated              = "created"
+	actionDeleted              = "deleted"
+	actionEdited               = "edited"
+	actionMarkedReadyForReview = "ready_for_review"
+
+	postPropGithubRepo       = "gh_repo"
+	postPropGithubObjectID   = "gh_object_id"
+	postPropGithubObjectType = "gh_object_type"
 )
 
 var (
@@ -171,12 +220,12 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 	return p.githubConnectUser(ctx, userInfo), nil
 }
 
-func (p *Plugin) githubConnectUser(ctx context.Context, info *serializer.GitHubUserInfo) *github.Client {
+func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
 	tok := *info.Token
 	return p.githubConnectToken(tok)
 }
 
-func (p *Plugin) graphQLConnect(info *serializer.GitHubUserInfo) *graphql.Client {
+func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
 	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
@@ -310,7 +359,7 @@ func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo st
 	}
 
 	// Getting the Github repository from notification post props
-	repo, ok = post.GetProp(constants.PostPropGithubRepo).(string)
+	repo, ok = post.GetProp(postPropGithubRepo).(string)
 	if !ok || repo == "" {
 		return org, repo, id, objectType, false
 	}
@@ -324,13 +373,13 @@ func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo st
 	org, repo = orgRepo[0], orgRepo[1]
 
 	// Getting the Github object id from notification post props
-	id, ok = post.GetProp(constants.PostPropGithubObjectID).(float64)
+	id, ok = post.GetProp(postPropGithubObjectID).(float64)
 	if !ok || id == 0 {
 		return org, repo, id, objectType, false
 	}
 
 	// Getting the Github object type from notification post props
-	objectType, ok = post.GetProp(constants.PostPropGithubObjectType).(string)
+	objectType, ok = post.GetProp(postPropGithubObjectType).(string)
 	if !ok || objectType == "" {
 		return org, repo, id, objectType, false
 	}
@@ -352,27 +401,27 @@ func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reactio
 
 	info, appErr := p.getGitHubUserInfo(reaction.UserId)
 	if appErr != nil {
-		if appErr.ID != constants.APIErrorIDNotConnected {
+		if appErr.ID != apiErrorIDNotConnected {
 			p.client.Log.Debug("Error in getting user info", "error", appErr.Error())
 		}
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	ghClient := p.githubConnectUser(ctx, info)
 	switch objectType {
-	case constants.GithubObjectTypeIssueComment:
+	case githubObjectTypeIssueComment:
 		if _, _, err := ghClient.Reactions.CreateIssueCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
 			p.client.Log.Debug("Error occurred while creating issue comment reaction", "error", err.Error())
 			return
 		}
-	case constants.GithubObjectTypeIssue:
+	case githubObjectTypeIssue:
 		if _, _, err := ghClient.Reactions.CreateIssueReaction(context.Background(), owner, repo, int(id), githubEmoji); err != nil {
 			p.client.Log.Debug("Error occurred while creating issue reaction", "error", err.Error())
 			return
 		}
-	case constants.GithubObjectTypePRReviewComment:
+	case githubObjectTypePRReviewComment:
 		if _, _, err := ghClient.Reactions.CreatePullRequestCommentReaction(context.Background(), owner, repo, int64(id), githubEmoji); err != nil {
 			p.client.Log.Debug("Error occurred while creating PR review comment reaction", "error", err.Error())
 			return
@@ -396,17 +445,17 @@ func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.React
 
 	info, appErr := p.getGitHubUserInfo(reaction.UserId)
 	if appErr != nil {
-		if appErr.ID != constants.APIErrorIDNotConnected {
+		if appErr.ID != apiErrorIDNotConnected {
 			p.client.Log.Debug("Error in getting user info", "error", appErr.Error())
 		}
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 	ghClient := p.githubConnectUser(ctx, info)
 	switch objectType {
-	case constants.GithubObjectTypeIssueComment:
+	case githubObjectTypeIssueComment:
 		reactions, _, err := ghClient.Reactions.ListIssueCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
 		if err != nil {
 			p.client.Log.Debug("Error getting issue comment reaction list", "error", err.Error())
@@ -421,7 +470,7 @@ func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.React
 				return
 			}
 		}
-	case constants.GithubObjectTypeIssue:
+	case githubObjectTypeIssue:
 		reactions, _, err := ghClient.Reactions.ListIssueReactions(context.Background(), owner, repo, int(id), &github.ListOptions{})
 		if err != nil {
 			p.client.Log.Debug("Error getting issue reaction list", "error", err.Error())
@@ -436,7 +485,7 @@ func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.React
 				return
 			}
 		}
-	case constants.GithubObjectTypePRReviewComment:
+	case githubObjectTypePRReviewComment:
 		reactions, _, err := ghClient.Reactions.ListPullRequestCommentReactions(context.Background(), owner, repo, int64(id), &github.ListOptions{})
 		if err != nil {
 			p.client.Log.Debug("Error getting PR review comment reaction list", "error", err.Error())
@@ -511,7 +560,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	msg := post.Message
 	info, appErr := p.getGitHubUserInfo(post.UserId)
 	if appErr != nil {
-		if appErr.ID != constants.APIErrorIDNotConnected {
+		if appErr.ID != apiErrorIDNotConnected {
 			p.client.Log.Warn("Error in getting user info", "error", appErr.Message)
 		}
 		return nil, ""
@@ -585,7 +634,7 @@ func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
 	}
 }
 
-func (p *Plugin) storeGitHubUserInfo(info *serializer.GitHubUserInfo) error {
+func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 	config := p.getConfiguration()
 
 	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
@@ -602,22 +651,22 @@ func (p *Plugin) storeGitHubUserInfo(info *serializer.GitHubUserInfo) error {
 	return nil
 }
 
-func (p *Plugin) getGitHubUserInfo(userID string) (*serializer.GitHubUserInfo, *serializer.APIErrorResponse) {
+func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorResponse) {
 	config := p.getConfiguration()
 
-	var userInfo *serializer.GitHubUserInfo
+	var userInfo *GitHubUserInfo
 	err := p.store.Get(userID+githubTokenKey, &userInfo)
 	if err != nil {
-		return nil, &serializer.APIErrorResponse{ID: "", Message: "Unable to get user info.", StatusCode: http.StatusInternalServerError}
+		return nil, &APIErrorResponse{ID: "", Message: "Unable to get user info.", StatusCode: http.StatusInternalServerError}
 	}
 	if userInfo == nil {
-		return nil, &serializer.APIErrorResponse{ID: constants.APIErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
+		return nil, &APIErrorResponse{ID: apiErrorIDNotConnected, Message: "Must connect user account to GitHub first.", StatusCode: http.StatusBadRequest}
 	}
 
 	unencryptedToken, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken)
 	if err != nil {
 		p.client.Log.Warn("Failed to decrypt access token", "error", err.Error())
-		return nil, &serializer.APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
+		return nil, &APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
 	}
 
 	userInfo.Token.AccessToken = unencryptedToken
@@ -754,7 +803,7 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 	return string(summaryByte), nil
 }
 
-func (p *Plugin) PostToDo(info *serializer.GitHubUserInfo, userID string) error {
+func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 	ctx := context.Background()
 	text, err := p.GetToDo(ctx, info.GitHubUsername, p.githubConnectUser(ctx, info))
 	if err != nil {
@@ -889,7 +938,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 	return text, nil
 }
 
-func (p *Plugin) HasUnreads(info *serializer.GitHubUserInfo) bool {
+func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
@@ -985,9 +1034,9 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		"userid": userID,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), constants.RequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 
-	context := &serializer.Context{
+	context := &Context{
 		Ctx:    ctx,
 		UserID: userID,
 		Log:    eventLogger,
@@ -1001,7 +1050,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		return
 	}
 
-	userContext := &serializer.UserContext{
+	userContext := &UserContext{
 		Context: *context,
 		GHInfo:  info,
 	}
@@ -1031,7 +1080,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 func (p *Plugin) getUsername(mmUserID string) (string, error) {
 	info, apiEr := p.getGitHubUserInfo(mmUserID)
 	if apiEr != nil {
-		if apiEr.ID != constants.APIErrorIDNotConnected {
+		if apiEr.ID != apiErrorIDNotConnected {
 			return "", apiEr
 		}
 

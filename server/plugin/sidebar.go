@@ -1,10 +1,15 @@
-package serializer
+package plugin
 
 import (
 	"encoding/json"
 
 	"github.com/google/go-github/v54/github"
 )
+
+type FilteredNotification struct {
+	github.Notification
+	HTMLURL string `json:"html_url"`
+}
 
 type SidebarContent struct {
 	PRs         []*github.Issue         `json:"prs"`

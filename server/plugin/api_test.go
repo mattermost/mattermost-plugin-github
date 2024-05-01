@@ -13,8 +13,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 )
 
@@ -84,7 +82,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			expectedResponse: testutils.ExpectedResponse{
 				StatusCode:   http.StatusUnauthorized,
 				ResponseType: testutils.ContentTypeJSON,
-				Body:         serializer.APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized},
+				Body:         APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized},
 			},
 			userID: "",
 		}, "unauthorized test http": {
@@ -120,7 +118,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			p.SetAPI(&plugintest.API{})
 
 			req := test.httpTest.CreateHTTPRequest(test.request)
-			req.Header.Add(constants.HeaderMattermostUserID, test.userID)
+			req.Header.Add(headerMattermostUserID, test.userID)
 			rr := httptest.NewRecorder()
 			p.ServeHTTP(&plugin.Context{}, rr, req)
 			test.httpTest.CompareHTTPResponse(rr, test.expectedResponse)

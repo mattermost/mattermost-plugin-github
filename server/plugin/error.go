@@ -1,4 +1,4 @@
-package serializer
+package plugin
 
 type APIErrorResponse struct {
 	ID         string `json:"id"`

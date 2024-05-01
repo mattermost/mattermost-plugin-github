@@ -14,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
-
 	"github.com/google/go-github/v54/github"
 	"github.com/microcosm-cc/bluemonday"
 
@@ -336,11 +334,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 	action := event.GetAction()
 	switch action {
-	case constants.ActionOpened,
-		constants.ActionReopened,
-		constants.ActionMarkedReadyForReview,
-		constants.ActionLabeled,
-		constants.ActionClosed:
+	case actionOpened,
+		actionReopened,
+		actionMarkedReadyForReview,
+		actionLabeled,
+		actionClosed:
 	default:
 		return
 	}
@@ -369,11 +367,11 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != constants.ActionClosed {
+		if sub.PullsMerged() && action != actionClosed {
 			continue
 		}
 
-		if sub.PullsCreated() && action != constants.ActionOpened {
+		if sub.PullsCreated() && action != actionOpened {
 			continue
 		}
 
@@ -393,15 +391,15 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		prNumber := event.GetPullRequest().Number
 
-		post.AddProp(constants.PostPropGithubRepo, repoName)
-		post.AddProp(constants.PostPropGithubObjectID, prNumber)
-		post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypeIssue)
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, prNumber)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
 
 		if !contained && label != "" {
 			continue
 		}
 
-		if action == constants.ActionLabeled {
+		if action == actionLabeled {
 			if label != "" && label == eventLabel {
 				pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
 				if err != nil {
@@ -415,7 +413,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 		}
 
-		if action == constants.ActionOpened {
+		if action == actionOpened {
 			prNotificationType := "newPR"
 			if isPRInDraftState {
 				prNotificationType = "newDraftPR"
@@ -429,7 +427,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			post.Message = p.sanitizeDescription(newPRMessage)
 		}
 
-		if action == constants.ActionReopened {
+		if action == actionReopened {
 			reopenedPRMessage, err := renderTemplate("reopenedPR", event)
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -439,7 +437,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			post.Message = p.sanitizeDescription(reopenedPRMessage)
 		}
 
-		if action == constants.ActionMarkedReadyForReview {
+		if action == actionMarkedReadyForReview {
 			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -449,7 +447,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			post.Message = p.sanitizeDescription(markedReadyToReviewPRMessage)
 		}
 
-		if action == constants.ActionClosed {
+		if action == actionClosed {
 			post.Message = closedPRMessage
 		}
 
@@ -471,7 +469,7 @@ func (p *Plugin) sanitizeDescription(description string) string {
 
 func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullRequestEvent) {
 	action := event.GetAction()
-	if action != constants.ActionOpened {
+	if action != actionOpened {
 		return
 	}
 
@@ -533,7 +531,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
 	timeDiff := time.Until(issue.GetCreatedAt().Time) * -1
-	if action == constants.ActionLabeled && timeDiff.Seconds() < 4.00 {
+	if action == actionLabeled && timeDiff.Seconds() < 4.00 {
 		return
 	}
 
@@ -544,16 +542,16 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	issueTemplate := ""
 	switch action {
-	case constants.ActionOpened:
+	case actionOpened:
 		issueTemplate = "newIssue"
 
-	case constants.ActionClosed:
+	case actionClosed:
 		issueTemplate = "closedIssue"
 
-	case constants.ActionReopened:
+	case actionReopened:
 		issueTemplate = "reopenedIssue"
 
-	case constants.ActionLabeled:
+	case actionLabeled:
 		issueTemplate = "issueLabelled"
 
 	default:
@@ -571,7 +569,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if sub.IssueCreations() && action != constants.ActionOpened && action != constants.ActionReopened && action != constants.ActionLabeled {
+		if sub.IssueCreations() && action != actionOpened && action != actionReopened && action != actionLabeled {
 			continue
 		}
 
@@ -600,26 +598,26 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			Message: renderedMessage,
 		}
 
-		if action == constants.ActionOpened {
+		if action == actionOpened {
 			post.Type = "custom_git_issue"
 			post.Props = map[string]interface{}{
-				constants.TitleForProps:       *issue.Title,
-				constants.IssueURLForProps:    *issue.HTMLURL,
-				constants.IssueNumberForProps: *issue.Number,
-				constants.DescriptionForProps: description,
-				constants.AssigneesForProps:   assignees,
-				constants.LabelsForProps:      labels,
-				constants.RepoOwnerForProps:   *repo.Owner.Login,
-				constants.RepoNameForProps:    *repo.Name,
-				constants.IssueStatus:         constants.Close,
+				titleForProps:       *issue.Title,
+				issueURLForProps:    *issue.HTMLURL,
+				issueNumberForProps: *issue.Number,
+				descriptionForProps: description,
+				assigneesForProps:   assignees,
+				labelsForProps:      labels,
+				repoOwnerForProps:   *repo.Owner.Login,
+				repoNameForProps:    *repo.Name,
+				issueStatus:         statusClose,
 			}
 		}
 		repoName := strings.ToLower(repo.GetFullName())
 		issueNumber := issue.Number
 
-		post.AddProp(constants.PostPropGithubRepo, repoName)
-		post.AddProp(constants.PostPropGithubObjectID, issueNumber)
-		post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypeIssue)
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, issueNumber)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
 
 		label := sub.Label()
 
@@ -634,7 +632,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if action == constants.ActionLabeled {
+		if action == actionLabeled {
 			if label == "" || label != eventLabel {
 				continue
 			}
@@ -783,7 +781,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		return
 	}
 
-	if event.GetAction() != constants.ActionCreated {
+	if event.GetAction() != actionCreated {
 		return
 	}
 
@@ -801,9 +799,9 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	repoName := strings.ToLower(repo.GetFullName())
 	commentID := event.GetComment().GetID()
 
-	post.AddProp(constants.PostPropGithubRepo, repoName)
-	post.AddProp(constants.PostPropGithubObjectID, commentID)
-	post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypeIssueComment)
+	post.AddProp(postPropGithubRepo, repoName)
+	post.AddProp(postPropGithubObjectID, commentID)
+	post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
 
 	labels := make([]string, len(event.GetIssue().Labels))
 	for index, label := range event.GetIssue().Labels {
@@ -832,7 +830,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 			continue
 		}
 
-		if event.GetAction() == constants.ActionCreated {
+		if event.GetAction() == actionCreated {
 			post.Message = message
 		}
 
@@ -864,7 +862,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	action := event.GetAction()
-	if action != constants.ActionSubmitted {
+	if action != actionSubmitted {
 		return
 	}
 
@@ -946,9 +944,9 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	repoName := strings.ToLower(repo.GetFullName())
 	commentID := event.GetComment().GetID()
 
-	post.AddProp(constants.PostPropGithubRepo, repoName)
-	post.AddProp(constants.PostPropGithubObjectID, commentID)
-	post.AddProp(constants.PostPropGithubObjectType, constants.GithubObjectTypePRReviewComment)
+	post.AddProp(postPropGithubRepo, repoName)
+	post.AddProp(postPropGithubObjectID, commentID)
+	post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
 	for index, label := range event.GetPullRequest().Labels {
@@ -986,7 +984,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
 	action := event.GetAction()
-	if action == constants.ActionEdited || action == constants.ActionDeleted {
+	if action == actionEdited || action == actionDeleted {
 		return
 	}
 
@@ -1067,7 +1065,7 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 	}
 
 	action := event.GetAction()
-	if action == constants.ActionEdited || action == constants.ActionDeleted {
+	if action == actionEdited || action == actionDeleted {
 		return
 	}
 
@@ -1211,7 +1209,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(requestedUserID, repoName) {
 			requestedUserID = ""
 		}
-	case constants.ActionClosed:
+	case actionClosed:
 		if author == sender {
 			return
 		}
@@ -1219,7 +1217,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case constants.ActionReopened:
+	case actionReopened:
 		if author == sender {
 			return
 		}
@@ -1227,7 +1225,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case constants.ActionAssigned:
+	case actionAssigned:
 		assignee := event.GetPullRequest().GetAssignee().GetLogin()
 		if assignee == sender {
 			return
@@ -1269,17 +1267,17 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 	assigneeUserID := ""
 
 	switch event.GetAction() {
-	case constants.ActionClosed:
+	case actionClosed:
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case constants.ActionReopened:
+	case actionReopened:
 		authorUserID = p.getGitHubToUserIDMapping(author)
 		if isPrivate && !p.permissionToRepo(authorUserID, repoName) {
 			authorUserID = ""
 		}
-	case constants.ActionAssigned:
+	case actionAssigned:
 		assignee := event.GetAssignee().GetLogin()
 		if assignee == sender {
 			return
@@ -1320,7 +1318,7 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		return
 	}
 
-	if event.GetAction() != constants.ActionSubmitted {
+	if event.GetAction() != actionSubmitted {
 		return
 	}
 

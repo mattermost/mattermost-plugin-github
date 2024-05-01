@@ -7,8 +7,6 @@ import (
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
-
 	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 )
 
@@ -46,7 +44,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 		}
 
 		for _, key := range keys {
-			var tryInfo serializer.GitHubUserInfo
+			var tryInfo GitHubUserInfo
 			err = p.store.Get(key, &tryInfo)
 			if err != nil {
 				p.client.Log.Warn("failed to inspect key", "key", key, "error",
@@ -92,7 +90,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 	return nil
 }
 
-func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *serializer.GitHubUserInfo) (string, error) {
+func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *GitHubUserInfo) (string, error) {
 	if info.MM34646ResetTokenDone {
 		return info.Token.AccessToken, nil
 	}

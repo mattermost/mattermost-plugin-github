@@ -19,9 +19,6 @@ import (
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
-
 	"github.com/mattermost/mattermost/server/public/model"
 )
 
@@ -371,40 +368,40 @@ func isValidURL(rawURL string) error {
 	return nil
 }
 
-func (p *Plugin) validateIssueRequestForUpdation(issue *serializer.UpdateIssueRequest, w http.ResponseWriter) bool {
+func (p *Plugin) validateIssueRequestForUpdation(issue *UpdateIssueRequest, w http.ResponseWriter) bool {
 	if issue.Title == "" {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: "Please provide a valid issue title.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue title.", StatusCode: http.StatusBadRequest})
 		return false
 	}
 	if issue.PostID == "" && issue.ChannelID == "" {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: "Please provide either a postID or a channelID", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide either a postID or a channelID", StatusCode: http.StatusBadRequest})
 		return false
 	}
 
 	return true
 }
 
-func (p *Plugin) updatePost(issue *serializer.UpdateIssueRequest, w http.ResponseWriter) {
+func (p *Plugin) updatePost(issue *UpdateIssueRequest, w http.ResponseWriter) {
 	post, appErr := p.API.GetPost(issue.PostID)
 	if appErr != nil {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
 		return
 	}
 	if post == nil {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", issue.PostID), StatusCode: http.StatusNotFound})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", issue.PostID), StatusCode: http.StatusNotFound})
 		return
 	}
 
-	post.Props[constants.AssigneesForProps] = issue.Assignees
-	post.Props[constants.LabelsForProps] = issue.Labels
-	post.Props[constants.DescriptionForProps] = issue.Body
-	post.Props[constants.TitleForProps] = issue.Title
+	post.Props[assigneesForProps] = issue.Assignees
+	post.Props[labelsForProps] = issue.Labels
+	post.Props[descriptionForProps] = issue.Body
+	post.Props[titleForProps] = issue.Title
 	if _, appErr = p.API.UpdatePost(post); appErr != nil {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
 	}
 }
 
-func (p *Plugin) CreateCommentToIssue(c *serializer.UserContext, w http.ResponseWriter, comment, owner, repo string, post *model.Post, issueNumber int) {
+func (p *Plugin) CreateCommentToIssue(c *UserContext, w http.ResponseWriter, comment, owner, repo string, post *model.Post, issueNumber int) {
 	currentUsername := c.GHInfo.GitHubUsername
 	permalink := p.getPermaLink(post.Id)
 	issueComment := &github.IssueComment{
@@ -418,7 +415,7 @@ func (p *Plugin) CreateCommentToIssue(c *serializer.UserContext, w http.Response
 		if rawResponse != nil {
 			statusCode = rawResponse.StatusCode
 		}
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create an issue comment: %s", getFailReason(statusCode, repo, currentUsername)), StatusCode: statusCode})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create an issue comment: %s", getFailReason(statusCode, repo, currentUsername)), StatusCode: statusCode})
 		return
 	}
 
@@ -437,12 +434,12 @@ func (p *Plugin) CreateCommentToIssue(c *serializer.UserContext, w http.Response
 	}
 
 	if _, appErr := p.API.CreatePost(reply); appErr != nil {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
 		return
 	}
 }
 
-func (p *Plugin) CloseOrReopenIssue(c *serializer.UserContext, w http.ResponseWriter, status, statusReason, owner, repo string, post *model.Post, issueNumber int) {
+func (p *Plugin) CloseOrReopenIssue(c *UserContext, w http.ResponseWriter, status, statusReason, owner, repo string, post *model.Post, issueNumber int) {
 	currentUsername := c.GHInfo.GitHubUsername
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 	githubIssue := &github.IssueRequest{
@@ -453,12 +450,12 @@ func (p *Plugin) CloseOrReopenIssue(c *serializer.UserContext, w http.ResponseWr
 	issue, resp, err := githubClient.Issues.Edit(c.Ctx, owner, repo, issueNumber, githubIssue)
 	if err != nil {
 		if resp != nil && resp.Response.StatusCode == http.StatusGone {
-			p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
 			return
 		}
 
 		c.Log.WithError(err).Warnf("Failed to update the issue")
-		p.writeAPIError(w, &serializer.APIErrorResponse{
+		p.writeAPIError(w, &APIErrorResponse{
 			ID: "",
 			Message: fmt.Sprintf("failed to update the issue: %s", getFailReason(resp.StatusCode,
 				repo,
@@ -471,9 +468,9 @@ func (p *Plugin) CloseOrReopenIssue(c *serializer.UserContext, w http.ResponseWr
 
 	var permalinkReplyMessage string
 	switch statusReason {
-	case constants.IssueCompleted:
+	case issueCompleted:
 		permalinkReplyMessage = fmt.Sprintf("Issue closed as completed [#%v](%v)", issueNumber, issue.GetHTMLURL())
-	case constants.IssueNotPlanned:
+	case issueNotPlanned:
 		permalinkReplyMessage = fmt.Sprintf("Issue closed as not planned [#%v](%v)", issueNumber, issue.GetHTMLURL())
 	default:
 		permalinkReplyMessage = fmt.Sprintf("Issue reopend [#%v](%v)", issueNumber, issue.GetHTMLURL())
@@ -493,16 +490,16 @@ func (p *Plugin) CloseOrReopenIssue(c *serializer.UserContext, w http.ResponseWr
 	}
 
 	if _, appErr := p.API.CreatePost(reply); appErr != nil {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
 		return
 	}
-	if status == constants.IssueClose {
-		post.Props[constants.IssueStatus] = constants.Reopen
+	if status == issueClose {
+		post.Props[issueStatus] = statusReopen
 	} else {
-		post.Props[constants.IssueStatus] = constants.Close
+		post.Props[issueStatus] = statusClose
 	}
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {
-		p.writeAPIError(w, &serializer.APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", post.Id), StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", post.Id), StatusCode: http.StatusInternalServerError})
 	}
 	p.writeJSON(w, issue)
 }

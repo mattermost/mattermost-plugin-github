@@ -12,9 +12,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/command"
-
-	"github.com/mattermost/mattermost-plugin-github/server/constants"
-	"github.com/mattermost/mattermost-plugin-github/server/serializer"
 )
 
 const (
@@ -133,7 +130,7 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 	p.client.Post.SendEphemeralPost(args.UserId, post)
 }
 
-func (p *Plugin) getMutedUsernames(userInfo *serializer.GitHubUserInfo) []string {
+func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	var mutedUsernameBytes []byte
 	err := p.store.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
 	if err != nil {
@@ -148,7 +145,7 @@ func (p *Plugin) getMutedUsernames(userInfo *serializer.GitHubUserInfo) []string
 	return mutedUsers
 }
 
-func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	var mutedUsers string
 	for _, user := range mutedUsernames {
@@ -169,7 +166,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	if contains(mutedUsernames, username) {
 		return username + " is already muted"
@@ -195,7 +192,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
-func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
@@ -208,7 +205,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	return fmt.Sprintf("`%v`", username) + " is no longer muted"
 }
 
-func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
@@ -217,7 +214,7 @@ func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *serializer.G
 	return "Unmuted all users"
 }
 
-func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid mute command. Available commands are 'list', 'add' and 'delete'."
 	}
@@ -259,7 +256,7 @@ func arrayDifference(a, b []string) []string {
 	return diff
 }
 
-func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	switch {
 	case len(parameters) == 0:
 		return "Please specify a repository or 'list' command."
@@ -270,7 +267,7 @@ func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, par
 	}
 }
 
-func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid subscribe command. Available commands are 'list', 'add' and 'delete'."
 	}
@@ -290,7 +287,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	}
 }
 
-func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	txt := ""
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
@@ -368,7 +365,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 	return found, nil
 }
 
-func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	const errorNoWebhookFound = "\nNo webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
 	const errorWebhookToUser = "\nNot able to get the list of webhooks. This feature is not available for subscription to a user."
 	subscriptionEvents := Features("pulls,issues,creates,deletes")
@@ -534,7 +531,7 @@ func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features,
 
 	return previousFeatures, nil
 }
-func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
@@ -582,12 +579,12 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	return ""
 }
 
-func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	p.disconnectGitHubAccount(args.UserId)
 	return "Disconnected your GitHub account."
 }
 
-func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
 	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
@@ -599,7 +596,7 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 	return text
 }
 
-func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
 	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
 	if err != nil {
@@ -610,7 +607,7 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 	return text
 }
 
-func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	message, err := renderTemplate("helpText", p.getConfiguration())
 	if err != nil {
 		p.client.Log.Warn("Failed to render help template", "error", err.Error())
@@ -620,7 +617,7 @@ func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 	return "###### Mattermost GitHub Plugin - Slash Command Help\n" + message
 }
 
-func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) < 2 {
 		return "Please specify both a setting and value. Use `/github help` for more usage information."
 	}
@@ -685,7 +682,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	return "Settings updated."
 }
 
-func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string {
+func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Invalid issue command. Available command is 'create'."
 	}
@@ -739,7 +736,7 @@ func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, paramet
 	return ""
 }
 
-type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *serializer.GitHubUserInfo) string
+type CommandHandleFunc func(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string
 
 func (p *Plugin) isAuthorizedSysAdmin(userID string) (bool, error) {
 	user, err := p.client.User.Get(userID)
@@ -838,7 +835,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	info, apiErr := p.getGitHubUserInfo(args.UserId)
 	if apiErr != nil {
 		text := "Unknown error."
-		if apiErr.ID == constants.APIErrorIDNotConnected {
+		if apiErr.ID == apiErrorIDNotConnected {
 			text = "You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter `/github connect`."
 		}
 		p.postCommandResponse(args, text)
