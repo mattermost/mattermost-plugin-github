@@ -177,7 +177,7 @@ func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *g
 
 func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
-	return graphql.NewClient(p.client.Log, getOrganizations, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
+	return graphql.NewClient(p.client.Log, p.configuration.getOrganizations, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
@@ -799,7 +799,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
-	orgList, orgMap := getOrganizations(config.GitHubOrg)
+	orgList, orgMap := p.configuration.getOrganizations()
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, orgList), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "Error occurred while searching for reviews")
@@ -912,7 +912,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
 	config := p.getConfiguration()
-	orgList, orgMap := getOrganizations(config.GitHubOrg)
+	orgList, orgMap := p.configuration.getOrganizations()
 	query := getReviewSearchQuery(username, orgList)
 	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
@@ -981,8 +981,8 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 		return false
 	}
 
-	orgList, _ := getOrganizations(organization)
-	isMemberOfAllOrgs := true
+	orgList, _ := p.configuration.getOrganizations()
+	isMemberOfOrg := false
 	for _, org := range orgList {
 		isMember, _, err := githubClient.Organizations.IsMember(context.Background(), org, *user.Login)
 		if err != nil {
@@ -990,10 +990,10 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 			return false
 		}
 
-		isMemberOfAllOrgs = isMemberOfAllOrgs && isMember
+		isMemberOfOrg = isMemberOfOrg || isMember
 	}
 
-	return isMemberOfAllOrgs
+	return isMemberOfOrg
 }
 
 func (p *Plugin) isOrganizationLocked() bool {

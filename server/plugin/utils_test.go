@@ -332,7 +332,10 @@ func TestGetOrganizations(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		orgList, orgMap := getOrganizations(tc.Organizations)
+		config := Configuration{
+			GitHubOrg: tc.Organizations,
+		}
+		orgList, orgMap := config.getOrganizations()
 		assert.Equal(t, tc.ExpectedOrgList, orgList)
 		assert.Equal(t, tc.ExpectedOrgMap, orgMap)
 	}

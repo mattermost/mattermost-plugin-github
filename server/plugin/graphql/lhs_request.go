@@ -29,7 +29,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
 	}
 
-	orgsList, _ := c.getOrganization(c.org)
+	orgsList, _ := c.getOrganization()
 
 	var resultReview, resultAssignee, resultOpenPR []*github.Issue
 	for _, org := range orgsList {

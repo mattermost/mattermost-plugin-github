@@ -19,20 +19,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-func getMentionSearchQuery(username string, org []string) string {
-	return buildSearchQuery("is:open mentions:%v archived:false %v", username, org)
+func getMentionSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:open mentions:%v archived:false %v", username, orgs)
 }
 
-func getReviewSearchQuery(username string, org []string) string {
-	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, org)
+func getReviewSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, orgs)
 }
 
-func getYourPrsSearchQuery(username string, org []string) string {
-	return buildSearchQuery("is:pr is:open author:%v archived:false %v", username, org)
+func getYourPrsSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:pr is:open author:%v archived:false %v", username, orgs)
 }
 
-func getYourAssigneeSearchQuery(username string, org []string) string {
-	return buildSearchQuery("is:open assignee:%v archived:false %v", username, org)
+func getYourAssigneeSearchQuery(username string, orgs []string) string {
+	return buildSearchQuery("is:open assignee:%v archived:false %v", username, orgs)
 }
 
 func getIssuesSearchQuery(org, searchTerm string) string {
@@ -387,17 +387,17 @@ func lastN(s string, n int) string {
 	return string(out)
 }
 
-func getOrganizations(organizations string) ([]string, map[string]bool) {
-	if organizations == "" {
+func (c *Configuration) getOrganizations() ([]string, map[string]bool) {
+	if c.GitHubOrg == "" {
 		return nil, nil
 	}
 
-	list := strings.Split(organizations, ",")
+	list := strings.Split(c.GitHubOrg, ",")
 	orgMap := make(map[string]bool)
 	allOrgs := []string{}
 	for _, org := range list {
 		org = strings.TrimSpace(strings.ToLower(org))
-		if len(org) > 0 {
+		if org != "" {
 			orgMap[org] = true
 			allOrgs = append(allOrgs, org)
 		}

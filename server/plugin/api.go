@@ -480,7 +480,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	config := p.getConfiguration()
-	orgList, _ := getOrganizations(config.GitHubOrg)
+	orgList, _ := p.configuration.getOrganizations()
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventConnect,
 		map[string]interface{}{
@@ -570,7 +570,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		ClientConfiguration map[string]interface{} `json:"configuration"`
 	}
 
-	orgList, _ := getOrganizations(config.GitHubOrg)
+	orgList, _ := p.configuration.getOrganizations()
 	resp := &ConnectedResponse{
 		Connected:           false,
 		EnterpriseBaseURL:   config.EnterpriseBaseURL,
@@ -646,11 +646,9 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 }
 
 func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
-
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 	username := c.GHInfo.GitHubUsername
-	orgList, _ := getOrganizations(config.GitHubOrg)
+	orgList, _ := p.configuration.getOrganizations()
 	query := getMentionSearchQuery(username, orgList)
 
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
@@ -659,7 +657,7 @@ func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	p.writeJSON(w, result)
+	p.writeJSON(w, result.Issues)
 }
 
 func (p *Plugin) getUnreadsData(c *UserContext) []*FilteredNotification {
@@ -671,7 +669,7 @@ func (p *Plugin) getUnreadsData(c *UserContext) []*FilteredNotification {
 		return nil
 	}
 
-	_, orgMap := getOrganizations(config.GitHubOrg)
+	_, orgMap := p.configuration.getOrganizations()
 
 	filteredNotifications := []*FilteredNotification{}
 	for _, n := range notifications {
@@ -801,12 +799,10 @@ func getRepoOwnerAndNameFromURL(url string) (string, string) {
 }
 
 func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	config := p.getConfiguration()
-
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	searchTerm := r.FormValue("term")
-	orgsList, _ := getOrganizations(config.GitHubOrg)
+	orgsList, _ := p.configuration.getOrganizations()
 	allIssues := []*github.Issue{}
 	for _, org := range orgsList {
 		query := getIssuesSearchQuery(org, searchTerm)
@@ -1249,19 +1245,19 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 			return
 		}
 	} else {
-		orgsList, _ := getOrganizations(org)
+		orgsList, _ := p.configuration.getOrganizations()
 		for _, org := range orgsList {
 			orgRepos, statusCode, err := getRepositoryListByOrg(c.Ctx, org, githubClient, opt)
 			if err != nil {
 				if statusCode == http.StatusNotFound {
 					orgRepos, err = getRepositoryList(c.Ctx, org, githubClient, opt)
 					if err != nil {
-						c.Log.WithError(err).Warnf("Failed to list repositories")
+						c.Log.WithError(err).Warnf("Failed to list repositories", "Organization", org)
 						p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 						return
 					}
 				} else {
-					c.Log.WithError(err).Warnf("Failed to list repositories")
+					c.Log.WithError(err).Warnf("Failed to list repositories", "Organization", org)
 					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
 					return
 				}

@@ -162,7 +162,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 
-	_, orgMap := getOrganizations(config.GitHubOrg)
+	_, orgMap := p.configuration.getOrganizations()
 	if err := p.checkOrg(owner, config.GitHubOrg, orgMap); err != nil {
 		return errors.Wrap(err, "organization not supported")
 	}
