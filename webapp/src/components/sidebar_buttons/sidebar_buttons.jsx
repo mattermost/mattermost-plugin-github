@@ -164,7 +164,7 @@ export default class SidebarButtons extends React.PureComponent {
                         onClick={() => this.openRHS(RHSStates.MENTIONS)}
                         style={button}
                     >
-                        <i className='fa fa-commenting'/>
+                        <i className='fa fa-comment-o'/>
                         {' ' + mentions.length}
                     </a>
                 </OverlayTrigger>
