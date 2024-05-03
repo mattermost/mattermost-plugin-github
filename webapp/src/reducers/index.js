@@ -91,6 +91,7 @@ const defaultSidebarContent = {
     prs: [],
     assignments: [],
     unreads: [],
+    mentions: [],
 };
 
 function sidebarContent(state = defaultSidebarContent, action) {

@@ -66,6 +66,7 @@ type SidebarContent struct {
 	PRs         []*github.Issue         `json:"prs"`
 	Reviews     []*github.Issue         `json:"reviews"`
 	Assignments []*github.Issue         `json:"assignments"`
+	Mentions    []*github.Issue         `json:"mentions"`
 	Unreads     []*FilteredNotification `json:"unreads"`
 }
 
@@ -938,27 +939,30 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, err error) {
+func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, mentionsResp []*github.Issue, err error) {
 	graphQLClient := p.graphQLConnect(c.GHInfo)
 
-	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
+	reviewResp, assignmentResp, openPRResp, mentionsResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
 	if err != nil {
-		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
+		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
 	}
 
-	return reviewResp, assignmentResp, openPRResp, nil
+	return reviewResp, assignmentResp, openPRResp, mentionsResp, nil
 }
 
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
-	reviewResp, assignmentResp, openPRResp, err := p.getLHSData(c)
+	reviewResp, assignmentResp, openPRResp, mentionsResp, err := p.getLHSData(c)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(len(mentionsResp))
 
 	return &SidebarContent{
 		PRs:         openPRResp,
 		Assignments: assignmentResp,
 		Reviews:     reviewResp,
+		Mentions:    mentionsResp,
 		Unreads:     p.getUnreadsData(c),
 	}, nil
 }
