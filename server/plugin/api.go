@@ -956,8 +956,6 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 		return nil, err
 	}
 
-	fmt.Println(len(mentionsResp))
-
 	return &SidebarContent{
 		PRs:         openPRResp,
 		Assignments: assignmentResp,
