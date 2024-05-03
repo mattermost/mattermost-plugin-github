@@ -56,6 +56,9 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+
+	// scope isn't included in the GitHub REST library because projectsV2 is part of GraphQL API
+	githubScopeReadProject = "read:project"
 )
 
 var (
@@ -531,7 +534,7 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 		// means that asks scope for private repositories
 		repo = github.ScopeRepo
 	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook), githubScopeReadProject}
 
 	if config.UsePreregisteredApplication {
 		p.client.Log.Debug("Using Chimera Proxy OAuth configuration")

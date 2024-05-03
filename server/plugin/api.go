@@ -69,6 +69,10 @@ type SidebarContent struct {
 	Unreads     []*FilteredNotification `json:"unreads"`
 }
 
+type ProjectsContent struct {
+	Projects []*github.ProjectsV2 `json:"projects"`
+}
+
 type Context struct {
 	Ctx    context.Context
 	UserID string

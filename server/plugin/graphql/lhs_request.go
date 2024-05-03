@@ -44,7 +44,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		}
 
 		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
+			return nil, nil, nil, errors.Wrap(err, "Not able to execute the query")
 		}
 
 		if !allReviewRequestsFetched {

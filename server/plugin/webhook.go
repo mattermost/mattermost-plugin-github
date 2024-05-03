@@ -6,6 +6,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -39,6 +40,18 @@ const (
 	githubObjectTypeIssue           = "issue"
 	githubObjectTypeIssueComment    = "issue_comment"
 	githubObjectTypePRReviewComment = "pr_review_comment"
+
+	projectItemActionArchived  = "archived"
+	projectItemActionConverted = "converted"
+	projectItemActionCreated   = "created"
+	projectItemActionDeleted   = "deleted"
+	projectItemActionEdited    = "edited"
+	projectItemActionReordered = "reordered"
+	projectItemActionRestored  = "restored"
+
+	projectItemContentTypeIssue       = "Issue"
+	projectItemContentTypePDraftIssue = "DraftIssue"
+	projectItemContentTypePullRequest = "PullRequest"
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -281,6 +294,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		repo = event.GetRepo()
 		handler = func() {
 			p.postStarEvent(event)
+		}
+	case *github.ProjectV2ItemEvent:
+		// repo info might require another query on a per-event basis if the project is org-based
+		handler = func() {
+			p.postProjectV2ItemEvent(event)
 		}
 	}
 
@@ -640,6 +658,84 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postProjectV2ItemEvent(event *github.ProjectV2ItemEvent) {
+	eventAction := event.GetAction()
+	org := event.GetOrg()
+
+	projectItem := event.GetProjectV2Item()
+	contentType := projectItem.GetContentType()
+	projectNodeID := projectItem.GetProjectNodeID()
+
+	// login matches the graphql org query arg, org name was confusingly empty
+	subscribedChannels := p.GetSubscribedChannelsForOrg(org.GetLogin())
+	if len(subscribedChannels) == 0 {
+		p.client.Log.Debug(fmt.Sprintf("postProjectV2ItemEvent: no subscribed channels org %s", org.GetName()))
+		return
+	}
+
+	contentTemplate := ""
+	if contentType == projectItemContentTypeIssue {
+		switch eventAction {
+		case projectItemActionArchived:
+		case projectItemActionConverted:
+		case projectItemActionCreated:
+			contentTemplate = "projectIssueCreated"
+		case projectItemActionDeleted:
+		case projectItemActionEdited:
+		case projectItemActionReordered:
+		case projectItemActionRestored:
+		default:
+		}
+	}
+
+	for _, sub := range subscribedChannels {
+		projects := sub.Projects
+		matchesProject := ""
+		for _, project := range projects {
+			if project.NodeID == projectNodeID {
+				matchesProject = project.Title
+				break
+			}
+		}
+
+		if matchesProject == "" {
+			continue
+		}
+
+		if contentType == projectItemContentTypeIssue && !sub.ProjectIssues() {
+			continue
+		}
+		if contentType == projectItemContentTypePullRequest && !sub.ProjectPulls() {
+			continue
+		}
+
+		templateData := struct {
+			Event   *github.ProjectV2ItemEvent
+			Project string
+		}{
+			Event:   event,
+			Project: matchesProject,
+		}
+
+		renderedMessage, err := renderTemplate(contentTemplate, templateData)
+		if err != nil {
+			p.client.Log.Warn("Failed to render template", "error", err.Error())
+			return
+		}
+
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_project_issue",
+			Message:   renderedMessage,
+			ChannelId: sub.ChannelID,
+		}
+
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post of project item", "post", post, "error", err.Error())
 		}
 	}
 }

@@ -58,6 +58,21 @@ func TestValidateFeatures(t *testing.T) {
 			want: output{true, []string{}},
 		},
 		{
+			name: "all features valid with project but project_issues and project_pulls missing",
+			args: []string{"pushes", `project:"platform"`},
+			want: output{false, []string{}},
+		},
+		{
+			name: "all features valid with project and issues in features",
+			args: []string{"project_issues", `project:"platform"`},
+			want: output{true, []string{}},
+		},
+		{
+			name: "all features valid with project and pulls in features",
+			args: []string{"project_pulls", `project:"platform"`},
+			want: output{true, []string{}},
+		},
+		{
 			name: "multiple features invalid with label but issues and pulls missing",
 			args: []string{"issue", "push", `label:"ruby"`},
 			want: output{false, []string{"issue", "push"}},
@@ -70,6 +85,21 @@ func TestValidateFeatures(t *testing.T) {
 		{
 			name: "multiple features invalid with label and pulls in features",
 			args: []string{"pulls", "push", "create", `label:"ruby"`},
+			want: output{false, []string{"push", "create"}},
+		},
+		{
+			name: "multiple features invalid with project but issues and pulls missing",
+			args: []string{"issue", "push", `project:"platform"`},
+			want: output{false, []string{"issue", "push"}},
+		},
+		{
+			name: "multiple features invalid with project and issues in features",
+			args: []string{"project_issues", "push", "create", `project:"platform"`},
+			want: output{false, []string{"push", "create"}},
+		},
+		{
+			name: "multiple features invalid with project and project_pulls in features",
+			args: []string{"project_pulls", "push", "create", `project:"platform"`},
 			want: output{false, []string{"push", "create"}},
 		},
 	}

@@ -95,7 +95,7 @@ As a system admin, you must create a webhook for each organization you want to r
    - **Content Type:** `application/json`
    - **Secret:** the webhook secret you copied previously.
 6. Select **Let me select individual events** for "Which events would you like to trigger this webhook?".
-7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`, `Stars`.
+7. Select the following events: `Branch or Tag creation`, `Branch or Tag deletion`, `Issue comments`, `Issues`, `Project v2 items`, `Pull requests`, `Pull request review`, `Pull request review comments`, `Pushes`, `Stars`.
 7. Hit **Add Webhook** to save it.
 
 If you have multiple organizations, repeat the process starting from step 3 to create a webhook for each organization.

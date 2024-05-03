@@ -26,6 +26,8 @@ const (
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
 	featureStars         = "stars"
+	featureProjectIssues = "project_issues"
+	featureProjectPulls  = "project_pulls"
 )
 
 const (
@@ -44,6 +46,15 @@ var validFeatures = map[string]bool{
 	featureIssueComments: true,
 	featurePullReviews:   true,
 	featureStars:         true,
+	featureProjectIssues: true,
+	featureProjectPulls:  true,
+}
+
+type Projects []Project
+
+type Project struct {
+	NodeID string
+	Title  string
 }
 
 type Features string
@@ -66,12 +77,18 @@ func validateFeatures(features []string) (bool, []string) {
 	valid := true
 	invalidFeatures := []string{}
 	hasLabel := false
+	hasProjects := false
+
 	for _, f := range features {
 		if _, ok := validFeatures[f]; ok {
 			continue
 		}
 		if strings.HasPrefix(f, "label") {
 			hasLabel = true
+			continue
+		}
+		if strings.HasPrefix(f, "project:") {
+			hasProjects = true
 			continue
 		}
 		invalidFeatures = append(invalidFeatures, f)
@@ -86,6 +103,15 @@ func validateFeatures(features []string) (bool, []string) {
 		}
 		valid = false
 	}
+	if valid && hasProjects {
+		for _, f := range features {
+			if f == featureProjectPulls || f == featureProjectIssues {
+				return valid, invalidFeatures
+			}
+		}
+		valid = false
+	}
+
 	return valid, invalidFeatures
 }
 
@@ -415,7 +441,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if !ok {
 			msg := fmt.Sprintf("Invalid feature(s) provided: %s", strings.Join(ifs, ","))
 			if len(ifs) == 0 {
-				msg = "Feature list must have \"pulls\", \"issues\" or \"issue_creations\" when using a label."
+				msg = "Feature list must have \"pulls\", \"issues\", \"issue_creations\", \"project_issues\", or \"project_pulls\" when using a label or project."
 			}
 			return msg
 		}
@@ -894,7 +920,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, project_issues, pulls, pulls_merged, pulls_created, project_pulls, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\", project:\"<projectname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{

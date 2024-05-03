@@ -382,6 +382,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 {{else}}{{end}}`))
 
+	template.Must(masterTemplate.New("projectIssueCreated").Funcs(funcMap).Parse(`
+#### {{ .Project }}
+##### New Project Issue Created
+created by {{template "user" .Event.GetSender}}`))
+
 	template.Must(masterTemplate.New("helpText").Parse("" +
 		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
 		"{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}}" +
@@ -409,6 +414,9 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issue_creations` - includes new issues only \n" +
 		"    	* `pull_reviews` - includes pull request reviews\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
+		"       * `project_issues` - includes actions taken on issues belonging to one of the project:<labelname> specified\n" +
+		"       * `project_pulls` - includes actions taken on pulls belonging to one of the project:<labelname> specified\n" +
+		"		* `project:<projectname>` - limit pull request and issue events to only this project. Must include `project_pulls` or `project_issues` in feature list when using a project.\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"    * `--render-style` - notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +

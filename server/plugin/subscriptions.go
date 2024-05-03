@@ -73,6 +73,7 @@ type Subscription struct {
 	Features   Features
 	Flags      SubscriptionFlags
 	Repository string
+	Projects   []Project
 }
 
 type Subscriptions struct {
@@ -123,17 +124,44 @@ func (s *Subscription) Stars() bool {
 	return strings.Contains(s.Features.String(), featureStars)
 }
 
+func (s *Subscription) ProjectIssues() bool {
+	return strings.Contains(s.Features.String(), featureProjectIssues)
+}
+
+func (s *Subscription) ProjectPulls() bool {
+	return strings.Contains(s.Features.String(), featureProjectPulls)
+}
+
 func (s *Subscription) Label() string {
-	if !strings.Contains(s.Features.String(), "label:") {
-		return ""
+	var label string
+	featuresSplit := strings.Split(s.Features.String(), ",")
+
+	for _, feature := range featuresSplit {
+		if strings.Contains(feature, "label:") {
+			labelSplit := strings.Split(feature, "\"")
+			label = labelSplit[1]
+			break
+		}
 	}
 
-	labelSplit := strings.Split(s.Features.String(), "\"")
-	if len(labelSplit) < 3 {
-		return ""
+	return label
+}
+
+func (s *Subscription) ProjectTitles() []string {
+	var projects []string
+	featuresSplit := strings.Split(s.Features.String(), ",")
+
+	for _, feature := range featuresSplit {
+		if strings.Contains(feature, "project:") {
+			projectSplit := strings.Split(feature, "\"")
+			if len(projectSplit[1]) == 0 {
+				continue
+			}
+			projects = append(projects, projectSplit[1])
+		}
 	}
 
-	return labelSplit[1]
+	return projects
 }
 
 func (s *Subscription) ExcludeOrgMembers() bool {
@@ -201,6 +229,42 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		Features:   features,
 		Repository: fullNameFromOwnerAndRepo(owner, repo),
 		Flags:      flags,
+	}
+
+	subscribedProjects := sub.ProjectTitles()
+	if len(subscribedProjects) > 0 {
+		userInfo, apiErr := p.getGitHubUserInfo(userID)
+		if apiErr != nil {
+			return errors.Errorf("Failed to get GitHub user info for userID:%s", userID)
+		}
+
+		graphqlClient := p.graphQLConnect(userInfo)
+		if graphqlClient == nil {
+			return errors.Errorf("Failed to get graphql client")
+		}
+
+		// currently only queries for organizational projects not user repo projects
+		// org level projects and repo level projects are both included, both can be used in issue/pr assignment
+		projectData, err := graphqlClient.GetProjectsV2Data(ctx, owner)
+		if err != nil {
+			p.client.Log.Warn("graphql organization projects query failed", "error", err.Error())
+			return errors.Errorf("Failed to get project data")
+		}
+
+		if projectData != nil {
+			var matchedProjects []Project
+			for _, project := range projectData {
+				for _, subscribedProject := range subscribedProjects {
+					if subscribedProject == *project.Title {
+						matchedProjects = append(matchedProjects, Project{NodeID: *project.NodeID, Title: *project.Title})
+					}
+				}
+			}
+			if len(matchedProjects) == 0 {
+				return errors.Errorf("No project(s) were found matching %s", strings.Join(subscribedProjects, ", "))
+			}
+			sub.Projects = matchedProjects
+		}
 	}
 
 	if err := p.AddSubscription(fullNameFromOwnerAndRepo(owner, repo), sub); err != nil {
@@ -300,6 +364,26 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 	}
 
 	return nil
+}
+
+func (p *Plugin) GetSubscribedChannelsForOrg(org string) []*Subscription {
+	subs, err := p.GetSubscriptions()
+	if err != nil {
+		return nil
+	}
+
+	subsForOrg := []*Subscription{}
+	orgKey := org + "/"
+
+	if subs.Repositories[orgKey] != nil {
+		subsForOrg = append(subsForOrg, subs.Repositories[orgKey]...)
+	}
+
+	if len(subsForOrg) == 0 {
+		return nil
+	}
+
+	return subsForOrg
 }
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
