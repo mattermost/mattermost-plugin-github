@@ -171,3 +171,31 @@ func TestSetDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestGetOrganizations(t *testing.T) {
+	tcs := []struct {
+		Organizations   string
+		ExpectedOrgList []string
+	}{
+		{
+			Organizations:   "org-1,org-2",
+			ExpectedOrgList: []string{"org-1", "org-2"},
+		},
+		{
+			Organizations:   "org-1,org-2,",
+			ExpectedOrgList: []string{"org-1", "org-2"},
+		},
+		{
+			Organizations:   "org-1,     org-2    ",
+			ExpectedOrgList: []string{"org-1", "org-2"},
+		},
+	}
+
+	for _, tc := range tcs {
+		config := Configuration{
+			GitHubOrg: tc.Organizations,
+		}
+		orgList := config.getOrganizations()
+		assert.Equal(t, tc.ExpectedOrgList, orgList)
+	}
+}

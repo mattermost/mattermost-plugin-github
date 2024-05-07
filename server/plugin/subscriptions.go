@@ -154,7 +154,6 @@ func (s *Subscription) excludedRepoForSub(repo *github.Repository) bool {
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID string, features Features, flags SubscriptionFlags) error {
-	config := p.getConfiguration()
 	if owner == "" {
 		return errors.Errorf("invalid repository")
 	}
@@ -162,8 +161,7 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 
-	_, orgMap := p.configuration.getOrganizations()
-	if err := p.checkOrg(owner, config.GitHubOrg, orgMap); err != nil {
+	if err := p.checkOrg(owner); err != nil {
 		return errors.Wrap(err, "organization not supported")
 	}
 

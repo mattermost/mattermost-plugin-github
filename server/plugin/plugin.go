@@ -799,7 +799,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
-	orgList, orgMap := p.configuration.getOrganizations()
+	orgList := p.configuration.getOrganizations()
 	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, orgList), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "Error occurred while searching for reviews")
@@ -834,7 +834,7 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 			continue
 		}
 
-		if p.checkOrg(n.GetRepository().GetOwner().GetLogin(), config.GitHubOrg, orgMap) != nil {
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
 			continue
 		}
 
@@ -911,8 +911,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
-	config := p.getConfiguration()
-	orgList, orgMap := p.configuration.getOrganizations()
+	orgList := p.configuration.getOrganizations()
 	query := getReviewSearchQuery(username, orgList)
 	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
@@ -951,7 +950,7 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 			continue
 		}
 
-		if p.checkOrg(n.GetRepository().GetOwner().GetLogin(), config.GitHubOrg, orgMap) != nil {
+		if p.checkOrg(n.GetRepository().GetOwner().GetLogin()) != nil {
 			continue
 		}
 
@@ -966,14 +965,18 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	return true
 }
 
-func (p *Plugin) checkOrg(org, configOrg string, orgMap map[string]bool) error {
-	if len(orgMap) != 0 {
-		if _, ok := orgMap[strings.ToLower(org)]; !ok {
-			return errors.Errorf("only repositories in the %v organization(s) are supported", configOrg)
+func (p *Plugin) checkOrg(org string) error {
+	config := p.getConfiguration()
+
+	list := strings.Split(config.GitHubOrg, ",")
+	for _, configOrg := range list {
+		configOrg = strings.TrimSpace(strings.ToLower(configOrg))
+		if configOrg != "" && configOrg == org {
+			return nil
 		}
 	}
 
-	return nil
+	return errors.Errorf("only repositories in the %v organization(s) are supported", config.GitHubOrg)
 }
 
 func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
@@ -981,7 +984,7 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 		return false
 	}
 
-	orgList, _ := p.configuration.getOrganizations()
+	orgList := p.configuration.getOrganizations()
 	isMemberOfOrg := false
 	for _, org := range orgList {
 		isMember, _, err := githubClient.Organizations.IsMember(context.Background(), org, *user.Login)

@@ -386,22 +386,3 @@ func lastN(s string, n int) string {
 
 	return string(out)
 }
-
-func (c *Configuration) getOrganizations() ([]string, map[string]bool) {
-	if c.GitHubOrg == "" {
-		return nil, nil
-	}
-
-	list := strings.Split(c.GitHubOrg, ",")
-	orgMap := make(map[string]bool)
-	allOrgs := []string{}
-	for _, org := range list {
-		org = strings.TrimSpace(strings.ToLower(org))
-		if org != "" {
-			orgMap[org] = true
-			allOrgs = append(allOrgs, org)
-		}
-	}
-
-	return allOrgs, orgMap
-}

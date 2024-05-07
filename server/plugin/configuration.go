@@ -250,3 +250,20 @@ func generateSecret() (string, error) {
 
 	return s, nil
 }
+
+func (c *Configuration) getOrganizations() []string {
+	if c.GitHubOrg == "" {
+		return nil
+	}
+
+	list := strings.Split(c.GitHubOrg, ",")
+	allOrgs := []string{}
+	for _, org := range list {
+		org = strings.TrimSpace(strings.ToLower(org))
+		if org != "" {
+			allOrgs = append(allOrgs, org)
+		}
+	}
+
+	return allOrgs
+}
