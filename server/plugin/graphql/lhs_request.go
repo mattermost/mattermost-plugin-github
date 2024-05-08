@@ -40,7 +40,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		params[queryParamMentionsQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", c.org, params[queryParamMentionsQueryArg]))
 	}
 
-	var resultReview, resultAssignee, resultOpenPR, resultMentions []*github.Issue
+	var resultReview, resultAssignee, resultOpenPR, resultMention []*github.Issue
 	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched, allMentionsFetched := false, false, false, false
 
 	for {
