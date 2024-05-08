@@ -14,10 +14,10 @@ import (
 
 // Client encapsulates the third party package that communicates with Github GraphQL API
 type Client struct {
-	client          *githubv4.Client
-	org             string
-	username        string
-	logger          pluginapi.LogService
+	client           *githubv4.Client
+	org              string
+	username         string
+	logger           pluginapi.LogService
 	getOrganizations func() []string
 }
 
@@ -29,10 +29,10 @@ func NewClient(logger pluginapi.LogService, getOrganizations func() []string, to
 
 	if enterpriseBaseURL == "" {
 		client = Client{
-			username:        username,
-			client:          githubv4.NewClient(httpClient),
-			logger:          logger,
-			org:             orgName,
+			username:         username,
+			client:           githubv4.NewClient(httpClient),
+			logger:           logger,
+			org:              orgName,
 			getOrganizations: getOrganizations,
 		}
 	} else {
@@ -45,10 +45,10 @@ func NewClient(logger pluginapi.LogService, getOrganizations func() []string, to
 		baseURL.Path = path.Join(baseURL.Path, "api", "graphql")
 
 		client = Client{
-			client:          githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
-			username:        username,
-			org:             orgName,
-			logger:          logger,
+			client:           githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
+			username:         username,
+			org:              orgName,
+			logger:           logger,
 			getOrganizations: getOrganizations,
 		}
 	}
