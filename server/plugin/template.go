@@ -8,7 +8,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 )
 
@@ -423,7 +423,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issue_comments` - includes new issue comments\n" +
 		"    	* `issue_creations` - includes new issues only \n" +
 		"    	* `pull_reviews` - includes pull request reviews\n" +
-		"    	* `workflows` - includes workflow job failures\n" +
+		"    	* `workflow_failures` - includes workflow job failures\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
@@ -447,7 +447,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 
 	template.Must(masterTemplate.New("newWorkflowJob").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} {{template "workflowJob" .GetWorkflowJob}} workflow got failed (triggered by {{template "user" .GetSender}})
+{{template "repo" .GetRepo}} {{.GetWorkflowJob.GetWorkflowName}} workflow failed (triggered by {{template "user" .GetSender}})
+Job failed: {{template "workflowJob" .GetWorkflowJob}}
 Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowJob.GetHeadSHA}}`))
 }

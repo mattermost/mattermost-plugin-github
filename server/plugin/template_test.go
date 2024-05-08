@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1448,7 +1448,8 @@ func TestGitHubUsernameRegex(t *testing.T) {
 func TestWorkflowJobNotification(t *testing.T) {
 	t.Run("failed", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [mock-workflow-job](https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890) workflow got failed (triggered by [panda](https://github.com/panda))
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) mock-workflow-name workflow failed (triggered by [panda](https://github.com/panda))
+Job failed: [mock-workflow-job](https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890)
 Step failed: mock-job-2
 Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890`
 
@@ -1457,10 +1458,11 @@ Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890
 			Sender: &user,
 			Action: sToP(actionCompleted),
 			WorkflowJob: &github.WorkflowJob{
-				Conclusion: sToP("failure"),
-				Name:       sToP("mock-workflow-job"),
-				HeadSHA:    sToP("1234567890"),
-				HTMLURL:    sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890"),
+				Conclusion:   sToP("failure"),
+				Name:         sToP("mock-workflow-job"),
+				HeadSHA:      sToP("1234567890"),
+				HTMLURL:      sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890"),
+				WorkflowName: sToP("mock-workflow-name"),
 				Steps: []*github.TaskStep{
 					{
 						Name:       sToP("mock-job-1"),
@@ -1490,8 +1492,8 @@ func iToP(i int) *int {
 	return &i
 }
 
-func tToP(t time.Time) *time.Time {
-	return &t
+func tToP(t time.Time) *github.Timestamp {
+	return &github.Timestamp{Time: t}
 }
 
 func bToP(b bool) *bool {

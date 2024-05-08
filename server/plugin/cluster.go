@@ -3,7 +3,7 @@ package plugin
 import (
 	"encoding/json"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )

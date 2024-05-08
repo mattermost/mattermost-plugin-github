@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -559,7 +559,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	action := event.GetAction()
 
 	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
-	timeDiff := time.Until(issue.GetCreatedAt()) * -1
+	timeDiff := time.Until(issue.GetCreatedAt().Time) * -1
 	if action == actionLabeled && timeDiff.Seconds() < 4.00 {
 		return
 	}
@@ -1391,7 +1391,7 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 		return
 	}
 
-	// Create a post only when the workflow job is completed and fails
+	// Create a post only when the workflow job is completed and failed
 	if event.GetWorkflowJob().GetConclusion() != workflowJobFail {
 		return
 	}

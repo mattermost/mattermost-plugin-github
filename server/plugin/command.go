@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -15,18 +15,18 @@ import (
 )
 
 const (
-	featureIssueCreation = "issue_creations"
-	featureIssues        = "issues"
-	featurePulls         = "pulls"
-	featurePullsMerged   = "pulls_merged"
-	featurePullsCreated  = "pulls_created"
-	featurePushes        = "pushes"
-	featureCreates       = "creates"
-	featureDeletes       = "deletes"
-	featureIssueComments = "issue_comments"
-	featurePullReviews   = "pull_reviews"
-	featureStars         = "stars"
-	featureWorkflows     = "workflows"
+	featureIssueCreation    = "issue_creations"
+	featureIssues           = "issues"
+	featurePulls            = "pulls"
+	featurePullsMerged      = "pulls_merged"
+	featurePullsCreated     = "pulls_created"
+	featurePushes           = "pushes"
+	featureCreates          = "creates"
+	featureDeletes          = "deletes"
+	featureIssueComments    = "issue_comments"
+	featurePullReviews      = "pull_reviews"
+	featureStars            = "stars"
+	featureWorkflowFailures = "workflow_failures"
 )
 
 const (
@@ -34,18 +34,18 @@ const (
 )
 
 var validFeatures = map[string]bool{
-	featureIssueCreation: true,
-	featureIssues:        true,
-	featurePulls:         true,
-	featurePullsMerged:   true,
-	featurePullsCreated:  true,
-	featurePushes:        true,
-	featureCreates:       true,
-	featureDeletes:       true,
-	featureIssueComments: true,
-	featurePullReviews:   true,
-	featureStars:         true,
-	featureWorkflows:     true,
+	featureIssueCreation:    true,
+	featureIssues:           true,
+	featurePulls:            true,
+	featurePullsMerged:      true,
+	featurePullsCreated:     true,
+	featurePushes:           true,
+	featureCreates:          true,
+	featureDeletes:          true,
+	featureIssueComments:    true,
+	featurePullReviews:      true,
+	featureStars:            true,
+	featureWorkflowFailures: true,
 }
 
 type Features string
@@ -896,7 +896,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, workflows, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, workflow_failures, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
