@@ -968,10 +968,9 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
-	list := strings.Split(config.GitHubOrg, ",")
-	for _, configOrg := range list {
-		configOrg = strings.TrimSpace(strings.ToLower(configOrg))
-		if configOrg != "" && configOrg == org {
+	orgList := config.getOrganizations()
+	for _, configOrg := range orgList {
+		if configOrg == org {
 			return nil
 		}
 	}
