@@ -118,7 +118,6 @@ export default class SidebarButtons extends React.PureComponent {
             return null;
         }
 
-        const mentions = this.props.mentions || [];
         const reviews = this.props.reviews || [];
         const yourPrs = this.props.yourPrs || [];
         const unreads = this.props.unreads || [];
@@ -154,21 +153,6 @@ export default class SidebarButtons extends React.PureComponent {
                         {' ' + yourPrs.length}
                     </a>
                 </OverlayTrigger>
-
-                <OverlayTrigger
-                    key='githubMentionsLink'
-                    placement={placement}
-                    overlay={<Tooltip id='mentionTooltip'>{'Mentions on Pull Requests'}</Tooltip>}
-                >
-                    <a
-                        onClick={() => this.openRHS(RHSStates.MENTIONS)}
-                        style={button}
-                    >
-                        <i className='fa fa-comment-o'/>
-                        {' ' + mentions.length}
-                    </a>
-                </OverlayTrigger>
-
                 <OverlayTrigger
                     key='githubReviewsLink'
                     placement={placement}
@@ -206,6 +190,18 @@ export default class SidebarButtons extends React.PureComponent {
                     >
                         <i className='fa fa-envelope'/>
                         {' ' + unreads.length}
+                    </a>
+                </OverlayTrigger>
+                <OverlayTrigger
+                    key='githubMentionsLink'
+                    placement={placement}
+                    overlay={<Tooltip id='mentionTooltip'>{'Mentions on Pull Requests'}</Tooltip>}
+                >
+                    <a
+                        onClick={() => this.openRHS(RHSStates.MENTIONS)}
+                        style={button}
+                    >
+                        <i className='fa fa-comment-o'/>
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
