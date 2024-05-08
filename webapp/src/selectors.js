@@ -52,7 +52,7 @@ function mapPrsToDetails(prs, details) {
 export const getSidebarData = createSelector(
     getPluginState,
     (pluginState) => {
-        const {username, mentionsDetails, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
+        const {username, mentionDetails, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
         return {
             username,
             mentions: mapPrsToDetails(sidebarContent.mentions || emptyArray, mentionsDetails),
