@@ -459,13 +459,13 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		if foundErr != nil {
 			if strings.Contains(foundErr.Error(), "404 Not Found") {
 				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
-				return subOrgMsg
+				return ""
 			}
 			return errors.Wrap(foundErr, "failed to get the list of webhooks").Error()
 		}
 
 		if !found {
-			subOrgMsg += errorNoWebhookFound
+			subOrgMsg = errorNoWebhookFound
 		}
 		return subOrgMsg
 	}
@@ -499,13 +499,13 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
-			return msg
+			return ""
 		}
 		return errors.Wrap(err, "failed to get the list of webhooks").Error()
 	}
 
 	if !found {
-		msg += errorNoWebhookFound
+		msg = errorNoWebhookFound
 	}
 
 	return msg
