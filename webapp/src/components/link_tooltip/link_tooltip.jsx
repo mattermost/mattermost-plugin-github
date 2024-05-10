@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown';
 
 import Client from 'client';
 import {getLabelFontColor, hexToRGB} from '../../utils/styles';
+import {isUrlCanPreview} from 'src/utils/github_utils';
 
 const maxTicketDescriptionLength = 160;
 
@@ -13,11 +14,8 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         const initData = async () => {
-            if (href.includes('github.com/')) {
+            if (isUrlCanPreview(href)) {
                 const [owner, repo, type, number] = href.split('github.com/')[1].split('/');
-                if (!owner | !repo | !type | !number) {
-                    return;
-                }
 
                 let res;
                 switch (type) {
