@@ -10,12 +10,14 @@ import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
+import LinkPreview from './components/link_preview';
 import Reducer from './reducers';
 import Client from './client';
 import {getConnected, setShowRHSAction} from './actions';
 import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 import {getServerRoute} from './selectors';
 import manifest from './manifest';
+import {isUrlCanPreview} from './utils/github_utils';
 
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;
@@ -37,6 +39,7 @@ class PluginClass {
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
         registry.registerLinkTooltipComponent(LinkTooltip);
+        registry.registerPostWillRenderEmbedComponent((embed) => embed.url && isUrlCanPreview(embed.url), LinkPreview, true);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
