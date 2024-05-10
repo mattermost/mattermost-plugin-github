@@ -924,7 +924,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("APPROVED"),
+				State: sToP("approved"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -944,7 +944,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("COMMENTED"),
+				State: sToP("commented"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -964,7 +964,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("CHANGES_REQUESTED"),
+				State: sToP("changes_requested"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -985,7 +985,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("APPROVED"),
+				State: sToP("approved"),
 				Body:  sToP("Excited to see git-get-head land!\n" + gitHubMentions),
 			},
 		})
