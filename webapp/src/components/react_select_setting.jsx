@@ -99,7 +99,7 @@ export default class ReactSelectSetting extends React.PureComponent {
             validationError = (
                 <p
                     className='help-text error-text'
-                    style={{marginTop: '15px'}}
+                    style={{marginTop: '8px'}}
                 >
                     <span>{requiredMsg}</span>
                 </p>

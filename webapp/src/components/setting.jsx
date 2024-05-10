@@ -45,7 +45,10 @@ export default class Setting extends React.PureComponent {
                 }
                 <div>
                     {children}
-                    <div className='help-text'>
+                    <div
+                        className='help-text'
+                        style={{margin: '0px'}}
+                    >
                         {helpText}
                     </div>
                 </div>

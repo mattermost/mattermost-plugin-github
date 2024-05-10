@@ -171,7 +171,7 @@ export default class CreateIssueModal extends PureComponent {
             issueTitleValidationError = (
                 <p
                     className='help-text error-text'
-                    style={{marginTop: '15px', marginBottom: '15px'}}
+                    style={{marginTop: '8px', marginBottom: '24px'}}
                 >
                     <span>{requiredMsg}</span>
                 </p>
