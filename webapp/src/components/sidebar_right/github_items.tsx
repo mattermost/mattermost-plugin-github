@@ -405,7 +405,7 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
             return false;
         }
 
-        if (v.state === 'COMMENTED' || v.state === 'DISMISSED') {
+        if (v.state === 'commented' || v.state === 'dismissed') {
             return false;
         }
 
@@ -418,14 +418,14 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
     });
 
     const approved = lastReviews.reduce((accum: number, cur: Review) => {
-        if (cur.state === 'APPROVED') {
+        if (cur.state === 'approved') {
             return accum + 1;
         }
         return accum;
     }, 0);
 
     const changesRequested = lastReviews.reduce((accum: number, cur: Review) => {
-        if (cur.state === 'CHANGES_REQUESTED') {
+        if (cur.state === 'changes_requested') {
             return accum + 1;
         }
         return accum;
