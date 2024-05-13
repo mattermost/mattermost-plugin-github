@@ -25,7 +25,10 @@ export default class Setting extends React.PureComponent {
         } = this.props;
 
         return (
-            <div className='form-group less'>
+            <div
+                className='form-group less'
+                style={{marginBottom: '8px'}}
+            >
                 {label && (
                     <label
                         className='control-label margin-bottom x2'
