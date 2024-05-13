@@ -411,10 +411,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		prNumber := event.GetPullRequest().Number
 
-		post := &model.Post{
-			UserId: p.BotUserID,
-			Type:   "custom_git_pr",
-		}
+		post := p.makeBotPost("", "custom_git_pr")
 
 		post.AddProp(postPropGithubRepo, repoName)
 		post.AddProp(postPropGithubObjectID, prNumber)
@@ -529,12 +526,7 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Message: message,
-			Type:    "custom_git_mention",
-		}
-
+		post := p.makeBotPost(message, "custom_git_mention")
 		post.ChannelId = channel.Id
 
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -605,11 +597,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 		renderedMessage = p.sanitizeDescription(renderedMessage)
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_issue",
-			Message: renderedMessage,
-		}
+		post := p.makeBotPost(renderedMessage, "custom_git_issue")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		issueNumber := issue.Number
@@ -674,11 +662,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_push",
-			Message: pushedCommitsMessage,
-		}
+		post := p.makeBotPost(pushedCommitsMessage, "custom_git_push")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -715,11 +699,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_create",
-			Message: newCreateMessage,
-		}
+		post := p.makeBotPost(newCreateMessage, "custom_git_create")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -749,12 +729,6 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_delete",
-		Message: newDeleteMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Deletes() {
 			continue
@@ -764,6 +738,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 			continue
 		}
 
+		post := p.makeBotPost(newDeleteMessage, "custom_git_delete")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
@@ -817,10 +792,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 			continue
 		}
 
-		post := &model.Post{
-			UserId: p.BotUserID,
-			Type:   "custom_git_comment",
-		}
+		post := p.makeBotPost("", "custom_git_comment")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
@@ -908,11 +880,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_pull_review",
-			Message: newReviewMessage,
-		}
+		post := p.makeBotPost(newReviewMessage, "custom_git_pull_review")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -962,11 +930,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_pull_review_comment",
-			Message: newReviewMessage,
-		}
+		post := p.makeBotPost(newReviewMessage, "custom_git_pull_review_comment")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
@@ -1043,11 +1007,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Message: message,
-			Type:    "custom_git_mention",
-		}
+		post := p.makeBotPost(message, "custom_git_mention")
 
 		post.ChannelId = channel.Id
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -1365,15 +1325,19 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_star",
-			Message: newStarMessage,
-		}
+		post := p.makeBotPost(newStarMessage, "custom_git_star")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
+	}
+}
+
+func (p *Plugin) makeBotPost(message, postType string) *model.Post {
+	return &model.Post{
+		UserId:  p.BotUserID,
+		Type:    postType,
+		Message: message,
 	}
 }
