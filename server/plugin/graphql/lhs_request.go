@@ -56,7 +56,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 			for i := range mainQuery.Mentions.Nodes {
 				resp := mainQuery.Mentions.Nodes[i]
 				pr := getPR(&resp)
-				resultMentions = append(resultMentions, pr)
+				resultMention = append(resultMention, pr)
 			}
 
 			if !mainQuery.Mentions.PageInfo.HasNextPage {
@@ -109,7 +109,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 		}
 	}
 
-	return resultReview, resultAssignee, resultOpenPR, resultMentions, nil
+	return resultReview, resultAssignee, resultOpenPR, resultMention, nil
 }
 
 func getPR(prResp *prSearchNodes) *github.Issue {

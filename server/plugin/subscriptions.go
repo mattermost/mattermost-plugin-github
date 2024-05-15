@@ -123,6 +123,10 @@ func (s *Subscription) Stars() bool {
 	return strings.Contains(s.Features.String(), featureStars)
 }
 
+func (s *Subscription) Release() bool {
+	return strings.Contains(s.Features.String(), featureReleases)
+}
+
 func (s *Subscription) Label() string {
 	if !strings.Contains(s.Features.String(), "label:") {
 		return ""

@@ -942,12 +942,12 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, mentionResp []*github.Issue, err error) {
 	graphQLClient := p.graphQLConnect(c.GHInfo)
 
-	reviewResp, assignmentResp, openPRResp, mentionsResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
+	reviewResp, assignmentResp, openPRResp, mentionResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
 	if err != nil {
 		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
 	}
 
-	return reviewResp, assignmentResp, openPRResp, mentionsResp, nil
+	return reviewResp, assignmentResp, openPRResp, mentionResp, nil
 }
 
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
