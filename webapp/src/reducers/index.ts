@@ -107,6 +107,15 @@ function sidebarContent(state = {
     }
 }
 
+function mentionDetails(state: PrsDetailsData[] = [], action: {type: string, data: PrsDetailsData[]}) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 function yourRepos(state: YourReposData[] = [], action: {type: string, data: YourReposData[]}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REPOSITORIES:
@@ -224,6 +233,7 @@ export default combineReducers({
     configuration,
     clientId,
     reviewDetails,
+    mentionDetails,
     yourRepos,
     yourPrDetails,
     mentions,
