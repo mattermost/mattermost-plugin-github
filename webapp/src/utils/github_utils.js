@@ -1,5 +1,5 @@
 export function isUrlCanPreview(url) {
-    if (url.includes('github.com/')) {
+    if (url.includes('github.com/') && url.split('github.com/')[1]) {
         const [owner, repo, type, number] = url.split('github.com/')[1].split('/');
         return !(!owner | !repo | !type | !number);
     }
