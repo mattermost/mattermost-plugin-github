@@ -1,4 +1,4 @@
-import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon} from '@primer/octicons-react';
+import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon, SkipIcon} from '@primer/octicons-react';
 import PropTypes from 'prop-types';
 import React, {useEffect, useState} from 'react';
 import ReactMarkdown from 'react-markdown';
@@ -50,34 +50,37 @@ export const LinkPreview = ({embed: {url}, connected}) => {
         };
 
         let icon;
-        let color;
+        let colorClass;
         switch (data.type) {
         case 'pull':
             icon = <GitPullRequestIcon {...iconProps}/>;
 
-            color = '#28a745';
+            colorClass = 'github-preview-icon-open';
             if (data.state === 'closed') {
                 if (data.merged) {
-                    color = '#6f42c1';
+                    colorClass = 'github-preview-icon-merged';
                     icon = <GitMergeIcon {...iconProps}/>;
                 } else {
-                    color = '#cb2431';
+                    colorClass = 'github-preview-icon-closed';
                 }
             }
 
             break;
         case 'issues':
-            color = data.state === 'open' ? '#28a745' : '#cb2431';
-
             if (data.state === 'open') {
+                colorClass = 'github-preview-icon-open';
                 icon = <IssueOpenedIcon {...iconProps}/>;
+            } else if (data.state_reason === 'not_planned') {
+                colorClass = 'github-preview-icon-not-planned';
+                icon = <SkipIcon {...iconProps}/>;
             } else {
+                colorClass = 'github-preview-icon-merged';
                 icon = <IssueClosedIcon {...iconProps}/>;
             }
             break;
         }
         return (
-            <span style={{color}}>
+            <span className={`pr-2 ${colorClass}`}>
                 {icon}
             </span>
         );
@@ -115,9 +118,7 @@ export const LinkPreview = ({embed: {url}, connected}) => {
                             rel='noopener noreferrer'
                         >
                             <h5 className='mr-1'>
-                                <span className='pr-2'>
-                                    { getIconElement() }
-                                </span>
+                                { getIconElement() }
                                 {data.title}
                             </h5>
                             <span>{'#' + data.number}</span>

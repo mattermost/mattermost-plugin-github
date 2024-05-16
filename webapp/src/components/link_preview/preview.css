@@ -2,6 +2,10 @@
     --light-gray: #6a737d;
     --blue: #274466;
     --light-blue: #eff7ff;
+    --github-merged: #6f42c1;
+    --github-closed: #cb2431;
+    --github-open: #28a745;
+    --github-not-planned: #6e7681
 }
 
 @media (min-width: 544px) {
@@ -63,6 +67,22 @@
     font-weight: 600;
     font-size: 14px;
     display: inline;
+}
+
+.github-preview .preview-info h5 span.github-preview-icon-opened {
+    color: var(--github-open);
+}
+
+.github-preview .preview-info h5 span.github-preview-icon-closed {
+    color: var(--github-closed);
+}
+
+.github-preview .preview-info h5 span.github-preview-icon-merged {
+    color: var(--github-merged);
+}
+
+.github-preview .preview-info h5 span.github-preview-icon-not-planned {
+    color: var(--github-not-planned);
 }
 
 .github-preview .preview-info .markdown-text {
