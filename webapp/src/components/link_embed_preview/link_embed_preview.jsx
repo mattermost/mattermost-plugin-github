@@ -2,7 +2,7 @@ import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon, Skip
 import PropTypes from 'prop-types';
 import React, {useEffect, useState} from 'react';
 import ReactMarkdown from 'react-markdown';
-import './preview.css';
+import './embed_preview.css';
 
 import Client from 'client';
 import {getLabelFontColor} from '../../utils/styles';
@@ -10,7 +10,7 @@ import {isUrlCanPreview} from 'src/utils/github_utils';
 
 const maxTicketDescriptionLength = 160;
 
-export const LinkPreview = ({embed: {url}, connected}) => {
+export const LinkEmbedPreview = ({embed: {url}, connected}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         const initData = async () => {
@@ -176,7 +176,7 @@ export const LinkPreview = ({embed: {url}, connected}) => {
     return null;
 };
 
-LinkPreview.propTypes = {
+LinkEmbedPreview.propTypes = {
     embed: {
         url: PropTypes.string.isRequired,
     },

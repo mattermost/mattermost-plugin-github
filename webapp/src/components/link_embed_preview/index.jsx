@@ -5,10 +5,10 @@ import {connect} from 'react-redux';
 
 import manifest from 'manifest';
 
-import {LinkPreview} from './link_preview';
+import {LinkEmbedPreview} from './link_embed_preview';
 
 const mapStateToProps = (state) => {
     return {connected: state[`plugins-${manifest.id}`].connected};
 };
 
-export default connect(mapStateToProps, null)(LinkPreview);
+export default connect(mapStateToProps, null)(LinkEmbedPreview);
