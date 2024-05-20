@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 
 import Client from 'client';
 import {getLabelFontColor, hexToRGB} from '../../utils/styles';
-import {isUrlCanPreview} from 'src/utils/github_utils';
+import {isUrlCanPreview} from '../../utils/github_utils';
 
 const maxTicketDescriptionLength = 160;
 
