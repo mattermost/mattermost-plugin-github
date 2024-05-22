@@ -2,7 +2,7 @@ import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon, Skip
 import PropTypes from 'prop-types';
 import React, {useEffect, useState} from 'react';
 import ReactMarkdown from 'react-markdown';
-import './embed_preview.css';
+import './embed_preview.scss';
 
 import Client from 'client';
 import {getLabelFontColor} from '../../utils/styles';
