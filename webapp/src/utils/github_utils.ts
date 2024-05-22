@@ -1,6 +1,7 @@
 export function isUrlCanPreview(url: string) {
-    if (url.includes('github.com/') && url.split('github.com/')[1]) {
-        const [owner, repo, type, number] = url.split('github.com/')[1].split('/');
+    const {hostname, pathname} = new URL(url);
+    if (hostname.includes('github.com') && pathname.split('/')[1]) {
+        const [_, owner, repo, type, number] = pathname.split('/');
         return Boolean(owner && repo && type && number);
     }
     return false;
