@@ -35,7 +35,6 @@ export const LinkEmbedPreview = ({embed: {url}, connected}) => {
             }
         };
 
-        // show is not provided for Mattermost Server < 5.28
         if (!connected || data) {
             return;
         }
