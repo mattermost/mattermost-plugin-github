@@ -58,7 +58,7 @@ $github-not-planned: #6e7681;
         }
 
         > a span {
-            color: var($light-gray);
+            color: $light-gray;
         
             h5 {
                 font-weight: 600;
@@ -66,19 +66,19 @@ $github-not-planned: #6e7681;
                 display: inline;
             
                 span.github-preview-icon-opened {
-                    color: var($github-open);
+                    color: $github-open;
                 }
                 
                 span.github-preview-icon-closed {
-                    color: var($github-closed);
+                    color: $github-closed;
                 }
                 
                 span.github-preview-icon-merged {
-                    color: var($github-merged);
+                    color: $github-merged;
                 }
                 
                 span.github-preview-icon-not-planned {
-                    color: var($github-not-planned);
+                    color: $github-not-planned;
                 }
             }
             
@@ -146,7 +146,7 @@ $github-not-planned: #6e7681;
         padding: 0 5px;
         font: .75em/2 SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
         color: var(--blue);
-        background-color: var($light-blue);
+        background-color: $light-blue;
         border-radius: 3px;
         max-width: 140px;
         text-overflow: ellipsis;
