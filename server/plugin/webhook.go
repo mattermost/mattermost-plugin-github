@@ -1339,13 +1339,14 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 	}
 }
 
-<<<<<<< fix-create-update-post-issue
 func (p *Plugin) makeBotPost(message, postType string) *model.Post {
 	return &model.Post{
 		UserId:  p.BotUserID,
 		Type:    postType,
 		Message: message,
-=======
+	}
+}
+		
 func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 	if event.GetAction() != actionCreated && event.GetAction() != actionDeleted {
 		return
@@ -1379,6 +1380,5 @@ func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
->>>>>>> master
 	}
 }
