@@ -12,6 +12,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/command"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 const (
@@ -609,14 +610,22 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 	return text
 }
 
-func (p *Plugin) handleHelp(_ *plugin.Context, _ *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
+func (p *Plugin) handleHelp(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
+	l := p.b.GetUserLocalizer(args.UserId)
 	message, err := renderTemplate("helpText", p.getConfiguration())
 	if err != nil {
 		p.client.Log.Warn("Failed to render help template", "error", err.Error())
 		return "Encountered an error posting help text."
 	}
 
-	return "###### Mattermost GitHub Plugin - Slash Command Help\n" + message
+	helpTitle := p.b.LocalizeWithConfig(l, &i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    "github.command.help.title",
+			Other: "###### Mattermost GitHub Plugin - Slash Command help\n",
+		},
+	})
+
+	return helpTitle + message
 }
 
 func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
