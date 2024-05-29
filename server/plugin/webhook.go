@@ -1346,7 +1346,7 @@ func (p *Plugin) makeBotPost(message, postType string) *model.Post {
 		Message: message,
 	}
 }
-		
+
 func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 	if event.GetAction() != actionCreated && event.GetAction() != actionDeleted {
 		return
