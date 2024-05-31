@@ -70,6 +70,52 @@ export function getReviewsDetails(prList: PrsDetailsData[]) {
     };
 }
 
+export function getOrgs() {
+    return async (dispatch: DispatchFunc) => {
+        let data;
+        try {
+            data = await Client.getOrganizations();
+        } catch (error) {
+            return {error: data};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_ORGANIZATIONS,
+            data,
+        });
+
+        return {data};
+    };
+}
+
+export function getReposByOrg(organization: string) {
+    return async (dispatch: DispatchFunc) => {
+        let data;
+        try {
+            data = await Client.getRepositoriesByOrganization(organization);
+        } catch (error) {
+            return {error: data};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
+        if (!connected) {
+            return {error: data};
+        }
+
+        dispatch({
+            type: ActionTypes.RECEIVED_REPOSITORIES_BY_ORGANIZATION,
+            data,
+        });
+
+        return {data};
+    };
+}
+
 export function getRepos() {
     return async (dispatch: DispatchFunc) => {
         let data;

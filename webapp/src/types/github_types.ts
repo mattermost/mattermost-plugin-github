@@ -139,3 +139,11 @@ export type SidebarData = {
     org: string,
     rhsState?: string | null
 }
+
+export type Organization = {
+    login: string;
+}
+export type RepositoriesByOrg = {
+    name: string;
+    fullName: string;
+}
