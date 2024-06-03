@@ -104,7 +104,7 @@ export type MentionsData = {
 }
 
 export type GithubUsersData = {
-    username: string;
+    username?: string;
     last_try: number;
 }
 

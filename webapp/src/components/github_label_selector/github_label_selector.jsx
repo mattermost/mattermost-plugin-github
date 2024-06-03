@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import IssueAttributeSelector from 'components/issue_attribute_selector';
+import IssueAttributeSelector from '../issue_attribute_selector';
 
 export default class GithubLabelSelector extends PureComponent {
     static propTypes = {

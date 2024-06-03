@@ -6,6 +6,7 @@
   "parserOptions": {
     "ecmaVersion": 8,
     "sourceType": "module",
+    "project": "./tsconfig.json",
     "ecmaFeatures": {
       "jsx": true,
       "impliedStrict": true,
@@ -13,7 +14,7 @@
       "experimentalObjectRestSpread": true
     }
   },
-  "parser": "babel-eslint",
+  "parser": "@typescript-eslint/parser",
   "plugins": [
     "react",
     "import"
@@ -639,7 +640,7 @@
       ],
       "rules": {
         "@typescript-eslint/ban-ts-ignore": 0,
-        "@typescript-eslint/ban-types": 1,
+        "@typescript-eslint/ban-types": 0,
         "@typescript-eslint/ban-ts-comment": 0,
         "@typescript-eslint/no-var-requires": 0,
         "@typescript-eslint/prefer-interface": 0,
