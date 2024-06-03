@@ -6,7 +6,6 @@
   "parserOptions": {
     "ecmaVersion": 8,
     "sourceType": "module",
-    "project": "./tsconfig.json",
     "ecmaFeatures": {
       "jsx": true,
       "impliedStrict": true,
@@ -14,7 +13,7 @@
       "experimentalObjectRestSpread": true
     }
   },
-  "parser": "@typescript-eslint/parser",
+  "parser": "babel-eslint",
   "plugins": [
     "react",
     "import"
@@ -36,7 +35,10 @@
     "beforeEach": true
   },
   "settings": {
-    "import/resolver": "webpack"
+    "import/resolver": "webpack",
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts", ".tsx"]
+    }
   },
   "rules": {
     "array-bracket-spacing": [

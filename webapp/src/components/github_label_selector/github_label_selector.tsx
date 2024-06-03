@@ -2,21 +2,22 @@
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
-import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from '../issue_attribute_selector';
+import {Theme} from 'mattermost-redux/types/preferences';
 
-export default class GithubLabelSelector extends PureComponent {
-    static propTypes = {
-        repoName: PropTypes.string.isRequired,
-        theme: PropTypes.object.isRequired,
-        selectedLabels: PropTypes.array.isRequired,
-        onChange: PropTypes.func.isRequired,
-        actions: PropTypes.shape({
-            getLabelOptions: PropTypes.func.isRequired,
-        }).isRequired,
+type Props = {
+    repoName: string;
+    theme: Theme;
+    selectedLabels: string[];
+    onChange: (selection: string[]) => void;
+    actions: {
+        getLabelOptions: (repoName: string) => Promise<any>;
     };
+};
+}
 
+export default class GithubLabelSelector extends PureComponent<Props> {
     loadLabels = async () => {
         if (this.props.repoName === '') {
             return [];

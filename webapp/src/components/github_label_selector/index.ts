@@ -6,7 +6,7 @@ import {bindActionCreators} from 'redux';
 
 import {getLabelOptions} from '../../actions';
 
-import GithubLabelSelector from './github_label_selector.jsx';
+import GithubLabelSelector from './github_label_selector';
 
 const mapDispatchToProps = (dispatch) => ({
     actions: bindActionCreators({getLabelOptions}, dispatch),
