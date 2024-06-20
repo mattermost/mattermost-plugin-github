@@ -173,6 +173,11 @@ func init() {
 		`[{{.GetName}}]({{.GetHTMLURL}})`,
 	))
 
+	// The release links to the corresponding release.
+	template.Must(masterTemplate.New("release").Parse(
+		`[{{.GetTagName}}]({{.GetHTMLURL}})`,
+	))
+
 	// The eventRepoIssue links to the corresponding issue. Note that, for some events, the
 	// issue *is* a pull request, and so we still use .GetIssue and this template accordingly.
 	template.Must(masterTemplate.New("eventRepoIssue").Parse(
@@ -424,6 +429,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issue_creations` - includes new issues only \n" +
 		"    	* `pull_reviews` - includes pull request reviews\n" +
 		"    	* `workflow_failures` - includes workflow job failures\n" +
+		"    	* `workflow_success` - includes workflow job success\n" +
+		"    	* `releases` - includes release created and deleted\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
@@ -447,10 +454,15 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 
 	template.Must(masterTemplate.New("newWorkflowJob").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} {{.GetWorkflowJob.GetWorkflowName}} workflow failed (triggered by {{template "user" .GetSender}})
-Job failed: {{template "workflowJob" .GetWorkflowJob}}
-Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
+{{template "repo" .GetRepo}} {{.GetWorkflowJob.GetWorkflowName}} workflow {{if eq .GetWorkflowJob.GetConclusion "success"}}succeeded{{else}}failed{{end}} (triggered by {{template "user" .GetSender}})
+{{if eq .GetWorkflowJob.GetConclusion "failure"}}Job failed: {{template "workflowJob" .GetWorkflowJob}}
+Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}{{end}}
 Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowJob.GetHeadSHA}}`))
+	template.Must(masterTemplate.New("newReleaseEvent").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} {{template "user" .GetSender}}
+{{- if eq .GetAction "created" }} created a release {{template "release" .GetRelease}}
+{{- else if eq .GetAction "deleted" }} deleted a release {{template "release" .GetRelease}}
+{{- end -}}`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
