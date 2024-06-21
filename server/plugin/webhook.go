@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -282,6 +282,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		handler = func() {
 			p.postStarEvent(event)
 		}
+	case *github.ReleaseEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postReleaseEvent(event)
+		}
 	}
 
 	if handler == nil {
@@ -378,11 +383,6 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_pr",
-	}
-
 	for _, sub := range subs {
 		if !sub.Pulls() && !sub.PullsMerged() && !sub.PullsCreated() {
 			continue
@@ -409,16 +409,18 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			}
 		}
 
+		if !contained && label != "" {
+			continue
+		}
+
 		repoName := strings.ToLower(repo.GetFullName())
 		prNumber := event.GetPullRequest().Number
+
+		post := p.makeBotPost("", "custom_git_pr")
 
 		post.AddProp(postPropGithubRepo, repoName)
 		post.AddProp(postPropGithubObjectID, prNumber)
 		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
-
-		if !contained && label != "" {
-			continue
-		}
 
 		if action == actionLabeled {
 			if label != "" && label == eventLabel {
@@ -504,12 +506,6 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Message: message,
-		Type:    "custom_git_mention",
-	}
-
 	for _, username := range mentionedUsernames {
 		// Don't notify user of their own comment
 		if username == event.GetSender().GetLogin() {
@@ -535,6 +531,7 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 			continue
 		}
 
+		post := p.makeBotPost(message, "custom_git_mention")
 		post.ChannelId = channel.Id
 
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -551,7 +548,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 	action := event.GetAction()
 
 	// This condition is made to check if the message doesn't get automatically labeled to prevent duplicated issue messages
-	timeDiff := time.Until(issue.GetCreatedAt()) * -1
+	timeDiff := time.Until(issue.GetCreatedAt().Time) * -1
 	if action == actionLabeled && timeDiff.Seconds() < 4.00 {
 		return
 	}
@@ -605,11 +602,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 		renderedMessage = p.sanitizeDescription(renderedMessage)
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_issue",
-			Message: renderedMessage,
-		}
+		post := p.makeBotPost(renderedMessage, "custom_git_issue")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		issueNumber := issue.Number
@@ -665,12 +658,6 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_push",
-		Message: pushedCommitsMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Pushes() {
 			continue
@@ -679,6 +666,8 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
+
+		post := p.makeBotPost(pushedCommitsMessage, "custom_git_push")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -706,12 +695,6 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_create",
-		Message: newCreateMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Creates() {
 			continue
@@ -720,6 +703,8 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
+
+		post := p.makeBotPost(newCreateMessage, "custom_git_create")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -749,12 +734,6 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_delete",
-		Message: newDeleteMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Deletes() {
 			continue
@@ -764,6 +743,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 			continue
 		}
 
+		post := p.makeBotPost(newDeleteMessage, "custom_git_delete")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
@@ -789,18 +769,6 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
-
-	post := &model.Post{
-		UserId: p.BotUserID,
-		Type:   "custom_git_comment",
-	}
-
-	repoName := strings.ToLower(repo.GetFullName())
-	commentID := event.GetComment().GetID()
-
-	post.AddProp(postPropGithubRepo, repoName)
-	post.AddProp(postPropGithubObjectID, commentID)
-	post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
 
 	labels := make([]string, len(event.GetIssue().Labels))
 	for i, v := range event.GetIssue().Labels {
@@ -828,6 +796,15 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		if !contained && label != "" {
 			continue
 		}
+
+		post := p.makeBotPost("", "custom_git_comment")
+
+		repoName := strings.ToLower(repo.GetFullName())
+		commentID := event.GetComment().GetID()
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, commentID)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
 
 		if event.GetAction() == actionCreated {
 			post.Message = message
@@ -866,10 +843,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	switch strings.ToUpper(event.GetReview().GetState()) {
-	case "APPROVED":
-	case "COMMENTED":
-	case "CHANGES_REQUESTED":
+	switch event.GetReview().GetState() {
+	case "approved":
+	case "commented":
+	case "changes_requested":
 	default:
 		p.client.Log.Debug("Unhandled review state", "state", event.GetReview().GetState())
 		return
@@ -879,12 +856,6 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
-	}
-
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_pull_review",
-		Message: newReviewMessage,
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
@@ -913,6 +884,8 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		if !contained && label != "" {
 			continue
 		}
+
+		post := p.makeBotPost(newReviewMessage, "custom_git_pull_review")
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -1003,12 +976,6 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Message: message,
-		Type:    "custom_git_mention",
-	}
-
 	assignees := event.GetIssue().Assignees
 
 	for _, username := range mentionedUsernames {
@@ -1048,6 +1015,8 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 		if err != nil {
 			continue
 		}
+
+		post := p.makeBotPost(message, "custom_git_mention")
 
 		post.ChannelId = channel.Id
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -1356,12 +1325,6 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_star",
-		Message: newStarMessage,
-	}
-
 	for _, sub := range subs {
 		if !sub.Stars() {
 			continue
@@ -1371,9 +1334,55 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 			continue
 		}
 
+		post := p.makeBotPost(newStarMessage, "custom_git_star")
+
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) makeBotPost(message, postType string) *model.Post {
+	return &model.Post{
+		UserId:  p.BotUserID,
+		Type:    postType,
+		Message: message,
+	}
+}
+
+func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
+	if event.GetAction() != actionCreated && event.GetAction() != actionDeleted {
+		return
+	}
+
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	newReleaseMessage, err := renderTemplate("newReleaseEvent", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
+	for _, sub := range subs {
+		if !sub.Release() {
+			continue
+		}
+
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_release",
+			Message:   newReleaseMessage,
+			ChannelId: sub.ChannelID,
+		}
+
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
 	}
 }
