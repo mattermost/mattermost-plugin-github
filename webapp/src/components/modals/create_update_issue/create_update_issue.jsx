@@ -121,7 +121,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
         };
 
         if (!issue.repo) {
-            issue.repo = this.state.repo;
+            issue.repo = this.props.messageData.repo_owner + this.props.messageData.repo_name;
         }
         this.setState({submitting: true});
         if (issue_number) {

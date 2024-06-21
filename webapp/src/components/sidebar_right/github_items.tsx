@@ -6,9 +6,10 @@ import * as React from 'react';
 import * as CSS from 'csstype';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
-import {Theme} from 'mattermost-redux/types/preferences';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
+
+import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -32,62 +33,6 @@ const notificationReasons = {
     subscribed:	'You are watching the repository.',
     team_mention:	'You were on a team that was mentioned.',
 };
-
-interface Label {
-    id: number;
-    name: string;
-    color: CSS.Properties;
-}
-
-interface User {
-    login: string;
-}
-
-interface Review {
-    state: string;
-    user: User;
-}
-
-interface Item {
-    url: string;
-    number: number;
-
-    id: number;
-    title: string;
-    created_at: string;
-    updated_at: string;
-    html_url: string;
-    repository_url?: string;
-    user: User;
-    owner?: User;
-    milestone?: {
-        title: string;
-    }
-    repository?: {
-        full_name: string;
-    }
-    labels?: Label[];
-
-    // PRs
-    status?: string;
-    mergeable?: boolean;
-    requestedReviewers?: string[];
-    reviews?: Review[];
-
-    // Assignments
-    pullRequest?: unknown;
-
-    // Notifications
-    subject?: {
-        title: string;
-    }
-    reason?: keyof typeof notificationReasons;
-}
-
-interface GithubItemsProps {
-    items: Item[];
-    theme: Theme;
-}
 
 function GithubItems(props: GithubItemsProps) {
     const style = getStyle(props.theme);
@@ -306,7 +251,7 @@ function GithubItems(props: GithubItemsProps) {
                     {item.reason ? (<>
                         {(item.created_at || userName || milestone) && (<br/>)}
                         {item.updated_at && (formatTimeSince(item.updated_at) + ' ago')}{<br/>}
-                        {notificationReasons[item.reason]}
+                        {notificationReasons[item.reason as keyof typeof notificationReasons]}
                     </>) : null }
                 </div>
                 {reviews}
@@ -366,7 +311,7 @@ const getStyle = makeStyleFromTheme((theme) => ({
     },
 }));
 
-function getGithubLabels(labels: Label[]) {
+function getGithubLabels(labels: GithubLabel[]) {
     return labels.map((label) => {
         return (
             <Badge
@@ -379,7 +324,7 @@ function getGithubLabels(labels: Label[]) {
     });
 }
 
-function getReviewText(item: Item, style: any, secondLine: boolean) {
+function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
     if (!item.reviews || !item.requestedReviewers) {
         return null;
     }

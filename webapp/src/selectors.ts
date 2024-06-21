@@ -2,15 +2,14 @@ import {createSelector} from 'reselect';
 
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
-import manifest from './manifest';
+import {GlobalState, PluginState} from './types/store';
+import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData, CloseOrReopenIssueModalData} from './types/github_types';
 
-const emptyArray = [];
+const emptyArray: GithubIssueData[] | UnreadsData[] = [];
 
-const getPluginState = (state) => state['plugins-' + manifest.id] || {};
+export const getPluginState = (state: GlobalState): PluginState => state['plugins-github'];
 
-export const isEnabled = (state) => getPluginState(state).enabled;
-
-export const getServerRoute = (state) => {
+export const getServerRoute = (state: GlobalState) => {
     const config = getConfig(state);
     let basePath = '';
     if (config && config.SiteURL) {
@@ -26,7 +25,7 @@ export const getServerRoute = (state) => {
 export const getCloseOrReopenIssueModalData = createSelector(
     getPluginState,
     (pluginState) => {
-        const {messageData} = pluginState.closeOrReopenIssueModal;
+        const {messageData} = pluginState.closeOrReopenIssueModal as CloseOrReopenIssueModalData;
         return {
             visible: pluginState.isCloseOrReopenIssueModalVisible,
             messageData,
@@ -34,15 +33,15 @@ export const getCloseOrReopenIssueModalData = createSelector(
     },
 );
 
-function mapPrsToDetails(prs, details) {
+function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
     if (!prs) {
         return [];
     }
 
-    return prs.map((pr) => {
+    return prs.map((pr: GithubIssueData) => {
         let foundDetails;
         if (details) {
-            foundDetails = details.find((prDetails) => {
+            foundDetails = details.find((prDetails: PrsDetailsData) => {
                 return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
             });
         }
@@ -62,7 +61,7 @@ function mapPrsToDetails(prs, details) {
 
 export const getSidebarData = createSelector(
     getPluginState,
-    (pluginState) => {
+    (pluginState): SidebarData => {
         const {username, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
         return {
             username,
@@ -76,4 +75,4 @@ export const getSidebarData = createSelector(
     },
 );
 
-export const configuration = (state) => getPluginState(state).configuration;
+export const configuration = (state: GlobalState) => getPluginState(state).configuration;
