@@ -355,12 +355,12 @@ func TestMakeReplacements(t *testing.T) {
 		},
 		{
 			name:   "link with branch name",
-			input:  "start https://github.com/mattermost/mattermost-server/blob/master/app/authentication.go#L15-L22 lorem ipsum",
-			output: "start \n[mattermost/mattermost-server/app/authentication.go](https://github.com/mattermost/mattermost-server/blob/master/app/authentication.go#L15-L22)\n```go\ntype TokenLocation int\n\nconst (\n\tTokenLocationNotFound TokenLocation = iota\n\tTokenLocationHeader\n\tTokenLocationCookie\n\tTokenLocationQueryString\n)\n```\n lorem ipsum",
+			input:  "start https://github.com/mattermost/mattermost-server/blob/TEST-branch_1/app/authentication.go#L15-L22 lorem ipsum",
+			output: "start \n[mattermost/mattermost-server/app/authentication.go](https://github.com/mattermost/mattermost-server/blob/TEST-branch_1/app/authentication.go#L15-L22)\n```go\ntype TokenLocation int\n\nconst (\n\tTokenLocationNotFound TokenLocation = iota\n\tTokenLocationHeader\n\tTokenLocationCookie\n\tTokenLocationQueryString\n)\n```\n lorem ipsum",
 			replacements: []replacement{
 				{
 					index: 6,
-					word:  "https://github.com/mattermost/mattermost-server/blob/master/app/authentication.go#L15-L22",
+					word:  "https://github.com/mattermost/mattermost-server/blob/TEST-branch_1/app/authentication.go#L15-L22",
 					permalinkInfo: struct {
 						haswww string
 						commit string
