@@ -908,19 +908,6 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		return
 	}
 
-	post := &model.Post{
-		UserId:  p.BotUserID,
-		Type:    "custom_git_pr_comment",
-		Message: newReviewMessage,
-	}
-
-	repoName := strings.ToLower(repo.GetFullName())
-	commentID := event.GetComment().GetID()
-
-	post.AddProp(postPropGithubRepo, repoName)
-	post.AddProp(postPropGithubObjectID, commentID)
-	post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
-
 	labels := make([]string, len(event.GetPullRequest().Labels))
 	for i, v := range event.GetPullRequest().Labels {
 		labels[i] = v.GetName()
@@ -948,9 +935,18 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			continue
 		}
 
+		post := p.makeBotPost(newReviewMessage, "custom_git_pr_comment")
+
+		repoName := strings.ToLower(repo.GetFullName())
+		commentID := event.GetComment().GetID()
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, commentID)
+		post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
+
 		post.ChannelId = sub.ChannelID
-		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+		if _, appErr := p.API.CreatePost(post); appErr != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", appErr.Error())
 		}
 	}
 }
