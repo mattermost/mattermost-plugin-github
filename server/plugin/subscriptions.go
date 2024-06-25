@@ -124,7 +124,7 @@ func (s *Subscription) Stars() bool {
 }
 
 func (s *Subscription) Workflows() bool {
-	return strings.Contains(s.Features.String(), featureWorkflowFailures) || strings.Contains(s.Features.String(), featureWorkflowSuccess)
+	return strings.Contains(s.Features.String(), featureWorkflowFailure) || strings.Contains(s.Features.String(), featureWorkflowSuccess)
 }
 
 func (s *Subscription) Release() bool {
