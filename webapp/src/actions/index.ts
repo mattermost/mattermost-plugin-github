@@ -1,13 +1,18 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {DispatchFunc} from 'mattermost-redux/types/actions';
+
+import {getPluginState} from '../selectors';
+
+import {GetStateFunc} from '../types/store';
+
 import Client from '../client';
 import ActionTypes from '../action_types';
-
-import manifest from '../manifest';
+import {APIError, PrsDetailsData, ShowRhsPluginActionData} from '../types/github_types';
 
 export function getConnected(reminder = false) {
-    return async (dispatch) => {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getConnected(reminder);
@@ -24,8 +29,8 @@ export function getConnected(reminder = false) {
     };
 }
 
-function checkAndHandleNotConnected(data) {
-    return async (dispatch) => {
+function checkAndHandleNotConnected(data: {id: string}) {
+    return async (dispatch: DispatchFunc) => {
         if (data && data.id === 'not_connected') {
             dispatch({
                 type: ActionTypes.RECEIVED_CONNECTED,
@@ -42,8 +47,8 @@ function checkAndHandleNotConnected(data) {
     };
 }
 
-export function getReviewsDetails(prList) {
-    return async (dispatch, getState) => {
+export function getReviewsDetails(prList: PrsDetailsData[]) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getPrsDetails(prList);
@@ -51,7 +56,7 @@ export function getReviewsDetails(prList) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -66,7 +71,7 @@ export function getReviewsDetails(prList) {
 }
 
 export function getRepos() {
-    return async (dispatch, getState) => {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getRepositories();
@@ -78,7 +83,7 @@ export function getRepos() {
             return {error: data};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -93,7 +98,7 @@ export function getRepos() {
 }
 
 export function getSidebarContent() {
-    return async (dispatch, getState) => {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getSidebarContent();
@@ -101,7 +106,7 @@ export function getSidebarContent() {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -115,8 +120,8 @@ export function getSidebarContent() {
     };
 }
 
-export function getYourPrsDetails(prList) {
-    return async (dispatch, getState) => {
+export function getYourPrsDetails(prList: PrsDetailsData[]) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getPrsDetails(prList);
@@ -124,7 +129,7 @@ export function getYourPrsDetails(prList) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -138,8 +143,8 @@ export function getYourPrsDetails(prList) {
     };
 }
 
-export function getLabelOptions(repo) {
-    return async (dispatch, getState) => {
+export function getLabelOptions(repo: string) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getLabels(repo);
@@ -147,7 +152,7 @@ export function getLabelOptions(repo) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -156,8 +161,8 @@ export function getLabelOptions(repo) {
     };
 }
 
-export function getAssigneeOptions(repo) {
-    return async (dispatch, getState) => {
+export function getAssigneeOptions(repo: string) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getAssignees(repo);
@@ -165,7 +170,7 @@ export function getAssigneeOptions(repo) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -174,8 +179,8 @@ export function getAssigneeOptions(repo) {
     };
 }
 
-export function getMilestoneOptions(repo) {
-    return async (dispatch, getState) => {
+export function getMilestoneOptions(repo: string) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getMilestones(repo);
@@ -183,7 +188,7 @@ export function getMilestoneOptions(repo) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -193,7 +198,7 @@ export function getMilestoneOptions(repo) {
 }
 
 export function getMentions() {
-    return async (dispatch, getState) => {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getMentions();
@@ -201,7 +206,7 @@ export function getMentions() {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data)(dispatch, getState);
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
         if (!connected) {
             return {error: data};
         }
@@ -217,13 +222,13 @@ export function getMentions() {
 
 const GITHUB_USER_GET_TIMEOUT_MILLISECONDS = 1000 * 60 * 60; // 1 hour
 
-export function getGitHubUser(userID) {
-    return async (dispatch, getState) => {
+export function getGitHubUser(userID: string) {
+    return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (!userID) {
             return {};
         }
 
-        const user = getState()[`plugins-${manifest.id}`].githubUsers[userID];
+        const user = getPluginState(getState()).githubUsers[userID];
         if (user && user.last_try && Date.now() - user.last_try < GITHUB_USER_GET_TIMEOUT_MILLISECONDS) {
             return {};
         }
@@ -235,8 +240,8 @@ export function getGitHubUser(userID) {
         let data;
         try {
             data = await Client.getGitHubUser(userID);
-        } catch (error) {
-            if (error.status === 404) {
+        } catch (error: unknown) {
+            if ((error as APIError).status_code === 404) {
                 dispatch({
                     type: ActionTypes.RECEIVED_GITHUB_USER,
                     userID,
@@ -260,21 +265,21 @@ export function getGitHubUser(userID) {
  * Stores`showRHSPlugin` action returned by
  * registerRightHandSidebarComponent in plugin initialization.
  */
-export function setShowRHSAction(showRHSPluginAction) {
+export function setShowRHSAction(showRHSPluginAction: ShowRhsPluginActionData) {
     return {
         type: ActionTypes.RECEIVED_SHOW_RHS_ACTION,
         showRHSPluginAction,
     };
 }
 
-export function updateRhsState(rhsState) {
+export function updateRhsState(rhsState: string) {
     return {
         type: ActionTypes.UPDATE_RHS_STATE,
         state: rhsState,
     };
 }
 
-export function openCreateIssueModal(postId) {
+export function openCreateIssueModal(postId: string) {
     return {
         type: ActionTypes.OPEN_CREATE_ISSUE_MODAL,
         data: {
@@ -283,7 +288,7 @@ export function openCreateIssueModal(postId) {
     };
 }
 
-export function openCreateIssueModalWithoutPost(title, channelId) {
+export function openCreateIssueModalWithoutPost(title: string, channelId: string) {
     return {
         type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST,
         data: {
@@ -299,8 +304,8 @@ export function closeCreateIssueModal() {
     };
 }
 
-export function createIssue(payload) {
-    return async (dispatch) => {
+export function createIssue(payload: CreateIssuePayload) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.createIssue(payload);
@@ -308,7 +313,7 @@ export function createIssue(payload) {
             return {error};
         }
 
-        const connected = await dispatch(checkAndHandleNotConnected(data));
+        const connected = await checkAndHandleNotConnected(data);
         if (!connected) {
             return {error: data};
         }
@@ -317,7 +322,7 @@ export function createIssue(payload) {
     };
 }
 
-export function openAttachCommentToIssueModal(postId) {
+export function openAttachCommentToIssueModal(postId: string) {
     return {
         type: ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL,
         data: {
@@ -332,8 +337,8 @@ export function closeAttachCommentToIssueModal() {
     };
 }
 
-export function attachCommentToIssue(payload) {
-    return async (dispatch) => {
+export function attachCommentToIssue(payload: AttachCommentToIssuePayload) {
+    return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.attachCommentToIssue(payload);
@@ -341,7 +346,7 @@ export function attachCommentToIssue(payload) {
             return {error};
         }
 
-        const connected = await dispatch(checkAndHandleNotConnected(data));
+        const connected = await checkAndHandleNotConnected(data);
         if (!connected) {
             return {error: data};
         }
