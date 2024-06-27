@@ -253,7 +253,7 @@ func generateSecret() (string, error) {
 
 func (c *Configuration) getOrganizations() []string {
 	if c.GitHubOrg == "" {
-		return nil
+		return []string{}
 	}
 
 	list := strings.Split(c.GitHubOrg, ",")

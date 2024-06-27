@@ -66,7 +66,7 @@ function shouldUpdateDetails(prs, prevPrs, targetState, currentState, prevState)
 export default class SidebarRight extends React.PureComponent {
     static propTypes = {
         username: PropTypes.string,
-        orgs: PropTypes.string,
+        orgs: PropTypes.array.isRequired,
         enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),

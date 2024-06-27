@@ -15,7 +15,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 )
 

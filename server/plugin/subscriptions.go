@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 )
 
@@ -121,6 +121,10 @@ func (s *Subscription) PullReviews() bool {
 
 func (s *Subscription) Stars() bool {
 	return strings.Contains(s.Features.String(), featureStars)
+}
+
+func (s *Subscription) Release() bool {
+	return strings.Contains(s.Features.String(), featureReleases)
 }
 
 func (s *Subscription) Label() string {

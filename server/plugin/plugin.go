@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
@@ -969,8 +969,12 @@ func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
 	orgList := config.getOrganizations()
+	if len(orgList) == 0 {
+		return nil
+	}
+
 	for _, configOrg := range orgList {
-		if configOrg == org {
+		if configOrg == strings.ToLower(org) {
 			return nil
 		}
 	}
@@ -983,19 +987,13 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 		return false
 	}
 
-	orgList := p.configuration.getOrganizations()
-	isMemberOfOrg := false
-	for _, org := range orgList {
-		isMember, _, err := githubClient.Organizations.IsMember(context.Background(), org, *user.Login)
-		if err != nil {
-			p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
-			return false
-		}
-
-		isMemberOfOrg = isMemberOfOrg || isMember
+	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
+	if err != nil {
+		p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
+		return false
 	}
 
-	return isMemberOfOrg
+	return isMember
 }
 
 func (p *Plugin) isOrganizationLocked() bool {
