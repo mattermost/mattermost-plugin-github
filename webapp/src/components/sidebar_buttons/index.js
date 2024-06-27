@@ -15,6 +15,7 @@ function mapStateToProps(state) {
     return {
         connected: state[`plugins-${pluginId}`].connected,
         clientId: state[`plugins-${pluginId}`].clientId,
+        mentions: state[`plugins-${pluginId}`].sidebarContent.mentions,
         reviews: state[`plugins-${pluginId}`].sidebarContent.reviews,
         yourPrs: state[`plugins-${pluginId}`].sidebarContent.prs,
         yourAssignments: state[`plugins-${pluginId}`].sidebarContent.assignments,
