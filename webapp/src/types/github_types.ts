@@ -136,6 +136,6 @@ export type SidebarData = {
     yourPrs: GithubIssueData[];
     yourAssignments: GithubIssueData[],
     unreads: UnreadsData[]
-    orgs: string,
+    orgs: string[],
     rhsState?: string | null
 }
