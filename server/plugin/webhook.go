@@ -945,8 +945,8 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
 
 		post.ChannelId = sub.ChannelID
-		if _, appErr := p.API.CreatePost(post); appErr != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", appErr.Error())
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
 }

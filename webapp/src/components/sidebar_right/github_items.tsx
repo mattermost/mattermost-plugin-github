@@ -19,7 +19,7 @@ import TickIcon from '../../images/icons/tick';
 import SignIcon from '../../images/icons/sign';
 import ChangesRequestedIcon from '../../images/icons/changes_requested';
 import {getLabelFontColor} from '../../utils/styles';
-import {ReviewState} from '../../constants/index';
+import {ReviewState} from '../../constants';
 
 const notificationReasons = {
     assign:	'You were assigned to the issue',
