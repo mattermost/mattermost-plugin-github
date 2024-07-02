@@ -8,10 +8,16 @@ import ReactSelect from 'react-select';
 import AsyncSelect from 'react-select/async';
 import CreatableSelect from 'react-select/creatable';
 
-import Setting from 'components/setting';
-import {getStyleForReactSelect} from 'utils/styles';
+import {getStyleForReactSelect} from '@/utils/styles';
+
+import Setting from '@/components/setting';
 
 const MAX_NUM_OPTIONS = 100;
+
+export type ReactSelectOption = {
+    label: string;
+    value: string;
+}
 
 export default class ReactSelectSetting extends React.PureComponent {
     static propTypes = {
