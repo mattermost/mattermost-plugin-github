@@ -5,8 +5,8 @@ import ActionTypes from '../action_types';
 import Constants from '../constants';
 import {
     getConnected,
+    openCreateOrUpdateIssueModal,
     getSidebarContent,
-    openCreateIssueModalWithoutPost,
 } from '../actions';
 
 import manifest from '../manifest';
@@ -91,11 +91,11 @@ export function handleRefresh(store) {
     };
 }
 
-export function handleOpenCreateIssueModal(store) {
+export function handleOpenCreateOrUpdateIssueModal(store) {
     return (msg) => {
         if (!msg.data) {
             return;
         }
-        store.dispatch(openCreateIssueModalWithoutPost(msg.data.title, msg.data.channel_id));
+        store.dispatch(openCreateOrUpdateIssueModal(msg.data));
     };
 }

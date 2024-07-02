@@ -118,10 +118,16 @@ export type CreateIssueModalData = {
     title: string;
     channelId: string;
     postId: string;
+    messageData: MessageData
+}
+
+export type CloseOrReopenIssueModalData = {
+    messageData: MessageData
 }
 
 export type AttachCommentToIssueModalForPostIdData = {
     postId: string;
+    messageData: MessageData;
 }
 
 export type APIError = {
@@ -138,4 +144,13 @@ export type SidebarData = {
     unreads: UnreadsData[]
     org: string,
     rhsState?: string | null
+}
+
+export type MessageData = {
+    repo_owner: string,
+    repo_name: string,
+    issue_number: number,
+    postId: string,
+    status: string,
+    channel_id: string,
 }

@@ -9,7 +9,7 @@ import {GetStateFunc} from '../types/store';
 
 import Client from '../client';
 import ActionTypes from '../action_types';
-import {APIError, PrsDetailsData, ShowRhsPluginActionData} from '../types/github_types';
+import {APIError, MessageData, PrsDetailsData, ShowRhsPluginActionData} from '../types/github_types';
 
 export function getConnected(reminder = false) {
     return async (dispatch: DispatchFunc) => {
@@ -193,6 +193,24 @@ export function getMilestoneOptions(repo: string) {
     };
 }
 
+export function getIssueInfo(owner: string, repo: string, number: number, post_id: string) {
+    return async (dispatch: DispatchFunc) => {
+        let data;
+        try {
+            data = await Client.getIssueInfo(owner, repo, number, post_id);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = await checkAndHandleNotConnected(data)(dispatch);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
 export function getMentions() {
     return async (dispatch: DispatchFunc) => {
         let data;
@@ -275,28 +293,51 @@ export function updateRhsState(rhsState: string) {
     };
 }
 
-export function openCreateIssueModal(postId: string) {
+export function openCreateIssueModalWithPost(postId: string) {
     return {
-        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL,
+        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITH_POST,
         data: {
             postId,
         },
     };
 }
 
-export function openCreateIssueModalWithoutPost(title: string, channelId: string) {
+export function openCreateOrUpdateIssueModal(messageData: MessageData) {
     return {
-        type: ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST,
+        type: ActionTypes.OPEN_CREATE_OR_UPDATE_ISSUE_MODAL,
         data: {
-            title,
-            channelId,
+            messageData,
         },
     };
 }
 
-export function closeCreateIssueModal() {
+export function openCloseOrReopenIssueModal(messageData: MessageData) {
     return {
-        type: ActionTypes.CLOSE_CREATE_ISSUE_MODAL,
+        type: ActionTypes.OPEN_CLOSE_OR_REOPEN_ISSUE_MODAL,
+        data: {
+            messageData,
+        },
+    };
+}
+
+export function openCreateCommentOnIssueModal(messageData: MessageData) {
+    return {
+        type: ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL,
+        data: {
+            messageData,
+        },
+    };
+}
+
+export function closeCreateOrUpdateIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_CREATE_OR_UPDATE_ISSUE_MODAL,
+    };
+}
+
+export function closeCloseOrReOpenIssueModal() {
+    return {
+        type: ActionTypes.CLOSE_CLOSE_OR_REOPEN_ISSUE_MODAL,
     };
 }
 
@@ -309,7 +350,43 @@ export function createIssue(payload: CreateIssuePayload) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data);
+        const connected = checkAndHandleNotConnected(data);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function closeOrReopenIssue(payload: CloseOrReopenIssuePayload) {
+    return async (dispatch: DispatchFunc) => {
+        let data;
+        try {
+            data = await Client.closeOrReopenIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = checkAndHandleNotConnected(data);
+        if (!connected) {
+            return {error: data};
+        }
+
+        return {data};
+    };
+}
+
+export function updateIssue(payload: UpdateIssuePayload) {
+    return async (dispatch: DispatchFunc) => {
+        let data;
+        try {
+            data = await Client.updateIssue(payload);
+        } catch (error) {
+            return {error};
+        }
+
+        const connected = checkAndHandleNotConnected(data);
         if (!connected) {
             return {error: data};
         }
@@ -342,7 +419,7 @@ export function attachCommentToIssue(payload: AttachCommentToIssuePayload) {
             return {error};
         }
 
-        const connected = await checkAndHandleNotConnected(data);
+        const connected = checkAndHandleNotConnected(data);
         if (!connected) {
             return {error: data};
         }
