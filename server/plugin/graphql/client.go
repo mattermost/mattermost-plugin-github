@@ -14,24 +14,26 @@ import (
 
 // Client encapsulates the third party package that communicates with Github GraphQL API
 type Client struct {
-	client   *githubv4.Client
-	org      string
-	username string
-	logger   pluginapi.LogService
+	client           *githubv4.Client
+	org              string
+	username         string
+	logger           pluginapi.LogService
+	getOrganizations func() []string
 }
 
 // NewClient creates and returns Client. The third party package that queries GraphQL is initialized here.
-func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgName, enterpriseBaseURL string) *Client {
+func NewClient(logger pluginapi.LogService, getOrganizations func() []string, token oauth2.Token, username, orgName, enterpriseBaseURL string) *Client {
 	ts := oauth2.StaticTokenSource(&token)
 	httpClient := oauth2.NewClient(context.Background(), ts)
 	var client Client
 
 	if enterpriseBaseURL == "" {
 		client = Client{
-			username: username,
-			client:   githubv4.NewClient(httpClient),
-			logger:   logger,
-			org:      orgName,
+			username:         username,
+			client:           githubv4.NewClient(httpClient),
+			logger:           logger,
+			org:              orgName,
+			getOrganizations: getOrganizations,
 		}
 	} else {
 		baseURL, err := url.Parse(enterpriseBaseURL)
@@ -43,10 +45,11 @@ func NewClient(logger pluginapi.LogService, token oauth2.Token, username, orgNam
 		baseURL.Path = path.Join(baseURL.Path, "api", "graphql")
 
 		client = Client{
-			client:   githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
-			username: username,
-			org:      orgName,
-			logger:   logger,
+			client:           githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
+			username:         username,
+			org:              orgName,
+			logger:           logger,
+			getOrganizations: getOrganizations,
 		}
 	}
 
