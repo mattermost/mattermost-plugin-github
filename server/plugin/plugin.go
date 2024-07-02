@@ -109,7 +109,7 @@ type Plugin struct {
 // NewPlugin returns an instance of a Plugin.
 func NewPlugin() *Plugin {
 	p := &Plugin{
-		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>[\w-]+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
