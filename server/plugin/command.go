@@ -368,8 +368,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	const errorNoWebhookFound = "\nNo webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
-	const errorWebhookToUser = "\nNot able to get the list of webhooks. This feature is not available for subscription to a user."
+	const errorNoWebhookFound = "\n**Note:** No webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
 	subscriptionEvents := Features("pulls,issues,creates,deletes")
 	if len(parameters) == 0 {
 		return "Please specify a repository."
@@ -461,13 +460,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 		if foundErr != nil {
 			if strings.Contains(foundErr.Error(), "404 Not Found") {
-				return errorWebhookToUser
+				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
+				return ""
 			}
 			return errors.Wrap(foundErr, "failed to get the list of webhooks").Error()
 		}
 
 		if !found {
-			subOrgMsg += errorNoWebhookFound
+			subOrgMsg = errorNoWebhookFound
 		}
 		return subOrgMsg
 	}
@@ -500,13 +500,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
-			return errorWebhookToUser
+			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
+			return ""
 		}
 		return errors.Wrap(err, "failed to get the list of webhooks").Error()
 	}
 
 	if !found {
-		msg += errorNoWebhookFound
+		msg = errorNoWebhookFound
 	}
 
 	return msg
