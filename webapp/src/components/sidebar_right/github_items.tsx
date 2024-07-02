@@ -19,6 +19,7 @@ import TickIcon from '../../images/icons/tick';
 import SignIcon from '../../images/icons/sign';
 import ChangesRequestedIcon from '../../images/icons/changes_requested';
 import {getLabelFontColor} from '../../utils/styles';
+import {ReviewState} from '../../constants';
 
 const notificationReasons = {
     assign:	'You were assigned to the issue',
@@ -350,7 +351,7 @@ function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
             return false;
         }
 
-        if (v.state === 'COMMENTED' || v.state === 'DISMISSED') {
+        if (v.state === ReviewState.Commented || v.state === ReviewState.Dismissed) {
             return false;
         }
 
@@ -363,14 +364,14 @@ function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
     });
 
     const approved = lastReviews.reduce((accum: number, cur: Review) => {
-        if (cur.state === 'APPROVED') {
+        if (cur.state === ReviewState.Approved) {
             return accum + 1;
         }
         return accum;
     }, 0);
 
     const changesRequested = lastReviews.reduce((accum: number, cur: Review) => {
-        if (cur.state === 'CHANGES_REQUESTED') {
+        if (cur.state === ReviewState.ChangesRequested) {
             return accum + 1;
         }
         return accum;
