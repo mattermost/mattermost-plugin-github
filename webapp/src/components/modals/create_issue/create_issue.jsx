@@ -49,7 +49,11 @@ export default class CreateIssueModal extends PureComponent {
     componentDidUpdate(prevProps) {
         if (this.props.post && !prevProps.post) {
             this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
-        } else if (this.props.channelId && (this.props.channelId !== prevProps.channelId || this.props.title !== prevProps.title)) {
+        } else if (
+            this.props.channelId &&
+            (this.props.channelId !== prevProps.channelId ||
+                this.props.title !== prevProps.title)
+        ) {
             const title = this.props.title.substring(0, MAX_TITLE_LENGTH);
             this.setState({issueTitle: title}); // eslint-disable-line react/no-did-update-set-state
         }
@@ -71,7 +75,7 @@ export default class CreateIssueModal extends PureComponent {
         }
 
         const {post} = this.props;
-        const postId = (post) ? post.id : '';
+        const postId = post ? post.id : '';
 
         const issue = {
             title: this.state.issueTitle,
@@ -116,10 +120,14 @@ export default class CreateIssueModal extends PureComponent {
 
     handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
 
-    handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
+    handleIssueDescriptionChange = (issueDescription) =>
+        this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
+        if (
+            !this.state.repo ||
+            (this.state.repo.permissions && !this.state.repo.permissions.push)
+        ) {
             return null;
         }
 
@@ -147,7 +155,7 @@ export default class CreateIssueModal extends PureComponent {
                 />
             </>
         );
-    }
+    };
 
     render() {
         if (!this.props.visible) {
@@ -162,7 +170,10 @@ export default class CreateIssueModal extends PureComponent {
         let issueTitleValidationError = null;
         if (this.state.showErrors && !this.state.issueTitleValid) {
             issueTitleValidationError = (
-                <p className='help-text error-text'>
+                <p
+                    className='help-text error-text'
+                    style={{marginTop: '8px', marginBottom: '24px'}}
+                >
                     <span>{requiredMsg}</span>
                 </p>
             );
@@ -221,9 +232,7 @@ export default class CreateIssueModal extends PureComponent {
                 backdrop='static'
             >
                 <Modal.Header closeButton={true}>
-                    <Modal.Title>
-                        {'Create GitHub Issue'}
-                    </Modal.Title>
+                    <Modal.Title>{'Create GitHub Issue'}</Modal.Title>
                 </Modal.Header>
                 <form
                     role='form'
