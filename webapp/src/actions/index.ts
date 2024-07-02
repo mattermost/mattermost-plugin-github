@@ -76,6 +76,10 @@ export function getRepos() {
         try {
             data = await Client.getRepositories();
         } catch (error) {
+            dispatch({
+                type: ActionTypes.RECEIVED_REPOSITORIES,
+                data: [],
+            });
             return {error: data};
         }
 

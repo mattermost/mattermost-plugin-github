@@ -806,6 +806,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for issues")
+		p.writeJSON(w, make([]*github.Issue, 0))
 		return
 	}
 
