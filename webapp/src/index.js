@@ -2,6 +2,7 @@
 // See License.txt for license information.
 import AttachCommentToIssuePostMenuAction from 'components/post_menu_actions/attach_comment_to_issue';
 import AttachCommentToIssueModal from 'components/modals/attach_comment_to_issue';
+import {isUrlCanPreview} from 'utils/github_utils';
 
 import CreateIssueModal from './components/modals/create_issue';
 import CreateIssuePostMenuAction from './components/post_menu_action/create_issue';
@@ -10,6 +11,7 @@ import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
+import LinkEmbedPreview from './components/link_embed_preview';
 import Reducer from './reducers';
 import Client from './client';
 import {getConnected, setShowRHSAction} from './actions';
@@ -37,6 +39,7 @@ class PluginClass {
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
         registry.registerLinkTooltipComponent(LinkTooltip);
+        registry.registerPostWillRenderEmbedComponent((embed) => embed.url && isUrlCanPreview(embed.url), LinkEmbedPreview, true);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
