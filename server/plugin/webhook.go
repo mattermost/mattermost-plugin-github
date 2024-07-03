@@ -345,6 +345,20 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	return p.isUserOrganizationMember(githubClient, user, organization)
 }
 
+func (p *Plugin) includeOnlyConfigOrgMembers(user *github.User, subscription *Subscription) bool {
+	if !subscription.IncludeOnlyOrgMembers() {
+		return false
+	}
+
+	githubClient, err := p.GetGitHubClient(context.Background(), subscription.CreatorID)
+	if err != nil {
+		p.client.Log.Warn("Failed to get user info", "error", err.Error())
+		return false
+	}
+
+	return !p.isUserOrganizationMember(githubClient, user, p.getConfiguration().GitHubOrg)
+}
+
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
 
@@ -397,6 +411,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
 			continue
 		}
 
@@ -598,6 +616,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+			continue
+		}
+
 		renderedMessage, err := renderTemplate(issueTemplate, GetEventWithRenderConfig(event, sub))
 		if err != nil {
 			p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -680,6 +702,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+			continue
+		}
+
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
@@ -718,6 +744,10 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
 			continue
 		}
 
@@ -761,6 +791,10 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
 			continue
 		}
 
@@ -813,6 +847,10 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
 			continue
 		}
 
@@ -901,6 +939,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -959,6 +1001,10 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
 			continue
 		}
 
@@ -1368,6 +1414,10 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
 			continue
 		}
 
