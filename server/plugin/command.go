@@ -26,6 +26,7 @@ const (
 	featureIssueComments = "issue_comments"
 	featurePullReviews   = "pull_reviews"
 	featureStars         = "stars"
+	featureReleases      = "releases"
 )
 
 const (
@@ -44,6 +45,7 @@ var validFeatures = map[string]bool{
 	featureIssueComments: true,
 	featurePullReviews:   true,
 	featureStars:         true,
+	featureReleases:      true,
 }
 
 type Features string
@@ -366,8 +368,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
-	const errorNoWebhookFound = "\nNo webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
-	const errorWebhookToUser = "\nNot able to get the list of webhooks. This feature is not available for subscription to a user."
+	const errorNoWebhookFound = "\n**Note:** No webhook was found for this repository or organization. To create one, enter the following slash command `/github setup webhook`"
 	subscriptionEvents := Features("pulls,issues,creates,deletes")
 	if len(parameters) == 0 {
 		return "Please specify a repository."
@@ -459,13 +460,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 		if foundErr != nil {
 			if strings.Contains(foundErr.Error(), "404 Not Found") {
-				return errorWebhookToUser
+				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
+				return ""
 			}
 			return errors.Wrap(foundErr, "failed to get the list of webhooks").Error()
 		}
 
 		if !found {
-			subOrgMsg += errorNoWebhookFound
+			subOrgMsg = errorNoWebhookFound
 		}
 		return subOrgMsg
 	}
@@ -498,13 +500,14 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
-			return errorWebhookToUser
+			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
+			return ""
 		}
 		return errors.Wrap(err, "failed to get the list of webhooks").Error()
 	}
 
 	if !found {
-		msg += errorNoWebhookFound
+		msg = errorNoWebhookFound
 	}
 
 	return msg
@@ -894,7 +897,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
