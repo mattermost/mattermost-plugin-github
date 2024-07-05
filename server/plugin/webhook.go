@@ -844,10 +844,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 		return
 	}
 
-	switch strings.ToUpper(event.GetReview().GetState()) {
-	case "APPROVED":
-	case "COMMENTED":
-	case "CHANGES_REQUESTED":
+	switch event.GetReview().GetState() {
+	case "approved":
+	case "commented":
+	case "changes_requested":
 	default:
 		p.client.Log.Debug("Unhandled review state", "state", event.GetReview().GetState())
 		return
@@ -936,7 +936,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			continue
 		}
 
-		post := p.makeBotPost(newReviewMessage, "custom_git_pull_review_comment")
+		post := p.makeBotPost(newReviewMessage, "custom_git_pr_comment")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
