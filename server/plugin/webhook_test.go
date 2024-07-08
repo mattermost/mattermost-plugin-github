@@ -120,7 +120,7 @@ func TestIncludeOnlyOrgMembers(t *testing.T) {
 			gitHubPlugin.SetAPI(api)
 			gitHubPlugin.client = pluginapi.NewClient(gitHubPlugin.API, gitHubPlugin.Driver)
 
-			got := gitHubPlugin.includeOnlyConfigOrgMembers(&tt.user, &tt.subscription)
+			got := gitHubPlugin.shouldDenyEventDueToNotOrgMember(&tt.user, &tt.subscription)
 			assert.Equal(t, tt.want, got)
 		})
 	}

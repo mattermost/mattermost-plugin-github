@@ -350,7 +350,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	return p.isUserOrganizationMember(githubClient, user, organization)
 }
 
-func (p *Plugin) includeOnlyConfigOrgMembers(user *github.User, subscription *Subscription) bool {
+func (p *Plugin) shouldDenyEventDueToNotOrgMember(user *github.User, subscription *Subscription) bool {
 	if !subscription.IncludeOnlyOrgMembers() {
 		return false
 	}
@@ -414,7 +414,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -613,7 +613,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -689,7 +689,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -730,7 +730,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -773,7 +773,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -818,7 +818,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -910,7 +910,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -964,7 +964,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -1376,7 +1376,7 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 			continue
 		}
 
-		if p.includeOnlyConfigOrgMembers(event.GetSender(), sub) {
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
