@@ -184,7 +184,7 @@ func (p *Plugin) checkConfigured(next http.Handler) http.Handler {
 		config := p.getConfiguration()
 
 		if err := config.IsValid(); err != nil {
-			http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
+			http.Error(w, "This plugin is not configured.", http.StatusUnprocessableEntity)
 			return
 		}
 
