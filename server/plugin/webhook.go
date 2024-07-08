@@ -361,7 +361,11 @@ func (p *Plugin) shouldDenyEventDueToNotOrgMember(user *github.User, subscriptio
 		return false
 	}
 
-	return !p.isUserOrganizationMember(githubClient, user, p.getConfiguration().GitHubOrg)
+	if !p.isUserOrganizationMember(githubClient, user, p.getConfiguration().GitHubOrg) {
+		return false
+	}
+
+	return true
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
