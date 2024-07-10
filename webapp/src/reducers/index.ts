@@ -29,7 +29,7 @@ function enterpriseURL(state = '', action: {type: string, data: ConnectedData}) 
     }
 }
 
-function organizations(state: string[], action: {type: string, data: ConnectedData}) {
+function organizations(state: string[] = [], action: {type: string, data: ConnectedData}) {    
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         if (action.data && action.data.organizations) {
