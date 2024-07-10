@@ -20,19 +20,18 @@ const (
 )
 
 func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
-	params := map[string]interface{}{
-		queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
-		queryParamReviewPRQueryArg:  githubv4.String(fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
-		queryParamAssigneeQueryArg:  githubv4.String(fmt.Sprintf("assignee:%s is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
-		queryParamReviewsCursor:     (*githubv4.String)(nil),
-		queryParamAssignmentsCursor: (*githubv4.String)(nil),
-		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
-	}
-
 	orgsList := c.getOrganizations()
-
 	var resultReview, resultAssignee, resultOpenPR []*github.Issue
 	for _, org := range orgsList {
+		params := map[string]interface{}{
+			queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
+			queryParamReviewPRQueryArg:  githubv4.String(fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
+			queryParamAssigneeQueryArg:  githubv4.String(fmt.Sprintf("assignee:%s is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
+			queryParamReviewsCursor:     (*githubv4.String)(nil),
+			queryParamAssignmentsCursor: (*githubv4.String)(nil),
+			queryParamOpenPRsCursor:     (*githubv4.String)(nil),
+		}
+
 		params[queryParamOpenPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamOpenPRQueryArg]))
 		params[queryParamReviewPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamReviewPRQueryArg]))
 		params[queryParamAssigneeQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamAssigneeQueryArg]))
