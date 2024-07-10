@@ -3,19 +3,18 @@
 
 import React, {PureComponent} from 'react';
 
-import IssueAttributeSelector from '../issue_attribute_selector';
 import {Theme} from 'mattermost-redux/types/preferences';
 
-type Props = {
+import IssueAttributeSelector, {IssueAttributeSelectorSelection} from '../issue_attribute_selector';
+
+import {GitHubLabelSelectorDispatchProps} from '.';
+
+type Props = GitHubLabelSelectorDispatchProps & {
     repoName: string;
     theme: Theme;
     selectedLabels: string[];
     onChange: (selection: string[]) => void;
-    actions: {
-        getLabelOptions: (repoName: string) => Promise<any>;
-    };
 };
-}
 
 export default class GithubLabelSelector extends PureComponent<Props> {
     loadLabels = async () => {
@@ -39,7 +38,13 @@ export default class GithubLabelSelector extends PureComponent<Props> {
         }));
     };
 
-    onChange = (selection) => this.props.onChange(selection.map((s) => s.value));
+    onChange = (selection: IssueAttributeSelectorSelection) => {
+        if (!selection || !Array.isArray(selection)) {
+            return;
+        }
+
+        this.props.onChange(selection.map((s) => s.value));
+    }
 
     render() {
         return (

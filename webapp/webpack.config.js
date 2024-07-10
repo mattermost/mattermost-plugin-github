@@ -1,6 +1,7 @@
 const exec = require('child_process').exec;
 
 const path = require('path');
+
 const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
@@ -44,6 +45,9 @@ module.exports = {
         './src/index.js',
     ],
     resolve: {
+        alias: {
+            '@': path.resolve(__dirname, 'src'),
+        },
         modules: [
             'src',
             'node_modules',

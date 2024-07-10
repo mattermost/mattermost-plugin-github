@@ -14,11 +14,6 @@ import Setting from '@/components/setting';
 
 const MAX_NUM_OPTIONS = 100;
 
-export type ReactSelectOption = {
-    label: string;
-    value: string;
-}
-
 export default class ReactSelectSetting extends React.PureComponent {
     static propTypes = {
         name: PropTypes.string,

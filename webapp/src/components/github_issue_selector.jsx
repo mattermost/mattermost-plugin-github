@@ -7,8 +7,9 @@ import PropTypes from 'prop-types';
 import debounce from 'debounce-promise';
 import AsyncSelect from 'react-select/async';
 
-import {getStyleForReactSelect} from 'utils/styles';
-import Client from 'client';
+import Client from '@/client';
+
+import {getStyleForReactSelect} from '@/utils/styles';
 
 const searchDebounceDelay = 400;
 

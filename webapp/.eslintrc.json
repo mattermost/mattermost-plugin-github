@@ -1,21 +1,16 @@
 {
   "extends": [
-      "eslint:recommended",
-      "plugin:react-hooks/recommended"
+    "eslint:recommended",
+    "plugin:react-hooks/recommended"
   ],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "ecmaVersion": 8,
-    "sourceType": "module",
-    "ecmaFeatures": {
-      "jsx": true,
-      "impliedStrict": true,
-      "modules": true,
-      "experimentalObjectRestSpread": true
-    }
+    "project": "./tsconfig.json",
+    "tsconfigRootDir": "./"
   },
-  "parser": "babel-eslint",
   "plugins": [
     "react",
+    "@typescript-eslint",
     "import"
   ],
   "env": {
@@ -35,7 +30,9 @@
     "beforeEach": true
   },
   "settings": {
-    "import/resolver": "webpack",
+    "import/resolver": {
+      "typescript": {}
+    },
     "import/parsers": {
       "@typescript-eslint/parser": [".ts", ".tsx"]
     }

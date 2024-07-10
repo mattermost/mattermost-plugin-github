@@ -4,11 +4,17 @@
 import React, {PureComponent} from 'react';
 import ReactSelect from 'react-select';
 
+import {Theme} from 'mattermost-redux/types/preferences';
+
 import {getStyleForReactSelect} from '@/utils/styles';
 import Setting from '@/components/setting';
 
-import {ReactSelectOption} from './react_select_setting';
-import {Theme} from 'mattermost-redux/types/preferences';
+export type ReactSelectOption = {
+    label: string;
+    value: string;
+};
+
+export type IssueAttributeSelectorSelection = ReactSelectOption | ReactSelectOption[] | null;
 
 export type Props = {
     isMulti: boolean;

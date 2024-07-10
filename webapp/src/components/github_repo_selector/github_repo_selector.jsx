@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import ReactSelectSetting from 'components/react_select_setting';
+import ReactSelectSetting from '@/components/react_select_setting';
 
 const initialState = {
     invalid: false,
