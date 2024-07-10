@@ -4,13 +4,14 @@
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
+import {ConnectedData, GithubIssueData, GithubLabel, GithubUsersData, GitHubIssueCommentData, MentionsData, MilestoneData, PrsDetailsData, SidebarContentData, YourReposData, GitHubPullRequestData} from '../types/github_types';
+
 import manifest from '../manifest';
-import {GithubUsersData, PrsDetailsData, SidebarContentData} from 'src/types/github_types';
 
 export type ApiError = {
     id: string;
-	message: string;
-	status_code: number;
+    message: string;
+    status_code: number;
 };
 
 export default class Client {
@@ -21,7 +22,7 @@ export default class Client {
     }
 
     getConnected = async (reminder = false) => {
-        return this.doGet<{connected: boolean}>(`${this.url}/connected?reminder=${reminder}`);
+        return this.doGet<ConnectedData>(`${this.url}/connected?reminder=${reminder}`);
     }
 
     getSidebarContent = async () => {
@@ -33,7 +34,7 @@ export default class Client {
     }
 
     getMentions = async () => {
-        return this.doGet(`${this.url}/mentions`);
+        return this.doGet<MentionsData[]>(`${this.url}/mentions`);
     }
 
     getGitHubUser = async (userID: string) => {
@@ -41,39 +42,39 @@ export default class Client {
     }
 
     getRepositories = async () => {
-        return this.doGet(`${this.url}/repositories`);
+        return this.doGet<YourReposData[]>(`${this.url}/repositories`);
     }
 
-    getLabels = async (repo) => {
-        return this.doGet(`${this.url}/labels?repo=${repo}`);
+    getLabels = async (repo: string) => {
+        return this.doGet<GithubLabel[]>(`${this.url}/labels?repo=${repo}`);
     }
 
-    getAssignees = async (repo) => {
-        return this.doGet(`${this.url}/assignees?repo=${repo}`);
+    getAssignees = async (repo: string) => {
+        return this.doGet<GithubUsersData[]>(`${this.url}/assignees?repo=${repo}`);
     }
 
-    getMilestones = async (repo) => {
-        return this.doGet(`${this.url}/milestones?repo=${repo}`);
+    getMilestones = async (repo: string) => {
+        return this.doGet<MilestoneData[]>(`${this.url}/milestones?repo=${repo}`);
     }
 
-    createIssue = async (payload) => {
-        return this.doPost(`${this.url}/createissue`, payload);
+    createIssue = async (payload: CreateIssuePayload) => {
+        return this.doPost<GithubIssueData>(`${this.url}/createissue`, payload);
     }
 
-    searchIssues = async (searchTerm) => {
-        return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
+    searchIssues = async (searchTerm: string) => {
+        return this.doGet<GithubIssueData[]>(`${this.url}/searchissues?term=${searchTerm}`);
     }
 
-    attachCommentToIssue = async (payload) => {
-        return this.doPost(`${this.url}/createissuecomment`, payload);
+    attachCommentToIssue = async (payload: AttachCommentToIssuePayload) => {
+        return this.doPost<GitHubIssueCommentData>(`${this.url}/createissuecomment`, payload);
     }
 
-    getIssue = async (owner, repo, issueNumber) => {
-        return this.doGet(`${this.url}/issue?owner=${owner}&repo=${repo}&number=${issueNumber}`);
+    getIssue = async (owner: string, repo: string, issueNumber: number) => {
+        return this.doGet<GithubIssueData>(`${this.url}/issue?owner=${owner}&repo=${repo}&number=${issueNumber}`);
     }
 
-    getPullRequest = async (owner, repo, prNumber) => {
-        return this.doGet(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
+    getPullRequest = async (owner: string, repo: string, prNumber: number) => {
+        return this.doGet<GitHubPullRequestData>(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
     }
 
     private doGet = async <Response>(url: string): Promise<Response | ApiError> => {
