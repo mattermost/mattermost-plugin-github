@@ -924,7 +924,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("APPROVED"),
+				State: sToP("approved"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -944,7 +944,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("COMMENTED"),
+				State: sToP("commented"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -964,7 +964,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("CHANGES_REQUESTED"),
+				State: sToP("changes_requested"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -985,7 +985,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("APPROVED"),
+				State: sToP("approved"),
 				Body:  sToP("Excited to see git-get-head land!\n" + gitHubMentions),
 			},
 		})
@@ -999,7 +999,6 @@ func TestPullRequestReviewCommentEventTemplate(t *testing.T) {
 		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
-HUNK
 Should this be here?
 `
 
@@ -1007,8 +1006,7 @@ Should this be here?
 			Repo:        &repo,
 			PullRequest: &pullRequest,
 			Comment: &github.PullRequestComment{
-				Body:     sToP("Should this be here?"),
-				DiffHunk: sToP("HUNK"),
+				Body: sToP("Should this be here?"),
 			},
 			Sender: &user,
 		})
@@ -1020,7 +1018,6 @@ Should this be here?
 		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by @pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
-HUNK
 Should this be here?
 ` + usernameMentions + `
 `
@@ -1029,8 +1026,7 @@ Should this be here?
 			Repo:        &repo,
 			PullRequest: &pullRequest,
 			Comment: &github.PullRequestComment{
-				Body:     sToP("Should this be here?\n" + gitHubMentions),
-				DiffHunk: sToP("HUNK"),
+				Body: sToP("Should this be here?\n" + gitHubMentions),
 			},
 			Sender: &user,
 		})
