@@ -298,9 +298,9 @@ func isInsideLink(msg string, index int) bool {
 
 // getCodeMarkdown returns the constructed markdown for a permalink.
 func getCodeMarkdown(user, repo, repoPath, word, lines string, isTruncated bool) string {
-	user = strings.Replace(user, "_", "\\_", -1)
-	repo = strings.Replace(repo, "_", "\\_", -1)
-	repoPath = strings.Replace(repoPath, "_", "\\_", -1)
+	user = strings.ReplaceAll(user, "_", "\\_")
+	repo = strings.ReplaceAll(repo, "_", "\\_")
+	repoPath = strings.ReplaceAll(repoPath, "_", "\\_")
 	final := fmt.Sprintf("\n[%s/%s/%s](%s)\n", user, repo, repoPath, word)
 	ext := path.Ext(repoPath)
 	// remove the preceding dot
