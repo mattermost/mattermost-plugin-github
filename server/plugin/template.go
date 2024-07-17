@@ -426,7 +426,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute list` - list your muted GitHub users\n" +
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
-		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+		"  * `/github mute delete-all` - unmute all GitHub users\n" +
+		"* `/github default-repo` - Manage the default repository per channel for the user. The default repository will be auto selected for creating the issues\n" +
+		"  * `/github default-repo set owner[/repo]` - set the default repo for the channel\n" +
+		"  * `/github default-repo get` - get the default repo for the channel\n" +
+		"  * `/github default-repo unset` - unset the default repo for the channel\n"))
 
 	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}}
