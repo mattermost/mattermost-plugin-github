@@ -49,11 +49,7 @@ export default class CreateIssueModal extends PureComponent {
     componentDidUpdate(prevProps) {
         if (this.props.post && !prevProps.post) {
             this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
-        } else if (
-            this.props.channelId &&
-            (this.props.channelId !== prevProps.channelId ||
-                this.props.title !== prevProps.title)
-        ) {
+        } else if (this.props.channelId && (this.props.channelId !== prevProps.channelId || this.props.title !== prevProps.title)) {
             const title = this.props.title.substring(0, MAX_TITLE_LENGTH);
             this.setState({issueTitle: title}); // eslint-disable-line react/no-did-update-set-state
         }
@@ -123,10 +119,7 @@ export default class CreateIssueModal extends PureComponent {
         this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        if (
-            !this.state.repo ||
-            (this.state.repo.permissions && !this.state.repo.permissions.push)
-        ) {
+        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
             return null;
         }
 
