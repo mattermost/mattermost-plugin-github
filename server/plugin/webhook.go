@@ -1434,7 +1434,7 @@ func (p *Plugin) postDicussionEvent(event *github.DiscussionEvent) {
 	}
 }
 
-func (p *Plugin) postDicussionCommentEvent(event *github.DiscussionCommentEvent) {
+func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent) {
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
