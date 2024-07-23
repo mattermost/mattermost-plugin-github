@@ -127,6 +127,14 @@ func (s *Subscription) Release() bool {
 	return strings.Contains(s.Features.String(), featureReleases)
 }
 
+func (s *Subscription) Discussions() bool {
+	return strings.Contains(s.Features.String(), "discussions")
+}
+
+func (s *Subscription) DiscussionComments() bool {
+	return strings.Contains(s.Features.String(), "discussion_comments")
+}
+
 func (s *Subscription) Label() string {
 	if !strings.Contains(s.Features.String(), "label:") {
 		return ""
