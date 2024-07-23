@@ -1393,7 +1393,7 @@ func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 	}
 }
 
-func (p *Plugin) postDicussionEvent(event *github.DiscussionEvent) {
+func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
