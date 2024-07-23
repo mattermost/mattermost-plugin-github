@@ -414,8 +414,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `pull_reviews` - includes pull request reviews\n" +
 		"    	* `releases` - includes release created and deleted\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
-		"		* `discussions` - includes new discussions\n" +
-		"		* `discussion_comments` - includes new discussion comments\n" +
+		"    	* `discussions` - includes new discussions\n" +
+		"    	* `discussion_comments` - includes new discussion comments\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"    * `--render-style` - notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +
