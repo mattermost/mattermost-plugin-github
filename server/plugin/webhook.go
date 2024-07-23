@@ -6,7 +6,6 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -1476,7 +1475,6 @@ func (p *Plugin) postDicussionCommentEvent(event *github.DiscussionCommentEvent)
 		}
 
 		post.ChannelId = sub.ChannelID
-		fmt.Println("message", post.Message)
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
