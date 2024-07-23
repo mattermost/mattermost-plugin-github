@@ -39,7 +39,6 @@ const (
 	githubObjectTypeIssue           = "issue"
 	githubObjectTypeIssueComment    = "issue_comment"
 	githubObjectTypePRReviewComment = "pr_review_comment"
-
 	githubObjectTypeDiscussionComment = "discussion_comment"
 )
 
