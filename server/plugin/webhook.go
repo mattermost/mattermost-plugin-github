@@ -295,7 +295,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	case *github.DiscussionCommentEvent:
 		repo = event.GetRepo()
 		handler = func() {
-			p.postDicussionCommentEvent(event)
+			p.postDiscussionCommentEvent(event)
 		}
 	}
 
