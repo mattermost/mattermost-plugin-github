@@ -1426,7 +1426,7 @@ func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
 
 		post.AddProp(postPropGithubRepo, repoName)
 		post.AddProp(postPropGithubObjectID, discussionNumber)
-		post.AddProp(postPropGithubObjectType, "dicussion")
+		post.AddProp(postPropGithubObjectType, "discussion")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
