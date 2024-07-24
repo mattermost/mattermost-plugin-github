@@ -36,9 +36,9 @@ const (
 	postPropGithubObjectID   = "gh_object_id"
 	postPropGithubObjectType = "gh_object_type"
 
-	githubObjectTypeIssue           = "issue"
-	githubObjectTypeIssueComment    = "issue_comment"
-	githubObjectTypePRReviewComment = "pr_review_comment"
+	githubObjectTypeIssue             = "issue"
+	githubObjectTypeIssueComment      = "issue_comment"
+	githubObjectTypePRReviewComment   = "pr_review_comment"
 	githubObjectTypeDiscussionComment = "discussion_comment"
 )
 
