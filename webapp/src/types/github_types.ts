@@ -93,6 +93,7 @@ export type UnreadsData = {
 }
 
 export type SidebarContentData = {
+    mentions: GithubIssueData[];
     prs: GithubIssueData[];
     reviews: GithubIssueData[];
     assignments: GithubIssueData[];
@@ -132,6 +133,7 @@ export type APIError = {
 
 export type SidebarData = {
     username: string;
+    mentions: GithubIssueData[];
     reviews: GithubIssueData[];
     yourPrs: GithubIssueData[];
     yourAssignments: GithubIssueData[],

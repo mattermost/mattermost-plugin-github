@@ -97,6 +97,7 @@ function sidebarContent(state = {
     assignments: [],
     prs: [],
     unreads: [],
+    mentions: [],
 } as SidebarContentData, action: {type: string, data: SidebarContentData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_SIDEBAR_CONTENT:
