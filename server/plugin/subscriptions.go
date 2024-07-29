@@ -128,11 +128,11 @@ func (s *Subscription) Release() bool {
 }
 
 func (s *Subscription) Discussions() bool {
-	return strings.Contains(s.Features.String(), "discussions")
+	return strings.Contains(s.Features.String(), featureDisccusions)
 }
 
 func (s *Subscription) DiscussionComments() bool {
-	return strings.Contains(s.Features.String(), "discussion_comments")
+	return strings.Contains(s.Features.String(), featureDiscussionComments)
 }
 
 func (s *Subscription) Label() string {

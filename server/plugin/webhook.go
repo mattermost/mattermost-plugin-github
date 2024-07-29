@@ -1401,7 +1401,7 @@ func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
 		return
 	}
 
-	newDiscussionMessage, err := renderTemplate("newDiscussion", event.GetDiscussion())
+	newDiscussionMessage, err := renderTemplate("newDiscussion", event)
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
@@ -1416,11 +1416,8 @@ func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
 			continue
 		}
 
-		post := &model.Post{
-			UserId:  p.BotUserID,
-			Type:    "custom_git_discussion",
-			Message: newDiscussionMessage,
-		}
+		post := p.makeBotPost(newDiscussionMessage, "custom_git_discussion")
+
 		repoName := strings.ToLower(repo.GetFullName())
 		discussionNumber := event.GetDiscussion().GetNumber()
 
@@ -1460,7 +1457,7 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 			continue
 		}
 
-		post := p.makeBotPost("", "custom_git_dis_comment")
+		post := p.makeBotPost(newDiscussionCommentMessage, "custom_git_dis_comment")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
@@ -1468,10 +1465,6 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 		post.AddProp(postPropGithubRepo, repoName)
 		post.AddProp(postPropGithubObjectID, commentID)
 		post.AddProp(postPropGithubObjectType, githubObjectTypeDiscussionComment)
-
-		if event.GetAction() == actionCreated {
-			post.Message = newDiscussionCommentMessage
-		}
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {

@@ -443,12 +443,12 @@ It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 {{- else if eq .GetAction "deleted" }} deleted a release {{template "release" .GetRelease}}
 {{- end -}}`))
 
-	template.Must(masterTemplate.New("newDiscussion").Funcs(funcMap).Parse(
-		`Discussion [#{{.GetNumber}} {{.GetTitle}}]({{.GetHTMLURL}})`,
-	))
+	template.Must(masterTemplate.New("newDiscussion").Funcs(funcMap).Parse(`
+{{template "user" .GetSender}} started a new discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
+`))
 
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on {{template "newDiscussion" .GetDiscussion}}:
+{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
 
 {{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
