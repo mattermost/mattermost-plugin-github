@@ -3,7 +3,7 @@
 
 import {combineReducers} from 'redux';
 
-import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData} from '../types/github_types';
+import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData, Organization, RepositoriesByOrg} from '../types/github_types';
 
 import ActionTypes from '../action_types';
 import Constants from '../constants';
@@ -214,7 +214,27 @@ const attachCommentToIssueModalForPostId = (state = '', action: {type: string, d
     }
 };
 
+const yourOrgs = (state: Organization[] = [], action:{type:string, data: Organization[]}) => {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_ORGANIZATIONS:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
+const yourReposByOrg = (state: RepositoriesByOrg[] = [], action:{type: string, data: RepositoriesByOrg[]}) => {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_REPOSITORIES_BY_ORGANIZATION:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
+    yourOrgs,
+    yourReposByOrg,
     connected,
     enterpriseURL,
     organization,
