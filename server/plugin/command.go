@@ -27,7 +27,7 @@ const (
 	featurePullReviews        = "pull_reviews"
 	featureStars              = "stars"
 	featureReleases           = "releases"
-	featureDisccusions        = "discussions"
+	featureDiscusions         = "discussions"
 	featureDiscussionComments = "discussion_comments"
 )
 

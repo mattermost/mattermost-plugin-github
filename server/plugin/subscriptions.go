@@ -128,7 +128,7 @@ func (s *Subscription) Release() bool {
 }
 
 func (s *Subscription) Discussions() bool {
-	return strings.Contains(s.Features.String(), featureDisccusions)
+	return strings.Contains(s.Features.String(), featureDiscusions)
 }
 
 func (s *Subscription) DiscussionComments() bool {
