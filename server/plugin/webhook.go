@@ -312,6 +312,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	if owner == "" {
 		return false
 	}
+
 	if err := p.checkOrg(owner); err != nil {
 		return false
 	}
