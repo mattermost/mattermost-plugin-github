@@ -27,7 +27,7 @@ const (
 	featurePullReviews        = "pull_reviews"
 	featureStars              = "stars"
 	featureReleases           = "releases"
-	featureDiscussions         = "discussions"
+	featureDiscussions        = "discussions"
 	featureDiscussionComments = "discussion_comments"
 )
 
@@ -48,7 +48,7 @@ var validFeatures = map[string]bool{
 	featurePullReviews:        true,
 	featureStars:              true,
 	featureReleases:           true,
-	featureDisccusions:        true,
+	featureDiscussions:        true,
 	featureDiscussionComments: true,
 }
 
