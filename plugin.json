@@ -124,6 +124,13 @@
                 "type": "bool",
                 "help_text": "In 'Pushes' event notification, show commit author instead of commit committer.",
                 "default": false
+            },
+            {
+                "key": "GetNotificationForDraftPRs",
+                "display_name": "Get Notification for Draft PRs:",
+                "type": "bool",
+                "help_text": "When set to 'true' you will get notification with less details when a draft PR is created and a notification with complete details when they are marked as ready for review.",
+                "default": false
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
