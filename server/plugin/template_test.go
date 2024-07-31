@@ -1551,7 +1551,6 @@ Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890
 	})
 }
 
-
 func sToP(s string) *string {
 	return &s
 }
