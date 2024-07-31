@@ -455,8 +455,8 @@ It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 	template.Must(masterTemplate.New("newWorkflowJob").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} {{.GetWorkflowJob.GetWorkflowName}} workflow {{if eq .GetWorkflowJob.GetConclusion "success"}}succeeded{{else}}failed{{end}} (triggered by {{template "user" .GetSender}})
 {{if eq .GetWorkflowJob.GetConclusion "failure"}}Job failed: {{template "workflowJob" .GetWorkflowJob}}
-Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}{{end}}
-Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowJob.GetHeadSHA}}`))
+Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
+{{end}}Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowJob.GetHeadSHA}}`))
 	template.Must(masterTemplate.New("newReleaseEvent").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} {{template "user" .GetSender}}
 {{- if eq .GetAction "created" }} created a release {{template "release" .GetRelease}}
