@@ -59,7 +59,7 @@ type RepoResponse struct {
 // Only send down fields to client that are needed
 type RepositoryResponse struct {
 	DefaultRepo RepoResponse   `json:"defaultRepo,omitempty"`
-	Repos        []RepoResponse `json:"repo,omitempty"`
+	Repos       []RepoResponse `json:"repo,omitempty"`
 }
 
 type PRDetails struct {
