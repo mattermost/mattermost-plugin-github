@@ -50,6 +50,18 @@ func (e *APIErrorResponse) Error() string {
 	return e.Message
 }
 
+type RepoResponse struct {
+	Name        string          `json:"name,omitempty"`
+	FullName    string          `json:"full_name,omitempty"`
+	Permissions map[string]bool `json:"permissions,omitempty"`
+}
+
+// Only send down fields to client that are needed
+type RepositoryResponse struct {
+	DefaultRepo RepoResponse   `json:"defaultRepo,omitempty"`
+	Repos        []RepoResponse `json:"repo,omitempty"`
+}
+
 type PRDetails struct {
 	URL                string                      `json:"url"`
 	Number             int                         `json:"number"`
@@ -1226,13 +1238,13 @@ func getRepositoryListByOrg(c context.Context, org string, githubClient *github.
 	return allRepos, http.StatusOK, nil
 }
 
-func getRepository(c context.Context, org string, repo string, githubClient *github.Client) (*github.Repository, int, error) {
-	repository, resp, err := githubClient.Repositories.Get(c, org, repo)
+func getRepository(c context.Context, org string, repo string, githubClient *github.Client) (*github.Repository, error) {
+	repository, _, err := githubClient.Repositories.Get(c, org, repo)
 	if err != nil {
-		return nil, resp.StatusCode, err
+		return nil, err
 	}
 
-	return repository, http.StatusOK, nil
+	return repository, nil
 }
 
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1243,13 +1255,9 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 	channelID := r.URL.Query().Get(channelIDParam)
 
 	if channelID == "" {
+		c.Log.Warnf("Bad request: missing channelId")
 		p.writeAPIError(w, &APIErrorResponse{Message: "Bad request: missing channelId", StatusCode: http.StatusBadRequest})
 		return
-	}
-
-	defaultRepo, dErr := p.GetDefaultRepo(c.GHInfo.UserID, channelID)
-	if dErr != nil {
-		c.Log.Warnf("Failed to get the default repo for the channel")
 	}
 
 	var allRepos []*github.Repository
@@ -1282,18 +1290,6 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 		}
 	}
 
-	type RepoResponse struct {
-		Name        string          `json:"name,omitempty"`
-		FullName    string          `json:"full_name,omitempty"`
-		Permissions map[string]bool `json:"permissions,omitempty"`
-	}
-
-	// Only send down fields to client that are needed
-	type RepositoryResponse struct {
-		DefaultRepo RepoResponse   `json:"defaultRepo,omitempty"`
-		Repo        []RepoResponse `json:"repo,omitempty"`
-	}
-
 	repoResp := make([]RepoResponse, len(allRepos))
 	for i, r := range allRepos {
 		repoResp[i].Name = r.GetName()
@@ -1302,16 +1298,21 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 	}
 
 	resp := RepositoryResponse{
-		Repo: repoResp,
+		Repos: repoResp,
+	}
+
+	defaultRepo, dErr := p.GetDefaultRepo(c.GHInfo.UserID, channelID)
+	if dErr != nil {
+		c.Log.WithError(dErr).Warnf("Failed to get the default repo for the channel. UserID: %s. ChannelID: %s", c.GHInfo.UserID, channelID)
 	}
 
 	if defaultRepo != "" {
 		config := p.getConfiguration()
 		baseURL := config.getBaseURL()
 		owner, repo := parseOwnerAndRepo(defaultRepo, baseURL)
-		defaultRepository, _, err := getRepository(c.Ctx, owner, repo, githubClient)
+		defaultRepository, err := getRepository(c.Ctx, owner, repo, githubClient)
 		if err != nil {
-			c.Log.Warnf("Failed to get the default repo %s/%s", owner, repo)
+			c.Log.WithError(err).Warnf("Failed to get the default repo %s/%s", owner, repo)
 		}
 
 		if defaultRepository != nil {

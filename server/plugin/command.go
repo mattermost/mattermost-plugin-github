@@ -33,6 +33,8 @@ const (
 	PerPageValue = 50
 )
 
+const DefaultRepoKey string = "%s_%s-default-repo"
+
 var validFeatures = map[string]bool{
 	featureIssueCreation: true,
 	featureIssues:        true,
@@ -704,7 +706,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 
 func (p *Plugin) handleDefaultRepo(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
-		return "Invalid issue command. Available command is 'set', 'get' and 'unset'."
+		return "Invalid action. Available actions are 'set', 'get' and 'unset'."
 	}
 
 	command := parameters[0]
@@ -731,15 +733,15 @@ func (p *Plugin) handleSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
 	owner, repo := parseOwnerAndRepo(repo, baseURL)
-	if owner == "" && repo == "" {
-		return "invalid repository"
+	if owner == "" || repo == "" {
+		return "Please provide a valid repository"
 	}
 
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 
 	if config.GitHubOrg != "" && strings.ToLower(config.GitHubOrg) != owner {
-		return "repository is not part of the locked github organization"
+		return fmt.Sprintf("Repository is not part of the locked Github organization. Locked Github organization: %s", config.GitHubOrg)
 	}
 
 	ctx := context.Background()
@@ -750,26 +752,26 @@ func (p *Plugin) handleSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs
 		return fmt.Sprintf("unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
-	if _, err := p.store.Set(args.ChannelId+"_"+userInfo.UserID+"-default-repo", []byte(owner+"/"+repo)); err != nil {
+	if _, err := p.store.Set(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID), []byte(owner+"/"+repo)); err != nil {
 		return "error occurred saving the default repo"
 	}
 
 	repoLink := baseURL + owner + "/" + repo
-	successMsg := fmt.Sprintf("The default repo has been set to [%s/%s](%s)", owner, repo, repoLink)
+	successMsg := fmt.Sprintf("The default repo has been set to [%s/%s](%s) for this channel", owner, repo, repoLink)
 
 	return successMsg
 }
 
 func (p *Plugin) GetDefaultRepo(userID string, channelID string) (string, error) {
 	var defaultRepoBytes []byte
-	if err := p.store.Get(channelID+"_"+userID+"-default-repo", &defaultRepoBytes); err != nil {
+	if err := p.store.Get(fmt.Sprintf(DefaultRepoKey, channelID, userID), &defaultRepoBytes); err != nil {
 		return "", err
 	}
 
 	return string(defaultRepoBytes), nil
 }
 
-func (p *Plugin) handleGetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleGetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	defaultRepo, err := p.GetDefaultRepo(userInfo.UserID, args.ChannelId)
 	if err != nil {
 		p.client.Log.Warn("Not able to get the default repo", "error", err.Error())
@@ -785,7 +787,7 @@ func (p *Plugin) handleGetDefaultRepo(_ *plugin.Context, args *model.CommandArgs
 	return fmt.Sprintf("The default repository is [%s](%s)", defaultRepo, repoLink)
 }
 
-func (p *Plugin) handleUnSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	defaultRepo, err := p.GetDefaultRepo(userInfo.UserID, args.ChannelId)
 	if err != nil {
 		p.client.Log.Warn("Not able to get the default repo", "error", err.Error())
@@ -796,7 +798,7 @@ func (p *Plugin) handleUnSetDefaultRepo(_ *plugin.Context, args *model.CommandAr
 		return "you have not set a default repository for this channel"
 	}
 
-	if err := p.store.Delete(args.ChannelId + "_" + userInfo.UserID + "-default-repo"); err != nil {
+	if err := p.store.Delete(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID)); err != nil {
 		return "error occurred while unsetting the repo for this channel"
 	}
 
