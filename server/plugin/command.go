@@ -749,7 +749,7 @@ func (p *Plugin) handleSetDefaultRepo(args *model.CommandArgs, parameters []stri
 
 	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
 	if err != nil {
-		return "Error occured while getting github repository details"
+		return "Error occurred while getting github repository details"
 	}
 	if ghRepo == nil {
 		return fmt.Sprintf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
