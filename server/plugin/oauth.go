@@ -27,7 +27,7 @@ type ConnectedResponse struct {
 	GitHubUsername      string                 `json:"github_username"`
 	GitHubClientID      string                 `json:"github_client_id"`
 	EnterpriseBaseURL   string                 `json:"enterprise_base_url,omitempty"`
-	Organization        string                 `json:"organization"`
+	Organizations       []string               `json:"organizations"`
 	UserSettings        *UserSettings          `json:"user_settings"`
 	ClientConfiguration map[string]interface{} `json:"configuration"`
 }

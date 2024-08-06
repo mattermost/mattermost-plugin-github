@@ -62,14 +62,14 @@ function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
 export const getSidebarData = createSelector(
     getPluginState,
     (pluginState): SidebarData => {
-        const {username, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
+        const {username, sidebarContent, reviewDetails, yourPrDetails, organizations, rhsState} = pluginState;
         return {
             username,
             reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
             yourPrs: mapPrsToDetails(sidebarContent.prs || emptyArray, yourPrDetails),
             yourAssignments: sidebarContent.assignments || emptyArray,
             unreads: sidebarContent.unreads || emptyArray,
-            org: organization,
+            orgs: organizations,
             rhsState,
         };
     },
