@@ -714,17 +714,17 @@ func (p *Plugin) handleDefaultRepo(c *plugin.Context, args *model.CommandArgs, p
 
 	switch {
 	case command == "set":
-		return p.handleSetDefaultRepo(c, args, parameters, userInfo)
+		return p.handleSetDefaultRepo(args, parameters, userInfo)
 	case command == "get":
-		return p.handleGetDefaultRepo(c, args, parameters, userInfo)
+		return p.handleGetDefaultRepo(args, userInfo)
 	case command == "unset":
-		return p.handleUnSetDefaultRepo(c, args, parameters, userInfo)
+		return p.handleUnSetDefaultRepo(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
 	}
 }
 
-func (p *Plugin) handleSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleSetDefaultRepo(args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
 	}
@@ -747,22 +747,25 @@ func (p *Plugin) handleSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, userInfo)
 
-	ghRepo, _, _ := githubClient.Repositories.Get(ctx, owner, repo)
+	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if err != nil {
+		return "Error occured while getting github repository details"
+	}
 	if ghRepo == nil {
-		return fmt.Sprintf("unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
+		return fmt.Sprintf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
-	if _, err := p.store.Set(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID), []byte(owner+"/"+repo)); err != nil {
-		return "error occurred saving the default repo"
+	if _, err := p.store.Set(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID), []byte(fmt.Sprintf("%s/%s", owner, repo))); err != nil {
+		return "Error occurred saving the default repo"
 	}
 
-	repoLink := baseURL + owner + "/" + repo
+	repoLink := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
 	successMsg := fmt.Sprintf("The default repo has been set to [%s/%s](%s) for this channel", owner, repo, repoLink)
 
 	return successMsg
 }
 
-func (p *Plugin) GetDefaultRepo(userID string, channelID string) (string, error) {
+func (p *Plugin) GetDefaultRepo(userID, channelID string) (string, error) {
 	var defaultRepoBytes []byte
 	if err := p.store.Get(fmt.Sprintf(DefaultRepoKey, channelID, userID), &defaultRepoBytes); err != nil {
 		return "", err
@@ -771,15 +774,15 @@ func (p *Plugin) GetDefaultRepo(userID string, channelID string) (string, error)
 	return string(defaultRepoBytes), nil
 }
 
-func (p *Plugin) handleGetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleGetDefaultRepo(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	defaultRepo, err := p.GetDefaultRepo(userInfo.UserID, args.ChannelId)
 	if err != nil {
-		p.client.Log.Warn("Not able to get the default repo", "error", err.Error())
-		return "error occurred while getting the default repo"
+		p.client.Log.Warn("Not able to get the default repo", "UserID", userInfo.UserID, "ChannelID", args.ChannelId, "Error", err.Error())
+		return "Error occurred while getting the default repo"
 	}
 
 	if defaultRepo == "" {
-		return "you have not set a default repository for this channel"
+		return "You have not set a default repository for this channel"
 	}
 
 	config := p.getConfiguration()
@@ -787,19 +790,19 @@ func (p *Plugin) handleGetDefaultRepo(_ *plugin.Context, args *model.CommandArgs
 	return fmt.Sprintf("The default repository is [%s](%s)", defaultRepo, repoLink)
 }
 
-func (p *Plugin) handleUnSetDefaultRepo(_ *plugin.Context, args *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnSetDefaultRepo(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	defaultRepo, err := p.GetDefaultRepo(userInfo.UserID, args.ChannelId)
 	if err != nil {
-		p.client.Log.Warn("Not able to get the default repo", "error", err.Error())
-		return "error occurred while getting the default repo"
+		p.client.Log.Warn("Not able to get the default repo", "UserID", userInfo.UserID, "ChannelID", args.ChannelId, "Error", err.Error())
+		return "Error occurred while getting the default repo"
 	}
 
 	if defaultRepo == "" {
-		return "you have not set a default repository for this channel"
+		return "You have not set a default repository for this channel"
 	}
 
 	if err := p.store.Delete(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID)); err != nil {
-		return "error occurred while unsetting the repo for this channel"
+		return "Error occurred while unsetting the repo for this channel"
 	}
 
 	return "The default repository has been unset successfully"

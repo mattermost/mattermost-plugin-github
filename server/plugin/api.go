@@ -59,7 +59,7 @@ type RepoResponse struct {
 // Only send down fields to client that are needed
 type RepositoryResponse struct {
 	DefaultRepo RepoResponse   `json:"defaultRepo,omitempty"`
-	Repos       []RepoResponse `json:"repo,omitempty"`
+	Repos       []RepoResponse `json:"repos,omitempty"`
 }
 
 type PRDetails struct {
@@ -1253,9 +1253,8 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 	org := p.getConfiguration().GitHubOrg
 
 	channelID := r.URL.Query().Get(channelIDParam)
-
 	if channelID == "" {
-		c.Log.Warnf("Bad request: missing channelId")
+		p.client.Log.Warn("Bad request: missing channelId")
 		p.writeAPIError(w, &APIErrorResponse{Message: "Bad request: missing channelId", StatusCode: http.StatusBadRequest})
 		return
 	}
