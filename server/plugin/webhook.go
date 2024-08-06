@@ -590,20 +590,64 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			description = *issue.Body
 		}
 
-		post := p.makeBotPost(renderedMessage, "")
+		post := &model.Post{
+			UserId: p.BotUserID,
+			Type:   "custom_git_release",
+		}
 
 		if action == actionOpened {
-			post.Type = "custom_git_issue"
-			post.Props = map[string]interface{}{
-				titleForProps:       *issue.Title,
-				issueURLForProps:    *issue.HTMLURL,
-				issueNumberForProps: *issue.Number,
-				descriptionForProps: description,
-				assigneesForProps:   assignees,
-				labelsForProps:      labels,
-				repoOwnerForProps:   *repo.Owner.Login,
-				repoNameForProps:    *repo.Name,
-				issueStatus:         statusClose,
+			post.Props = model.StringInterface{
+				"attachments": []*model.SlackAttachment{
+					{
+						Pretext:   renderedMessage,
+						Title:     fmt.Sprintf("%s #%d", *issue.Title, *issue.Number),
+						TitleLink: *issue.HTMLURL,
+						Text:      description,
+						Actions: []*model.PostAction{
+							{
+								Name: "Comment",
+								Integration: &model.PostActionIntegration{
+									Context: map[string]interface{}{
+										KeyRepoOwner:   repo.GetOwner().GetLogin(),
+										KeyRepoName:    repo.GetName(),
+										KeyIssueNumber: issue.GetNumber(),
+										KeyIssueID:     issue.GetID(),
+										KeyStatus:      *issue.State,
+									},
+									URL: fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathOpenIssueCommentModal),
+								},
+								Style: "primary",
+							},
+							{
+								Name: "Edit",
+								Integration: &model.PostActionIntegration{
+									Context: map[string]interface{}{
+										KeyRepoOwner:   repo.GetOwner().GetLogin(),
+										KeyRepoName:    repo.GetName(),
+										KeyIssueNumber: issue.GetNumber(),
+										KeyIssueID:     issue.GetID(),
+										KeyStatus:      *issue.State,
+									},
+									URL: fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathOpenIssueEditModal),
+								},
+							},
+							{
+								Name: "Close",
+								Integration: &model.PostActionIntegration{
+									Context: map[string]interface{}{
+										KeyRepoOwner:   repo.GetOwner().GetLogin(),
+										KeyRepoName:    repo.GetName(),
+										KeyIssueNumber: issue.GetNumber(),
+										KeyIssueID:     issue.GetID(),
+										KeyStatus:      *issue.State,
+									},
+									URL: fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathOpenIssueStatusModal),
+								},
+							},
+						},
+						Fields: p.CreateFieldsForIssuePost(assignees, labels),
+					},
+				},
 			}
 		}
 		repoName := strings.ToLower(repo.GetFullName())

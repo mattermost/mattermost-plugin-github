@@ -45,13 +45,13 @@ export default class AttachIssueModal extends PureComponent {
                 return;
             }
 
-            const {repo_owner, repo_name, issue_number} = this.props.messageData ?? {};
+            const {repo_owner, repo_name, issue_number, postId} = this.props.messageData ?? {};
             const issue = {
                 owner: repo_owner,
                 repo: repo_name,
                 number: issue_number,
                 comment: this.state.comment,
-                post_id: this.props.post.id,
+                post_id: postId,
                 show_attached_message: false,
             };
             this.setState({submitting: true});
@@ -78,7 +78,7 @@ export default class AttachIssueModal extends PureComponent {
             repo,
             number,
             comment: this.state.comment,
-            post_id: this.props.post.id,
+            post_id: this.props.messageData?.postId,
             show_attached_message: true,
         };
 

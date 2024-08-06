@@ -58,6 +58,22 @@ const (
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
 	// ResponseTypePlain indicates that response type is text plain
 	ResponseTypePlain ResponseType = "TEXT_RESPONSE"
+
+	KeyRepoName    string = "repo_name"
+	KeyRepoOwner   string = "repo_owner"
+	KeyIssueNumber string = "issue_number"
+	KeyIssueID     string = "issue_id"
+	KeyStatus      string = "status"
+	KeyChannelID   string = "channel_id"
+	KeyPostID      string = "postId"
+
+	WebsocketEventOpenCommentModal string = "open_comment_modal"
+	WebsocketEventOpenStatusModal  string = "open_status_modal"
+	WebsocketEventOpenEditModal    string = "open_edit_modal"
+
+	PathOpenIssueCommentModal string = "/open-comment-modal"
+	PathOpenIssueEditModal    string = "/open-edit-modal"
+	PathOpenIssueStatusModal  string = "/open-status-modal"
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
@@ -124,6 +140,9 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/issue", p.checkAuth(p.attachUserContext(p.getIssueByNumber), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/pr", p.checkAuth(p.attachUserContext(p.getPrByNumber), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/lhs-content", p.checkAuth(p.attachUserContext(p.getSidebarContent), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc(PathOpenIssueCommentModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueCommentModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathOpenIssueEditModal, p.checkAuth(p.attachUserContext(p.handleOpenEditIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathOpenIssueStatusModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueStatusModal), ResponseTypePlain)).Methods(http.MethodPost)
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
@@ -863,7 +882,7 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		rootID = post.RootId
 	}
 
-	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v) from a [Message](%v)", req.Number, result.GetHTMLURL(), permalink)
+	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v)", req.Number, result.GetHTMLURL())
 	if req.ShowAttachedMessage {
 		permalinkReplyMessage = fmt.Sprintf("[Message](%v) attached to GitHub issue [#%v](%v)", permalink, req.Number, result.GetHTMLURL())
 	}
@@ -1321,7 +1340,6 @@ func (p *Plugin) updateIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 
 	var post *model.Post
-	permalink := ""
 	if issue.PostID != "" {
 		var appErr *model.AppError
 		post, appErr = p.API.GetPost(issue.PostID)
@@ -1334,7 +1352,6 @@ func (p *Plugin) updateIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", issue.PostID), StatusCode: http.StatusNotFound})
 			return
 		}
-		permalink = p.getPermaLink(issue.PostID)
 	}
 
 	githubIssue := &github.IssueRequest{
@@ -1392,7 +1409,6 @@ func (p *Plugin) updateIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 			rootID = post.RootId
 		}
 		channelID = post.ChannelId
-		message += fmt.Sprintf(" from a [message](%s)", permalink)
 	}
 
 	reply := &model.Post{
@@ -1620,6 +1636,92 @@ func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.writeJSON(w, info.Token)
+}
+
+func (p *Plugin) handleOpenEditIssueModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	response := &model.PostActionIntegrationResponse{}
+	decoder := json.NewDecoder(r.Body)
+	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
+	if err := decoder.Decode(&postActionIntegrationRequest); err != nil {
+		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, response)
+		return
+	}
+
+	p.client.Frontend.PublishWebSocketEvent(
+		WebsocketEventOpenEditModal,
+		map[string]interface{}{
+			KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName],
+			KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner],
+			KeyIssueNumber: postActionIntegrationRequest.Context[KeyIssueNumber],
+			KeyPostID:      postActionIntegrationRequest.PostId,
+			KeyStatus:      postActionIntegrationRequest.Context[KeyStatus],
+			KeyChannelID:   postActionIntegrationRequest.ChannelId,
+		},
+		&model.WebsocketBroadcast{UserId: postActionIntegrationRequest.UserId},
+	)
+
+	p.returnPostActionIntegrationResponse(w, response)
+}
+
+func (p *Plugin) returnPostActionIntegrationResponse(w http.ResponseWriter, res *model.PostActionIntegrationResponse) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		p.API.LogWarn("Failed to write PostActionIntegrationResponse", "Error", err.Error())
+	}
+}
+
+func (p *Plugin) handleOpenIssueStatusModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	response := &model.PostActionIntegrationResponse{}
+	decoder := json.NewDecoder(r.Body)
+	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
+	if err := decoder.Decode(&postActionIntegrationRequest); err != nil {
+		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, response)
+		return
+	}
+
+	p.client.Frontend.PublishWebSocketEvent(
+		WebsocketEventOpenStatusModal,
+		map[string]interface{}{
+			KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName],
+			KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner],
+			KeyIssueNumber: postActionIntegrationRequest.Context[KeyIssueNumber],
+			KeyPostID:      postActionIntegrationRequest.PostId,
+			KeyStatus:      postActionIntegrationRequest.Context[KeyStatus],
+			KeyChannelID:   postActionIntegrationRequest.ChannelId,
+		},
+		&model.WebsocketBroadcast{UserId: postActionIntegrationRequest.UserId},
+	)
+
+	p.returnPostActionIntegrationResponse(w, response)
+}
+
+func (p *Plugin) handleOpenIssueCommentModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	response := &model.PostActionIntegrationResponse{}
+	decoder := json.NewDecoder(r.Body)
+	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
+	if err := decoder.Decode(&postActionIntegrationRequest); err != nil {
+		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, response)
+		return
+	}
+
+	p.client.Frontend.PublishWebSocketEvent(
+		WebsocketEventOpenCommentModal,
+		map[string]interface{}{
+			KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName],
+			KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner],
+			KeyIssueNumber: postActionIntegrationRequest.Context[KeyIssueNumber],
+			KeyPostID:      postActionIntegrationRequest.PostId,
+			KeyStatus:      postActionIntegrationRequest.Context[KeyStatus],
+			KeyChannelID:   postActionIntegrationRequest.ChannelId,
+		},
+		&model.WebsocketBroadcast{UserId: postActionIntegrationRequest.UserId},
+	)
+
+	p.returnPostActionIntegrationResponse(w, response)
 }
 
 // parseRepo parses the owner & repository name from the repo query parameter

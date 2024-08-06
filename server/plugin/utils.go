@@ -7,6 +7,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -392,18 +393,46 @@ func (p *Plugin) updatePost(issue *UpdateIssueRequest, w http.ResponseWriter) {
 		return
 	}
 
-	post.Props[assigneesForProps] = issue.Assignees
-	post.Props[labelsForProps] = issue.Labels
-	post.Props[descriptionForProps] = issue.Body
-	post.Props[titleForProps] = issue.Title
+	attachments, err := getAttachmentsFromProps(post.Props)
+	if err != nil {
+		p.client.Log.Warn("Error occurred while getting attachments from props", "PostID", post.Id, "error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("existing attachments format error: %v", err), StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	attachments[0].Fields = p.CreateFieldsForIssuePost(issue.Assignees, issue.Labels)
+	attachments[0].Title = fmt.Sprintf("%s #%d", issue.Title, issue.IssueNumber)
+	attachments[0].Text = issue.Body
+
+	post.Props[attachmentsForProps] = attachments
+
 	if _, appErr = p.API.UpdatePost(post); appErr != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
 	}
 }
 
+func getAttachmentsFromProps(props map[string]interface{}) ([]*model.SlackAttachment, error) {
+	attachments, ok := props["attachments"]
+	if !ok {
+		return nil, fmt.Errorf("no attachments found in props")
+	}
+
+	attachmentsData, err := json.Marshal(attachments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal attachments: %v", err)
+	}
+
+	var slackAttachments []*model.SlackAttachment
+	err = json.Unmarshal(attachmentsData, &slackAttachments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal attachments: %v", err)
+	}
+
+	return slackAttachments, nil
+}
+
 func (p *Plugin) CreateCommentToIssue(c *UserContext, w http.ResponseWriter, comment, owner, repo string, post *model.Post, issueNumber int) {
 	currentUsername := c.GHInfo.GitHubUsername
-	permalink := p.getPermaLink(post.Id)
 	issueComment := &github.IssueComment{
 		Body: &comment,
 	}
@@ -425,7 +454,7 @@ func (p *Plugin) CreateCommentToIssue(c *UserContext, w http.ResponseWriter, com
 		rootID = post.RootId
 	}
 
-	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v) from a [message](%v)", issueNumber, result.GetHTMLURL(), permalink)
+	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v)", issueNumber, result.GetHTMLURL())
 	reply := &model.Post{
 		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
@@ -493,11 +522,36 @@ func (p *Plugin) CloseOrReopenIssue(c *UserContext, w http.ResponseWriter, statu
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
 		return
 	}
+
+	var actionButtonTitle string
 	if status == issueClose {
 		post.Props[issueStatus] = statusReopen
+		actionButtonTitle = statusReopen
 	} else {
 		post.Props[issueStatus] = statusClose
+		actionButtonTitle = statusClose
 	}
+
+	attachment, err := getAttachmentsFromProps(post.Props)
+	if err != nil {
+		p.client.Log.Error("Error occurred while getting attachments from props", "PostID", post.Id, "Error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("existing attachments format error: %v", err), StatusCode: http.StatusInternalServerError})
+		return
+	}
+	actions := attachment[0].Actions
+	for _, action := range actions {
+		if action.Name == statusClose || action.Name == statusReopen {
+			action.Name = actionButtonTitle
+			if status == issueClose {
+				action.Integration.Context["status"] = "close"
+			} else {
+				action.Integration.Context["status"] = "open"
+			}
+		}
+	}
+	attachment[0].Actions = actions
+	post.Props[attachmentsForProps] = attachment
+
 	if _, appErr := p.API.UpdatePost(post); appErr != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", post.Id), StatusCode: http.StatusInternalServerError})
 	}
@@ -522,4 +576,25 @@ func lastN(s string, n int) string {
 	}
 
 	return string(out)
+}
+
+func (p *Plugin) CreateFieldsForIssuePost(assignees []string, labels []string) []*model.SlackAttachmentField {
+	fields := []*model.SlackAttachmentField{}
+	if len(assignees) > 0 {
+		fields = append(fields, &model.SlackAttachmentField{
+			Title: "Assignees",
+			Value: strings.Join(assignees, ", "),
+			Short: true,
+		})
+	}
+
+	if len(labels) > 0 {
+		fields = append(fields, &model.SlackAttachmentField{
+			Title: "Labels",
+			Value: strings.Join(labels, ", "),
+			Short: true,
+		})
+	}
+
+	return fields
 }

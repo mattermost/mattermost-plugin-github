@@ -11,11 +11,10 @@ import TeamSidebar from './components/team_sidebar';
 import UserAttribute from './components/user_attribute';
 import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
-import GithubIssue from './components/github_issue';
 import Reducer from './reducers';
 import Client from './client';
 import {getConnected, setShowRHSAction} from './actions';
-import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateOrUpdateIssueModal, handleReconnect, handleRefresh} from './websocket';
+import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateOrUpdateIssueModal, handleOpenCreateCommentOnIssueModal, handleOpenCloseOrReopenIssueModal, handleReconnect, handleRefresh, handleOpenEditIssueModal} from './websocket';
 import {getServerRoute} from './selectors';
 import manifest from './manifest';
 
@@ -49,7 +48,9 @@ class PluginClass {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_config_update`, handleConfigurationUpdate(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateOrUpdateIssueModal(store));
-        registry.registerPostTypeComponent('custom_git_issue', GithubIssue);
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_open_comment_modal`, handleOpenCreateCommentOnIssueModal(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_open_edit_modal`, handleOpenEditIssueModal(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_open_status_modal`, handleOpenCloseOrReopenIssueModal(store));
 
         registry.registerReconnectHandler(handleReconnect(store));
 

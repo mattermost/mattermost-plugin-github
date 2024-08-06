@@ -6,6 +6,8 @@ import Constants from '../constants';
 import {
     getConnected,
     openCreateOrUpdateIssueModal,
+    openCreateCommentOnIssueModal,
+    openCloseOrReopenIssueModal,
     getSidebarContent,
 } from '../actions';
 
@@ -97,5 +99,56 @@ export function handleOpenCreateOrUpdateIssueModal(store) {
             return;
         }
         store.dispatch(openCreateOrUpdateIssueModal(msg.data));
+    };
+}
+
+export function handleOpenEditIssueModal(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+        const editIssueModalData = {
+            repo_owner: msg.data.repo_owner,
+            repo_name: msg.data.repo_name,
+            issue_number: msg.data.issue_number,
+            postId: msg.data.postId,
+            status: msg.data.status,
+            channel_id: msg.data.channel_id,
+        };
+        store.dispatch(openCreateOrUpdateIssueModal(editIssueModalData));
+    };
+}
+
+export function handleOpenCreateCommentOnIssueModal(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+        const commmentModalData = {
+            repo_owner: msg.data.repo_owner,
+            repo_name: msg.data.repo_name,
+            issue_number: msg.data.issue_number,
+            postId: msg.data.postId,
+            status: msg.data.status,
+            channel_id: msg.data.channel_id,
+        };
+        store.dispatch(openCreateCommentOnIssueModal(commmentModalData));
+    };
+}
+
+export function handleOpenCloseOrReopenIssueModal(store) {
+    return (msg) => {
+        if (!msg.data) {
+            return;
+        }
+        const statusModalData = {
+            repo_owner: msg.data.repo_owner,
+            repo_name: msg.data.repo_name,
+            issue_number: msg.data.issue_number,
+            postId: msg.data.postId,
+            status: msg.data.status,
+            channel_id: msg.data.channel_id,
+        };
+        store.dispatch(openCloseOrReopenIssueModal(statusModalData));
     };
 }

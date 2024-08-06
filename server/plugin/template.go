@@ -126,7 +126,7 @@ func init() {
 
 	// The repo template links to the corresponding repository.
 	template.Must(masterTemplate.New("repo").Parse(
-		`[\[{{.GetFullName}}\]]({{.GetHTMLURL}})`,
+		`[{{.GetFullName}}]({{.GetHTMLURL}})`,
 	))
 
 	// The eventRepoPullRequest links to the corresponding pull request, anchored at the repo.
@@ -256,19 +256,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{.GetPullRequest.GetBody | trimBody | quote | replaceAllGitHubUsernames}}`))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
-{{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}.
-{{- else -}}
-#### {{.Event.GetIssue.GetTitle}}
-##### {{template "eventRepoIssue" .Event}}
-#new-issue by {{template "user" .Event.GetSender}}
-{{- if ne .Config.Style "skip-body" -}}
-{{- template "labels" dict "Labels" .Event.GetIssue.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
-{{- template "assignee" .Event.GetIssue }}
-
-{{.Event.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
-{{- end -}}
-{{- end }}
+{{template "user" .Event.GetSender}} created a new issue in {{template "repo" .Event.GetRepo}}
 `))
 
 	template.Must(masterTemplate.New("closedIssue").Funcs(funcMap).Parse(`

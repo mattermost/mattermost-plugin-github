@@ -91,7 +91,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
 
     // handle issue creation or updation after form is populated
     handleCreateOrUpdate = async (e) => {
-        const {issue_number} = this.props.messageData ?? {};
+        const {issue_number, postId} = this.props.messageData ?? {};
         if (e && e.preventDefault) {
             e.preventDefault();
         }
@@ -104,9 +104,6 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
             });
             return;
         }
-
-        const {post} = this.props;
-        const postId = (post) ? post.id : '';
 
         const issue = {
             title: this.state.issueTitle,
