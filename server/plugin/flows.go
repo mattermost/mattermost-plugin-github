@@ -39,7 +39,7 @@ type FlowManager struct {
 
 	setupFlow        *flow.Flow
 	oauthFlow        *flow.Flow
-	webhokFlow       *flow.Flow
+	webhookFlow      *flow.Flow
 	announcementFlow *flow.Flow
 }
 
@@ -99,11 +99,11 @@ func (p *Plugin) NewFlowManager() (*FlowManager, error) {
 	)
 	fm.oauthFlow = oauthFlow
 
-	webhokFlow, err := fm.newFlow("webhook")
+	webhookFlow, err := fm.newFlow("webhook")
 	if err != nil {
 		return nil, err
 	}
-	webhokFlow.WithSteps(
+	webhookFlow.WithSteps(
 		fm.stepWebhookQuestion(),
 		flow.NewStep(stepWebhookConfirmation).
 			WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://github.com/mattermost/mattermost-plugin-github#slash-commands)").
@@ -111,7 +111,7 @@ func (p *Plugin) NewFlowManager() (*FlowManager, error) {
 
 		fm.stepCancel("setup webhook"),
 	)
-	fm.webhokFlow = webhokFlow
+	fm.webhookFlow = webhookFlow
 
 	announcementFlow, err := fm.newFlow("announcement")
 	if err != nil {
@@ -609,7 +609,7 @@ func (fm *FlowManager) stepOAuthConnect() flow.Step {
 func (fm *FlowManager) StartWebhookWizard(userID string) error {
 	state := fm.getBaseState()
 
-	err := fm.webhokFlow.ForUser(userID).Start(state)
+	err := fm.webhookFlow.ForUser(userID).Start(state)
 	if err != nil {
 		return err
 	}
