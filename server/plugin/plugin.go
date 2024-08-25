@@ -112,7 +112,7 @@ type Plugin struct {
 // NewPlugin returns an instance of a Plugin.
 func NewPlugin() *Plugin {
 	p := &Plugin{
-		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>\w+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>[\w-]+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
@@ -180,7 +180,7 @@ func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *g
 
 func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
-	return graphql.NewClient(p.client.Log, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
+	return graphql.NewClient(p.client.Log, p.configuration.getOrganizations, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
@@ -349,7 +349,6 @@ func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo st
 func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reaction) {
 	githubEmoji := p.emojiMap[reaction.EmojiName]
 	if githubEmoji == "" {
-		p.client.Log.Warn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
 		return
 	}
 
@@ -393,7 +392,6 @@ func (p *Plugin) ReactionHasBeenAdded(c *plugin.Context, reaction *model.Reactio
 func (p *Plugin) ReactionHasBeenRemoved(c *plugin.Context, reaction *model.Reaction) {
 	githubEmoji := p.emojiMap[reaction.EmojiName]
 	if githubEmoji == "" {
-		p.client.Log.Warn("Emoji is not supported by Github", "Emoji", reaction.EmojiName)
 		return
 	}
 
@@ -808,8 +806,8 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
-
-	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	orgList := p.configuration.getOrganizations()
+	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, orgList), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "Error occurred while searching for reviews")
 	}
@@ -819,12 +817,12 @@ func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *git
 		return "", errors.Wrap(err, "error occurred while listing notifications")
 	}
 
-	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, orgList), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "error occurred while searching for PRs")
 	}
 
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, config.GitHubOrg), &github.SearchOptions{})
+	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, orgList), &github.SearchOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "error occurred while searching for assignments")
 	}
@@ -920,23 +918,22 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	username := info.GitHubUsername
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
-	config := p.getConfiguration()
-
-	query := getReviewSearchQuery(username, config.GitHubOrg)
+	orgList := p.configuration.getOrganizations()
+	query := getReviewSearchQuery(username, orgList)
 	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for review", "query", query, "error", err.Error())
 		return false
 	}
 
-	query = getYourPrsSearchQuery(username, config.GitHubOrg)
+	query = getYourPrsSearchQuery(username, orgList)
 	yourPrs, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for PRs", "query", query, "error", "error", err.Error())
 		return false
 	}
 
-	query = getYourAssigneeSearchQuery(username, config.GitHubOrg)
+	query = getYourAssigneeSearchQuery(username, orgList)
 	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
 	if err != nil {
 		p.client.Log.Warn("Failed to search for assignments", "query", query, "error", "error", err.Error())
@@ -978,12 +975,18 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 func (p *Plugin) checkOrg(org string) error {
 	config := p.getConfiguration()
 
-	configOrg := strings.TrimSpace(config.GitHubOrg)
-	if configOrg != "" && configOrg != org && strings.ToLower(configOrg) != org {
-		return errors.Errorf("only repositories in the %v organization are supported", configOrg)
+	orgList := config.getOrganizations()
+	if len(orgList) == 0 {
+		return nil
 	}
 
-	return nil
+	for _, configOrg := range orgList {
+		if configOrg == strings.ToLower(org) {
+			return nil
+		}
+	}
+
+	return errors.Errorf("only repositories in the %v organization(s) are supported", config.GitHubOrg)
 }
 
 func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
