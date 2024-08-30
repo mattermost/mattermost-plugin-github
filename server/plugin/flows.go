@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
@@ -33,6 +34,7 @@ type FlowManager struct {
 	router           *mux.Router
 	getConfiguration func() *Configuration
 	getGitHubClient  func(ctx context.Context, userID string) (*github.Client, error)
+	useGitHubClient  func(info *GitHubUserInfo, toRun func(info *GitHubUserInfo, token *oauth2.Token) error) error
 
 	pingBroker PingBroker
 	tracker    Tracker
@@ -51,6 +53,7 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		router:           p.router,
 		getConfiguration: p.getConfiguration,
 		getGitHubClient:  p.GetGitHubClient,
+		useGitHubClient:  p.useGitHubClient,
 
 		pingBroker: p.webhookBroker,
 		tracker:    p,
@@ -675,7 +678,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 	ctx, cancel := context.WithTimeout(context.Background(), 28*time.Second) // HTTP request times out after 30 seconds
 	defer cancel()
 
-	client, err := fm.getGitHubClient(ctx, f.UserID)
+	ghClient, err := fm.getGitHubClient(ctx, f.UserID)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -685,28 +688,41 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 	var resp *github.Response
 	var fullName string
 	var repoOrOrg string
+	var cErr error
 	if repo == "" {
 		fullName = org
 		repoOrOrg = "organization"
-		hook, resp, err = client.Organizations.CreateHook(ctx, org, hook)
+		cErr = fm.useGitHubClient(&GitHubUserInfo{UserID: f.UserID}, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			hook, resp, err = ghClient.Organizations.CreateHook(ctx, org, hook)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	} else {
 		fullName = org + "/" + repo
 		repoOrOrg = "repository"
-		hook, resp, err = client.Repositories.CreateHook(ctx, org, repo, hook)
+		cErr = fm.useGitHubClient(&GitHubUserInfo{UserID: f.UserID}, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			hook, resp, err = ghClient.Repositories.CreateHook(ctx, org, repo, hook)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
 		err = errors.Errorf("It seems like you don't have privileges to create webhooks in %s. Ask an admin of that %s to run /github setup webhook for you.", fullName, repoOrOrg)
-		return "", nil, nil, err
+		return "", nil, nil, cErr
 	}
 
-	if err != nil {
+	if cErr != nil {
 		var errResp *github.ErrorResponse
-		if errors.As(err, &errResp) {
+		if errors.As(cErr, &errResp) {
 			return "", nil, nil, printGithubErrorResponse(errResp)
 		}
 
-		return "", nil, nil, errors.Wrap(err, "failed to create hook")
+		return "", nil, nil, errors.Wrap(cErr, "failed to create hook")
 	}
 
 	var found bool
