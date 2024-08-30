@@ -35,6 +35,7 @@ const (
 	githubObjectTypeIssue           = "issue"
 	githubObjectTypeIssueComment    = "issue_comment"
 	githubObjectTypePRReviewComment = "pr_review_comment"
+	githubObjectTypeDiscussionComment = "discussion_comment"
 
 	mm34646MutexKey = "mm34646_token_reset_mutex"
 	mm34646DoneKey  = "mm34646_token_reset_done"
