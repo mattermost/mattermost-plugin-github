@@ -28,13 +28,13 @@ import (
 )
 
 const (
-	githubTokenKey                  = "_githubtoken"
-	githubOauthKey                  = "githuboauthkey_"
-	githubUsernameKey               = "_githubusername"
-	githubPrivateRepoKey            = "_githubprivate"
-	githubObjectTypeIssue           = "issue"
-	githubObjectTypeIssueComment    = "issue_comment"
-	githubObjectTypePRReviewComment = "pr_review_comment"
+	githubTokenKey                    = "_githubtoken"
+	githubOauthKey                    = "githuboauthkey_"
+	githubUsernameKey                 = "_githubusername"
+	githubPrivateRepoKey              = "_githubprivate"
+	githubObjectTypeIssue             = "issue"
+	githubObjectTypeIssueComment      = "issue_comment"
+	githubObjectTypePRReviewComment   = "pr_review_comment"
 	githubObjectTypeDiscussionComment = "discussion_comment"
 
 	mm34646MutexKey = "mm34646_token_reset_mutex"
