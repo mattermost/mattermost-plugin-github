@@ -298,6 +298,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 
 	_, err := p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
+		c.Log.WithError(err).Warnf("error occurred while trying to store oauth state into KV store")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error setting stored state", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -353,14 +354,14 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	var state OAuthState
 	err := p.store.Get(githubOauthKey+stateToken, &state)
 	if err != nil {
-		c.Log.Warnf("Failed to get state token", "error", err.Error())
+		c.Log.WithError(err).Warnf("error occurred while trying to get oauth state from KV store")
 		p.writeAPIError(w, &APIErrorResponse{Message: "missing stored state", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	err = p.store.Delete(githubOauthKey + stateToken)
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to delete state token")
+		c.Log.WithError(err).Warnf("error occurred while trying to delete oauth state from KV store")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error deleting stored state", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -573,8 +574,8 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 
 	info, err := p.getGitHubUserInfo(c.UserID)
 	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get GitHub user info", StatusCode: http.StatusInternalServerError})
 		c.Log.WithError(err).Warnf("failed to get GitHub user info")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get GitHub user info", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -593,8 +594,8 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 
 		offset, err := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
 		if err != nil {
-			p.writeAPIError(w, &APIErrorResponse{Message: "invalid timezone offset", StatusCode: http.StatusBadRequest})
 			c.Log.WithError(err).Warnf("Invalid timezone offset")
+			p.writeAPIError(w, &APIErrorResponse{Message: "invalid timezone offset", StatusCode: http.StatusBadRequest})
 			return
 		}
 
@@ -1444,6 +1445,7 @@ func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
+		p.client.Log.Error("error occurred while getting the github user info", "UserID", userID, "error", apiErr)
 		p.writeAPIError(w, &APIErrorResponse{Message: apiErr.Error(), StatusCode: apiErr.StatusCode})
 		return
 	}
