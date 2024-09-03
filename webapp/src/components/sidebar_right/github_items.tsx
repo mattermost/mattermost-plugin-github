@@ -245,13 +245,13 @@ function GithubItems(props: GithubItemsProps) {
                         </span>
                     )}
                     {additions != null && (
-                        <span style={style.additions}>
-                            {'  '} {additions}
+                        <span style={style.additionNumber}>
+                            {'  +'}{additions}
                         </span>
                     )}
                     {deletions != null && (
-                        <span style={style.deletions}>
-                            {'  '} {deletions}
+                        <span style={style.deletionNumber}>
+                            {'  -'}{deletions}
                         </span>
                     )}
                 </div>
