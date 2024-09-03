@@ -19,9 +19,17 @@ const (
 	queryParamAssigneeQueryArg = "assigneeQueryArg"
 )
 
-func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
+type GithubPRDetails struct {
+	*github.Issue
+	Additions    *githubv4.Int `json:"additions,omitempty"`
+	Deletions    *githubv4.Int `json:"deletions,omitempty"`
+	ChangedFiles *githubv4.Int `json:"changed_files,omitempty"`
+}
+
+func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
 	orgsList := c.getOrganizations()
-	var resultReview, resultAssignee, resultOpenPR []*github.Issue
+	var resultAssignee []*github.Issue
+	var resultReview, resultOpenPR []*GithubPRDetails
 	for _, org := range orgsList {
 		params := map[string]interface{}{
 			queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
@@ -94,11 +102,11 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 	return resultReview, resultAssignee, resultOpenPR, nil
 }
 
-func getPR(prResp *prSearchNodes) *github.Issue {
+func getPR(prResp *prSearchNodes) *GithubPRDetails {
 	resp := prResp.PullRequest
 	labels := getGithubLabels(resp.Labels.Nodes)
 
-	return newGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title)
+	return newGithubPR(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title, resp.Additions, resp.Deletions, resp.ChangedFiles)
 }
 
 func newIssueFromAssignmentResponse(assignmentResp *assignmentSearchNodes) *github.Issue {
@@ -146,5 +154,37 @@ func newGithubIssue(prNumber githubv4.Int, title, login githubv4.String, reposit
 		},
 		HTMLURL: &url,
 		Labels:  labels,
+	}
+}
+
+func newGithubPR(prNumber githubv4.Int, title, login githubv4.String, repositoryURL, htmlURL githubv4.URI, createdAt, updatedAt githubv4.DateTime, labels []*github.Label, milestone githubv4.String, additions, deletions, changedFiles githubv4.Int) *GithubPRDetails {
+	number := int(prNumber)
+	repoURL := repositoryURL.String()
+	issuetitle := string(title)
+	userLogin := string(login)
+	milestoneTitle := string(milestone)
+	url := htmlURL.String()
+	createdAtTime := github.Timestamp{Time: createdAt.Time}
+	updatedAtTime := github.Timestamp{Time: updatedAt.Time}
+
+	return &GithubPRDetails{
+		Issue: &github.Issue{
+			Number:        &number,
+			RepositoryURL: &repoURL,
+			Title:         &issuetitle,
+			CreatedAt:     &createdAtTime,
+			UpdatedAt:     &updatedAtTime,
+			User: &github.User{
+				Login: &userLogin,
+			},
+			Milestone: &github.Milestone{
+				Title: &milestoneTitle,
+			},
+			HTMLURL: &url,
+			Labels:  labels,
+		},
+		Additions:    &additions,
+		Deletions:    &deletions,
+		ChangedFiles: &changedFiles,
 	}
 }
