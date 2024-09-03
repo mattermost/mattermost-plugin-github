@@ -200,7 +200,7 @@ func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) 
 			case ResponseTypeJSON:
 				p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
 			case ResponseTypePlain:
-				p.writeAPIError(w, &APIErrorResponse{Message: "not authorized", StatusCode: http.StatusUnauthorized})
+				http.Error(w, "Not authorized", http.StatusUnauthorized)
 			default:
 				p.client.Log.Debug("Unknown ResponseType detected")
 			}
@@ -299,7 +299,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 	_, err := p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
 		c.Log.WithError(err).Warnf("error occurred while trying to store oauth state into KV store")
-		p.writeAPIError(w, &APIErrorResponse{Message: "error setting stored state", StatusCode: http.StatusInternalServerError})
+		p.writeAPIError(w, &APIErrorResponse{Message: "error saving the oauth state", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
