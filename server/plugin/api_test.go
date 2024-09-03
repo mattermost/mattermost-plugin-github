@@ -94,8 +94,8 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			},
 			expectedResponse: testutils.ExpectedResponse{
 				StatusCode:   http.StatusUnauthorized,
-				ResponseType: testutils.ContentTypeJSON,
-				Body:         `{"id":"","message":"not authorized","status_code":401}`,
+				ResponseType: testutils.ContentTypePlain,
+				Body:         "Not authorized\n",
 			},
 			userID: "",
 		},
