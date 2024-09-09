@@ -239,7 +239,7 @@ function GithubItems(props: GithubItemsProps) {
                     style={style.pullRequestDetails}
                 >
                     <FileDiffIcon size={16}/>
-                    {changedFiles != null && (
+                    {changedFiles && (
                         <span>
                             {' '}{changedFiles} {changedFiles === 1 ? 'File' : 'Files'} {' Changed'}
                         </span>

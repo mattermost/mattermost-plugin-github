@@ -106,7 +106,35 @@ func getPR(prResp *prSearchNodes) *GithubPRDetails {
 	resp := prResp.PullRequest
 	labels := getGithubLabels(resp.Labels.Nodes)
 
-	return newGithubPR(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title, resp.Additions, resp.Deletions, resp.ChangedFiles)
+	number := int(resp.Number)
+	repoURL := resp.Repository.URL.String()
+	issuetitle := string(resp.Title)
+	userLogin := string(resp.Author.Login)
+	milestoneTitle := string(resp.Milestone.Title)
+	url := resp.URL.String()
+	createdAtTime := github.Timestamp{Time: resp.CreatedAt.Time}
+	updatedAtTime := github.Timestamp{Time: resp.UpdatedAt.Time}
+
+	return &GithubPRDetails{
+		Issue: &github.Issue{
+			Number:        &number,
+			RepositoryURL: &repoURL,
+			Title:         &issuetitle,
+			CreatedAt:     &createdAtTime,
+			UpdatedAt:     &updatedAtTime,
+			User: &github.User{
+				Login: &userLogin,
+			},
+			Milestone: &github.Milestone{
+				Title: &milestoneTitle,
+			},
+			HTMLURL: &url,
+			Labels:  labels,
+		},
+		Additions:    &resp.Additions,
+		Deletions:    &resp.Deletions,
+		ChangedFiles: &resp.ChangedFiles,
+	}
 }
 
 func newIssueFromAssignmentResponse(assignmentResp *assignmentSearchNodes) *github.Issue {
@@ -154,37 +182,5 @@ func newGithubIssue(prNumber githubv4.Int, title, login githubv4.String, reposit
 		},
 		HTMLURL: &url,
 		Labels:  labels,
-	}
-}
-
-func newGithubPR(prNumber githubv4.Int, title, login githubv4.String, repositoryURL, htmlURL githubv4.URI, createdAt, updatedAt githubv4.DateTime, labels []*github.Label, milestone githubv4.String, additions, deletions, changedFiles githubv4.Int) *GithubPRDetails {
-	number := int(prNumber)
-	repoURL := repositoryURL.String()
-	issuetitle := string(title)
-	userLogin := string(login)
-	milestoneTitle := string(milestone)
-	url := htmlURL.String()
-	createdAtTime := github.Timestamp{Time: createdAt.Time}
-	updatedAtTime := github.Timestamp{Time: updatedAt.Time}
-
-	return &GithubPRDetails{
-		Issue: &github.Issue{
-			Number:        &number,
-			RepositoryURL: &repoURL,
-			Title:         &issuetitle,
-			CreatedAt:     &createdAtTime,
-			UpdatedAt:     &updatedAtTime,
-			User: &github.User{
-				Login: &userLogin,
-			},
-			Milestone: &github.Milestone{
-				Title: &milestoneTitle,
-			},
-			HTMLURL: &url,
-			Labels:  labels,
-		},
-		Additions:    &additions,
-		Deletions:    &deletions,
-		ChangedFiles: &changedFiles,
 	}
 }
