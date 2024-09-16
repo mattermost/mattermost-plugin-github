@@ -64,7 +64,7 @@ var (
 	testOAuthServerURL = ""
 )
 
-type kvStore interface {
+type KvStore interface {
 	Set(key string, value any, options ...pluginapi.KVSetOption) (bool, error)
 	ListKeys(page int, count int, options ...pluginapi.ListKeysOption) ([]string, error)
 	Get(key string, o any) error
@@ -75,7 +75,7 @@ type Plugin struct {
 	plugin.MattermostPlugin
 	client *pluginapi.Client
 
-	store kvStore
+	store KvStore
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
