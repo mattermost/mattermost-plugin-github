@@ -279,7 +279,11 @@ func (p *Plugin) OnActivate() error {
 	p.BotUserID = botID
 
 	p.poster = poster.NewPoster(&p.client.Post, p.BotUserID)
-	p.flowManager = p.NewFlowManager()
+	flowManager, err := p.NewFlowManager()
+	if err != nil {
+		return errors.Wrap(err, "failed to create flow manager")
+	}
+	p.flowManager = flowManager
 
 	registerGitHubToUsernameMappingCallback(p.getGitHubToUsernameMapping)
 
