@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/mattermost/mattermost-plugin-github/server/mocks"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
@@ -14,6 +13,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/mocks"
 )
 
 // Function to get the plugin object for test cases.
@@ -288,7 +289,7 @@ func TestExecuteCommand(t *testing.T) {
 			expectedMsg: "###### Mattermost GitHub Plugin - Slash Command Help\n",
 			SetupMockStore: func(mks *mocks.MockKvStore) {
 				mks.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					// Casted the value to the appropriate type and updated it
+					// Cast the value to the appropriate type and updated it
 					if userInfoPtr, ok := value.(**GitHubUserInfo); ok {
 						*userInfoPtr = &GitHubUserInfo{
 							// Mock user info data
