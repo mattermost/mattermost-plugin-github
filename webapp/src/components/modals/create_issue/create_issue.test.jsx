@@ -12,8 +12,6 @@ describe('CreateIssueModal', () => {
         close: jest.fn(),
         create: jest.fn(() => Promise.resolve({})),
         post: null,
-        title: '',
-        channelId: '',
         theme: {
             centerChannelColor: '#000',
             centerChannelBg: '#fff',
