@@ -28,7 +28,7 @@ type Tracker interface {
 
 type FlowManager struct {
 	client           *pluginapi.Client
-	pluginURL        string
+	pluginID         string
 	botUserID        string
 	router           *mux.Router
 	getConfiguration func() *Configuration
@@ -39,14 +39,14 @@ type FlowManager struct {
 
 	setupFlow        *flow.Flow
 	oauthFlow        *flow.Flow
-	webhokFlow       *flow.Flow
+	webhookFlow      *flow.Flow
 	announcementFlow *flow.Flow
 }
 
-func (p *Plugin) NewFlowManager() *FlowManager {
+func (p *Plugin) NewFlowManager() (*FlowManager, error) {
 	fm := &FlowManager{
 		client:           p.client,
-		pluginURL:        *p.client.Configuration.GetConfig().ServiceSettings.SiteURL + "/" + "plugins" + "/" + Manifest.Id,
+		pluginID:         Manifest.Id,
 		botUserID:        p.BotUserID,
 		router:           p.router,
 		getConfiguration: p.getConfiguration,
@@ -56,7 +56,11 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 		tracker:    p,
 	}
 
-	fm.setupFlow = fm.newFlow("setup").WithSteps(
+	setupFlow, err := fm.newFlow("setup")
+	if err != nil {
+		return nil, err
+	}
+	setupFlow.WithSteps(
 		fm.stepWelcome(),
 
 		fm.stepDelegateQuestion(),
@@ -79,8 +83,13 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 
 		fm.stepCancel("setup"),
 	)
+	fm.setupFlow = setupFlow
 
-	fm.oauthFlow = fm.newFlow("oauth").WithSteps(
+	oauthFlow, err := fm.newFlow("oauth")
+	if err != nil {
+		return nil, err
+	}
+	oauthFlow.WithSteps(
 		fm.stepEnterprise(),
 		fm.stepOAuthInfo(),
 		fm.stepOAuthInput(),
@@ -88,7 +97,13 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 
 		fm.stepCancel("setup oauth"),
 	)
-	fm.webhokFlow = fm.newFlow("webhook").WithSteps(
+	fm.oauthFlow = oauthFlow
+
+	webhookFlow, err := fm.newFlow("webhook")
+	if err != nil {
+		return nil, err
+	}
+	webhookFlow.WithSteps(
 		fm.stepWebhookQuestion(),
 		flow.NewStep(stepWebhookConfirmation).
 			WithText("Use `/github subscriptions add` to subscribe any Mattermost channel to your GitHub repository. [Learn more](https://github.com/mattermost/mattermost-plugin-github#slash-commands)").
@@ -96,14 +111,21 @@ func (p *Plugin) NewFlowManager() *FlowManager {
 
 		fm.stepCancel("setup webhook"),
 	)
-	fm.announcementFlow = fm.newFlow("announcement").WithSteps(
+	fm.webhookFlow = webhookFlow
+
+	announcementFlow, err := fm.newFlow("announcement")
+	if err != nil {
+		return nil, err
+	}
+	announcementFlow.WithSteps(
 		fm.stepAnnouncementQuestion(),
 		fm.stepAnnouncementConfirmation().Terminal(),
 
 		fm.stepCancel("setup announcement"),
 	)
+	fm.announcementFlow = announcementFlow
 
-	return fm
+	return fm, nil
 }
 
 func (fm *FlowManager) doneStep() flow.Step {
@@ -122,17 +144,20 @@ func (fm *FlowManager) onDone(f *flow.Flow) {
 	}
 }
 
-func (fm *FlowManager) newFlow(name flow.Name) *flow.Flow {
-	flow := flow.NewFlow(
+func (fm *FlowManager) newFlow(name flow.Name) (*flow.Flow, error) {
+	flow, err := flow.NewFlow(
 		name,
 		fm.client,
-		fm.pluginURL,
+		fm.pluginID,
 		fm.botUserID,
 	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create flow %s", name)
+	}
 
 	flow.InitHTTP(fm.router)
 
-	return flow
+	return flow, nil
 }
 
 const (
@@ -473,7 +498,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"3. Select **Register application**\n"+
 		"4. Select **Generate a new client secret**.\n"+
 		"5. If prompted, complete 2FA.",
-		fm.pluginURL,
+		fm.pluginID,
 	)
 
 	return flow.NewStep(stepOAuthInfo).
@@ -572,7 +597,7 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 
 func (fm *FlowManager) stepOAuthConnect() flow.Step {
 	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your GitHub account"
-	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginURL)
+	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginID)
 	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
 	return flow.NewStep(stepOAuthConnect).
 		WithText(connectText).
@@ -584,7 +609,7 @@ func (fm *FlowManager) stepOAuthConnect() flow.Step {
 func (fm *FlowManager) StartWebhookWizard(userID string) error {
 	state := fm.getBaseState()
 
-	err := fm.webhokFlow.ForUser(userID).Start(state)
+	err := fm.webhookFlow.ForUser(userID).Start(state)
 	if err != nil {
 		return err
 	}
@@ -664,7 +689,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 		"content_type": "json",
 		"insecure_ssl": "0",
 		"secret":       config.WebhookSecret,
-		"url":          fmt.Sprintf("%s/webhook", fm.pluginURL),
+		"url":          fmt.Sprintf("%s/webhook", fm.pluginID),
 	}
 
 	hook := &github.Hook{
