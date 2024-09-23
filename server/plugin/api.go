@@ -184,6 +184,7 @@ func (p *Plugin) checkConfigured(next http.Handler) http.Handler {
 		config := p.getConfiguration()
 
 		if err := config.IsValid(); err != nil {
+			p.client.Log.Error("This plugin is not configured.", "error", err)
 			p.writeAPIError(w, &APIErrorResponse{Message: "this plugin is not configured", StatusCode: http.StatusNotImplemented})
 			return
 		}
@@ -345,6 +346,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	code := r.URL.Query().Get("code")
 	if len(code) == 0 {
+		p.client.Log.Error("Missing authorization code.")
 		p.writeAPIError(w, &APIErrorResponse{Message: "missing authorization code", StatusCode: http.StatusBadRequest})
 		return
 	}
@@ -1008,6 +1010,7 @@ func (p *Plugin) updateSettings(c *UserContext, w http.ResponseWriter, r *http.R
 	}
 
 	if settings == nil {
+		p.client.Log.Error("Invalid request body.")
 		p.writeAPIError(w, &APIErrorResponse{Message: "invalid request body", StatusCode: http.StatusBadRequest})
 		return
 	}
@@ -1439,6 +1442,7 @@ func (p *Plugin) getConfig(w http.ResponseWriter, r *http.Request) {
 func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("userID")
 	if userID == "" {
+		p.client.Log.Error("UserID not found.")
 		p.writeAPIError(w, &APIErrorResponse{Message: "please provide a userID", StatusCode: http.StatusBadRequest})
 		return
 	}
