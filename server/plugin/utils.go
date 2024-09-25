@@ -15,6 +15,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 )
@@ -368,6 +370,19 @@ func isValidURL(rawURL string) error {
 	}
 
 	return nil
+}
+
+func getPluginURL(client *pluginapi.Client) string {
+	return getSiteURL(client) + "/" + path.Join("plugins", Manifest.Id)
+}
+
+func getSiteURL(client *pluginapi.Client) string {
+	siteURL := client.Configuration.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil {
+		return ""
+	}
+
+	return strings.TrimSuffix(*siteURL, "/")
 }
 
 // lastN returns the last n characters of a string, with the rest replaced by *.

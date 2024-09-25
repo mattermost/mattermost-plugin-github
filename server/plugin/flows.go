@@ -498,7 +498,7 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"3. Select **Register application**\n"+
 		"4. Select **Generate a new client secret**.\n"+
 		"5. If prompted, complete 2FA.",
-		fm.pluginID,
+		getPluginURL(fm.client),
 	)
 
 	return flow.NewStep(stepOAuthInfo).
@@ -597,7 +597,7 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 
 func (fm *FlowManager) stepOAuthConnect() flow.Step {
 	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your GitHub account"
-	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginID)
+	connectURL := fmt.Sprintf("%s/oauth/connect", getPluginURL(fm.client))
 	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
 	return flow.NewStep(stepOAuthConnect).
 		WithText(connectText).
@@ -689,7 +689,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 		"content_type": "json",
 		"insecure_ssl": "0",
 		"secret":       config.WebhookSecret,
-		"url":          fmt.Sprintf("%s/webhook", fm.pluginID),
+		"url":          fmt.Sprintf("%s/webhook", getPluginURL(fm.client)),
 	}
 
 	hook := &github.Hook{

@@ -244,8 +244,8 @@ func (p *Plugin) setDefaultConfiguration() error {
 func (p *Plugin) OnActivate() error {
 	p.ensurePluginAPIClient()
 
-	siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
-	if siteURL == nil || *siteURL == "" {
+	siteURL := getSiteURL(p.client)
+	if siteURL == "" {
 		return errors.New("siteURL is not set. Please set it and restart the plugin")
 	}
 
@@ -570,8 +570,7 @@ func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
 
 	authURL.Path = path.Join(authURL.Path, "oauth", "authorize")
 	tokenURL.Path = path.Join(tokenURL.Path, "oauth", "token")
-
-	redirectURL, _ := url.Parse(fmt.Sprintf("%s/plugins/github/oauth/complete", *p.client.Configuration.GetConfig().ServiceSettings.SiteURL))
+	redirectURL, _ := url.Parse(path.Join(getPluginURL(p.client), "oauth", "complete"))
 
 	return &oauth2.Config{
 		ClientID:     "placeholder",

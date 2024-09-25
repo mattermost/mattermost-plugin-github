@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -817,9 +818,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 }
 
 func (p *Plugin) getPermaLink(postID string) string {
-	siteURL := *p.client.Configuration.GetConfig().ServiceSettings.SiteURL
-
-	return fmt.Sprintf("%v/_redirect/pl/%v", siteURL, postID)
+	return getSiteURL(p.client) + "/" + path.Join("_redirect", "pl", postID)
 }
 
 func getFailReason(code int, repo string, username string) string {
