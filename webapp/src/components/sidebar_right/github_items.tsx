@@ -246,7 +246,14 @@ function GithubItems(props: GithubItemsProps) {
                     style={style.subtitle}
                 >
                     {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
-                    {userName && ' by ' + userName}
+                    {userName && (
+                        <>
+                            {' by '}
+                            <a href={`https://github.com/${userName}`}>
+                                {userName}
+                            </a>
+                        </>
+                    )}
                     {(item.created_at || userName) && '.'}
                     {milestone}
                     {item.reason ? (<>
