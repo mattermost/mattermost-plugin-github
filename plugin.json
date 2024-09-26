@@ -39,19 +39,22 @@
                 "key": "GitHubOAuthClientSecret",
                 "display_name": "GitHub OAuth Client Secret:",
                 "type": "text",
-                "help_text": "The client secret for the OAuth app registered with GitHub."
+                "help_text": "The client secret for the OAuth app registered with GitHub.",
+                "secret": true
             },
             {
                 "key": "WebhookSecret",
                 "display_name": "Webhook Secret:",
                 "type": "generated",
-                "help_text": "The webhook secret set in GitHub."
+                "help_text": "The webhook secret set in GitHub.",
+                "secret": true
             },
             {
                 "key": "EncryptionKey",
                 "display_name": "At Rest Encryption Key:",
                 "type": "generated",
-                "help_text": "The AES encryption key used to encrypt stored access tokens."
+                "help_text": "The AES encryption key used to encrypt stored access tokens.",
+                "secret": true
             },
             {
                 "key": "GithubOrg",

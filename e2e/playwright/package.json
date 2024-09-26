@@ -24,7 +24,7 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "express": "^4.21.0",
     "pg": "^8.10.0"
   }
 }
