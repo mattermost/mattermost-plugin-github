@@ -40,9 +40,10 @@ const (
 	postPropGithubObjectID   = "gh_object_id"
 	postPropGithubObjectType = "gh_object_type"
 
-	githubObjectTypeIssue           = "issue"
-	githubObjectTypeIssueComment    = "issue_comment"
-	githubObjectTypePRReviewComment = "pr_review_comment"
+	githubObjectTypeIssue             = "issue"
+	githubObjectTypeIssueComment      = "issue_comment"
+	githubObjectTypePRReviewComment   = "pr_review_comment"
+	githubObjectTypeDiscussionComment = "discussion_comment"
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -189,7 +190,6 @@ func (wb *WebhookBroker) Close() {
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
@@ -296,6 +296,16 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		handler = func() {
 			p.postReleaseEvent(event)
 		}
+	case *github.DiscussionEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postDiscussionEvent(event)
+		}
+	case *github.DiscussionCommentEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postDiscussionCommentEvent(event)
+		}
 	}
 
 	if handler == nil {
@@ -321,6 +331,7 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	if owner == "" {
 		return false
 	}
+
 	if err := p.checkOrg(owner); err != nil {
 		return false
 	}
@@ -1429,6 +1440,86 @@ func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
+	repo := event.GetRepo()
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
+	if len(subs) == 0 {
+		return
+	}
+
+	newDiscussionMessage, err := renderTemplate("newDiscussion", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
+		return
+	}
+
+	for _, sub := range subs {
+		if !sub.Discussions() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		post := p.makeBotPost(newDiscussionMessage, "custom_git_discussion")
+
+		repoName := strings.ToLower(repo.GetFullName())
+		discussionNumber := event.GetDiscussion().GetNumber()
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, discussionNumber)
+		post.AddProp(postPropGithubObjectType, "discussion")
+		post.ChannelId = sub.ChannelID
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error creating discussion notification post", "Post", post, "Error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent) {
+	repo := event.GetRepo()
+
+	subs := p.GetSubscribedChannelsForRepository(repo)
+	if len(subs) == 0 {
+		return
+	}
+
+	if event.GetAction() != actionCreated {
+		return
+	}
+
+	newDiscussionCommentMessage, err := renderTemplate("newDiscussionComment", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
+		return
+	}
+	for _, sub := range subs {
+		if !sub.DiscussionComments() {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		post := p.makeBotPost(newDiscussionCommentMessage, "custom_git_dis_comment")
+
+		repoName := strings.ToLower(repo.GetFullName())
+		commentID := event.GetComment().GetID()
+
+		post.AddProp(postPropGithubRepo, repoName)
+		post.AddProp(postPropGithubObjectID, commentID)
+		post.AddProp(postPropGithubObjectType, githubObjectTypeDiscussionComment)
+
+		post.ChannelId = sub.ChannelID
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error creating discussion comment post", "Post", post, "Error", err.Error())
 		}
 	}
 }

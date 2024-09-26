@@ -431,6 +431,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `workflow_success` - includes workflow job success\n" +
 		"    	* `releases` - includes release created and deleted\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
+		"    	* `discussions` - includes new discussions\n" +
+		"    	* `discussion_comments` - includes new discussion comments\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"    * `--render-style` - notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +
@@ -462,6 +464,16 @@ Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 {{- if eq .GetAction "created" }} created a release {{template "release" .GetRelease}}
 {{- else if eq .GetAction "deleted" }} deleted a release {{template "release" .GetRelease}}
 {{- end -}}`))
+
+	template.Must(masterTemplate.New("newDiscussion").Funcs(funcMap).Parse(`
+{{template "user" .GetSender}} started a new discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
+`))
+
+	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
+
+{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+`))
 }
 
 func registerGitHubToUsernameMappingCallback(callback func(string) string) {
