@@ -115,39 +115,6 @@ var issue = github.Issue{
 	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
 }
 
-var issueWithMentions = github.Issue{
-	Number:    iToP(1),
-	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1"),
-	Title:     sToP("Implement git-get-head"),
-	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
-	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body: sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support
-` + gitHubMentions),
-}
-
-var issueWithLabelAndAssignee = github.Issue{
-	Number:    iToP(1),
-	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1"),
-	Title:     sToP("Implement git-get-head"),
-	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
-	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
-	Labels:    singleLabel,
-	Assignee:  &user,
-	Assignees: []*github.User{&user},
-}
-
-var issueWithMultipleLabelsAndAssignee = github.Issue{
-	Number:    iToP(1),
-	HTMLURL:   sToP("https://github.com/mattermost/mattermost-plugin-github/issues/1"),
-	Title:     sToP("Implement git-get-head"),
-	CreatedAt: tToP(time.Date(2019, 04, 01, 02, 03, 04, 0, time.UTC)),
-	UpdatedAt: tToP(time.Date(2019, 05, 01, 02, 03, 04, 0, time.UTC)),
-	Body:      sToP(`<!-- Thank you for opening this issue-->git-get-head sounds like a great feature we should support`),
-	Labels:    labels,
-	Assignees: []*github.User{&user, &user},
-}
-
 var user = github.User{
 	Login:   sToP("panda"),
 	HTMLURL: sToP("https://github.com/panda"),
@@ -324,7 +291,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 
 	t.Run("with collapsed render style", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was opened by [panda](https://github.com/panda).
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was opened by [panda](https://github.com/panda).
 `
 
 		actual, err := renderTemplate("newPR", &EventWithRenderConfig{
@@ -366,7 +333,7 @@ git-get-head gets the non-sent upstream heads inside the stashed non-cleaned app
 func TestClosedPRMessageTemplate(t *testing.T) {
 	t.Run("merged", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was merged by [panda](https://github.com/panda).
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was merged by [panda](https://github.com/panda).
 `
 
 		actual, err := renderTemplate("closedPR", &github.PullRequestEvent{
@@ -380,7 +347,7 @@ func TestClosedPRMessageTemplate(t *testing.T) {
 
 	t.Run("closed", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was closed by [panda](https://github.com/panda).
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was closed by [panda](https://github.com/panda).
 `
 
 		actual, err := renderTemplate("closedPR", &github.PullRequestEvent{
@@ -396,7 +363,7 @@ func TestClosedPRMessageTemplate(t *testing.T) {
 func TestReopenedPRMessageTemplate(t *testing.T) {
 	t.Run("reopened", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was reopened by [panda](https://github.com/panda).
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) Pull request [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42) was reopened by [panda](https://github.com/panda).
 `
 
 		actual, err := renderTemplate("reopenedPR", &github.PullRequestEvent{
@@ -429,15 +396,10 @@ func TestPullRequestLabelledTemplate(t *testing.T) {
 }
 
 func TestNewIssueTemplate(t *testing.T) {
-	t.Run("without mentions", func(t *testing.T) {
+	t.Run("new issue", func(t *testing.T) {
 		expected := `
-#### Implement git-get-head
-##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by [panda](https://github.com/panda)
-
-git-get-head sounds like a great feature we should support
+[panda](https://github.com/panda) created a new issue in [mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github)
 `
-
 		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
 			&github.IssuesEvent{
 				Repo:   &repo,
@@ -446,114 +408,6 @@ git-get-head sounds like a great feature we should support
 			},
 			nil,
 		))
-		require.NoError(t, err)
-		require.Equal(t, expected, actual)
-	})
-
-	t.Run("with mentions", withGitHubUserNameMapping(func(t *testing.T) {
-		expected := `
-#### Implement git-get-head
-##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by @pandabot
-
-git-get-head sounds like a great feature we should support
-` + usernameMentions + `
-`
-
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
-			&github.IssuesEvent{
-				Repo:   &repo,
-				Issue:  &issueWithMentions,
-				Sender: &user,
-			},
-			nil,
-		))
-		require.NoError(t, err)
-		require.Equal(t, expected, actual)
-	}))
-
-	t.Run("with single label and assignee", func(t *testing.T) {
-		expected := `
-#### Implement git-get-head
-##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by [panda](https://github.com/panda)
-Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted)" + `
-Assignees: [panda](https://github.com/panda)
-
-git-get-head sounds like a great feature we should support
-`
-
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
-			&github.IssuesEvent{
-				Repo:   &repo,
-				Issue:  &issueWithLabelAndAssignee,
-				Sender: &user,
-			},
-			nil,
-		))
-		require.NoError(t, err)
-		require.Equal(t, expected, actual)
-	})
-
-	t.Run("with multiple labels and assignees", func(t *testing.T) {
-		expected := `
-#### Implement git-get-head
-##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by [panda](https://github.com/panda)
-Labels: ` + "[`Help Wanted`](https://github.com/mattermost/mattermost-plugin-github/labels/Help%20Wanted), [`Tech/Go`](https://github.com/mattermost/mattermost-plugin-github/labels/Tech%2FGo)" + `
-Assignees: [panda](https://github.com/panda), [panda](https://github.com/panda)
-
-git-get-head sounds like a great feature we should support
-`
-
-		actual, err := renderTemplate("newIssue", GetEventWithRenderConfig(
-			&github.IssuesEvent{
-				Repo:   &repo,
-				Issue:  &issueWithMultipleLabelsAndAssignee,
-				Sender: &user,
-			},
-			nil,
-		))
-		require.NoError(t, err)
-		require.Equal(t, expected, actual)
-	})
-
-	t.Run("with collapsed render style", func(t *testing.T) {
-		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) opened by [panda](https://github.com/panda).
-`
-
-		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
-			Event: &github.IssuesEvent{
-				Repo:   &repo,
-				Issue:  &issue,
-				Sender: &user,
-			},
-			Config: RenderConfig{
-				Style: "collapsed",
-			},
-		})
-		require.NoError(t, err)
-		require.Equal(t, expected, actual)
-	})
-
-	t.Run("with skip-body render style", func(t *testing.T) {
-		expected := `
-#### Implement git-get-head
-##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
-#new-issue by [panda](https://github.com/panda)
-`
-
-		actual, err := renderTemplate("newIssue", &EventWithRenderConfig{
-			Event: &github.IssuesEvent{
-				Repo:   &repo,
-				Issue:  &issue,
-				Sender: &user,
-			},
-			Config: RenderConfig{
-				Style: "skip-body",
-			},
-		})
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
@@ -561,7 +415,7 @@ git-get-head sounds like a great feature we should support
 
 func TestClosedIssueTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) closed by [panda](https://github.com/panda).
 `
 
 	actual, err := renderTemplate("closedIssue", GetEventWithRenderConfig(
@@ -578,7 +432,7 @@ func TestClosedIssueTemplate(t *testing.T) {
 
 func TestReopenedIssueTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) reopened by [panda](https://github.com/panda).
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) Issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) reopened by [panda](https://github.com/panda).
 `
 
 	actual, err := renderTemplate("reopenedIssue", GetEventWithRenderConfig(
@@ -789,7 +643,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 
 func TestCreateMessageTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) branch [branchname](https://github.com/mattermost/mattermost-plugin-github/tree/branchname) created by [panda](https://github.com/panda)
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) branch [branchname](https://github.com/mattermost/mattermost-plugin-github/tree/branchname) created by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("newCreateMessage", &github.CreateEvent{
@@ -804,7 +658,7 @@ func TestCreateMessageTemplate(t *testing.T) {
 
 func TestDeletedMessageTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) branch branchname deleted by [panda](https://github.com/panda)
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) branch branchname deleted by [panda](https://github.com/panda)
 `
 
 	actual, err := renderTemplate("newDeleteMessage", &github.DeleteEvent{
@@ -819,7 +673,7 @@ func TestDeletedMessageTemplate(t *testing.T) {
 
 func TestRepoStarTemplate(t *testing.T) {
 	expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) starred by [panda](https://github.com/panda)
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) starred by [panda](https://github.com/panda)
 It now has **1** stars.`
 
 	actual, err := renderTemplate("newRepoStar", &github.StarEvent{
@@ -834,7 +688,7 @@ It now has **1** stars.`
 func TestIssueCommentTemplate(t *testing.T) {
 	t.Run("non-email body without mentions", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 `
@@ -853,7 +707,7 @@ git-get-head sounds like a great feature we should support
 
 	t.Run("email body without mentions", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New comment by [panda](https://github.com/panda) on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 `
@@ -872,7 +726,7 @@ git-get-head sounds like a great feature we should support
 
 	t.Run("non-email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
@@ -892,7 +746,7 @@ git-get-head sounds like a great feature we should support
 
 	t.Run("email body with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New comment by @pandabot on [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1):
 
 git-get-head sounds like a great feature we should support
 ` + usernameMentions + `
@@ -914,7 +768,7 @@ git-get-head sounds like a great feature we should support
 func TestPullRequestReviewEventTemplate(t *testing.T) {
 	t.Run("approved", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 `
@@ -934,7 +788,7 @@ Excited to see git-get-head land!
 
 	t.Run("commented", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) commented on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) commented on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 `
@@ -954,7 +808,7 @@ Excited to see git-get-head land!
 
 	t.Run("requested changes", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) requested changes on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) requested changes on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 `
@@ -974,7 +828,7 @@ Excited to see git-get-head land!
 
 	t.Run("approved with mentions", withGitHubUserNameMapping(func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) @pandabot approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) @pandabot approved [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Excited to see git-get-head land!
 ` + usernameMentions + `
@@ -997,7 +851,7 @@ Excited to see git-get-head land!
 func TestPullRequestReviewCommentEventTemplate(t *testing.T) {
 	t.Run("without mentions", func(*testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Should this be here?
 `
@@ -1016,7 +870,7 @@ Should this be here?
 
 	t.Run("with mentions", withGitHubUserNameMapping(func(*testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by @pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) New review comment by @pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
 Should this be here?
 ` + usernameMentions + `
@@ -1406,7 +1260,7 @@ func TestPullRequestReviewNotification(t *testing.T) {
 func TestReleaseNotification(t *testing.T) {
 	t.Run("created", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) created a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) created a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
 
 		actual, err := renderTemplate("newReleaseEvent", &github.ReleaseEvent{
 			Repo:   &repo,
@@ -1423,7 +1277,7 @@ func TestReleaseNotification(t *testing.T) {
 
 	t.Run("deleted", func(t *testing.T) {
 		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) deleted a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
+[mattermost-plugin-github](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) deleted a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
 
 		actual, err := renderTemplate("newReleaseEvent", &github.ReleaseEvent{
 			Repo:   &repo,
