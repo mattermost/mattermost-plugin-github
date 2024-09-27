@@ -7,7 +7,7 @@ import * as CSS from 'csstype';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
+import {GitPullRequestIcon, IssueOpenedIcon, IconProps, CalendarIcon, PersonIcon, FileDiffIcon} from '@primer/octicons-react';
 
 import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
 
@@ -227,6 +227,37 @@ function GithubItems(props: GithubItemsProps) {
             labels = getGithubLabels(item.labels);
         }
 
+        let pullRequestDetails: JSX.Element | null = null;
+        if (item.additions || item.deletions) {
+            const additions = item?.additions;
+            const deletions = item?.deletions;
+            const changedFiles = item?.changed_files;
+
+            pullRequestDetails = (
+                <div
+                    className='light'
+                    style={style.pullRequestDetails}
+                >
+                    <FileDiffIcon size={16}/>
+                    {changedFiles && (
+                        <span>
+                            {' '}{changedFiles} {changedFiles === 1 ? 'File' : 'Files'} {' Changed'}
+                        </span>
+                    )}
+                    {additions != null && (
+                        <span style={style.additionNumber}>
+                            {'  +'}{additions}
+                        </span>
+                    )}
+                    {deletions != null && (
+                        <span style={style.deletionNumber}>
+                            {'  -'}{deletions}
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
         return (
             <div
                 key={item.id}
@@ -245,7 +276,11 @@ function GithubItems(props: GithubItemsProps) {
                     className='light'
                     style={style.subtitle}
                 >
-                    {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
+                    {item.created_at && (
+                        <>
+                            <CalendarIcon size={16}/> {'Opened '} {formatTimeSince(item.created_at)} {' ago'}
+                        </>
+                    )}
                     {userName && ' by ' + userName}
                     {(item.created_at || userName) && '.'}
                     {milestone}
@@ -256,6 +291,7 @@ function GithubItems(props: GithubItemsProps) {
                     </>) : null }
                 </div>
                 {reviews}
+                {pullRequestDetails}
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;
@@ -310,6 +346,20 @@ const getStyle = makeStyleFromTheme((theme) => {
             display: 'inline-flex',
             alignItems: 'center',
             color: theme.centerChannelColor,
+        },
+        additionNumber: {
+            color: 'green',
+        },
+        deletionNumber: {
+            color: 'red',
+        },
+        pullRequestDetails: {
+            margin: '5px 0 0 0',
+            fontSize: '13px',
+            fontWeight: 'normal',
+        },
+        prOpenSince: {
+            margin: '5px 0 0 0',
         },
     };
 });
@@ -385,7 +435,14 @@ function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
         } else {
             reviewName = 'reviews';
         }
-        reviews = (<span className='light'>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
+        reviews = (
+            <div
+                className='light'
+                style={style.prOpenSince}
+            >
+                <PersonIcon size={16}/> {(totalReviewers - approved) + ' pending reviewer'}
+            </div>
+        );
     }
 
     if (changesRequested > 0) {
