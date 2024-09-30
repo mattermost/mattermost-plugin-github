@@ -9,6 +9,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/google/go-github/v54/github"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/pkg/errors"
 )
 
@@ -35,7 +36,19 @@ var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
 var showAuthorInCommitNotification bool
 
-func init() {
+func (p *Plugin) localize(lang *i18n.Localizer, id, data string, templateData map[string]interface{}) string {
+	text := p.b.LocalizeWithConfig(lang, &i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    id,
+			Other: data,
+		},
+		TemplateData: templateData,
+	})
+
+	return text
+}
+
+func (p *Plugin) initTemplates() {
 	var funcMap = sprig.TxtFuncMap()
 
 	// Try to parse out email footer junk
@@ -54,6 +67,8 @@ func init() {
 
 	// Resolve a GitHub username to the corresponding Mattermost username, if linked.
 	funcMap["lookupMattermostUsername"] = lookupMattermostUsername
+
+	funcMap["localize"] = p.localize
 
 	// Trim away markdown comments in the text
 	funcMap["removeComments"] = func(body string) string {
@@ -387,7 +402,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{else}}{{end}}`))
 
 	template.Must(masterTemplate.New("helpText").Parse("" +
-		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
+		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - " + `{{ $mm := tomap (printf "{\"EnablePrivateRepo\":%v}" .EnablePrivateRepo) }}{{ $mmmm := dict "EnablePrivateRepo" .EnablePrivateRepo "b" "abc" }}{{localize .Lang "github.command.help.connect" "Connect your Mattermost account to your GitHub account {{ .EnablePrivateRepo }} {{ .b }}.\n" $mmmm }}` +
 		"{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}}" +
 		"  * `private` is optional. If used, read access to your private repositories will be requested." +
 		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +

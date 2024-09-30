@@ -1,3 +1,4 @@
 {
-    "github.command.help.title": "###### Mattermost GitHub Plugin - Slash Command Help\n"
+    "github.command.help.title": "###### Mattermost GitHub Plugin - Slash Command Help\n",
+    "github.command.help.connect": "Connect your Mattermost account to your GitHub account.\n"
 }

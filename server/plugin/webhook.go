@@ -1267,7 +1267,7 @@ func (p *Plugin) handleIssueNotification(event *github.IssuesEvent) {
 		return
 	}
 
-	message, err := renderTemplate("issueNotification", event)
+	message, err := ("issueNotification", event)
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return

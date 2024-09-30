@@ -266,6 +266,7 @@ func (p *Plugin) OnActivate() error {
 
 	p.initializeAPI()
 	p.initializeTelemetry()
+	p.initTemplates()
 
 	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
 	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
