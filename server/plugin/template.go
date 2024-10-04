@@ -134,6 +134,11 @@ func init() {
 		`[{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}})`,
 	))
 
+	// The eventPullRequest links to the corresponding pull request, anchored at the repo.
+	template.Must(masterTemplate.New("eventPullRequest").Parse(
+		`[{{.GetPullRequest.GetTitle}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}})`,
+	))
+
 	template.Must(masterTemplate.New("eventRepoPullRequestWithTitle").Parse(
 		`{{template "eventRepoPullRequest" .}} - {{.GetPullRequest.GetTitle}}`,
 	))
@@ -206,8 +211,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{ if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
 {{- else -}}
-#### {{.Event.GetPullRequest.GetTitle}}
-##### {{template "eventRepoPullRequest" .Event}}
+{{template "eventPullRequest" .Event}}
 #new-pull-request by {{template "user" .Event.GetSender}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
@@ -235,14 +239,15 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("closedPR").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} Pull request {{template "pullRequest" .GetPullRequest}} was
-{{- if .GetPullRequest.GetMerged }} merged
-{{- else }} closed
-{{- end }} by {{template "user" .GetSender}}.
+{{template "pullRequest" .GetPullRequest}} **was closed by {{template "user" .GetSender}}.**
+`))
+
+	template.Must(masterTemplate.New("mergedPR").Funcs(funcMap).Parse(`
+{{template "pullRequest" .GetPullRequest}} **was merged by {{template "user" .GetSender}}.**
 `))
 
 	template.Must(masterTemplate.New("reopenedPR").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} Pull request {{template "pullRequest" .GetPullRequest}} was reopened by {{template "user" .GetSender}}.
+{{template "pullRequest" .GetPullRequest}} **was reopened by {{template "user" .GetSender}}.**
 `))
 
 	template.Must(masterTemplate.New("pullRequestLabelled").Funcs(funcMap).Parse(`
@@ -301,7 +306,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("issueComment").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on {{template "issue" .Issue}}:
+New comment by {{template "user" .GetSender}} on {{template "issue" .Issue}}:
 
 {{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
@@ -448,7 +453,7 @@ It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 `))
 
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
+New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
 
 {{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))

@@ -723,7 +723,7 @@ func (p *Plugin) openIssueCreateModal(userID string, channelID string, title str
 
 // CreateBotDMPost posts a direct message using the bot account.
 // Any error are not returned and instead logged.
-func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
+func (p *Plugin) CreateBotDMPost(userID string, message string, postType string, attachment *model.SlackAttachment) {
 	channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
 	if err != nil {
 		p.client.Log.Warn("Couldn't get bot's DM channel", "userID", userID, "error", err.Error())
@@ -733,8 +733,13 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	post := &model.Post{
 		UserId:    p.BotUserID,
 		ChannelId: channel.Id,
-		Message:   message,
 		Type:      postType,
+	}
+
+	if attachment != nil {
+		post.AddProp(postPropAttachments, []*model.SlackAttachment{attachment})
+	} else {
+		post.Message = message
 	}
 
 	if err = p.client.Post.CreatePost(post); err != nil {
@@ -794,7 +799,7 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 			return err
 		}
 	}
-	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
+	p.CreateBotDMPost(info.UserID, text, "custom_git_todo", nil)
 	return nil
 }
 

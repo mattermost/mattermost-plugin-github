@@ -467,7 +467,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			"##### Slash Commands\n"+
 			commandHelp, gitUser.GetLogin(), gitUser.GetHTMLURL())
 
-		p.CreateBotDMPost(state.UserID, message, "custom_git_welcome")
+		p.CreateBotDMPost(state.UserID, message, "custom_git_welcome", nil)
 	}
 
 	config := p.getConfiguration()
@@ -633,9 +633,9 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		if val == nil {
 			message := "Private repositories have been enabled for this plugin. To be able to use them you must disconnect and reconnect your GitHub account. To reconnect your account, use the following slash commands: `/github disconnect` followed by %s"
 			if config.ConnectToPrivateByDefault {
-				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect`."), "")
+				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect`."), "", nil)
 			} else {
-				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect private`."), "")
+				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect private`."), "", nil)
 			}
 			if _, err := p.store.Set(privateRepoStoreKey, []byte("1")); err != nil {
 				p.writeAPIError(w, &APIErrorResponse{Message: "unable to set private repo key value", StatusCode: http.StatusInternalServerError})
@@ -992,7 +992,7 @@ func (p *Plugin) postToDo(c *UserContext, w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	p.CreateBotDMPost(c.UserID, text, "custom_git_todo")
+	p.CreateBotDMPost(c.UserID, text, "custom_git_todo", nil)
 
 	resp := struct {
 		Status string
