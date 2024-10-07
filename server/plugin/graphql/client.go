@@ -3,7 +3,6 @@ package graphql
 import (
 	"context"
 	"net/url"
-	"path"
 
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
@@ -36,16 +35,14 @@ func NewClient(logger pluginapi.LogService, getOrganizations func() []string, to
 			getOrganizations: getOrganizations,
 		}
 	} else {
-		baseURL, err := url.Parse(enterpriseBaseURL)
+		baseURL, err := url.JoinPath(enterpriseBaseURL, "api", "graphql")
 		if err != nil {
-			logger.Debug("Not able to parse the URL", "error", err.Error())
+			logger.Debug("Not able to parse the enterprise URL", "error", err.Error())
 			return nil
 		}
 
-		baseURL.Path = path.Join(baseURL.Path, "api", "graphql")
-
 		client = Client{
-			client:           githubv4.NewEnterpriseClient(baseURL.String(), httpClient),
+			client:           githubv4.NewEnterpriseClient(baseURL, httpClient),
 			username:         username,
 			org:              orgName,
 			logger:           logger,
