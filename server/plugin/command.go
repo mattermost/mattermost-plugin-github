@@ -337,7 +337,10 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 	opt := &github.ListOptions{
 		PerPage: PerPageValue,
 	}
-	siteURL := getSiteURL(p.client)
+	siteURL, err := getSiteURL(p.client)
+	if err != nil {
+		return false, err
+	}
 
 	for {
 		var githubHooks []*github.Hook
@@ -804,9 +807,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		pluginURL := getPluginURL(p.client)
-		if pluginURL == "" {
-			p.postCommandResponse(args, "Encountered an error connecting to GitHub.")
+		connectURL, err := buildPluginURL(p.client, "oauth", "connect")
+		if err != nil {
+			p.postCommandResponse(args, fmt.Sprintf("Encountered an error connecting to GitHub: %s", err.Error()))
 			return &model.CommandResponse{}, nil
 		}
 
@@ -834,7 +837,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			qparams = "?private=true"
 		}
 
-		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/oauth/connect%s)", pluginURL, qparams)
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s%s)", connectURL, qparams)
 		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}

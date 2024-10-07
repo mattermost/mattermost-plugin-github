@@ -372,17 +372,27 @@ func isValidURL(rawURL string) error {
 	return nil
 }
 
-func getPluginURL(client *pluginapi.Client) string {
-	return getSiteURL(client) + "/" + path.Join("plugins", Manifest.Id)
-}
-
-func getSiteURL(client *pluginapi.Client) string {
-	siteURL := client.Configuration.GetConfig().ServiceSettings.SiteURL
-	if siteURL == nil {
-		return ""
+func buildPluginURL(client *pluginapi.Client, elem ...string) (string, error) {
+	siteURL, err := getSiteURL(client)
+	if err != nil {
+		return "", err
 	}
 
-	return strings.TrimSuffix(*siteURL, "/")
+	redirectURL, err := url.JoinPath(siteURL, append([]string{"foo", Manifest.Id}, elem...)...)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to build pluginURL")
+	}
+
+	return redirectURL, nil
+}
+
+func getSiteURL(client *pluginapi.Client) (string, error) {
+	siteURL := client.Configuration.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil {
+		return "", errors.New("siteURL is not set. Please set it and restart the plugin")
+	}
+
+	return strings.TrimSuffix(*siteURL, "/"), nil
 }
 
 // lastN returns the last n characters of a string, with the rest replaced by *.

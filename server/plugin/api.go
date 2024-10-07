@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
+	"net/url"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -289,7 +289,12 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		privateAllowed = true
 	}
 
-	conf := p.getOAuthConfig(privateAllowed)
+	conf, err := p.getOAuthConfig(privateAllowed)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to generate OAuthConfig")
+		http.Error(w, "error generating OAuthConfig", http.StatusBadRequest)
+		return
+	}
 
 	state := OAuthState{
 		UserID:         c.UserID,
@@ -297,7 +302,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		PrivateAllowed: privateAllowed,
 	}
 
-	_, err := p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
+	_, err = p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
 		http.Error(w, "error setting stored state", http.StatusBadRequest)
 		return
@@ -383,7 +388,12 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		return
 	}
 
-	conf := p.getOAuthConfig(state.PrivateAllowed)
+	conf, err := p.getOAuthConfig(state.PrivateAllowed)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to generate OAuthConfig")
+		http.Error(w, "error generating OAuthConfig", http.StatusBadRequest)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), oauthCompleteTimeout)
 	defer cancel()
@@ -817,8 +827,18 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	p.writeJSON(w, allIssues)
 }
 
-func (p *Plugin) getPermaLink(postID string) string {
-	return getSiteURL(p.client) + "/" + path.Join("_redirect", "pl", postID)
+func (p *Plugin) getPermaLink(postID string) (string, error) {
+	siteURL, err := getSiteURL(p.client)
+	if err != nil {
+		return "", err
+	}
+
+	redirectURL, err := url.JoinPath(siteURL, "_redirect", "pl", postID)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to build pluginURL")
+	}
+
+	return redirectURL, nil
 }
 
 func getFailReason(code int, repo string, username string) string {
@@ -900,7 +920,11 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	}
 
 	currentUsername := c.GHInfo.GitHubUsername
-	permalink := p.getPermaLink(req.PostID)
+	permalink, err := p.getPermaLink(req.PostID)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to generate permalink", StatusCode: http.StatusInternalServerError})
+		return
+	}
 	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from %s*\n\n", currentUsername, permalink, commentUsername)
 
 	req.Comment = permalinkMessage + req.Comment
@@ -1341,7 +1365,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		permalink = p.getPermaLink(issue.PostID)
+		permalink, err = p.getPermaLink(issue.PostID)
+		if err != nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to generate permalink", StatusCode: http.StatusInternalServerError})
+			return
+		}
 
 		mmMessage = fmt.Sprintf("_Issue created from a [Mattermost message](%v) *by %s*._", permalink, username)
 	}
