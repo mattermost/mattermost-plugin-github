@@ -1,4 +1,4 @@
 {
-    "github.command.help.title": "###### Mattermost GitHub Plugin - Slash Command Help @123 french\n",
-    "github.command.help.connect": "Connect your Mattermost account to your GitHub account french {{ .EnablePrivateRepo }}.\n"
+    "github.command.help.title": "###### Mattermost GitHub Plugin - Slash Command Help french\n",
+    "github.command.help.connect": "Connect your Mattermost account to your GitHub account french.\n"
 }

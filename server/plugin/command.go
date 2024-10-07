@@ -615,16 +615,11 @@ func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, u
 	return text
 }
 
-type Conf2 struct {
-	*Configuration
-	Lang *i18n.Localizer
-}
-
 func (p *Plugin) handleHelp(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	l := p.b.GetUserLocalizer(args.UserId)
-	message, err := renderTemplate("helpText", Conf2{
-		Configuration: p.getConfiguration(),
-		Lang:          l,
+	message, err := renderTemplate("helpText", TemplateData{
+		AdditionalData: p.getConfiguration(),
+		Lang:           l,
 	})
 
 	if err != nil {

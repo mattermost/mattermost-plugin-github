@@ -36,13 +36,22 @@ var masterTemplate *template.Template
 var gitHubToUsernameMappingCallback func(string) string
 var showAuthorInCommitNotification bool
 
-func (p *Plugin) localize(lang *i18n.Localizer, id, data string, templateData map[string]interface{}) string {
+type TemplateData struct {
+	AdditionalData interface{}
+	Lang           *i18n.Localizer
+}
+
+func (p *Plugin) localize(lang *i18n.Localizer, id, data string, templateData ...map[string]interface{}) string {
+	templateDataValue := map[string]interface{}{}
+	if len(templateData) > 0 {
+		templateDataValue = templateData[0]
+	}
 	text := p.b.LocalizeWithConfig(lang, &i18n.LocalizeConfig{
 		DefaultMessage: &i18n.Message{
 			ID:    id,
 			Other: data,
 		},
-		TemplateData: templateData,
+		TemplateData: templateDataValue,
 	})
 
 	return text
@@ -393,17 +402,17 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 `))
 
 	template.Must(masterTemplate.New("pullRequestReviewNotification").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}}
-{{- if eq .GetReview.GetState "approved" }} approved your pull request
-{{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
-{{- else if eq .GetReview.GetState "commented" }} commented on your pull request
-{{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
-{{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{template "user" .AdditionalData.GetSender}}
+{{- if eq .AdditionalData.GetReview.GetState "approved" }} approved your pull request
+{{- else if eq .AdditionalData.GetReview.GetState "changes_requested" }} requested changes on your pull request
+{{- else if eq .AdditionalData.GetReview.GetState "commented" }} commented on your pull request
+{{- end }} {{template "reviewRepoPullRequestWithTitle" .AdditionalData}}
+{{if .AdditionalData.GetReview.GetBody}}{{.AdditionalData.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 {{else}}{{end}}`))
 
 	template.Must(masterTemplate.New("helpText").Parse("" +
-		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - " + `{{ $mm := tomap (printf "{\"EnablePrivateRepo\":%v}" .EnablePrivateRepo) }}{{ $mmmm := dict "EnablePrivateRepo" .EnablePrivateRepo "b" "abc" }}{{localize .Lang "github.command.help.connect" "Connect your Mattermost account to your GitHub account {{ .EnablePrivateRepo }} {{ .b }}.\n" $mmmm }}` +
-		"{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}}" +
+		"* `/github connect{{if .AdditionalData.EnablePrivateRepo}}{{if not .AdditionalData.ConnectToPrivateByDefault}} [private]{{end}}{{end}}` -" + `{{localize .Lang "github.command.help.text" "Connect your Mattermost account to your GitHub account.\n"}}` +
+		"{{if .AdditionalData.EnablePrivateRepo}}{{if not .AdditionalData.ConnectToPrivateByDefault}}" +
 		"  * `private` is optional. If used, read access to your private repositories will be requested." +
 		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
 		"{{else}}" +

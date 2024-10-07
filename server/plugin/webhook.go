@@ -1307,7 +1307,12 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		return
 	}
 
-	message, err := renderTemplate("pullRequestReviewNotification", event)
+	l := p.b.GetUserLocalizer(authorUserID)
+	message, err := renderTemplate("pullRequestReviewNotification", TemplateData{
+		AdditionalData: event,
+		Lang:           l,
+	})
+
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
