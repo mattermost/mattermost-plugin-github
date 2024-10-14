@@ -378,7 +378,7 @@ func buildPluginURL(client *pluginapi.Client, elem ...string) (string, error) {
 		return "", err
 	}
 
-	redirectURL, err := url.JoinPath(siteURL, append([]string{"foo", Manifest.Id}, elem...)...)
+	redirectURL, err := url.JoinPath(siteURL, append([]string{"plugins", Manifest.Id}, elem...)...)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to build pluginURL")
 	}
