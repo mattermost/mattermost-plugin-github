@@ -3,6 +3,7 @@ package plugin
 import (
 	"path"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
@@ -11,17 +12,20 @@ import (
 )
 
 type SupportPacket struct {
-	Version            string `yaml:"version"`
-	ConnectedUserCount int64  `yaml:"connected_user_count"`
-	IsOAuthConfigured  bool   `yaml:"is_oauth_configured"`
+	Version string `yaml:"version"`
+
+	ConnectedUserCount int64 `yaml:"connected_user_count"`
+	IsOAuthConfigured  bool  `yaml:"is_oauth_configured"`
 }
 
 func (p *Plugin) GenerateSupportData(_ *plugin.Context) ([]*model.FileData, error) {
+	var result *multierror.Error
+
 	config := p.getConfiguration()
 
 	connectedUserCount, err := p.getConnectedUserCount()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get the number of connected users for Support Packet")
+		result = multierror.Append(result, errors.Wrap(err, "Failed to get the number of connected users for Support Packet"))
 	}
 
 	diagnostics := SupportPacket{
@@ -37,5 +41,5 @@ func (p *Plugin) GenerateSupportData(_ *plugin.Context) ([]*model.FileData, erro
 	return []*model.FileData{{
 		Filename: path.Join(Manifest.Id, "diagnostics.yaml"),
 		Body:     b,
-	}}, nil
+	}}, result.ErrorOrNil()
 }
