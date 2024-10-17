@@ -486,6 +486,11 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 }
 
 func (fm *FlowManager) stepOAuthInfo() flow.Step {
+	callbackURL, err := buildPluginURL(fm.client, "oauth", "complete")
+	if err != nil {
+		fm.client.Log.Warn("Failed to build callbackURL", "err", err)
+	}
+
 	oauthPretext := `
 ##### :white_check_mark: Step 1: Register an OAuth Application in GitHub
 You must first register the Mattermost GitHub Plugin as an authorized OAuth app.`
@@ -494,11 +499,11 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"2. Set the following values:\n"+
 		"	- Application name: `Mattermost GitHub Plugin - <your company name>`\n"+
 		"	- Homepage URL: `https://github.com/mattermost/mattermost-plugin-github`\n"+
-		"	- Authorization callback URL: `%s/oauth/complete`\n"+
+		"	- Authorization callback URL: `%s`\n"+
 		"3. Select **Register application**\n"+
 		"4. Select **Generate a new client secret**.\n"+
 		"5. If prompted, complete 2FA.",
-		fm.pluginID,
+		callbackURL,
 	)
 
 	return flow.NewStep(stepOAuthInfo).
@@ -597,7 +602,11 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 
 func (fm *FlowManager) stepOAuthConnect() flow.Step {
 	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your GitHub account"
-	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginID)
+	connectURL, err := buildPluginURL(fm.client, "oauth", "connect")
+	if err != nil {
+		fm.client.Log.Warn("Failed to build connectURL", "err", err)
+	}
+
 	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
 	return flow.NewStep(stepOAuthConnect).
 		WithText(connectText).
@@ -685,11 +694,16 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 
 	webhookEvents := []string{"create", "delete", "issue_comment", "issues", "pull_request", "pull_request_review", "pull_request_review_comment", "push", "star"}
 
+	webHookURL, err := buildPluginURL(fm.client, "webhook")
+	if err != nil {
+		fm.client.Log.Warn("Failed to build webHookURL", "err", err)
+	}
+
 	webhookConfig := map[string]interface{}{
 		"content_type": "json",
 		"insecure_ssl": "0",
 		"secret":       config.WebhookSecret,
-		"url":          fmt.Sprintf("%s/webhook", fm.pluginID),
+		"url":          webHookURL,
 	}
 
 	hook := &github.Hook{
