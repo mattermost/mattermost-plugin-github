@@ -38,6 +38,9 @@ type (
 			Milestone struct {
 				Title githubv4.String
 			}
+			Additions    githubv4.Int
+			Deletions    githubv4.Int
+			ChangedFiles githubv4.Int
 		} `graphql:"... on PullRequest"`
 	}
 )
@@ -80,6 +83,9 @@ type (
 			Milestone struct {
 				Title githubv4.String
 			}
+			Additions    githubv4.Int
+			Deletions    githubv4.Int
+			ChangedFiles githubv4.Int
 		} `graphql:"... on PullRequest"`
 	}
 )

@@ -22,6 +22,8 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/flow"
+
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
 const (
@@ -64,10 +66,10 @@ type FilteredNotification struct {
 }
 
 type SidebarContent struct {
-	PRs         []*github.Issue         `json:"prs"`
-	Reviews     []*github.Issue         `json:"reviews"`
-	Assignments []*github.Issue         `json:"assignments"`
-	Unreads     []*FilteredNotification `json:"unreads"`
+	PRs         []*graphql.GithubPRDetails `json:"prs"`
+	Reviews     []*graphql.GithubPRDetails `json:"reviews"`
+	Assignments []*github.Issue            `json:"assignments"`
+	Unreads     []*FilteredNotification    `json:"unreads"`
 }
 
 type Context struct {
@@ -968,12 +970,12 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, err error) {
+func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetails, assignmentResp []*github.Issue, openPRResp []*graphql.GithubPRDetails, err error) {
 	graphQLClient := p.graphQLConnect(c.GHInfo)
 
 	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
 	if err != nil {
-		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
+		return []*graphql.GithubPRDetails{}, []*github.Issue{}, []*graphql.GithubPRDetails{}, err
 	}
 
 	return reviewResp, assignmentResp, openPRResp, nil
