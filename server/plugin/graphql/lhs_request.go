@@ -23,22 +23,6 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 	orgsList := c.getOrganizations()
 	var resultReview, resultAssignee, resultOpenPR []*github.Issue
 
-	if len(orgsList) == 0 {
-		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, false, "")
-	}
-
-	var err error
-	for _, org := range orgsList {
-		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, true, org)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-	}
-
-	return resultReview, resultAssignee, resultOpenPR, nil
-}
-
-func (c *Client) fetchLHSData(ctx context.Context, resultReview, resultAssignee, resultOpenPR []*github.Issue, setOrgCheck bool, org string) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
 	params := map[string]interface{}{
 		queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
 		queryParamReviewPRQueryArg:  githubv4.String(fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
@@ -48,7 +32,23 @@ func (c *Client) fetchLHSData(ctx context.Context, resultReview, resultAssignee,
 		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
 	}
 
-	if setOrgCheck {
+	var err error
+	for _, org := range orgsList {
+		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, params)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+
+	if len(orgsList) == 0 {
+		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", params)
+	}
+
+	return resultReview, resultAssignee, resultOpenPR, nil
+}
+
+func (c *Client) fetchLHSData(ctx context.Context, resultReview, resultAssignee, resultOpenPR []*github.Issue, org string, params map[string]interface{}) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
+	if org != "" {
 		params[queryParamOpenPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamOpenPRQueryArg]))
 		params[queryParamReviewPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamReviewPRQueryArg]))
 		params[queryParamAssigneeQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamAssigneeQueryArg]))
