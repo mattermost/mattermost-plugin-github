@@ -192,6 +192,12 @@ Labels: {{range $i, $el := .Labels -}}` + "{{- if $i}}, {{end}}[`{{ $el.Name }}`
 {{ end -}}
 `))
 
+	template.Must(masterTemplate.New("subscriptionLabel").Funcs(funcMap).Parse(`
+{{- if . }}
+{{- if ne . "" }} with the label ` + "`{{.}}`" + `{{- end }}
+{{- end -}}
+`))
+
 	template.Must(masterTemplate.New("assignee").Funcs(funcMap).Parse(`
 {{- if .Assignees }}
 Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
@@ -204,11 +210,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
-#new-pull-request by {{template "user" .Event.GetSender}}
+#new-pull-request by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
@@ -220,11 +226,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("markedReadyToReviewPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} Pull request {{template "pullRequest" .Event.GetPullRequest}} was marked ready for review by {{template "user" .Event.GetSender}}.
+{{template "repo" .Event.GetRepo}} Pull request {{template "pullRequest" .Event.GetPullRequest}} was marked ready for review by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" (dict "Label" .Label)}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
-#new-pull-request by {{template "user" .Event.GetSender}}
+#new-pull-request by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
@@ -257,11 +263,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}.
+{{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}.
 {{- else -}}
 #### {{.Event.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .Event}}
-#new-issue by {{template "user" .Event.GetSender}}
+#new-issue by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetIssue.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetIssue }}
