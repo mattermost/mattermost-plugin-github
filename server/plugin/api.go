@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -184,7 +185,8 @@ func (p *Plugin) checkConfigured(next http.Handler) http.Handler {
 		config := p.getConfiguration()
 
 		if err := config.IsValid(); err != nil {
-			http.Error(w, "This plugin is not configured.", http.StatusNotImplemented)
+			p.client.Log.Error("This plugin is not configured.", "error", err)
+			p.writeAPIError(w, &APIErrorResponse{Message: "this plugin is not configured", StatusCode: http.StatusNotImplemented})
 			return
 		}
 
@@ -288,7 +290,12 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		privateAllowed = true
 	}
 
-	conf := p.getOAuthConfig(privateAllowed)
+	conf, err := p.getOAuthConfig(privateAllowed)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to generate OAuthConfig")
+		http.Error(w, "error generating OAuthConfig", http.StatusBadRequest)
+		return
+	}
 
 	state := OAuthState{
 		UserID:         c.UserID,
@@ -296,9 +303,10 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		PrivateAllowed: privateAllowed,
 	}
 
-	_, err := p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
+	_, err = p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
-		http.Error(w, "error setting stored state", http.StatusBadRequest)
+		c.Log.WithError(err).Warnf("error occurred while trying to store oauth state into KV store")
+		p.writeAPIError(w, &APIErrorResponse{Message: "error saving the oauth state", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -344,8 +352,8 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	code := r.URL.Query().Get("code")
 	if len(code) == 0 {
-		rErr = errors.New("missing authorization code")
-		http.Error(w, rErr.Error(), http.StatusBadRequest)
+		p.client.Log.Error("Missing authorization code.")
+		p.writeAPIError(w, &APIErrorResponse{Message: "missing authorization code", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -354,35 +362,35 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	var state OAuthState
 	err := p.store.Get(githubOauthKey+stateToken, &state)
 	if err != nil {
-		c.Log.Warnf("Failed to get state token", "error", err.Error())
-
-		rErr = errors.Wrap(err, "missing stored state")
-		http.Error(w, rErr.Error(), http.StatusBadRequest)
+		c.Log.WithError(err).Warnf("error occurred while trying to get oauth state from KV store")
+		p.writeAPIError(w, &APIErrorResponse{Message: "missing stored state", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	err = p.store.Delete(githubOauthKey + stateToken)
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to delete state token")
-
-		rErr = errors.Wrap(err, "error deleting stored state")
-		http.Error(w, rErr.Error(), http.StatusBadRequest)
+		c.Log.WithError(err).Warnf("error occurred while trying to delete oauth state from KV store")
+		p.writeAPIError(w, &APIErrorResponse{Message: "error deleting stored state", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
 	if state.Token != stateToken {
-		rErr = errors.New("invalid state token")
-		http.Error(w, rErr.Error(), http.StatusBadRequest)
+		p.writeAPIError(w, &APIErrorResponse{Message: "invalid state token", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if state.UserID != c.UserID {
-		rErr = errors.New("not authorized, incorrect user")
-		http.Error(w, rErr.Error(), http.StatusUnauthorized)
+		c.Log.Warnf("not authorized, incorrect user")
+		p.writeAPIError(w, &APIErrorResponse{Message: "unauthorized user", StatusCode: http.StatusUnauthorized})
 		return
 	}
 
-	conf := p.getOAuthConfig(state.PrivateAllowed)
+	conf, err := p.getOAuthConfig(state.PrivateAllowed)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to generate OAuthConfig")
+		http.Error(w, "error generating OAuthConfig", http.StatusBadRequest)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), oauthCompleteTimeout)
 	defer cancel()
@@ -390,9 +398,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to exchange oauth code into token")
-
-		rErr = errors.Wrap(err, "Failed to exchange oauth code into token")
-		http.Error(w, rErr.Error(), http.StatusInternalServerError)
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to exchange oauth code into token", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -400,9 +406,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to get authenticated GitHub user")
-
-		rErr = errors.Wrap(err, "failed to get authenticated GitHub user")
-		http.Error(w, rErr.Error(), http.StatusInternalServerError)
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get authenticated GitHub user", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -425,9 +429,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	if err = p.storeGitHubUserInfo(userInfo); err != nil {
 		c.Log.WithError(err).Warnf("Failed to store GitHub user info")
-
-		rErr = errors.Wrap(err, "Unable to connect user to GitHub")
-		http.Error(w, rErr.Error(), http.StatusInternalServerError)
+		p.writeAPIError(w, &APIErrorResponse{Message: "unable to connect user to GitHub", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -512,7 +514,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	_, err = w.Write([]byte(html))
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to write HTML response")
-		w.WriteHeader(http.StatusInternalServerError)
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to write HTML response", StatusCode: http.StatusInternalServerError})
 		return
 	}
 }
@@ -583,7 +585,13 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	info, _ := p.getGitHubUserInfo(c.UserID)
+	info, err := p.getGitHubUserInfo(c.UserID)
+	if err != nil {
+		c.Log.WithError(err).Warnf("failed to get GitHub user info")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get GitHub user info", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
 	if info == nil || info.Token == nil {
 		p.writeJSON(w, resp)
 		return
@@ -597,10 +605,14 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	if info.Settings.DailyReminder && r.URL.Query().Get("reminder") == "true" {
 		lastPostAt := info.LastToDoPostAt
 
-		var timezone *time.Location
-		offset, _ := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
-		timezone = time.FixedZone("local", -60*offset)
+		offset, err := strconv.Atoi(r.Header.Get("X-Timezone-Offset"))
+		if err != nil {
+			c.Log.WithError(err).Warnf("Invalid timezone offset")
+			p.writeAPIError(w, &APIErrorResponse{Message: "invalid timezone offset", StatusCode: http.StatusBadRequest})
+			return
+		}
 
+		timezone := time.FixedZone("local", -60*offset)
 		// Post to do message if it's the next day and been more than an hour since the last post
 		now := model.GetMillis()
 		nt := time.Unix(now/1000, 0).In(timezone)
@@ -623,6 +635,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		var val []byte
 		err := p.store.Get(privateRepoStoreKey, &val)
 		if err != nil {
+			p.writeAPIError(w, &APIErrorResponse{Message: "Unable to get private repo key value", StatusCode: http.StatusInternalServerError})
 			c.Log.WithError(err).Warnf("Unable to get private repo key value")
 			return
 		}
@@ -635,8 +648,8 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 			} else {
 				p.CreateBotDMPost(info.UserID, fmt.Sprintf(message, "`/github connect private`."), "")
 			}
-			_, err := p.store.Set(privateRepoStoreKey, []byte("1"))
-			if err != nil {
+			if _, err := p.store.Set(privateRepoStoreKey, []byte("1")); err != nil {
+				p.writeAPIError(w, &APIErrorResponse{Message: "unable to set private repo key value", StatusCode: http.StatusInternalServerError})
 				c.Log.WithError(err).Warnf("Unable to set private repo key value")
 			}
 		}
@@ -653,6 +666,7 @@ func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Requ
 
 	result, _, err := githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
 	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to search for issues", StatusCode: http.StatusInternalServerError})
 		c.Log.WithError(err).With(logger.LogContext{"query": query}).Warnf("Failed to search for issues")
 		return
 	}
@@ -816,10 +830,18 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	p.writeJSON(w, allIssues)
 }
 
-func (p *Plugin) getPermaLink(postID string) string {
-	siteURL := *p.client.Configuration.GetConfig().ServiceSettings.SiteURL
+func (p *Plugin) getPermaLink(postID string) (string, error) {
+	siteURL, err := getSiteURL(p.client)
+	if err != nil {
+		return "", err
+	}
 
-	return fmt.Sprintf("%v/_redirect/pl/%v", siteURL, postID)
+	redirectURL, err := url.JoinPath(siteURL, "_redirect", "pl", postID)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to build pluginURL")
+	}
+
+	return redirectURL, nil
 }
 
 func getFailReason(code int, repo string, username string) string {
@@ -901,7 +923,11 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	}
 
 	currentUsername := c.GHInfo.GitHubUsername
-	permalink := p.getPermaLink(req.PostID)
+	permalink, err := p.getPermaLink(req.PostID)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to generate permalink", StatusCode: http.StatusInternalServerError})
+		return
+	}
 	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from %s*\n\n", currentUsername, permalink, commentUsername)
 
 	req.Comment = permalinkMessage + req.Comment
@@ -971,6 +997,7 @@ func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *htt
 	sidebarContent, err := p.getSidebarData(c)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to search for the sidebar data")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to search for the sidebar data", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -1001,12 +1028,13 @@ func (p *Plugin) updateSettings(c *UserContext, w http.ResponseWriter, r *http.R
 	var settings *UserSettings
 	if err := json.NewDecoder(r.Body).Decode(&settings); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding settings from JSON body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		p.writeAPIError(w, &APIErrorResponse{Message: "invalid request body", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	if settings == nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		p.client.Log.Error("Invalid request body.")
+		p.writeAPIError(w, &APIErrorResponse{Message: "invalid request body", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -1015,7 +1043,7 @@ func (p *Plugin) updateSettings(c *UserContext, w http.ResponseWriter, r *http.R
 
 	if err := p.storeGitHubUserInfo(info); err != nil {
 		c.Log.WithError(err).Warnf("Failed to store GitHub user info")
-		http.Error(w, "Encountered error updating settings", http.StatusInternalServerError)
+		p.writeAPIError(w, &APIErrorResponse{Message: "error occurred while updating settings", StatusCode: http.StatusInternalServerError})
 		return
 	}
 
@@ -1342,7 +1370,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		permalink = p.getPermaLink(issue.PostID)
+		permalink, err = p.getPermaLink(issue.PostID)
+		if err != nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to generate permalink", StatusCode: http.StatusInternalServerError})
+			return
+		}
 
 		mmMessage = fmt.Sprintf("_Issue created from a [Mattermost message](%v) *by %s*._", permalink, username)
 	}
@@ -1437,13 +1469,15 @@ func (p *Plugin) getConfig(w http.ResponseWriter, r *http.Request) {
 func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 	userID := r.FormValue("userID")
 	if userID == "" {
-		http.Error(w, "please provide a userID", http.StatusBadRequest)
+		p.client.Log.Error("UserID not found.")
+		p.writeAPIError(w, &APIErrorResponse{Message: "please provide a userID", StatusCode: http.StatusBadRequest})
 		return
 	}
 
 	info, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
-		http.Error(w, apiErr.Error(), apiErr.StatusCode)
+		p.client.Log.Error("error occurred while getting the github user info", "UserID", userID, "error", apiErr)
+		p.writeAPIError(w, &APIErrorResponse{Message: apiErr.Error(), StatusCode: apiErr.StatusCode})
 		return
 	}
 
