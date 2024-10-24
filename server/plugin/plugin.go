@@ -1169,7 +1169,7 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUserInfo, token *oauth2.Token) error) error {
 	err := toRun(info, info.Token)
 	if err != nil {
-		p.client.Log.Warn("Error occured while using the github client", "error", err.Error())
+		p.client.Log.Warn("Error occurred while using the github client", "error", err.Error())
 	}
 
 	if err != nil && strings.Contains(err.Error(), invalidTokenError) {
