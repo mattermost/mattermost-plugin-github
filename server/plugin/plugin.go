@@ -826,7 +826,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		return nil
 	})
 	if cErr != nil {
-		return "", errors.Wrap(cErr, "Error occurred while searching for reviews")
+		return "", errors.Wrap(cErr, "error occurred while searching for reviews")
 	}
 
 	var notifications []*github.Notification
