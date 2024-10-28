@@ -1072,7 +1072,7 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 		return nil
 	})
 	if cErr != nil {
-		p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", cErr.Error())
+		p.client.Log.Warn("Failed to check if user is org member", "GitHub username", *user.Login, "error", cErr.Error())
 		return false
 	}
 
