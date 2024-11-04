@@ -1,13 +1,19 @@
 package plugin
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
@@ -127,51 +133,70 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 }
 
 func TestGetToken(t *testing.T) {
-	httpTestString := testutils.HTTPTest{
-		T:       t,
-		Encoder: testutils.EncodeString,
-	}
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
 
-	for name, test := range map[string]struct {
-		httpTest         testutils.HTTPTest
-		request          testutils.Request
-		context          *plugin.Context
-		expectedResponse testutils.ExpectedResponse
+	tests := []struct {
+		name       string
+		userID     string
+		setup      func()
+		assertions func(t *testing.T, rec *httptest.ResponseRecorder)
 	}{
-		"not authorized": {
-			httpTest: httpTestString,
-			request: testutils.Request{
-				Method: http.MethodGet,
-				URL:    "/api/v1/token",
-				Body:   nil,
-			},
-			context: &plugin.Context{},
-			expectedResponse: testutils.ExpectedResponse{
-				StatusCode:   http.StatusUnauthorized,
-				ResponseType: testutils.ContentTypePlain,
-				Body:         "Not authorized\n",
+		{
+			name:   "Missing userID",
+			userID: "",
+			setup:  func() {},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+				body, _ := io.ReadAll(rec.Body)
+				assert.Equal(t, "please provide a userID\n", string(body))
 			},
 		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			p := NewPlugin()
-			p.setConfiguration(
-				&Configuration{
-					GitHubOrg:               "mockOrg",
-					GitHubOAuthClientID:     "mockID",
-					GitHubOAuthClientSecret: "mockSecret",
-					EncryptionKey:           "mockKey",
-				})
-			p.initializeAPI()
+		{
+			name:   "User info not found in store",
+			userID: "mockUserID",
+			setup: func() {
+				mockKvStore.EXPECT().Get("mockUserID"+githubTokenKey, gomock.Any()).Return(errors.New("not found")).Times(1)
+			},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusInternalServerError, rec.Result().StatusCode)
+				body, _ := io.ReadAll(rec.Body)
+				assert.Equal(t, "Unable to get user info.\n", string(body))
+			},
+		},
+		{
+			name:   "Successful token retrieval",
+			userID: "mockUserID",
+			setup: func() {
+				encryptedToken, err := encrypt([]byte("dummyEncryptKey1"), MockAccessToken)
+				assert.NoError(t, err)
+				mockKvStore.EXPECT().Get("mockUserID"+githubTokenKey, gomock.Any()).DoAndReturn(func(key string, value **GitHubUserInfo) error {
+					*value = &GitHubUserInfo{
+						Token: &oauth2.Token{
+							AccessToken: encryptedToken,
+						},
+					}
+					return nil
+				}).Times(1)
+				p.setConfiguration(&Configuration{EncryptionKey: "dummyEncryptKey1"})
+			},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+				body, _ := io.ReadAll(rec.Body)
+				assert.Contains(t, string(body), MockAccessToken)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
 
-			p.SetAPI(&plugintest.API{})
+			req := httptest.NewRequest(http.MethodGet, "/get/token?userID="+tc.userID, nil)
+			rec := httptest.NewRecorder()
 
-			req := test.httpTest.CreateHTTPRequest(test.request)
-			rr := httptest.NewRecorder()
+			p.getToken(rec, req)
 
-			p.ServeHTTP(test.context, rr, req)
-
-			test.httpTest.CompareHTTPResponse(rr, test.expectedResponse)
+			tc.assertions(t, rec)
 		})
 	}
 }
@@ -243,6 +268,163 @@ func TestGetConfig(t *testing.T) {
 			p.ServeHTTP(&plugin.Context{}, rr, req)
 
 			test.httpTest.CompareHTTPResponse(rr, test.expectedResponse)
+		})
+	}
+}
+
+func TestGetGitHubUser(t *testing.T) {
+	mockKvStore, mockAPI, mockLogger, mockLoggerWith, mockContext := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name               string
+		requestBody        string
+		setup              func()
+		expectedStatusCode int
+		assertions         func(t *testing.T, rec *httptest.ResponseRecorder)
+	}{
+		{
+			name:        "Invalid JSON Request Body",
+			requestBody: "invalid-json",
+			setup: func() {
+				mockLogger.EXPECT().WithError(gomock.Any()).Return(mockLoggerWith).Times(1)
+				mockLoggerWith.EXPECT().Warnf("Error decoding GitHubUserRequest from JSON body").Times(1)
+			},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+
+				var response APIErrorResponse
+				_ = json.NewDecoder(rec.Body).Decode(&response)
+				assert.Contains(t, response.Message, "Please provide a JSON object.")
+			},
+		},
+		{
+			name:        "Blank user_id field",
+			requestBody: `{"user_id": ""}`,
+			setup:       func() {},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+				var response APIErrorResponse
+				_ = json.NewDecoder(rec.Body).Decode(&response)
+				assert.Contains(t, response.Message, "non-blank user_id field")
+			},
+		},
+		{
+			name:        "Error to getting user info",
+			requestBody: `{"user_id": "mockUserID"}`,
+			setup: func() {
+				mockKvStore.EXPECT().Get(gomock.Any(), gomock.Any()).Return(errors.New("Error getting user details")).Times(1)
+			},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusInternalServerError, rec.Result().StatusCode)
+				var response APIErrorResponse
+				_ = json.NewDecoder(rec.Body).Decode(&response)
+				assert.Contains(t, response.Message, "Unable to get user info")
+			},
+		},
+		{
+			name:        "User is not connected to a GitHub account.",
+			requestBody: `{"user_id": "mockUserID"}`,
+			setup: func() {
+				mockKvStore.EXPECT().Get(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusNotFound, rec.Result().StatusCode)
+
+				var response APIErrorResponse
+				_ = json.NewDecoder(rec.Body).Decode(&response)
+				assert.Contains(t, response.Message, "User is not connected to a GitHub account.")
+			},
+		},
+		{
+			name:        "Successfully get github user",
+			requestBody: `{"user_id": "mockUserID"}`,
+			setup: func() {
+				dummyUserInfo, err := GetMockGHUserInfo(p)
+				assert.NoError(t, err)
+				mockKvStore.EXPECT().Get("mockUserID"+githubTokenKey, gomock.Any()).DoAndReturn(func(key string, value **GitHubUserInfo) error {
+					*value = dummyUserInfo
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+				var response GitHubUserResponse
+				err := json.NewDecoder(rec.Body).Decode(&response)
+				assert.NoError(t, err)
+				assert.Equal(t, MockUsername, response.Username)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			req := httptest.NewRequest(http.MethodPost, "/github/user", strings.NewReader(tc.requestBody))
+			rec := httptest.NewRecorder()
+
+			p.getGitHubUser(mockContext, rec, req)
+
+			tc.assertions(t, rec)
+		})
+	}
+}
+
+func TestParseRepo(t *testing.T) {
+	tests := []struct {
+		name       string
+		repoParam  string
+		setup      func()
+		assertions func(t *testing.T, owner, repo string, err error)
+	}{
+		{
+			name:      "Empty repository parameter",
+			repoParam: "",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "repository cannot be blank")
+			},
+		},
+		{
+			name:      "Invalid repository format",
+			repoParam: "owner",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "invalid repository")
+			},
+		},
+		{
+			name:      "Valid repository format",
+			repoParam: "owner/repo",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.NoError(t, err)
+				assert.Equal(t, "owner", owner)
+				assert.Equal(t, "repo", repo)
+			},
+		},
+		{
+			name:      "Extra slashes in repository parameter",
+			repoParam: "owner/repo/",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "invalid repository")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			owner, repo, err := parseRepo(tc.repoParam)
+
+			tc.assertions(t, owner, repo, err)
 		})
 	}
 }
