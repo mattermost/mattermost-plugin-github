@@ -60,3 +60,17 @@ func GetMockContext(mockLogger *mocks.MockLogger) Context {
 		Log:    mockLogger,
 	}
 }
+
+func GetMockUserContext(p *Plugin, mockLogger *mocks.MockLogger) (*UserContext, error) {
+	mockGHUserInfo, err := GetMockGHUserInfo(p)
+	if err != nil {
+		return nil, err
+	}
+
+	mockUserContext := &UserContext{
+		GetMockContext(mockLogger),
+		mockGHUserInfo,
+	}
+
+	return mockUserContext, nil
+}
