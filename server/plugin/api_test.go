@@ -428,3 +428,74 @@ func TestParseRepo(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateSettings(t *testing.T) {
+	mockKvStore, mockAPI, mockLogger, mockLoggerWith, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	mockGHContext, err := GetMockUserContext(p, mockLogger)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name               string
+		requestBody        string
+		setup              func()
+		expectedStatusCode int
+		assertions         func(t *testing.T, rec *httptest.ResponseRecorder)
+	}{
+		{
+			name:        "Invalid JSON Request Body",
+			requestBody: "invalid-json",
+			setup: func() {
+				mockLogger.EXPECT().WithError(gomock.Any()).Return(mockLoggerWith).Times(1)
+				mockLoggerWith.EXPECT().Warnf("Error decoding settings from JSON body").Times(1)
+			},
+			expectedStatusCode: http.StatusBadRequest,
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+			},
+		},
+		{
+			name:        "Error Storing User Info",
+			requestBody: `{"access_token": "mockAccessToken"}`,
+			setup: func() {
+				p.setConfiguration(&Configuration{
+					EncryptionKey: "dummyEncryptKey1",
+				})
+				mockKvStore.EXPECT().Set(gomock.Any(), gomock.Any()).Return(false, errors.New("store error")).Times(1)
+				mockLogger.EXPECT().WithError(gomock.Any()).Return(mockLoggerWith).Times(1)
+				mockLoggerWith.EXPECT().Warnf("Failed to store GitHub user info").Times(1)
+			},
+			expectedStatusCode: http.StatusInternalServerError,
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusInternalServerError, rec.Result().StatusCode)
+			},
+		},
+		{
+			name:        "Successful Update",
+			requestBody: `{"access_token": "mockAccessToken"}`,
+			setup: func() {
+				mockKvStore.EXPECT().Set(gomock.Any(), gomock.Any()).Return(true, nil).Times(1)
+			},
+			expectedStatusCode: http.StatusOK,
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+				var settings UserSettings
+				err := json.NewDecoder(rec.Body).Decode(&settings)
+				assert.NoError(t, err)
+				assert.Equal(t, mockGHContext.GHInfo.Settings, &settings)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			req := httptest.NewRequest(http.MethodPost, "/update/settings", strings.NewReader(tc.requestBody))
+			rec := httptest.NewRecorder()
+
+			p.updateSettings(mockGHContext, rec, req)
+
+			tc.assertions(t, rec)
+		})
+	}
+}
