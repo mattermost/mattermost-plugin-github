@@ -8,6 +8,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost-plugin-github/server/mocks"
+
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 )
 
