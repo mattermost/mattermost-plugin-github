@@ -293,7 +293,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	}
 }
 
-func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
+func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	txt := ""
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
@@ -538,6 +538,7 @@ func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features,
 
 	return previousFeatures, nil
 }
+
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
@@ -706,7 +707,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {

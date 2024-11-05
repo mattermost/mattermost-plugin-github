@@ -655,3 +655,353 @@ func TestHandleUnmuteAll(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleMuteCommand(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		parameters []string
+		setup      func()
+		assertions func(*testing.T, string)
+	}{
+		{
+			name:       "Success - list muted users",
+			parameters: []string{"list"},
+			setup: func() {
+				mutedUsernames := []byte("user1,user2,user3")
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = mutedUsernames
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "Your muted users:\n- user1\n- user2\n- user3\n", response)
+			},
+		},
+		{
+			name:       "Success - add new muted user",
+			parameters: []string{"add", "newUser"},
+			setup: func() {
+				mockKvStore.EXPECT().Get(userInfo.UserID+"-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("existingUser")
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("existingUser,newUser")).Return(true, nil).Times(1)
+			},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "`newUser` is now muted. You'll no longer receive notifications for comments in your PRs and issues.", response)
+			},
+		},
+		{
+			name:       "Error - invalid number of parameters for add",
+			parameters: []string{"add"},
+			setup:      func() {},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "Invalid number of parameters supplied to add", response)
+			},
+		},
+		{
+			name:       "Success - delete muted user",
+			parameters: []string{"delete", "user1"},
+			setup: func() {
+				mutedUsernames := []byte("user1,user2,user3")
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = mutedUsernames
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "`user1` is no longer muted", response)
+			},
+		},
+		{
+			name:       "Error - invalid number of parameters for delete",
+			parameters: []string{"delete"},
+			setup:      func() {},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "Invalid number of parameters supplied to delete", response)
+			},
+		},
+		{
+			name:       "Success - delete all muted users",
+			parameters: []string{"delete-all"},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("")).Return(true, nil).Times(1)
+			},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "Unmuted all users", response)
+			},
+		},
+		{
+			name:       "Error - unknown subcommand",
+			parameters: []string{"unknown"},
+			setup:      func() {},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "Unknown subcommand unknown", response)
+			},
+		},
+		{
+			name:       "Error - no parameters provided",
+			parameters: []string{},
+			setup:      func() {},
+			assertions: func(t *testing.T, response string) {
+				assert.Equal(t, "Invalid mute command. Available commands are 'list', 'add' and 'delete'.", response)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			result := p.handleMuteCommand(nil, nil, tc.parameters, userInfo)
+			tc.assertions(t, result)
+		})
+	}
+}
+
+func TestArrayDifference(t *testing.T) {
+	tests := []struct {
+		name     string
+		a        []string
+		b        []string
+		expected []string
+	}{
+		{
+			name:     "No difference - all elements in a are in b",
+			a:        []string{"apple", "banana", "cherry"},
+			b:        []string{"apple", "banana", "cherry"},
+			expected: []string{},
+		},
+		{
+			name:     "Difference - some elements in a are not in b",
+			a:        []string{"apple", "banana", "cherry", "date"},
+			b:        []string{"apple", "banana"},
+			expected: []string{"cherry", "date"},
+		},
+		{
+			name:     "All elements different - no elements in a are in b",
+			a:        []string{"apple", "banana"},
+			b:        []string{"cherry", "date"},
+			expected: []string{"apple", "banana"},
+		},
+		{
+			name:     "Empty a - no elements to compare",
+			a:        []string{},
+			b:        []string{"apple", "banana"},
+			expected: []string{},
+		},
+		{
+			name:     "Empty b - all elements in a should be returned",
+			a:        []string{"apple", "banana"},
+			b:        []string{},
+			expected: []string{"apple", "banana"},
+		},
+		{
+			name:     "Both a and b empty - no elements to compare",
+			a:        []string{},
+			b:        []string{},
+			expected: []string{},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := arrayDifference(tc.a, tc.b)
+			assert.ElementsMatch(t, tc.expected, result)
+		})
+	}
+}
+
+func TestHandleSubscriptionsList(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name       string
+		channelID  string
+		setup      func()
+		assertions func(t *testing.T, result string)
+	}{
+		{
+			name:      "Error retrieving subscriptions",
+			channelID: "channel1",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(errors.New("store error")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Contains(t, result, "could not get subscriptions from KVStore: store error")
+			},
+		},
+		{
+			name:      "No subscriptions in the channel",
+			channelID: "channel2",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{}}
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "Currently there are no subscriptions in this channel", result)
+			},
+		},
+		{
+			name:      "Multiple subscriptions in the channel",
+			channelID: "channel3",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{
+						Repositories: map[string][]*Subscription{
+							"repo1": {
+								{
+									ChannelID:  "channel3",
+									Repository: "repo1",
+								},
+								{
+									ChannelID:  "channel4",
+									Repository: "repo1",
+								},
+							},
+							"repo2": {
+								{
+									ChannelID:  "channel3",
+									Repository: "repo2",
+								},
+							},
+						},
+					}
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				expected := "### Subscriptions in this channel\n" +
+					"* `repo1` - \n" +
+					"* `repo2` - \n"
+				assert.Equal(t, expected, result)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			result := p.handleSubscriptionsList(nil, &model.CommandArgs{ChannelId: tc.channelID}, nil, nil)
+			tc.assertions(t, result)
+		})
+	}
+}
+
+func TestGetSubscribedFeatures(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name       string
+		channelID  string
+		owner      string
+		repo       string
+		setup      func()
+		assertions func(t *testing.T, features Features, err error)
+	}{
+		{
+			name:      "Error retrieving subscriptions",
+			channelID: "channel1",
+			owner:     "owner1",
+			repo:      "repo1",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(errors.New("store error")).Times(1)
+			},
+			assertions: func(t *testing.T, features Features, err error) {
+				assert.Error(t, err)
+				assert.ErrorContains(t, err, "store error")
+				assert.Empty(t, features)
+			},
+		},
+		{
+			name:      "No subscriptions in the channel",
+			channelID: "channel2",
+			owner:     "owner2",
+			repo:      "repo2",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{}}
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, features Features, err error) {
+				assert.NoError(t, err)
+				assert.Empty(t, features)
+			},
+		},
+		{
+			name:      "Subscribed features found for repo",
+			channelID: "channel3",
+			owner:     "owner3",
+			repo:      "repo3",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{
+						Repositories: map[string][]*Subscription{
+							"owner3/repo3": {
+								{
+									ChannelID:  "channel3",
+									Repository: "owner3/repo3",
+									Features:   Features("FeatureA"),
+								},
+							},
+							"owner4/repo4": {
+								{
+									ChannelID:  "channel4",
+									Repository: "owner4/repo4",
+									Features:   Features("FeatureB"),
+								},
+							},
+						},
+					}
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, features Features, err error) {
+				assert.NoError(t, err)
+				expectedFeatures := Features("FeatureA")
+				assert.Equal(t, expectedFeatures, features)
+			},
+		},
+		{
+			name:      "Subscribed features not found for repo",
+			channelID: "channel4",
+			owner:     "owner5",
+			repo:      "repo5",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{
+						Repositories: map[string][]*Subscription{
+							"owner6/repo6": {
+								{
+									ChannelID:  "channel4",
+									Repository: "owner6/repo6",
+									Features:   Features("FeatureC"),
+								},
+							},
+						},
+					}
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, features Features, err error) {
+				assert.NoError(t, err)
+				assert.Empty(t, features)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			features, err := p.getSubscribedFeatures(tc.channelID, tc.owner, tc.repo)
+			tc.assertions(t, features, err)
+		})
+	}
+}

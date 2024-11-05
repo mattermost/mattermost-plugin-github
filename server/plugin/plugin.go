@@ -170,7 +170,7 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 	return p.githubConnectUser(ctx, userInfo), nil
 }
 
-func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
+func (p *Plugin) githubConnectUser(_ context.Context, info *GitHubUserInfo) *github.Client {
 	tok := *info.Token
 	return p.githubConnectToken(tok)
 }
