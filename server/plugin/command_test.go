@@ -344,15 +344,16 @@ func TestGetMutedUsernames(t *testing.T) {
 	tests := []struct {
 		name       string
 		setup      func()
-		assertions func(t *testing.T, result []string)
+		assertions func(t *testing.T, result []string, err error)
 	}{
 		{
 			name: "Error retrieving muted usernames",
 			setup: func() {
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, err error) {
 				assert.Nil(t, result)
+				assert.ErrorContains(t, err, "error retrieving muted users")
 			},
 		},
 		{
@@ -363,7 +364,7 @@ func TestGetMutedUsernames(t *testing.T) {
 					return nil
 				}).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, _ error) {
 				assert.Equal(t, []string(nil), result)
 			},
 		},
@@ -376,7 +377,7 @@ func TestGetMutedUsernames(t *testing.T) {
 					return nil
 				}).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, _ error) {
 				assert.Equal(t, []string{"user1", "user2", "user3"}, result)
 			},
 		},
@@ -385,9 +386,9 @@ func TestGetMutedUsernames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.setup()
 
-			mutedUsernames := p.getMutedUsernames(userInfo)
+			mutedUsernames, err := p.getMutedUsernames(userInfo)
 
-			tc.assertions(t, mutedUsernames)
+			tc.assertions(t, mutedUsernames, err)
 		})
 	}
 }
@@ -409,7 +410,7 @@ func TestHandleMuteList(t *testing.T) {
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
 			assertions: func(t *testing.T, result string) {
-				assert.Equal(t, "You have no muted users", result)
+				assert.Equal(t, "Some error occurred getting muted users. Please try again later", result)
 			},
 		},
 		{
