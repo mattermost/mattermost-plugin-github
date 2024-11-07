@@ -407,6 +407,7 @@ func TestHandleMuteList(t *testing.T) {
 		{
 			name: "Error retrieving muted usernames",
 			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted user.", "Error", mock.Anything)
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
 			assertions: func(t *testing.T, result string) {
@@ -504,6 +505,16 @@ func TestHandleMuteAdd(t *testing.T) {
 		assertions func(t *testing.T, result string)
 	}{
 		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted user.", "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "Some error occurred getting muted users. Please try again later", result)
+			},
+		},
+		{
 			name:     "Error saving the new muted username",
 			username: "errorUser",
 			setup: func() {
@@ -581,6 +592,14 @@ func TestHandleUnmute(t *testing.T) {
 		setup          func()
 		expectedResult string
 	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted user.", "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			expectedResult: "Some error occurred getting muted users. Please try again later",
+		},
 		{
 			name:     "Error occurred while unmuting the user",
 			username: "user1",

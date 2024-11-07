@@ -154,6 +154,7 @@ func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) ([]string, error) {
 func (p *Plugin) handleMuteList(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	mutedUsernames, err := p.getMutedUsernames(userInfo)
 	if err != nil {
+		p.client.Log.Error("error occurred getting muted user.", "Error", err)
 		return "Some error occurred getting muted users. Please try again later"
 	}
 
@@ -179,6 +180,7 @@ func contains(s []string, e string) bool {
 func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames, err := p.getMutedUsernames(userInfo)
 	if err != nil {
+		p.client.Log.Error("error occurred getting muted user.", "Error", err)
 		return "Some error occurred getting muted users. Please try again later"
 	}
 
@@ -209,6 +211,7 @@ func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *
 func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames, err := p.getMutedUsernames(userInfo)
 	if err != nil {
+		p.client.Log.Error("error occurred getting muted user.", "Error", err)
 		return "Some error occurred getting muted users. Please try again later"
 	}
 
