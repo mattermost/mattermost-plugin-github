@@ -132,6 +132,61 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 	}
 }
 
+func TestCheckPluginRequest(t *testing.T) {
+	tests := []struct {
+		name       string
+		headers    map[string]string
+		setup      func()
+		assertions func(t *testing.T, rec *httptest.ResponseRecorder)
+	}{
+		{
+			name:    "Missing Mattermost-Plugin-ID header",
+			headers: map[string]string{},
+			setup:   func() {},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
+				body, _ := io.ReadAll(rec.Body)
+				assert.Equal(t, "Not authorized\n", string(body))
+			},
+		},
+		{
+			name: "Valid Mattermost-Plugin-ID header",
+			headers: map[string]string{
+				"Mattermost-Plugin-ID": "validPluginID",
+			},
+			setup: func() {},
+			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, rec.Result().StatusCode)
+				body, _ := io.ReadAll(rec.Body)
+				assert.Equal(t, "Success\n", string(body))
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, err := w.Write([]byte("Success\n"))
+				assert.NoError(t, err)
+			})
+
+			handler := checkPluginRequest(nextHandler)
+
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			for key, value := range tc.headers {
+				req.Header.Set(key, value)
+			}
+			rec := httptest.NewRecorder()
+
+			handler(rec, req)
+
+			tc.assertions(t, rec)
+		})
+	}
+}
+
 func TestGetToken(t *testing.T) {
 	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKvStore)
