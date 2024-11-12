@@ -1,13 +1,15 @@
 module github.com/mattermost/mattermost-plugin-github
 
-go 1.21
+go 1.22
+
+toolchain go1.22.8
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/google/go-github/v54 v54.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/mattermost/mattermost/server/public v0.1.7-0.20240815110211-dd2cad30679b
+	github.com/mattermost/mattermost/server/public v0.1.8
 	github.com/microcosm-cc/bluemonday v1.0.19
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
