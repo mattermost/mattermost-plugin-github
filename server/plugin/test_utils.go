@@ -16,6 +16,10 @@ const (
 	MockUserID      = "mockUserID"
 	MockUsername    = "mockUsername"
 	MockAccessToken = "mockAccessToken"
+	MockChannelID   = "mockChannelID"
+	MockCreatorID   = "mockCreatorID"
+	MockBotID       = "mockBotID"
+	MockPostMessage = "mockPostMessage"
 )
 
 type GitHubUserResponse struct {
@@ -33,6 +37,7 @@ func GetMockGHUserInfo(p *Plugin) (*GitHubUserInfo, error) {
 		UserID:         MockUserID,
 		GitHubUsername: MockUsername,
 		Token:          &oauth2.Token{AccessToken: encryptedToken},
+		Settings:       &UserSettings{},
 	}
 
 	return gitHubUserInfo, nil

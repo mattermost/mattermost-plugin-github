@@ -29,11 +29,8 @@ func getPluginTest(api *plugintest.API, mockKvStore *mocks.MockKvStore) *Plugin 
 			EncryptionKey:           "mockKey123456789",
 		})
 	p.initializeAPI()
-
 	p.store = mockKvStore
-
-	p.BotUserID = "mockBotId"
-
+	p.BotUserID = MockBotID
 	p.SetAPI(api)
 	p.client = pluginapi.NewClient(api, p.Driver)
 
@@ -543,6 +540,21 @@ func TestHandleMuteAdd(t *testing.T) {
 			},
 		},
 		{
+			name:     "Successfully adds first muted username",
+			username: "firstUser",
+			setup: func() {
+				mockKvStore.EXPECT().Get(userInfo.UserID+"-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("")
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("firstUser")).Return(true, nil).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				expectedMessage := "`firstUser` is now muted. You'll no longer receive notifications for comments in your PRs and issues."
+				assert.Equal(t, expectedMessage, result)
+			},
+		},
+		{
 			name:     "Successfully adds new muted username",
 			username: "newUser",
 			setup: func() {
@@ -883,8 +895,35 @@ func TestHandleSubscriptionsList(t *testing.T) {
 				assert.Equal(t, expected, result)
 			},
 		},
+		{
+			name:      "Subscriptions with flags",
+			channelID: "channel4",
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{
+						Repositories: map[string][]*Subscription{
+							"repo3": {
+								{
+									ChannelID:  "channel4",
+									Repository: "repo3",
+									Flags: SubscriptionFlags{
+										ExcludeOrgMembers: true,
+										RenderStyle:       "compact",
+										ExcludeRepository: []string{"repoA", "repoB"},
+									},
+								},
+							},
+						},
+					}
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				expected := "### Subscriptions in this channel\n* `repo3` -  --exclude-org-member true,--render-style compact,--exclude repoA,repoB\n"
+				assert.Equal(t, expected, result)
+			},
+		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.setup()
@@ -1002,6 +1041,564 @@ func TestGetSubscribedFeatures(t *testing.T) {
 			tc.setup()
 			features, err := p.getSubscribedFeatures(tc.channelID, tc.owner, tc.repo)
 			tc.assertions(t, features, err)
+		})
+	}
+}
+
+func TestCreatePost(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	post := &model.Post{
+		ChannelId: MockChannelID,
+		UserId:    MockUserID,
+		Message:   MockPostMessage,
+	}
+
+	tests := []struct {
+		name       string
+		setup      func()
+		assertions func(t *testing.T, err error)
+	}{
+		{
+			name: "Error creating a post",
+			setup: func() {
+				mockAPI.On("CreatePost", post).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
+			},
+			assertions: func(t *testing.T, err error) {
+				assert.EqualError(t, err, "error creating post")
+			},
+		},
+		{
+			name: "Successfully create a post",
+			setup: func() {
+				mockAPI.On("CreatePost", post).Return(post, nil).Times(1)
+			},
+			assertions: func(t *testing.T, err error) {
+				assert.NoError(t, err)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			err := p.createPost(MockChannelID, MockUserID, MockPostMessage)
+			tc.assertions(t, err)
+		})
+	}
+}
+
+func TestHandleUnsubscribe(t *testing.T) {
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
+	p.setConfiguration(&Configuration{})
+	post := &model.Post{
+		ChannelId: MockChannelID,
+		UserId:    MockBotID,
+	}
+
+	tests := []struct {
+		name       string
+		parameters []string
+		setup      func()
+		assertions func(result string)
+	}{
+		{
+			name:       "No repository specified",
+			parameters: []string{},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Please specify a repository.", result)
+			},
+		},
+		{
+			name:       "Invalid repository format",
+			parameters: []string{""},
+			setup: func() {
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "invalid repository", result)
+			},
+		},
+		{
+			name:       "Failed to unsubscribe",
+			parameters: []string{"owner/repo"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(errors.New("error occurred getting subscriptions"))
+				mockAPI.On("LogWarn", "Failed to unsubscribe", "repo", "repo", "error", "could not get subscriptions: could not get subscriptions from KVStore: error occurred getting subscriptions")
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "Encountered an error trying to unsubscribe. Please try again.", result)
+			},
+		},
+		{
+			name:       "Error getting user details",
+			parameters: []string{"owner/repo"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{
+						"owner/repo": {{ChannelID: "dummyChannelID", CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
+					return nil
+				}).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(nil, &model.AppError{Message: "error getting user"}).Times(1)
+				mockAPI.On("LogWarn", "Error while fetching user details", "error", "error getting user").Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "error while fetching user details: error getting user", result)
+			},
+		},
+		{
+			name:       "Error creating post of unsubscribe with no repo",
+			parameters: []string{"owner"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{
+						"owner": {{ChannelID: "dummyChannelID", CreatorID: MockCreatorID, Repository: ""}}}}
+					return nil
+				}).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				post.Message = "@mockUsername unsubscribed this channel from [owner](https://github.com/owner)"
+				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "@mockUsername unsubscribed this channel from [owner](https://github.com/owner) error creating the public post: error creating post", result)
+			},
+		},
+		{
+			name:       "Success unsubscribing with no repo",
+			parameters: []string{"owner"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{
+						"owner": {{ChannelID: "dummyChannelID", CreatorID: MockCreatorID, Repository: ""}}}}
+					return nil
+				}).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(post, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Empty(t, result)
+			},
+		},
+		{
+			name:       "Error creating post of unsubscribe with no repo",
+			parameters: []string{"owner/repo"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{
+						"owner/repo": {{ChannelID: "dummyChannelID", CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
+					return nil
+				}).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				post.Message = "@mockUsername unsubscribed this channel from [owner/repo](https://github.com/owner/repo)"
+				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "@mockUsername unsubscribed this channel from [owner/repo](https://github.com/owner/repo) error creating the public post: error creating post", result)
+			},
+		},
+		{
+			name:       "Success unsubscribing with repo",
+			parameters: []string{"owner/repo"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
+					*value = &Subscriptions{Repositories: map[string][]*Subscription{
+						"owner/repo": {{ChannelID: "dummyChannelID", CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
+					return nil
+				}).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(post, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Empty(t, result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			args := &model.CommandArgs{
+				UserId:    MockUserID,
+				ChannelId: MockChannelID,
+			}
+
+			result := p.handleUnsubscribe(nil, args, tc.parameters, nil)
+
+			tc.assertions(result)
+		})
+	}
+}
+
+func TestHandleSettings(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		parameters     []string
+		setup          func()
+		assertions     func(string)
+		expectedResult string
+	}{
+		{
+			name: "Error: Not enough parameters",
+			parameters: []string{
+				settingNotifications,
+			},
+			setup: func() {},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Please specify both a setting and value. Use `/github help` for more usage information.")
+			},
+			expectedResult: "Please specify both a setting and value. Use `/github help` for more usage information.",
+		},
+		{
+			name: "Invalid setting value for notifications",
+			parameters: []string{
+				settingNotifications, "invalid",
+			},
+			setup: func() {},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Invalid value. Accepted values are: \"on\" or \"off\".")
+			},
+			expectedResult: "Invalid value. Accepted values are: \"on\" or \"off\".",
+		},
+		{
+			name: "Successfully enable notifications",
+			parameters: []string{
+				settingNotifications, settingOn,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.GitHubUsername+githubUsernameKey, gomock.Any()).Return(true, nil).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Error enabling notifications",
+			parameters: []string{
+				settingNotifications, settingOn,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.GitHubUsername+githubUsernameKey, gomock.Any()).Return(false, errors.New("error setting notification")).Times(1)
+				mockAPI.On("LogWarn", "Failed to store GitHub to userID mapping", "userID", "mockUserID", "GitHub username", "mockUsername", "error", "encountered error saving github username mapping: error setting notification").Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Successfully disable notifications",
+			parameters: []string{
+				settingNotifications, settingOff,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.GitHubUsername+githubUsernameKey, gomock.Any()).Return(true, nil).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+				mockKvStore.EXPECT().Delete(userInfo.GitHubUsername + githubUsernameKey).Return(nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Error disabling notifications",
+			parameters: []string{
+				settingNotifications, settingOff,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.GitHubUsername+githubUsernameKey, gomock.Any()).Return(true, nil).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+				mockKvStore.EXPECT().Delete(userInfo.GitHubUsername + githubUsernameKey).Return(errors.New("error setting notification")).Times(1)
+				mockAPI.On("LogWarn", "Failed to delete GitHub to userID mapping", "userID", "mockUserID", "GitHub username", "mockUsername", "error", "error setting notification").Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Successfully set reminders to on",
+			parameters: []string{
+				settingReminders, settingOn,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Successfully set reminders to off",
+			parameters: []string{
+				settingReminders, settingOff,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Successfully set reminders to on-change",
+			parameters: []string{
+				settingReminders, settingOnChange,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Invalid setting value for reminders",
+			parameters: []string{
+				settingReminders, "invalid",
+			},
+			setup: func() {},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" .")
+			},
+			expectedResult: "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" .",
+		},
+		{
+			name: "Unknown setting",
+			parameters: []string{
+				"unknownSetting", settingOn,
+			},
+			setup: func() {},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Unknown setting unknownSetting")
+			},
+			expectedResult: "Unknown setting unknownSetting",
+		},
+		{
+			name: "Error while storing settings",
+			parameters: []string{
+				settingReminders, settingOnChange,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(false, errors.New("error storing user info")).Times(1)
+				mockAPI.On("LogWarn", "Failed to store github user info", "error", "error occurred while trying to store user info into KV store: error storing user info").Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Failed to store settings")
+			},
+			expectedResult: "Failed to store settings",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			result := p.handleSettings(nil, nil, tc.parameters, userInfo)
+
+			tc.assertions(result)
+		})
+	}
+}
+
+func TestHandleIssue(t *testing.T) {
+	mockClient, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockClient)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		parameters []string
+		setup      func()
+		assertions func(result string)
+	}{
+		{
+			name:       "Invalid command: no parameters",
+			parameters: []string{},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Invalid issue command. Available command is 'create'.", result)
+			},
+		},
+		{
+			name:       "Unknown subcommand",
+			parameters: []string{"delete"},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Unknown subcommand delete", result)
+			},
+		},
+		{
+			name:       "Create issue with title",
+			parameters: []string{"create", "Test issue title"},
+			setup: func() {
+				mockAPI.On("PublishWebSocketEvent", wsEventCreateIssue,
+					map[string]interface{}{
+						"title":      "Test issue title",
+						"channel_id": "testChannelID",
+					},
+					&model.WebsocketBroadcast{UserId: "testUserID"},
+				).Return(nil).Once()
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "", result)
+				mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCreateIssue,
+					map[string]interface{}{
+						"title":      "Test issue title",
+						"channel_id": "testChannelID",
+					},
+					&model.WebsocketBroadcast{UserId: "testUserID"},
+				)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			args := &model.CommandArgs{
+				UserId:    "testUserID",
+				ChannelId: "testChannelID",
+			}
+
+			result := p.handleIssue(nil, args, tc.parameters, userInfo)
+
+			tc.assertions(result)
+		})
+	}
+}
+
+func TestIsAuthorizedSysAdmin(t *testing.T) {
+	mockClient, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockClient)
+
+	tests := []struct {
+		name       string
+		setup      func()
+		assertions func(bool, error)
+	}{
+		{
+			name: "Error getting user",
+			setup: func() {
+				mockAPI.On("GetUser", MockUserID).Return(nil, &model.AppError{Message: "error getting user"}).Times(1)
+			},
+			assertions: func(result bool, err error) {
+				assert.False(t, result)
+				assert.EqualError(t, err, "error getting user")
+			},
+		},
+		{
+			name: "User is not a system admin",
+			setup: func() {
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Roles: "user"}, nil).Times(1)
+			},
+			assertions: func(result bool, err error) {
+				assert.NoError(t, err)
+				assert.False(t, result)
+			},
+		},
+		{
+			name: "Successfully authorized as system admin",
+			setup: func() {
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Roles: "system_admin"}, nil).Times(1)
+			},
+			assertions: func(result bool, err error) {
+				assert.NoError(t, err)
+				assert.True(t, result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			result, err := p.isAuthorizedSysAdmin(MockUserID)
+
+			tc.assertions(result, err)
+		})
+	}
+}
+
+func TestSliceContainsString(t *testing.T) {
+	tests := []struct {
+		name           string
+		slice          []string
+		searchString   string
+		expectedResult bool
+	}{
+		{
+			name:           "Empty slice",
+			slice:          []string{},
+			searchString:   "testString1",
+			expectedResult: false,
+		},
+		{
+			name:           "String exists in slice",
+			slice:          []string{"testString1", "testString2", "testString3"},
+			searchString:   "testString2",
+			expectedResult: true,
+		},
+		{
+			name:           "String does not exist in slice",
+			slice:          []string{"testString1", "testString2", "testString3"},
+			searchString:   "testString4",
+			expectedResult: false,
+		},
+		{
+			name:           "String is the first element in the slice",
+			slice:          []string{"testString2", "testString1", "testString3"},
+			searchString:   "testString1",
+			expectedResult: true,
+		},
+		{
+			name:           "String is the last element in the slice",
+			slice:          []string{"testString1", "testString3", "testString2"},
+			searchString:   "testString2",
+			expectedResult: true,
+		},
+		{
+			name:           "String with different case",
+			slice:          []string{"testString1", "testString2", "TestString3"},
+			searchString:   "testString3",
+			expectedResult: false,
+		},
+		{
+			name:           "Search string is empty",
+			slice:          []string{"testString1", "testString2", "testString3"},
+			searchString:   "",
+			expectedResult: false,
+		},
+		{
+			name:           "Slice contains empty string",
+			slice:          []string{"testString1", "testString2", ""},
+			searchString:   "",
+			expectedResult: true,
+		},
+		{
+			name:           "Slice with multiple occurrences of the search string",
+			slice:          []string{"testString2", "testString1", "testString2", "testString3"},
+			searchString:   "testString2",
+			expectedResult: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := SliceContainsString(tc.slice, tc.searchString)
+			assert.Equal(t, tc.expectedResult, result)
 		})
 	}
 }
