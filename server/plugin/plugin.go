@@ -22,8 +22,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
-
-	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
 const (
@@ -108,7 +106,7 @@ type Plugin struct {
 // NewPlugin returns an instance of a Plugin.
 func NewPlugin() *Plugin {
 	p := &Plugin{
-		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?github\.com/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>[\w-]+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
+		githubPermalinkRegex: regexp.MustCompile(`https?://(?P<haswww>www\.)?src\.pyn\.ru/(?P<user>[\w-]+)/(?P<repo>[\w-.]+)/blob/(?P<commit>[\w-]+)/(?P<path>[\w-/.]+)#(?P<line>[\w-]+)?`),
 	}
 
 	p.CommandHandlers = map[string]CommandHandleFunc{
@@ -174,9 +172,9 @@ func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *g
 	return p.githubConnectToken(tok)
 }
 
-func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
-	conf := p.getConfiguration()
-	return graphql.NewClient(p.client.Log, p.configuration.getOrganizations, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
+func (p *Plugin) forgejoConnect(info *GitHubUserInfo) *http.Client {
+	tok := *info.Token
+	return createOauth2Client(tok)
 }
 
 func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
@@ -192,22 +190,26 @@ func (p *Plugin) githubConnectToken(token oauth2.Token) *github.Client {
 }
 
 func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client, error) {
+	tc := createOauth2Client(token)
+	return getGitHubClient(tc, config)
+}
+
+func createOauth2Client(token oauth2.Token) *http.Client {
 	ts := oauth2.StaticTokenSource(&token)
 	tc := oauth2.NewClient(context.Background(), ts)
-
-	return getGitHubClient(tc, config)
+	return tc
 }
 
 func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*github.Client, error) {
 	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
 		return github.NewClient(authenticatedClient), nil
 	}
-	baseURL, err := url.JoinPath(config.EnterpriseBaseURL, "api", "v3")
+	baseURL, err := url.JoinPath(config.EnterpriseBaseURL, "api", "v1")
 	if err != nil {
 		return nil, err
 	}
 
-	uploadURL, err := url.JoinPath(config.EnterpriseUploadURL, "api", "v3")
+	uploadURL, err := url.JoinPath(config.EnterpriseUploadURL, "api", "v1")
 	if err != nil {
 		return nil, err
 	}
@@ -216,6 +218,8 @@ func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*
 	if err != nil {
 		return nil, err
 	}
+
+	client.BaseURL.Path = "/api/v1/"
 
 	return client, nil
 }
@@ -555,11 +559,15 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) (*oauth2.Config, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build TokenURL")
 	}
+	redirectURL, err := buildPluginURL(p.client, "oauth", "complete")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create PluginURL")
+	}
 
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
-		Scopes:       scopes,
+		RedirectURL:  redirectURL,
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   authURL,
 			TokenURL:  tokenURL,

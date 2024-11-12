@@ -101,7 +101,7 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     render() {
-        const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
+        const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://src.pyn.ru';
         let orgQuery = '';
         this.props.orgs.map((org) => {
             orgQuery += ('+org%3A' + org);

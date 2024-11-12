@@ -50,12 +50,12 @@ func (e *APIErrorResponse) Error() string {
 }
 
 type PRDetails struct {
-	URL                string                      `json:"url"`
-	Number             int                         `json:"number"`
-	Status             string                      `json:"status"`
-	Mergeable          bool                        `json:"mergeable"`
-	RequestedReviewers []*string                   `json:"requestedReviewers"`
-	Reviews            []*github.PullRequestReview `json:"reviews"`
+	URL                string    `json:"url"`
+	Number             int       `json:"number"`
+	Status             string    `json:"status"`
+	Mergeable          bool      `json:"mergeable"`
+	RequestedReviewers []*string `json:"requestedReviewers"`
+	Reviews            []string  `json:"reviews"`
 }
 
 type FilteredNotification struct {
@@ -96,6 +96,39 @@ const (
 	// ResponseTypePlain indicates that response type is text plain
 	ResponseTypePlain ResponseType = "TEXT_RESPONSE"
 )
+
+type FRepository struct {
+	FullName *string `json:"full_name,omitempty"`
+}
+
+type FIssue struct {
+	Number     *int         `json:"number,omitempty"`
+	Repository *FRepository `json:"repository,omitempty"`
+	Title      *string      `json:"title,omitempty"`
+	CreatedAt  *FTimestamp  `json:"created_at,omitempty"`
+	UpdatedAt  *FTimestamp  `json:"updated_at,omitempty"`
+	User       *FUser       `json:"user,omitempty"`
+	Milestone  *FMilestone  `json:"milestone,omitempty"`
+	HTMLURL    *string      `json:"html_url,omitempty"`
+	Labels     []*FLabel    `json:"labels,omitempty"`
+}
+
+type FTimestamp struct {
+	time.Time
+}
+
+type FUser struct {
+	Login *string `json:"login,omitempty"`
+}
+
+type FMilestone struct {
+	Title *string `json:"title,omitempty"`
+}
+
+type FLabel struct {
+	Name  *string `json:"name,omitempty"`
+	Color *string `json:"color,omitempty"`
+}
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 	b, err := json.Marshal(v)
@@ -742,23 +775,24 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	var mergeable bool
 	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
-	reviewsList := []*github.PullRequestReview{}
+	//reviewsList := []*github.PullRequestReview{}
 
 	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
 
 	var wg sync.WaitGroup
 
 	// Fetch reviews
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fetchedReviews, err := fetchReviews(c, client, repoOwner, repoName, prNumber)
-		if err != nil {
-			c.Log.WithError(err).Warnf("Failed to fetch reviews for PR details")
-			return
-		}
-		reviewsList = fetchedReviews
-	}()
+	//TODO: commented cause of bug in request that always return empty data
+	//wg.Add(1)
+	//go func() {
+	//	defer wg.Done()
+	//	fetchedReviews, err := fetchReviews(c, client, repoOwner, repoName, prNumber)
+	//	if err != nil {
+	//		c.Log.WithError(err).Warnf("Failed to fetch reviews for PR details")
+	//		return
+	//	}
+	//	reviewsList = fetchedReviews
+	//}()
 
 	// Fetch reviewers and status
 	wg.Add(1)
@@ -780,7 +814,11 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 			c.Log.WithError(err).Warnf("Failed to fetch combined status")
 			return
 		}
-		status = *statuses.State
+		if *statuses.State == "" {
+			status = "pending"
+		} else {
+			status = *statuses.State
+		}
 	}()
 
 	wg.Wait()
@@ -790,7 +828,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 		Status:             status,
 		Mergeable:          mergeable,
 		RequestedReviewers: requestedReviewers,
-		Reviews:            reviewsList,
+		Reviews:            []string{},
 	}
 }
 
@@ -969,14 +1007,89 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 }
 
 func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignmentResp []*github.Issue, openPRResp []*github.Issue, err error) {
-	graphQLClient := p.graphQLConnect(c.GHInfo)
+	config := p.getConfiguration()
+	forgejoClient := p.forgejoConnect(c.GHInfo)
+	baseURL := config.getBaseURL()
 
-	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Context.Ctx)
+	orgsList := config.getOrganizations()
+	var resultReview, resultAssignee, resultOpenPR []*github.Issue
+	for _, org := range orgsList {
+		resultReviewData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "review_requested"))
+		resultAssigneeData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "assigned"))
+		resultOpenPRData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "created"))
+
+		resultReview = fillGhIssue(resultReviewData, baseURL, resultReview)
+		resultAssignee = fillGhIssue(resultAssigneeData, baseURL, resultAssignee)
+		resultOpenPR = fillGhIssue(resultOpenPRData, baseURL, resultOpenPR)
+	}
+	return resultReview, resultAssignee, resultOpenPR, nil
+}
+
+func fillGhIssue(resultReviewData []FIssue, baseURL string, resultIssues []*github.Issue) []*github.Issue {
+	for _, issue := range resultReviewData {
+		labels := getGithubLabels(issue.Labels)
+		reviewGithubIssue := newGithubIssue(issue, labels, baseURL)
+		resultIssues = append(resultIssues, reviewGithubIssue)
+	}
+	return resultIssues
+}
+
+func getRequestResponse(c *UserContext, forgejoClient *http.Client, requestURL string) []FIssue {
+	response, err := forgejoClient.Get(requestURL)
 	if err != nil {
-		return []*github.Issue{}, []*github.Issue{}, []*github.Issue{}, err
+		c.Log.WithError(err).Warnf("Failed Forgejo issues request")
 	}
 
-	return reviewResp, assignmentResp, openPRResp, nil
+	var result []FIssue
+	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding settings from JSON body")
+		return nil
+	}
+	return result
+}
+
+func (p *Plugin) createRequestUrl(baseUrl string, org string, filter string) string {
+	return fmt.Sprintf("%sapi/v1/repos/issues/search?owner=%s&%s=true&type=pulls&state=open&limit=100", baseUrl, org, filter)
+}
+
+func getGithubLabels(labels []*FLabel) []*github.Label {
+	var githubLabels []*github.Label
+	for _, label := range labels {
+		githubLabels = append(githubLabels, &github.Label{
+			Color: label.Color,
+			Name:  label.Name,
+		})
+	}
+	return githubLabels
+}
+
+func newGithubIssue(issue FIssue, labels []*github.Label, baseURL string) *github.Issue {
+	var name = *issue.Repository.FullName
+	repoURL := baseURL + name
+	createdAtTime := github.Timestamp{Time: issue.CreatedAt.Time}
+	updatedAtTime := github.Timestamp{Time: issue.UpdatedAt.Time}
+	var milestoneTitle string
+	if issue.Milestone == nil {
+		milestoneTitle = ""
+	} else {
+		milestoneTitle = *issue.Milestone.Title
+	}
+
+	return &github.Issue{
+		Number:        issue.Number,
+		RepositoryURL: &repoURL,
+		Title:         issue.Title,
+		CreatedAt:     &createdAtTime,
+		UpdatedAt:     &updatedAtTime,
+		User: &github.User{
+			Login: issue.User.Login,
+		},
+		Milestone: &github.Milestone{
+			Title: &milestoneTitle,
+		},
+		HTMLURL: issue.HTMLURL,
+		Labels:  labels,
+	}
 }
 
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
