@@ -8,7 +8,7 @@ export default class UserAttribute extends React.PureComponent {
     static propTypes = {
         id: PropTypes.string.isRequired,
         username: PropTypes.string,
-        enterpriseURL: PropTypes.string,
+        baseURL: PropTypes.string,
         actions: PropTypes.shape({
             getForgejoUser: PropTypes.func.isRequired,
         }).isRequired,
@@ -22,8 +22,8 @@ export default class UserAttribute extends React.PureComponent {
     render() {
         const username = this.props.username;
         let baseURL = 'https://src.pyn.ru';
-        if (this.props.enterpriseURL) {
-            baseURL = this.props.enterpriseURL;
+        if (this.props.baseURL) {
+            baseURL = this.props.baseURL;
         }
 
         if (!username) {

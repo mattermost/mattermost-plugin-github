@@ -81,8 +81,6 @@ type Plugin struct {
 	// setConfiguration for usage.
 	configuration *Configuration
 
-	chimeraURL string
-
 	router *mux.Router
 
 	telemetryClient telemetry.Client
@@ -201,15 +199,15 @@ func createOauth2Client(token oauth2.Token) *http.Client {
 }
 
 func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*github.Client, error) {
-	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
+	if config.BaseURL == "" || config.UploadURL == "" {
 		return github.NewClient(authenticatedClient), nil
 	}
-	baseURL, err := url.JoinPath(config.EnterpriseBaseURL, "api", "v1")
+	baseURL, err := url.JoinPath(config.BaseURL, "api", "v1")
 	if err != nil {
 		return nil, err
 	}
 
-	uploadURL, err := url.JoinPath(config.EnterpriseUploadURL, "api", "v1")
+	uploadURL, err := url.JoinPath(config.UploadURL, "api", "v1")
 	if err != nil {
 		return nil, err
 	}
@@ -258,13 +256,6 @@ func (p *Plugin) OnActivate() error {
 	err = p.setDefaultConfiguration()
 	if err != nil {
 		return errors.Wrap(err, "failed to set default configuration")
-	}
-
-	p.registerChimeraURL()
-	if p.getConfiguration().UsePreregisteredApplication && p.chimeraURL == "" {
-		return errors.New("cannot use pre-registered application if Chimera URL is not set or empty. " +
-			"For now using pre-registered application is intended for Cloud instances only. " +
-			"If you are running on-prem disable the setting and use a custom application, otherwise set PluginSettings.ChimeraOAuthProxyURL")
 	}
 
 	p.initializeAPI()
@@ -470,8 +461,7 @@ func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error 
 	if conf.IsOAuthConfigured() {
 		p.client.Log.Debug("OAuth is configured, skipping setup wizard",
 			"ForgejoOAuthClientID", lastN(conf.ForgejoOAuthClientID, 4),
-			"ForgejoOAuthClientSecret", lastN(conf.ForgejoOAuthClientSecret, 4),
-			"UsePreregisteredApplication", conf.UsePreregisteredApplication)
+			"ForgejoOAuthClientSecret", lastN(conf.ForgejoOAuthClientSecret, 4))
 		return nil
 	}
 
@@ -484,14 +474,6 @@ func (p *Plugin) OnSendDailyTelemetry() {
 
 func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
 	p.HandleClusterEvent(ev)
-}
-
-// registerChimeraURL fetches the Chimera URL from server settings or env var and sets it in the plugin object.
-func (p *Plugin) registerChimeraURL() {
-	chimeraURLSetting := p.client.Configuration.GetConfig().PluginSettings.ChimeraOAuthProxyURL
-	if chimeraURLSetting != nil {
-		p.chimeraURL = *chimeraURLSetting
-	}
 }
 
 func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*model.Post, string) {
@@ -533,19 +515,6 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 
 func (p *Plugin) getOAuthConfig(privateAllowed bool) (*oauth2.Config, error) {
 	config := p.getConfiguration()
-
-	repo := github.ScopePublicRepo
-	if config.EnablePrivateRepo && privateAllowed {
-		// means that asks scope for private repositories
-		repo = github.ScopeRepo
-	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
-
-	if config.UsePreregisteredApplication {
-		p.client.Log.Debug("Using Chimera Proxy OAuth configuration")
-		return p.getOAuthConfigForChimeraApp(scopes)
-	}
-
 	baseURL := config.getBaseURL()
 	if testOAuthServerURL != "" {
 		baseURL = testOAuthServerURL + "/"
@@ -567,35 +536,6 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) (*oauth2.Config, error) {
 	return &oauth2.Config{
 		ClientID:     config.ForgejoOAuthClientID,
 		ClientSecret: config.ForgejoOAuthClientSecret,
-		RedirectURL:  redirectURL,
-		Endpoint: oauth2.Endpoint{
-			AuthURL:   authURL,
-			TokenURL:  tokenURL,
-			AuthStyle: oauth2.AuthStyleInHeader,
-		},
-	}, nil
-}
-
-func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) (*oauth2.Config, error) {
-	baseURL := fmt.Sprintf("%s/v1/github/%s", p.chimeraURL, chimeraGitHubAppIdentifier)
-
-	authURL, err := url.JoinPath(baseURL, "oauth", "authorize")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build AuthURL")
-	}
-	tokenURL, err := url.JoinPath(baseURL, "oauth", "token")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build TokenURL")
-	}
-	redirectURL, err := buildPluginURL(p.client, "oauth", "token")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build RedirectURL")
-	}
-
-	return &oauth2.Config{
-		ClientID:     "placeholder",
-		ClientSecret: "placeholder",
-		Scopes:       scopes,
 		RedirectURL:  redirectURL,
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   authURL,

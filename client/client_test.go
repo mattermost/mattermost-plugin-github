@@ -49,8 +49,8 @@ func TestRoundTripper(t *testing.T) {
 func TestGetConfiguration(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		config := &plugin.Configuration{
-			EnterpriseBaseURL: "http://example.org",
-			ForgejoOrg:        "someOrg",
+			BaseURL:    "http://example.org",
+			ForgejoOrg: "someOrg",
 		}
 
 		b := new(bytes.Buffer)

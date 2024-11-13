@@ -59,7 +59,7 @@ export type ConnectedData = {
     connected: boolean;
     forgejo_username: string;
     forgejo_client_id: string;
-    enterprise_base_url: string;
+    base_url: string;
     organizations: string[];
     user_settings: UserSettingsData;
     configuration: Record<string, unknown>;

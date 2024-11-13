@@ -18,7 +18,7 @@ function mapStateToProps(state, ownProps) {
     return {
         id,
         username: user.username,
-        enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
+        baseURL: state[`plugins-${pluginId}`].baseURL,
     };
 }
 

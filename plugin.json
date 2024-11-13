@@ -22,14 +22,6 @@
         "header": "The Forgejo plugin for Mattermost allows users to subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common Forgejo actions - directly from Mattermost. \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration).",
         "settings": [
             {
-                "key": "UsePreregisteredApplication",
-                "display_name": "Use Preregistered OAuth Application:",
-                "type": "bool",
-                "help_text": "Set to false if using Forgejo Enterprise. When true, instructs the plugin to use the preregistered Forgejo OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with Forgejo enterprise.",
-                "default": false,
-                "hosting": "cloud"
-            },
-            {
                 "key": "ForgejoOAuthClientID",
                 "display_name": "Forgejo OAuth Client ID:",
                 "type": "text",
@@ -63,16 +55,16 @@
                 "help_text": "(Optional) Set to lock the plugin to one or more Forgejo organizations. Provide multiple orgs using a comma-separated list."
             },
             {
-                "key": "EnterpriseBaseURL",
-                "display_name": "Enterprise Base URL:",
+                "key": "BaseURL",
+                "display_name": "Base URL:",
                 "type": "text",
-                "help_text": "(Optional) The base URL for using the plugin with a Forgejo Enterprise installation. Example: https://forgejo.example.com"
+                "help_text": "(Optional) The base URL for using the plugin with a Forgejo installation. Example: https://forgejo.example.com"
             },
             {
-                "key": "EnterpriseUploadURL",
-                "display_name": "Enterprise Upload URL:",
+                "key": "UploadURL",
+                "display_name": "Upload URL:",
                 "type": "text",
-                "help_text": "(Optional) The upload URL for using the plugin with a Forgejo Enterprise installation. This is often the same as your Base URL."
+                "help_text": "(Optional) The upload URL for using the plugin with a Forgejo installation. This is often the same as your Base URL."
             },
             {
                 "key": "EnableLeftSidebar",

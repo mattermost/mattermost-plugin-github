@@ -19,7 +19,7 @@ function mapStateToProps(state) {
         yourPrs: state[`plugins-${pluginId}`].sidebarContent.prs,
         yourAssignments: state[`plugins-${pluginId}`].sidebarContent.assignments,
         unreads: state[`plugins-${pluginId}`].sidebarContent.unreads,
-        enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
+        baseURL: state[`plugins-${pluginId}`].baseURL,
         showRHSPlugin: state[`plugins-${pluginId}`].rhsPluginAction,
     };
 }

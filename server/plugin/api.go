@@ -519,12 +519,12 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventConnect,
 		map[string]interface{}{
-			"connected":           true,
-			"forgejo_username":    userInfo.ForgejoUsername,
-			"forgejo_client_id":   config.ForgejoOAuthClientID,
-			"enterprise_base_url": config.EnterpriseBaseURL,
-			"organizations":       orgList,
-			"configuration":       config.ClientConfiguration(),
+			"connected":         true,
+			"forgejo_username":  userInfo.ForgejoUsername,
+			"forgejo_client_id": config.ForgejoOAuthClientID,
+			"base_url":          config.BaseURL,
+			"organizations":     orgList,
+			"configuration":     config.ClientConfiguration(),
 		},
 		&model.WebsocketBroadcast{UserId: state.UserID},
 	)
@@ -599,7 +599,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		Connected           bool                   `json:"connected"`
 		ForgejoUsername     string                 `json:"forgejo_username"`
 		ForgejoClientID     string                 `json:"forgejo_client_id"`
-		EnterpriseBaseURL   string                 `json:"enterprise_base_url,omitempty"`
+		BaseURL             string                 `json:"base_url,omitempty"`
 		Organizations       []string               `json:"organizations"`
 		UserSettings        *UserSettings          `json:"user_settings"`
 		ClientConfiguration map[string]interface{} `json:"configuration"`
@@ -608,7 +608,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	orgList := p.configuration.getOrganizations()
 	resp := &ConnectedResponse{
 		Connected:           false,
-		EnterpriseBaseURL:   config.EnterpriseBaseURL,
+		BaseURL:             config.BaseURL,
 		Organizations:       orgList,
 		ClientConfiguration: p.getConfiguration().ClientConfiguration(),
 	}

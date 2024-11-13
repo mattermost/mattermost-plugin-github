@@ -16,35 +16,31 @@ func TestIsValid(t *testing.T) {
 		{
 			description: "valid configuration: pre-registered app",
 			config: &Configuration{
-				EncryptionKey:               "abcd",
-				UsePreregisteredApplication: true,
+				EncryptionKey: "abcd",
 			},
 		},
 		{
 			description: "valid configuration: custom OAuth app",
 			config: &Configuration{
-				ForgejoOAuthClientID:        "client-id",
-				ForgejoOAuthClientSecret:    "client-secret",
-				EncryptionKey:               "abcd",
-				UsePreregisteredApplication: false,
+				ForgejoOAuthClientID:     "client-id",
+				ForgejoOAuthClientSecret: "client-secret",
+				EncryptionKey:            "abcd",
 			},
 		},
 		{
 			description: "invalid configuration: custom OAuth app without credentials",
 			config: &Configuration{
-				EncryptionKey:               "abcd",
-				UsePreregisteredApplication: false,
+				EncryptionKey: "abcd",
 			},
 			errMsg: "must have a forgejo oauth client id",
 		},
 		{
-			description: "invalid configuration: Forgejo Enterprise URL with pre-registered app",
+			description: "invalid configuration: Forgejo URL with pre-registered app",
 			config: &Configuration{
-				EnterpriseBaseURL:           "https://my-company.github.com",
-				UsePreregisteredApplication: true,
-				EncryptionKey:               "abcd",
+				BaseURL:       "https://my-company.forgejo.com",
+				EncryptionKey: "abcd",
 			},
-			errMsg: "cannot use pre-registered application with Forgejo enterprise",
+			errMsg: "cannot use pre-registered application with Forgejo",
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
@@ -108,51 +104,6 @@ func TestSetDefaults(t *testing.T) {
 			outputCheck: func(t *testing.T, c *Configuration) {
 				assert.Len(t, c.EncryptionKey, 32)
 				assert.Len(t, c.WebhookSecret, 32)
-			},
-		}, {
-			description: "Should not set UsePreregisteredApplication in on-prem",
-			isCloud:     false,
-			config: &Configuration{
-				EncryptionKey:               "abcd",
-				WebhookSecret:               "efgh",
-				UsePreregisteredApplication: false,
-			},
-			shouldChange: false,
-			outputCheck: func(t *testing.T, c *Configuration) {
-				assert.Equal(t, "abcd", c.EncryptionKey)
-				assert.Equal(t, "efgh", c.WebhookSecret)
-			},
-		}, {
-			description: "Should set UsePreregisteredApplication in cloud if no OAuth secret is configured",
-			isCloud:     true,
-			config: &Configuration{
-				EncryptionKey:               "abcd",
-				WebhookSecret:               "efgh",
-				UsePreregisteredApplication: false,
-			},
-			shouldChange: true,
-			outputCheck: func(t *testing.T, c *Configuration) {
-				assert.Equal(t, "abcd", c.EncryptionKey)
-				assert.Equal(t, "efgh", c.WebhookSecret)
-
-				assert.True(t, c.UsePreregisteredApplication)
-			},
-		}, {
-			description: "Should set not UsePreregisteredApplication in cloud if OAuth secret is configured",
-			isCloud:     true,
-			config: &Configuration{
-				EncryptionKey:               "abcd",
-				WebhookSecret:               "efgh",
-				UsePreregisteredApplication: false,
-				ForgejoOAuthClientID:        "some id",
-				ForgejoOAuthClientSecret:    "some secret",
-			},
-			shouldChange: false,
-			outputCheck: func(t *testing.T, c *Configuration) {
-				assert.Equal(t, "abcd", c.EncryptionKey)
-				assert.Equal(t, "efgh", c.WebhookSecret)
-
-				assert.False(t, c.UsePreregisteredApplication)
 			},
 		},
 	} {

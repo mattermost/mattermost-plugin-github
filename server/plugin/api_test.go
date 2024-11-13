@@ -110,8 +110,8 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 					WebhookSecret:            "",
 					EnablePrivateRepo:        false,
 					EncryptionKey:            "mockKey",
-					EnterpriseBaseURL:        "",
-					EnterpriseUploadURL:      "",
+					BaseURL:                  "",
+					UploadURL:                "",
 					EnableCodePreview:        "disable",
 				})
 			p.initializeAPI()

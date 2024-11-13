@@ -44,7 +44,6 @@ func (p *Plugin) SendDailyTelemetry() {
 		"enable_private_repo":           config.EnablePrivateRepo,
 		"enable_code_preview":           config.EnableCodePreview,
 		"connect_to_private_by_default": config.ConnectToPrivateByDefault,
-		"Use_preregistered_application": config.UsePreregisteredApplication,
 	})
 }
 

@@ -67,7 +67,7 @@ func (p *Plugin) NewFlowManager() (*FlowManager, error) {
 		fm.stepDelegateConfirmation(),
 		fm.stepDelegateComplete(),
 
-		fm.stepEnterprise(),
+		fm.stepBase(),
 		fm.stepOAuthInfo(),
 		fm.stepOAuthInput(),
 		fm.stepOAuthConnect(),
@@ -90,7 +90,7 @@ func (p *Plugin) NewFlowManager() (*FlowManager, error) {
 		return nil, err
 	}
 	oauthFlow.WithSteps(
-		fm.stepEnterprise(),
+		fm.stepBase(),
 		fm.stepOAuthInfo(),
 		fm.stepOAuthInput(),
 		fm.stepOAuthConnect().Terminal(),
@@ -169,7 +169,7 @@ const (
 
 	// OAuth steps
 
-	stepEnterprise   flow.Name = "enterprise"
+	stepBase         flow.Name = "base"
 	stepOAuthInfo    flow.Name = "oauth-info"
 	stepOAuthInput   flow.Name = "oauth-input"
 	stepOAuthConnect flow.Name = "oauth-connect"
@@ -191,11 +191,10 @@ const (
 	stepDone    flow.Name = "done"
 	stepCancel  flow.Name = "cancel"
 
-	keyDelegatedFrom               = "DelegatedFrom"
-	keyDelegatedTo                 = "DelegatedTo"
-	keyBaseURL                     = "BaseURL"
-	keyUsePreregisteredApplication = "UsePreregisteredApplication"
-	keyIsOAuthConfigured           = "IsOAuthConfigured"
+	keyDelegatedFrom     = "DelegatedFrom"
+	keyDelegatedTo       = "DelegatedTo"
+	keyBaseURL           = "BaseURL"
+	keyIsOAuthConfigured = "IsOAuthConfigured"
 )
 
 func cancelButton() flow.Button {
@@ -229,9 +228,8 @@ func (fm *FlowManager) getBaseState() flow.State {
 	config := fm.getConfiguration()
 	isOAuthConfigured := config.ForgejoOAuthClientID != "" || config.ForgejoOAuthClientSecret != ""
 	return flow.State{
-		keyBaseURL:                     config.getBaseURL(),
-		keyUsePreregisteredApplication: config.UsePreregisteredApplication,
-		keyIsOAuthConfigured:           isOAuthConfigured,
+		keyBaseURL:           config.getBaseURL(),
+		keyIsOAuthConfigured: isOAuthConfigured,
 	}
 }
 
@@ -293,16 +291,11 @@ func (fm *FlowManager) stepWelcome() flow.Step {
 	welcomePretext := ":wave: Welcome to your Forgejo integration! [Learn more](https://github.com/mattermost/mattermost-plugin-github#readme)"
 
 	welcomeText := `
-{{- if .UsePreregisteredApplication -}}
-Just a few configuration steps to go!
-- **Step 1:** Connect your Forgejo account
-- **Step 2:** Create a webhook in Forgejo
-{{- else -}}
 Just a few configuration steps to go!
 - **Step 1:** Register an OAuth application in Forgejo and enter OAuth values.
 - **Step 2:** Connect your Forgejo account
 - **Step 3:** Create a webhook in Forgejo
-{{- end -}}`
+`
 
 	return flow.NewStep(stepWelcome).
 		WithText(welcomeText).
@@ -318,11 +311,7 @@ func (fm *FlowManager) stepDelegateQuestion() flow.Step {
 			Name:  "I'll do it myself",
 			Color: flow.ColorPrimary,
 			OnClick: func(f *flow.Flow) (flow.Name, flow.State, error) {
-				if f.GetState().GetBool(keyUsePreregisteredApplication) {
-					return stepOAuthConnect, nil, nil
-				}
-
-				return stepEnterprise, nil, nil
+				return stepBase, nil, nil
 			},
 		}).
 		WithButton(flow.Button{
@@ -387,36 +376,36 @@ func (fm *FlowManager) stepDelegateComplete() flow.Step {
 		Next(stepDone)
 }
 
-func (fm *FlowManager) stepEnterprise() flow.Step {
-	enterpriseText := "Do you have a Forgejo account?"
-	return flow.NewStep(stepEnterprise).
-		WithText(enterpriseText).
+func (fm *FlowManager) stepBase() flow.Step {
+	baseText := "Do you have a Forgejo account?"
+	return flow.NewStep(stepBase).
+		WithText(baseText).
 		WithButton(flow.Button{
 			Name:  "Yes",
 			Color: flow.ColorPrimary,
 			Dialog: &model.Dialog{
-				Title:            "Enterprise account",
-				IntroductionText: "Enter an **Enterprise Base URL** and **Enterprise Upload URL** by setting these values to match your Forgejo URL (Example: https://github.example.com). It's not necessary to have separate Base and Upload URLs.",
+				Title:            "Base config",
+				IntroductionText: "Enter an **Base URL** and **Upload URL** by setting these values to match your Forgejo URL (Example: https://forgejo.example.com). It's not necessary to have separate Base and Upload URLs.",
 				SubmitLabel:      "Save & continue",
 				Elements: []model.DialogElement{
 					{
 
-						DisplayName: "Enterprise Base URL",
+						DisplayName: "Base URL",
 						Name:        "base_url",
 						Type:        "text",
 						SubType:     "url",
-						Placeholder: "Enter Enterprise Base URL",
+						Placeholder: "Enter Base URL",
 					},
 					{
-						DisplayName: "Enterprise Upload URL",
+						DisplayName: "Upload URL",
 						Name:        "upload_url",
 						Type:        "text",
 						SubType:     "url",
-						Placeholder: "Enter Enterprise Upload URL",
+						Placeholder: "Enter Upload URL",
 					},
 				},
 			},
-			OnDialogSubmit: fm.submitEnterpriseConfig,
+			OnDialogSubmit: fm.submitBaseConfig,
 		}).
 		WithButton(flow.Button{
 			Name:    "No",
@@ -426,7 +415,7 @@ func (fm *FlowManager) stepEnterprise() flow.Step {
 		WithButton(cancelButton())
 }
 
-func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
+func (fm *FlowManager) submitBaseConfig(f *flow.Flow, submitted map[string]interface{}) (flow.Name, flow.State, map[string]string, error) {
 	errorList := map[string]string{}
 
 	baseURLRaw, ok := submitted["base_url"]
@@ -466,8 +455,8 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 	}
 
 	config := fm.getConfiguration()
-	config.EnterpriseBaseURL = baseURL
-	config.EnterpriseUploadURL = uploadURL
+	config.BaseURL = baseURL
+	config.UploadURL = uploadURL
 	config.sanitize()
 
 	configMap, err := config.ToMap()
@@ -601,7 +590,7 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 }
 
 func (fm *FlowManager) stepOAuthConnect() flow.Step {
-	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your Forgejo account"
+	connectPretext := "##### :white_check_mark: Step 2: Connect your Forgejo account"
 	connectURL, err := buildPluginURL(fm.client, "oauth", "connect")
 	if err != nil {
 		fm.client.Log.Warn("Failed to build connectURL", "err", err)
@@ -641,7 +630,7 @@ func (fm *FlowManager) trackCompleteWebhookWizard(userID string) {
 }
 
 func (fm *FlowManager) stepWebhookQuestion() flow.Step {
-	questionPretext := `##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}2{{ else }}3{{ end }}: Create a Webhook in Forgejo
+	questionPretext := `##### :white_check_mark: Step 3: Create a Webhook in Forgejo
 The final setup step requires a Mattermost System Admin to create a webhook for each Forgejo organization or repository to receive notifications for, or want to subscribe to.`
 	return flow.NewStep(stepWebhookQuestion).
 		WithText("Do you want to create a webhook?").

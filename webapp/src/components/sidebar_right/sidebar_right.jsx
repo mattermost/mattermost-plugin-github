@@ -67,7 +67,7 @@ export default class SidebarRight extends React.PureComponent {
     static propTypes = {
         username: PropTypes.string,
         orgs: PropTypes.array.isRequired,
-        enterpriseURL: PropTypes.string,
+        baseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
@@ -101,7 +101,7 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     render() {
-        const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://src.pyn.ru';
+        const baseURL = this.props.baseURL ? this.props.baseURL : 'https://src.pyn.ru';
         let orgQuery = '';
         this.props.orgs.map((org) => {
             orgQuery += ('+org%3A' + org);

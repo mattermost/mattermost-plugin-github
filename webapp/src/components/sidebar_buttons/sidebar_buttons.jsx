@@ -13,7 +13,7 @@ export default class SidebarButtons extends React.PureComponent {
         theme: PropTypes.object.isRequired,
         connected: PropTypes.bool,
         clientId: PropTypes.string,
-        enterpriseURL: PropTypes.string,
+        baseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
@@ -124,8 +124,8 @@ export default class SidebarButtons extends React.PureComponent {
         const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
         let baseURL = 'https://src.pyn.ru';
-        if (this.props.enterpriseURL) {
-            baseURL = this.props.enterpriseURL;
+        if (this.props.baseURL) {
+            baseURL = this.props.baseURL;
         }
 
         return (

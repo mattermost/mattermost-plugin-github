@@ -17,11 +17,11 @@ function connected(state = false, action: {type: string, data: ConnectedData}) {
     }
 }
 
-function enterpriseURL(state = '', action: {type: string, data: ConnectedData}) {
+function baseURL(state = '', action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        if (action.data && action.data.enterprise_base_url) {
-            return action.data.enterprise_base_url;
+        if (action.data && action.data.base_url) {
+            return action.data.base_url;
         }
         return '';
     default:
@@ -216,7 +216,7 @@ const attachCommentToIssueModalForPostId = (state = '', action: {type: string, d
 
 export default combineReducers({
     connected,
-    enterpriseURL,
+    baseURL,
     organizations,
     username,
     userSettings,

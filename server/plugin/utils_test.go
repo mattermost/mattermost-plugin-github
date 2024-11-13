@@ -46,8 +46,6 @@ func TestFixGithubNotificationSubjectURL(t *testing.T) {
 	}{
 		{Text: "https://api.github.com/repos/jwilander/mattermost-webapp/issues/123", Expected: "https://github.com/jwilander/mattermost-webapp/issues/123"},
 		{Text: "https://api.github.com/repos/jwilander/mattermost-webapp/pulls/123", Expected: "https://github.com/jwilander/mattermost-webapp/pull/123"},
-		{Text: "https://enterprise.github.com/api/v3/jwilander/mattermost-webapp/issues/123", Expected: "https://enterprise.github.com/jwilander/mattermost-webapp/issues/123"},
-		{Text: "https://enterprise.github.com/api/v3/jwilander/mattermost-webapp/pull/123", Expected: "https://enterprise.github.com/jwilander/mattermost-webapp/pull/123"},
 		{Text: "https://api.github.com/repos/mattermost/mattermost-server/commits/cc6c385d3e8903546fc6fc856bf468ad09b70913", Expected: "https://github.com/mattermost/mattermost-server/commit/cc6c385d3e8903546fc6fc856bf468ad09b70913"},
 		{Text: "https://api.github.com/repos/user/rate_my_cakes/issues/comments/655139214", Expected: "https://github.com/user/rate_my_cakes/issues/4#issuecomment-655139214", IssueNum: "4"},
 	}
