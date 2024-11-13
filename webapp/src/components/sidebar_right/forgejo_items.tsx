@@ -9,7 +9,7 @@ import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
 
-import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
+import {ForgejoItemsProps, ForgejoLabel, ForgejoItem, Review} from '../../types/forgejo_types';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -29,13 +29,13 @@ const notificationReasons = {
     manual:	'You subscribed to the thread (via an issue or pull request).',
     mention:	'You were specifically @mentioned in the content.',
     review_requested:	'You were requested to review a pull request.',
-    security_alert: 'GitHub discovered a security vulnerability in your repository.',
+    security_alert: 'Forgejo discovered a security vulnerability in your repository.',
     state_change: 'You changed the thread state.',
     subscribed:	'You are watching the repository.',
     team_mention:	'You were on a team that was mentioned.',
 };
 
-function GithubItems(props: GithubItemsProps) {
+function ForgejoItems(props: ForgejoItemsProps) {
     const style = getStyle(props.theme);
 
     return props.items.length > 0 ? props.items.map((item) => {
@@ -134,7 +134,7 @@ function GithubItems(props: GithubItemsProps) {
 
         const reviews = getReviewText(item, style, (item.created_at != null || userName != null || milestone != null));
 
-        // Status images pasted directly from GitHub. Change to our own version when styles are decided.
+        // Status images pasted directly from Forgejo. Change to our own version when styles are decided.
         let status: JSX.Element | null = null;
         if (item.status) {
             switch (item.status) {
@@ -153,11 +153,11 @@ function GithubItems(props: GithubItemsProps) {
             case 'pending':
                 status = (
                     <OverlayTrigger
-                        key='githubRHSPRPending'
+                        key='forgejoRHSPRPending'
                         placement='top'
                         overlay={
                             <Tooltip
-                                id='githubRHSPRPendingTooltip'
+                                id='forgejoRHSPRPendingTooltip'
                                 aria-label={'Pending'}
                                 role={'note'}
                             >
@@ -176,11 +176,11 @@ function GithubItems(props: GithubItemsProps) {
             default:
                 status = (
                     <OverlayTrigger
-                        key='githubRHSPRFailed'
+                        key='forgejoRHSPRFailed'
                         placement='top'
                         overlay={
                             <Tooltip
-                                id='githubRHSPRFailedTooltip'
+                                id='forgejoRHSPRFailedTooltip'
                                 aria-label={'Failed'}
                                 role={'note'}
                             >
@@ -203,11 +203,11 @@ function GithubItems(props: GithubItemsProps) {
             const conflictText = 'This pull request has conflicts that must be resolved';
             hasConflict = (
                 <OverlayTrigger
-                    key='githubRHSPRMergeableIndicator'
+                    key='forgejoRHSPRMergeableIndicator'
                     placement='top'
                     overlay={
                         <Tooltip
-                            id='githubRHSPRMergeableTooltip'
+                            id='forgejoRHSPRMergeableTooltip'
                             aria-label={conflictText}
                         >
                             {conflictText}
@@ -224,7 +224,7 @@ function GithubItems(props: GithubItemsProps) {
 
         let labels: JSX.Element[] | null = null;
         if (item.labels) {
-            labels = getGithubLabels(item.labels);
+            labels = getForgejoLabels(item.labels);
         }
 
         return (
@@ -314,7 +314,7 @@ const getStyle = makeStyleFromTheme((theme) => {
     };
 });
 
-function getGithubLabels(labels: GithubLabel[]) {
+function getForgejoLabels(labels: ForgejoLabel[]) {
     return labels.map((label) => {
         return (
             <Badge
@@ -327,7 +327,7 @@ function getGithubLabels(labels: GithubLabel[]) {
     });
 }
 
-function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
+function getReviewText(item: ForgejoItem, style: any, secondLine: boolean) {
     if (!item.reviews || !item.requestedReviewers) {
         return null;
     }
@@ -424,4 +424,4 @@ const itemStyle: CSS.Properties = {
     position: 'relative',
 };
 
-export default GithubItems;
+export default ForgejoItems;

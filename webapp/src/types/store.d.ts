@@ -5,7 +5,7 @@ import reducers from '../reducers';
 export type GetStateFunc = () => GlobalState
 
 export type GlobalState = ReduxGlobalState & {
-    'plugins-github': PluginState
+    'plugins-forgejo': PluginState
 };
 
 export type PluginState = ReturnType<typeof reducers>

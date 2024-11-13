@@ -5,7 +5,7 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
 import manifest from '../../../manifest';
-import GitHubIcon from '../../icon';
+import ForgejoIcon from '../../icon';
 
 export default class AttachCommentToIssuePostMenuAction extends PureComponent {
     static propTypes = {
@@ -40,8 +40,8 @@ export default class AttachCommentToIssuePostMenuAction extends PureComponent {
                 role='presentation'
                 onClick={this.handleClick}
             >
-                <GitHubIcon type='menu'/>
-                {'Attach to GitHub Issue'}
+                <ForgejoIcon type='menu'/>
+                {'Attach to Forgejo Issue'}
             </button>
         );
 

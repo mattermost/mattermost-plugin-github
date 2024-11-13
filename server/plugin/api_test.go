@@ -104,15 +104,15 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			p := NewPlugin()
 			p.setConfiguration(
 				&Configuration{
-					GitHubOrg:               "mockOrg",
-					GitHubOAuthClientID:     "mockID",
-					GitHubOAuthClientSecret: "mockSecret",
-					WebhookSecret:           "",
-					EnablePrivateRepo:       false,
-					EncryptionKey:           "mockKey",
-					EnterpriseBaseURL:       "",
-					EnterpriseUploadURL:     "",
-					EnableCodePreview:       "disable",
+					ForgejoOrg:               "mockOrg",
+					ForgejoOAuthClientID:     "mockID",
+					ForgejoOAuthClientSecret: "mockSecret",
+					WebhookSecret:            "",
+					EnablePrivateRepo:        false,
+					EncryptionKey:            "mockKey",
+					EnterpriseBaseURL:        "",
+					EnterpriseUploadURL:      "",
+					EnableCodePreview:        "disable",
 				})
 			p.initializeAPI()
 			p.SetAPI(&plugintest.API{})
@@ -157,10 +157,10 @@ func TestGetToken(t *testing.T) {
 			p := NewPlugin()
 			p.setConfiguration(
 				&Configuration{
-					GitHubOrg:               "mockOrg",
-					GitHubOAuthClientID:     "mockID",
-					GitHubOAuthClientSecret: "mockSecret",
-					EncryptionKey:           "mockKey",
+					ForgejoOrg:               "mockOrg",
+					ForgejoOAuthClientID:     "mockID",
+					ForgejoOAuthClientSecret: "mockSecret",
+					EncryptionKey:            "mockKey",
 				})
 			p.initializeAPI()
 
@@ -191,10 +191,10 @@ func TestGetConfig(t *testing.T) {
 	authorizedHeader.Add("Mattermost-Plugin-ID", "somePluginId")
 
 	config := &Configuration{
-		GitHubOrg:               "mockOrg",
-		GitHubOAuthClientID:     "mockID",
-		GitHubOAuthClientSecret: "mockSecret",
-		EncryptionKey:           "mockKey",
+		ForgejoOrg:               "mockOrg",
+		ForgejoOAuthClientID:     "mockID",
+		ForgejoOAuthClientSecret: "mockSecret",
+		EncryptionKey:            "mockKey",
 	}
 
 	for name, test := range map[string]struct {

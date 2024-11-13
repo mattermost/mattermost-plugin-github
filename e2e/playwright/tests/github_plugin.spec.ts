@@ -16,7 +16,7 @@ const TEST_CLIENT_SECRET = 'b'.repeat(40);
 
 export default {
     setup: () => {
-        test('/github setup', async ({pw, page, pages}) => {
+        test('/forgejo setup', async ({pw, page, pages}) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
             if (adminUser === null) {
                 throw new Error('can not get adminUser');
@@ -28,7 +28,7 @@ export default {
             const c = new pages.ChannelsPage(page);
 
             // # Run setup command
-            await postMessage('/github setup', c, page);
+            await postMessage('/forgejo setup', c, page);
 
             // # Wait for new messages to ensure the last post is the one we want
             // await waitForNewMessages(page);
@@ -72,7 +72,7 @@ export default {
         });
     },
     connect: () => {
-        test('/github connect', async ({pages, page, pw}) => {
+        test('/forgejo connect', async ({pages, page, pw}) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
             if (adminUser === null) {
                 throw new Error('can not get adminUser');
@@ -84,7 +84,7 @@ export default {
             const c = new pages.ChannelsPage(page);
 
             // # Run connect command
-            await postMessage('/github connect', c, page);
+            await postMessage('/forgejo connect', c, page);
 
             // # Wait for new messages to ensure the last post is the one we want
             await waitForNewMessages(page);
@@ -113,7 +113,7 @@ export default {
         });
     },
     disconnect: () => {
-        test('/github disconnect', async ({pages, page, pw}) => {
+        test('/forgejo disconnect', async ({pages, page, pw}) => {
             const {adminClient, adminUser} = await pw.getAdminClient();
             if (adminUser === null) {
                 throw new Error('can not get adminUser');
@@ -125,7 +125,7 @@ export default {
             const c = new pages.ChannelsPage(page);
 
             // # Run connect command
-            await postMessage('/github disconnect', c, page);
+            await postMessage('/forgejo disconnect', c, page);
 
             // # Wait for new messages to ensure the last post is the one we want
             await waitForNewMessages(page);

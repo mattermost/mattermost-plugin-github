@@ -49,7 +49,7 @@ func (p *Plugin) HandleClusterEvent(ev model.PluginClusterEvent) {
 	case webHookPingEventID:
 		var event github.PingEvent
 		if err := json.Unmarshal(ev.Data, &event); err != nil {
-			p.client.Log.Warn("cannot unmarshal cluster event with GitHub ping event", "error", err)
+			p.client.Log.Warn("cannot unmarshal cluster event with Forgejo ping event", "error", err)
 			return
 		}
 

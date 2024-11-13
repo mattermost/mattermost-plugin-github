@@ -56,11 +56,11 @@ export default class SidebarButtons extends React.PureComponent {
         }
 
         // Avoid refreshing data on each test when doing e2e testing.
-        // It requires __E2E_TESTING__ env/webpack-flag set and skip_github_fetch query param.
+        // It requires __E2E_TESTING__ env/webpack-flag set and skip_forgejo_fetch query param.
         // Otherwise we'll load app on each test consuming 3 searches from 30 rate limit.
         const params = new URLSearchParams(window.location.search);
         // eslint-disable-next-line no-undef
-        if (__E2E_TESTING__ && params.get('skip_github_fetch') === 'true') {
+        if (__E2E_TESTING__ && params.get('skip_forgejo_fetch') === 'true') {
             return;
         }
 
@@ -75,7 +75,7 @@ export default class SidebarButtons extends React.PureComponent {
 
     openConnectWindow = (e) => {
         e.preventDefault();
-        window.open('/plugins/github/oauth/connect', 'Connect Mattermost to GitHub', 'height=570,width=520');
+        window.open('/plugins/forgejo/oauth/connect', 'Connect Mattermost to Forgejo', 'height=570,width=520');
     }
 
     openRHS = (rhsState) => {
@@ -100,16 +100,16 @@ export default class SidebarButtons extends React.PureComponent {
             if (isTeamSidebar) {
                 return (
                     <OverlayTrigger
-                        key='githubConnectLink'
+                        key='forgejoConnectLink'
                         placement={placement}
-                        overlay={<Tooltip id='reviewTooltip'>{'Connect to your GitHub'}</Tooltip>}
+                        overlay={<Tooltip id='reviewTooltip'>{'Connect to your Forgejo'}</Tooltip>}
                     >
                         <a
-                            href='/plugins/github/oauth/connect'
+                            href='/plugins/forgejo/oauth/connect'
                             onClick={this.openConnectWindow}
                             style={button}
                         >
-                            <i className='fa fa-github fa-2x'/>
+                            <i className='fa fa-git fa-2x'/>
                         </a>
                     </OverlayTrigger>
                 );
@@ -123,7 +123,7 @@ export default class SidebarButtons extends React.PureComponent {
         const yourAssignments = this.props.yourAssignments || [];
         const refreshClass = this.state.refreshing ? ' fa-spin' : '';
 
-        let baseURL = 'https://github.com';
+        let baseURL = 'https://src.pyn.ru';
         if (this.props.enterpriseURL) {
             baseURL = this.props.enterpriseURL;
         }
@@ -131,16 +131,16 @@ export default class SidebarButtons extends React.PureComponent {
         return (
             <div style={container}>
                 <a
-                    key='githubHeader'
-                    href={baseURL + '/settings/connections/applications/' + this.props.clientId}
+                    key='forgejoHeader'
+                    href={baseURL}
                     target='_blank'
                     rel='noopener noreferrer'
                     style={button}
                 >
-                    <i className='fa fa-github fa-lg'/>
+                    <i className='fa fa-git fa-lg'/>
                 </a>
                 <OverlayTrigger
-                    key='githubYourPrsLink'
+                    key='forgejoYourPrsLink'
                     placement={placement}
                     overlay={<Tooltip id='yourPrsTooltip'>{'Your open pull requests'}</Tooltip>}
                 >
@@ -153,7 +153,7 @@ export default class SidebarButtons extends React.PureComponent {
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
-                    key='githubReviewsLink'
+                    key='forgejoReviewsLink'
                     placement={placement}
                     overlay={<Tooltip id='reviewTooltip'>{'Pull requests needing review'}</Tooltip>}
                 >
@@ -166,7 +166,7 @@ export default class SidebarButtons extends React.PureComponent {
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
-                    key='githubAssignmentsLink'
+                    key='forgejoAssignmentsLink'
                     placement={placement}
                     overlay={<Tooltip id='reviewTooltip'>{'Your assignments'}</Tooltip>}
                 >
@@ -179,7 +179,7 @@ export default class SidebarButtons extends React.PureComponent {
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
-                    key='githubUnreadsLink'
+                    key='forgejoUnreadsLink'
                     placement={placement}
                     overlay={<Tooltip id='unreadsTooltip'>{'Unread messages'}</Tooltip>}
                 >
@@ -192,7 +192,7 @@ export default class SidebarButtons extends React.PureComponent {
                     </a>
                 </OverlayTrigger>
                 <OverlayTrigger
-                    key='githubRefreshButton'
+                    key='forgejoRefreshButton'
                     placement={placement}
                     overlay={<Tooltip id='refreshTooltip'>{'Refresh'}</Tooltip>}
                 >

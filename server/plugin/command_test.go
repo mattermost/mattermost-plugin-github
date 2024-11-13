@@ -98,90 +98,90 @@ func TestParseCommand(t *testing.T) {
 	}{
 		{
 			name:  "no parameters",
-			input: "/github subscribe",
+			input: "/forgejo subscribe",
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string(nil),
 			},
 		},
 		{
 			name:  "no action and no parameters",
-			input: "/github",
+			input: "/forgejo",
 			want: output{
-				"/github",
+				"/forgejo",
 				"",
 				[]string(nil),
 			},
 		},
 		{
 			name:  "simple one-word label",
-			input: `/github subscribe DHaussermann/hello-world issues,label:"Help"`,
+			input: `/forgejo subscribe DHaussermann/hello-world issues,label:"Help"`,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Help"`},
 			},
 		},
 		{
 			name:  "two-word label",
-			input: `/github subscribe DHaussermann/hello-world issues,label:"Help Wanted"`,
+			input: `/forgejo subscribe DHaussermann/hello-world issues,label:"Help Wanted"`,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
 			},
 		},
 		{
 			name:  "multi-word label",
-			input: `/github subscribe DHaussermann/hello-world issues,label:"Good First Issue"`,
+			input: `/forgejo subscribe DHaussermann/hello-world issues,label:"Good First Issue"`,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Good First Issue"`},
 			},
 		},
 		{
 			name:  "multiple spaces inside double-quotes",
-			input: `/github subscribe DHaussermann/hello-world issues,label:"Help    Wanted"`,
+			input: `/forgejo subscribe DHaussermann/hello-world issues,label:"Help    Wanted"`,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Help    Wanted"`},
 			},
 		},
 		{
 			name:  "multiple spaces outside of double-quotes",
-			input: `  /github    subscribe     DHaussermann/hello-world issues,label:"Help Wanted"`,
+			input: `  /forgejo    subscribe     DHaussermann/hello-world issues,label:"Help Wanted"`,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
 			},
 		},
 		{
 			name:  "trailing whitespaces",
-			input: `/github subscribe DHaussermann/hello-world issues,label:"Help Wanted" `,
+			input: `/forgejo subscribe DHaussermann/hello-world issues,label:"Help Wanted" `,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Help Wanted"`},
 			},
 		},
 		{
 			name:  "non-ASCII characters",
-			input: `/github subscribe طماطم issues,label:"日本語"`,
+			input: `/forgejo subscribe طماطم issues,label:"日本語"`,
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"طماطم", `issues,label:"日本語"`},
 			},
 		},
 		{
 			name:  "line breaks",
-			input: "/github \nsubscribe\nDHaussermann/hello-world\nissues,label:\"Good First Issue\"",
+			input: "/forgejo \nsubscribe\nDHaussermann/hello-world\nissues,label:\"Good First Issue\"",
 			want: output{
-				"/github",
+				"/forgejo",
 				"subscribe",
 				[]string{"DHaussermann/hello-world", `issues,label:"Good First Issue"`},
 			},

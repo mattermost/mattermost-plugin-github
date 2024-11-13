@@ -40,7 +40,7 @@ func (p *Plugin) SendDailyTelemetry() {
 		"connected_user_count":          connectedUserCount,
 		"is_oauth_configured":           config.IsOAuthConfigured(),
 		"is_sass":                       config.IsSASS(),
-		"is_organization_locked":        config.GitHubOrg != "",
+		"is_organization_locked":        config.ForgejoOrg != "",
 		"enable_private_repo":           config.EnablePrivateRepo,
 		"enable_code_preview":           config.EnableCodePreview,
 		"connect_to_private_by_default": config.ConnectToPrivateByDefault,
@@ -50,7 +50,7 @@ func (p *Plugin) SendDailyTelemetry() {
 
 func (p *Plugin) getConnectedUserCount() (int64, error) {
 	checker := func(key string) (keep bool, err error) {
-		return strings.HasSuffix(key, githubTokenKey), nil
+		return strings.HasSuffix(key, forgejoTokenKey), nil
 	}
 
 	var count int64
@@ -91,7 +91,7 @@ func (p *Plugin) initializeTelemetry() {
 		p.client.System.GetServerVersion(),
 		Manifest.Id,
 		Manifest.Version,
-		"github",
+		"forgejo",
 		telemetry.NewTrackerConfig(p.client.Configuration.GetConfig()),
 		logger.New(p.API),
 	)

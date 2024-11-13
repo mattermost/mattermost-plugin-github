@@ -23,7 +23,7 @@ const maxPreviewLines = 10
 // if the link points to a single line.
 const permalinkLineContext = 3
 
-// replacement holds necessary info to replace github permalinks
+// replacement holds necessary info to replace forgejo permalinks
 // in messages with a code preview block.
 type replacement struct {
 	index         int      // index of the permalink in the string

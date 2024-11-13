@@ -4,7 +4,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-export default class GitHubIcon extends React.PureComponent {
+export default class ForgejoIcon extends React.PureComponent {
     static propTypes = {
         type: PropTypes.oneOf([
             'menu',

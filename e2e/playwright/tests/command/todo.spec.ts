@@ -12,13 +12,13 @@ import {messages} from '../../support/constants';
 import {getGithubBotDMPageURL, waitForNewMessages} from '../../support/utils';
 import {getBotTagFromPost, getPostAuthor} from '../../support/components/post';
 
-const repoRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+/;
-const prRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+\/pull\/\d+/;
-const issueRegex = /https:\/\/github.com\/[\w-]+\/[\w-]+\/issues\/\d+/;
+const repoRegex = /https:\/\/src.pyn.ru\/[\w-]+\/[\w-]+/;
+const prRegex = /https:\/\/src.pyn.ru\/[\w-]+\/[\w-]+\/pull\/\d+/;
+const issueRegex = /https:\/\/src.pyn.ru\/[\w-]+\/[\w-]+\/issues\/\d+/;
 
 export default {
     connected: () => {
-        test.describe('/github todo command', () => {
+        test.describe('/forgejo todo command', () => {
             test('from connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 if (adminUser === null) {
@@ -31,7 +31,7 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
-                await c.postMessage('/github todo');
+                await c.postMessage('/forgejo todo');
                 await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -95,7 +95,7 @@ export default {
         });
     },
     unconnected: () => {
-        test.describe('/github todo command', () => {
+        test.describe('/forgejo todo command', () => {
             test('from non connected account', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 if (adminUser === null) {
@@ -108,7 +108,7 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
-                await c.postMessage('/github todo');
+                await c.postMessage('/forgejo todo');
                 await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want
@@ -134,7 +134,7 @@ export default {
         });
     },
     noSetup: () => {
-        test.describe('/github todo command', () => {
+        test.describe('/forgejo todo command', () => {
             test('before doing setup', async ({pages, page, pw}) => {
                 const {adminClient, adminUser} = await pw.getAdminClient();
                 if (adminUser === null) {
@@ -147,7 +147,7 @@ export default {
                 const c = new pages.ChannelsPage(page);
 
                 // # Run todo command
-                await c.postMessage('/github todo');
+                await c.postMessage('/forgejo todo');
                 await c.sendMessage();
 
                 // # Wait for new messages to ensure the last post is the one we want

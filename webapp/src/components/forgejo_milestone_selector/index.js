@@ -4,15 +4,15 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getLabelOptions} from '../../actions';
+import {getMilestoneOptions} from '../../actions';
 
-import GithubLabelSelector from './github_label_selector.jsx';
+import ForgejoMilestoneSelector from './forgejo_milestone_selector.jsx';
 
 const mapDispatchToProps = (dispatch) => ({
-    actions: bindActionCreators({getLabelOptions}, dispatch),
+    actions: bindActionCreators({getMilestoneOptions}, dispatch),
 });
 
 export default connect(
     null,
     mapDispatchToProps,
-)(GithubLabelSelector);
+)(ForgejoMilestoneSelector);

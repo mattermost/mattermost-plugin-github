@@ -5,10 +5,10 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import GithubLabelSelector from 'components/github_label_selector';
-import GithubAssigneeSelector from 'components/github_assignee_selector';
-import GithubMilestoneSelector from 'components/github_milestone_selector';
-import GithubRepoSelector from 'components/github_repo_selector';
+import ForgejoLabelSelector from 'components/forgejo_label_selector';
+import ForgejoAssigneeSelector from 'components/forgejo_assignee_selector';
+import ForgejoMilestoneSelector from 'components/forgejo_milestone_selector';
+import ForgejoRepoSelector from 'components/forgejo_repo_selector';
 import Validator from 'components/validator';
 import FormButton from 'components/form_button';
 import Input from 'components/input';
@@ -125,21 +125,21 @@ export default class CreateIssueModal extends PureComponent {
 
         return (
             <>
-                <GithubLabelSelector
+                <ForgejoLabelSelector
                     repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
                 />
 
-                <GithubAssigneeSelector
+                <ForgejoAssigneeSelector
                     repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedAssignees={this.state.assignees}
                     onChange={this.handleAssigneesChange}
                 />
 
-                <GithubMilestoneSelector
+                <ForgejoMilestoneSelector
                     repoName={this.state.repo.name}
                     theme={this.props.theme}
                     selectedMilestone={this.state.milestone}
@@ -179,7 +179,7 @@ export default class CreateIssueModal extends PureComponent {
 
         const component = (
             <div>
-                <GithubRepoSelector
+                <ForgejoRepoSelector
                     onChange={this.handleRepoChange}
                     value={this.state.repo && this.state.repo.name}
                     required={true}
@@ -190,7 +190,7 @@ export default class CreateIssueModal extends PureComponent {
 
                 <Input
                     id={'title'}
-                    label='Title for the GitHub Issue'
+                    label='Title for the Forgejo Issue'
                     type='input'
                     required={true}
                     disabled={false}
@@ -203,7 +203,7 @@ export default class CreateIssueModal extends PureComponent {
                 {this.renderIssueAttributeSelectors()}
 
                 <Input
-                    label='Description for the GitHub Issue'
+                    label='Description for the Forgejo Issue'
                     type='textarea'
                     value={this.state.issueDescription}
                     onChange={this.handleIssueDescriptionChange}
@@ -222,7 +222,7 @@ export default class CreateIssueModal extends PureComponent {
             >
                 <Modal.Header closeButton={true}>
                     <Modal.Title>
-                        {'Create GitHub Issue'}
+                        {'Create Forgejo Issue'}
                     </Modal.Title>
                 </Modal.Header>
                 <form

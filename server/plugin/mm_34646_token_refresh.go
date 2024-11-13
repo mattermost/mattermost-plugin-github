@@ -44,7 +44,7 @@ func (p *Plugin) forceResetAllMM34646() error {
 		}
 
 		for _, key := range keys {
-			var tryInfo GitHubUserInfo
+			var tryInfo ForgejoUserInfo
 			err = p.store.Get(key, &tryInfo)
 			if err != nil {
 				p.client.Log.Warn("failed to inspect key", "key", key, "error",
@@ -62,14 +62,14 @@ func (p *Plugin) forceResetAllMM34646() error {
 
 			info, errResp := p.getGitHubUserInfo(tryInfo.UserID)
 			if errResp != nil {
-				p.client.Log.Warn("failed to retrieve GitHubUserInfo", "key", key, "user_id", tryInfo.UserID,
+				p.client.Log.Warn("failed to retrieve ForgejoUserInfo", "key", key, "user_id", tryInfo.UserID,
 					"error", errResp.Error())
 				continue
 			}
 
 			_, err = p.forceResetUserTokenMM34646(ctx, config, info)
 			if err != nil {
-				p.client.Log.Warn("failed to reset GitHub user token", "key", key, "user_id", tryInfo.UserID,
+				p.client.Log.Warn("failed to reset Forgejo user token", "key", key, "user_id", tryInfo.UserID,
 					"error", err.Error())
 				continue
 			}
@@ -90,29 +90,29 @@ func (p *Plugin) forceResetAllMM34646() error {
 	return nil
 }
 
-func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *GitHubUserInfo) (string, error) {
+func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configuration, info *ForgejoUserInfo) (string, error) {
 	if info.MM34646ResetTokenDone {
 		return info.Token.AccessToken, nil
 	}
 
 	client, err := p.getResetUserTokenMM34646Client(config)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to create a special GitHub client to refresh the user's token")
+		return "", errors.Wrap(err, "failed to create a special Forgejo client to refresh the user's token")
 	}
 
-	a, _, err := client.Authorizations.Reset(ctx, config.GitHubOAuthClientID, info.Token.AccessToken)
+	a, _, err := client.Authorizations.Reset(ctx, config.ForgejoOAuthClientID, info.Token.AccessToken)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to reset GitHub token")
+		return "", errors.Wrap(err, "failed to reset Forgejo token")
 	}
 	if a.Token == nil {
-		return "", errors.Wrap(err, "failed to reset GitHub token: no token received")
+		return "", errors.Wrap(err, "failed to reset Forgejo token: no token received")
 	}
 
 	info.Token.AccessToken = *a.Token
 	info.MM34646ResetTokenDone = true
 	err = p.storeGitHubUserInfo(info)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
+		return "", errors.Wrap(err, "failed to store updated ForgejoUserInfo")
 	}
 	p.client.Log.Debug("Updated user access token for MM-34646", "user_id", info.UserID)
 
@@ -121,8 +121,8 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 
 func (p *Plugin) getResetUserTokenMM34646Client(config *Configuration) (*github.Client, error) {
 	t := &github.BasicAuthTransport{
-		Username: config.GitHubOAuthClientID,
-		Password: config.GitHubOAuthClientSecret,
+		Username: config.ForgejoOAuthClientID,
+		Password: config.ForgejoOAuthClientSecret,
 	}
 	return getGitHubClient(t.Client(), config)
 }

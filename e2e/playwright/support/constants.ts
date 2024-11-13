@@ -2,6 +2,6 @@
 // See LICENSE.txt for license information.
 
 export const messages = {
-    UNCONNECTED: 'You must connect your account to GitHub first. Either click on the GitHub logo in the bottom left of the screen or enter /github connect.',
-    NOSETUP: "Before using this plugin, you'll need to configure it by running /github setup: must have a github oauth client id",
+    UNCONNECTED: 'You must connect your account to Forgejo first. Either click on the Forgejo logo in the bottom left of the screen or enter /forgejo connect.',
+    NOSETUP: "Before using this plugin, you'll need to configure it by running /forgejo setup: must have a github oauth client id",
 };

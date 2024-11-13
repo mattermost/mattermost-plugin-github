@@ -7,13 +7,13 @@
 }
 
 @media (min-width: 544px) {
-    .github-tooltip--large {
+    .forgejo-tooltip--large {
         min-width: 320px;
     }
 }
 
-/* Github Tooltip */
-.github-tooltip .box {
+/* Forgejo Tooltip */
+.forgejo-tooltip .box {
     background-color: white;
     box-shadow: 0 1px 15px rgba(27,31,35,.15);
     position: relative;
@@ -21,51 +21,51 @@
     border-radius: 4px;
 }
 
-.github-tooltip--bottom-left, .github-tooltip--top-left {
+.forgejo-tooltip--bottom-left, .forgejo-tooltip--top-left {
     left: -9px;
     margin-left: 0;
 }
 
 /* Header */
-.github-tooltip .header {
+.forgejo-tooltip .header {
     color: var(--light-gray);
     font-size: 12px;
     white-space: nowrap;
 }
 
-.github-tooltip .header a {
+.forgejo-tooltip .header a {
     text-decoration: none;
     color: var(--gray);
     display: inline-block;
 }
 
 /* Body */
-.github-tooltip .body > span {
+.forgejo-tooltip .body > span {
     line-height: 1.25;
 }
 
 /* Info */
-.github-tooltip .tooltip-info {
+.forgejo-tooltip .tooltip-info {
     line-height: 1.25;
     display: flex;
     flex-direction: column;
 }
-.github-tooltip .tooltip-info > a, .github-tooltip .tooltip-info > a:hover {
+.forgejo-tooltip .tooltip-info > a, .forgejo-tooltip .tooltip-info > a:hover {
     display: block;
     text-decoration: none;
     color: var(--dark-gray);
 }
-.github-tooltip .tooltip-info > a span {
+.forgejo-tooltip .tooltip-info > a span {
     color: var(--light-gray);
 }
 
-.github-tooltip .tooltip-info h5 {
+.forgejo-tooltip .tooltip-info h5 {
     font-weight: 600;
     font-size: 14px;
     display: inline;
 }
 
-.github-tooltip .tooltip-info .markdown-text {
+.forgejo-tooltip .tooltip-info .markdown-text {
     max-height: 150px;
     line-height: 1.25;
     overflow: hidden;
@@ -75,22 +75,22 @@
     font-size: 12px;
 }
 
-.github-tooltip .tooltip-info .markdown-text::-webkit-scrollbar {
+.forgejo-tooltip .tooltip-info .markdown-text::-webkit-scrollbar {
     display: none;
 }
 
-.github-tooltip .see-more {
+.forgejo-tooltip .see-more {
     font-weight: 600;
     font-size: 12px;
 }
 
 /* Labels */
-.github-tooltip .labels {
+.forgejo-tooltip .labels {
     justify-content: flex-start;
     align-items: center;
 }
 
-.github-tooltip .label {
+.forgejo-tooltip .label {
     height: 20px;
     padding: .15em 4px;
     font-size: 12px;
@@ -104,13 +104,13 @@
     max-width: 125px;
 }
 
-.github-tooltip .base-head {
+.forgejo-tooltip .base-head {
     display: flex;
     line-height: 1;
     align-items: center;
 }
 
-.github-tooltip .commit-ref {
+.forgejo-tooltip .commit-ref {
     position: relative;
     display: inline-block;
     padding: 0 5px;

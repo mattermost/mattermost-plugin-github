@@ -14,25 +14,25 @@ import (
 
 const mdCommentRegexPattern string = `(<!--[\S\s]+?-->)`
 
-// There is no public documentation of what constitutes a GitHub username, but
+// There is no public documentation of what constitutes a Forgejo username, but
 // according to the error messages returned in https://github.com/join, it must:
 //  1. be between 1 and 39 characters long.
 //  2. contain only alphanumeric characters or non-adjacent hyphens.
 //  3. not begin or end with a hyphen.
 //
-// When matching a valid GitHub username in the body of messages, it must:
+// When matching a valid Forgejo username in the body of messages, it must:
 //  4. not be preceded by an underscore, a backtick (that cryptic \x60) or an
 //     alphanumeric character.
 //
 // Ensuring the maximum length is not trivial without lookaheads, so this
 // regexp ensures only the minimum length, besides points 2, 3 and 4.
 // Note that the username, with the @ sign, is in the second capturing group.
-const gitHubUsernameRegexPattern string = `(^|[^_\x60[:alnum:]])(@[[:alnum:]](-?[[:alnum:]]+)*)`
+const forgejoUsernameRegexPattern string = `(^|[^_\x60[:alnum:]])(@[[:alnum:]](-?[[:alnum:]]+)*)`
 
 var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
-var gitHubUsernameRegex = regexp.MustCompile(gitHubUsernameRegexPattern)
+var forgejoUsernameRegex = regexp.MustCompile(forgejoUsernameRegexPattern)
 var masterTemplate *template.Template
-var gitHubToUsernameMappingCallback func(string) string
+var forgejoToUsernameMappingCallback func(string) string
 var showAuthorInCommitNotification bool
 
 func init() {
@@ -40,7 +40,7 @@ func init() {
 
 	// Try to parse out email footer junk
 	funcMap["trimBody"] = func(body string) string {
-		if strings.Contains(body, "notifications@github.com") {
+		if strings.Contains(body, "notifications@forgejo.com") {
 			return strings.Split(body, "\n\nOn")[0]
 		}
 
@@ -52,7 +52,7 @@ func init() {
 		return strings.Replace(ref, "refs/heads/", "", 1)
 	}
 
-	// Resolve a GitHub username to the corresponding Mattermost username, if linked.
+	// Resolve a Forgejo username to the corresponding Mattermost username, if linked.
 	funcMap["lookupMattermostUsername"] = lookupMattermostUsername
 
 	// Trim away markdown comments in the text
@@ -63,16 +63,16 @@ func init() {
 		return mdCommentRegex.ReplaceAllString(body, "")
 	}
 
-	// Replace any GitHub username with its corresponding Mattermost username, if any
-	funcMap["replaceAllGitHubUsernames"] = func(body string) string {
-		return gitHubUsernameRegex.ReplaceAllStringFunc(body, func(matched string) string {
+	// Replace any Forgejo username with its corresponding Mattermost username, if any
+	funcMap["replaceAllForgejoUsernames"] = func(body string) string {
+		return forgejoUsernameRegex.ReplaceAllStringFunc(body, func(matched string) string {
 			// The matched string contains the @ sign, and may contain a single
 			// character prepending the whole thing.
-			gitHubUsernameFirstCharIndex := strings.LastIndex(matched, "@") + 1
-			prefix := matched[:gitHubUsernameFirstCharIndex]
-			gitHubUsername := matched[gitHubUsernameFirstCharIndex:]
+			forgejoUsernameFirstCharIndex := strings.LastIndex(matched, "@") + 1
+			prefix := matched[:forgejoUsernameFirstCharIndex]
+			forgejoUsername := matched[forgejoUsernameFirstCharIndex:]
 
-			username := lookupMattermostUsername(gitHubUsername)
+			username := lookupMattermostUsername(forgejoUsername)
 			if username == "" {
 				return matched
 			}
@@ -115,7 +115,7 @@ func init() {
 
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
 
-	// The user template links to the corresponding GitHub user. If the GitHub user is a known
+	// The user template links to the corresponding Forgejo user. If the Forgejo user is a known
 	// Mattermost user, their Mattermost handle is referenced as an at-mention instead.
 	template.Must(masterTemplate.New("user").Parse(`
 {{- $mattermostUsername := .GetLogin | lookupMattermostUsername}}
@@ -213,7 +213,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
 
-{{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{.Event.GetPullRequest.GetBody | removeComments | replaceAllForgejoUsernames}}
 {{- end -}}
 {{- end }}
 `))
@@ -229,7 +229,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
 
-{{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{.Event.GetPullRequest.GetBody | removeComments | replaceAllForgejoUsernames}}
 {{- end -}}
 {{- end }}
 `))
@@ -253,7 +253,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("pullRequestMentionNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.GetPullRequest.GetNumber}}]({{.GetPullRequest.GetHTMLURL}}) - {{.GetPullRequest.GetTitle}}:
-{{.GetPullRequest.GetBody | trimBody | quote | replaceAllGitHubUsernames}}`))
+{{.GetPullRequest.GetBody | trimBody | quote | replaceAllForgejoUsernames}}`))
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
@@ -266,7 +266,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- template "labels" dict "Labels" .Event.GetIssue.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetIssue }}
 
-{{.Event.GetIssue.GetBody | removeComments | replaceAllGitHubUsernames}}
+{{.Event.GetIssue.GetBody | removeComments | replaceAllForgejoUsernames}}
 {{- end -}}
 {{- end }}
 `))
@@ -303,7 +303,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 	template.Must(masterTemplate.New("issueComment").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on {{template "issue" .Issue}}:
 
-{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestReviewEvent").Funcs(funcMap).Parse(`
@@ -313,48 +313,48 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- else if eq .GetReview.GetState "changes_requested"}} requested changes on
 {{- end }} {{template "pullRequest" .GetPullRequest}}:
 
-{{.Review.GetBody | replaceAllGitHubUsernames}}
+{{.Review.GetBody | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("newReviewComment").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} New review comment by {{template "user" .GetSender}} on {{template "pullRequest" .GetPullRequest}}:
 
-{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentMentionNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on [{{.GetRepo.GetFullName}}#{{.Issue.GetNumber}}]({{.GetComment.GetHTMLURL}}) - {{.Issue.GetTitle}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorPullRequestNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on your pull request {{template "eventRepoIssueFullLinkWithTitle" .}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAssigneePullRequestNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on pull request you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAssigneeIssueNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on an issue you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAssigneeSelfMentionPullRequestNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on a pull request that you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAssigneeSelfMentionIssueNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} mentioned you on an issue that you are assigned to {{template "eventRepoIssueFullLinkWithTitle" .}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("commentAuthorIssueNotification").Funcs(funcMap).Parse(`
 {{template "user" .GetSender}} commented on your issue {{template "eventRepoIssueFullLinkWithTitle" .}}:
-{{.GetComment.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 `))
 
 	template.Must(masterTemplate.New("pullRequestNotification").Funcs(funcMap).Parse(`
@@ -383,11 +383,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- else if eq .GetReview.GetState "changes_requested" }} requested changes on your pull request
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
 {{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
-{{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
+{{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllForgejoUsernames}}
 {{else}}{{end}}`))
 
 	template.Must(masterTemplate.New("helpText").Parse("" +
-		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
+		"* `/forgejo connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your Forgejo account.\n" +
 		"{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}}" +
 		"  * `private` is optional. If used, read access to your private repositories will be requested." +
 		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
@@ -395,11 +395,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * Read access to your private repositories will be requested." +
 		"If these repositories send webhook events to this Mattermost server, you'll be notified of changes to those repositories.\n" +
 		"{{end}}{{end}}" +
-		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
-		"* `/github help` - Display Slash Command help text\n" +
-		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
-		"* `/github subscriptions list` - Will list the current channel subscriptions\n" +
-		"* `/github subscriptions add owner[/repo] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
+		"* `/forgejo disconnect` - Disconnect your Mattermost account from your Forgejo account\n" +
+		"* `/forgejo help` - Display Slash Command help text\n" +
+		"* `/forgejo todo` - Get a list of unread messages and pull requests awaiting your review\n" +
+		"* `/forgejo subscriptions list` - Will list the current channel subscriptions\n" +
+		"* `/forgejo subscriptions add owner[/repo] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
 		"  * `flags` currently supported:\n" +
 		"	 * `--features` - a comma-delimited list of one or more of the following:\n" +
 		"    	* `issues` - includes new and closed issues\n" +
@@ -417,18 +417,18 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `discussions` - includes new discussions\n" +
 		"    	* `discussion_comments` - includes new discussion comments\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
-		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
+		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the Forgejo organization config should be set, otherwise this flag has not effect)\n" +
 		"    * `--render-style` - notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +
-		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
-		"* `/github me` - Display the connected GitHub account\n" +
-		"* `/github settings [setting] [value]` - Update your user settings\n" +
+		"* `/forgejo subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
+		"* `/forgejo me` - Display the connected Forgejo account\n" +
+		"* `/forgejo settings [setting] [value]` - Update your user settings\n" +
 		"  * `setting` can be `notifications` or `reminders`\n" +
 		"  * `value` can be `on` or `off`\n" +
-		"* `/github mute` - Managed muted GitHub users. You'll not receive notifications for comments in your PRs and issues from those users.\n" +
-		"  * `/github mute list` - list your muted GitHub users\n" +
-		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
-		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
-		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+		"* `/forgejo mute` - Managed muted Forgejo users. You'll not receive notifications for comments in your PRs and issues from those users.\n" +
+		"  * `/forgejo mute list` - list your muted Forgejo users\n" +
+		"  * `/forgejo mute add [username]` - add a Forgejo user to your muted list\n" +
+		"  * `/forgejo mute delete [username]` - remove a Forgejo user from your muted list\n" +
+		"  * `/forgejo mute delete-all` - unmute all Forgejo users\n"))
 
 	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}}
@@ -450,20 +450,20 @@ It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
 
-{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+{{.GetComment.GetBody | trimBody | replaceAllForgejoUsernames}}
 `))
 }
 
-func registerGitHubToUsernameMappingCallback(callback func(string) string) {
-	gitHubToUsernameMappingCallback = callback
+func registerForgejoToUsernameMappingCallback(callback func(string) string) {
+	forgejoToUsernameMappingCallback = callback
 }
 
-func lookupMattermostUsername(githubUsername string) string {
-	if gitHubToUsernameMappingCallback == nil {
+func lookupMattermostUsername(forgejoUsername string) string {
+	if forgejoToUsernameMappingCallback == nil {
 		return ""
 	}
 
-	return gitHubToUsernameMappingCallback(githubUsername)
+	return forgejoToUsernameMappingCallback(forgejoUsername)
 }
 
 func setShowAuthorInCommitNotification(value bool) {

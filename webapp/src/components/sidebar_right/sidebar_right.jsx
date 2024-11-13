@@ -7,7 +7,7 @@ import Scrollbars from 'react-custom-scrollbars';
 
 import {RHSStates} from '../../constants';
 
-import GithubItems from './github_items';
+import ForgejoItems from './forgejo_items';
 
 export function renderView(props) {
     return (
@@ -33,7 +33,7 @@ export function renderThumbVertical(props) {
         />);
 }
 
-function mapGithubItemListToPrList(gilist) {
+function mapForgejoItemListToPrList(gilist) {
     if (!gilist) {
         return [];
     }
@@ -82,21 +82,21 @@ export default class SidebarRight extends React.PureComponent {
 
     componentDidMount() {
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
-            this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
+            this.props.actions.getYourPrsDetails(mapForgejoItemListToPrList(this.props.yourPrs));
         }
 
         if (this.props.reviews && this.props.rhsState === RHSStates.REVIEWS) {
-            this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
+            this.props.actions.getReviewsDetails(mapForgejoItemListToPrList(this.props.reviews));
         }
     }
 
     componentDidUpdate(prevProps) {
         if (shouldUpdateDetails(this.props.yourPrs, prevProps.yourPrs, RHSStates.PRS, this.props.rhsState, prevProps.rhsState)) {
-            this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
+            this.props.actions.getYourPrsDetails(mapForgejoItemListToPrList(this.props.yourPrs));
         }
 
         if (shouldUpdateDetails(this.props.reviews, prevProps.reviews, RHSStates.REVIEWS, this.props.rhsState, prevProps.rhsState)) {
-            this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
+            this.props.actions.getReviewsDetails(mapForgejoItemListToPrList(this.props.reviews));
         }
     }
 
@@ -110,33 +110,33 @@ export default class SidebarRight extends React.PureComponent {
         const {yourPrs, reviews, unreads, yourAssignments, username, rhsState} = this.props;
 
         let title = '';
-        let githubItems = [];
+        let forgejoItems = [];
         let listUrl = '';
 
         switch (rhsState) {
         case RHSStates.PRS:
 
-            githubItems = yourPrs;
+            forgejoItems = yourPrs;
             title = 'Your Open Pull Requests';
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + username + '+archived%3Afalse' + orgQuery;
 
             break;
         case RHSStates.REVIEWS:
 
-            githubItems = reviews;
+            forgejoItems = reviews;
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+review-requested%3A' + username + '+archived%3Afalse' + orgQuery;
             title = 'Pull Requests Needing Review';
 
             break;
         case RHSStates.UNREADS:
 
-            githubItems = unreads;
+            forgejoItems = unreads;
             title = 'Unread Messages';
             listUrl = baseURL + '/notifications';
             break;
         case RHSStates.ASSIGNMENTS:
 
-            githubItems = yourAssignments;
+            forgejoItems = yourAssignments;
             title = 'Your Assignments';
             listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + username + orgQuery;
             break;
@@ -164,8 +164,8 @@ export default class SidebarRight extends React.PureComponent {
                         </strong>
                     </div>
                     <div>
-                        <GithubItems
-                            items={githubItems}
+                        <ForgejoItems
+                            items={forgejoItems}
                             theme={this.props.theme}
                         />
                     </div>

@@ -39,8 +39,8 @@ export function handleDisconnect(store) {
             type: ActionTypes.RECEIVED_CONNECTED,
             data: {
                 connected: false,
-                github_username: '',
-                github_client_id: '',
+                forgejo_username: '',
+                forgejo_client_id: '',
                 user_settings: {},
                 configuration: {},
             },

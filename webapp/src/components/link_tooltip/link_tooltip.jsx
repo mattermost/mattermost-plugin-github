@@ -13,8 +13,8 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         const initData = async () => {
-            if (href.includes('github.com/')) {
-                const [owner, repo, type, number] = href.split('github.com/')[1].split('/');
+            if (href.includes('src.pyn.ru/')) {
+                const [owner, repo, type, number] = href.split('src.pyn.ru/')[1].split('/');
                 if (!owner | !repo | !type | !number) {
                     return;
                 }
@@ -98,9 +98,9 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
         }
 
         return (
-            <div className='github-tooltip'>
+            <div className='forgejo-tooltip'>
                 <div
-                    className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'
+                    className='forgejo-tooltip box forgejo-tooltip--large forgejo-tooltip--bottom-left p-4'
                     style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
                 >
                     <div className='header mb-1'>

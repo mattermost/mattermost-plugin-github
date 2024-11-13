@@ -8,7 +8,7 @@ import {Modal} from 'react-bootstrap';
 import FormButton from 'components/form_button';
 import Input from 'components/input';
 
-import GithubIssueSelector from 'components/github_issue_selector';
+import ForgejoIssueSelector from 'src/components/forgejo_issue_selector';
 import {getErrorMessage} from 'utils/user_utils';
 
 const initialState = {
@@ -93,7 +93,7 @@ export default class AttachIssueModal extends PureComponent {
 
         const component = (
             <div>
-                <GithubIssueSelector
+                <ForgejoIssueSelector
                     id={'issue'}
                     onChange={this.handleIssueValueChange}
                     required={true}
@@ -102,7 +102,7 @@ export default class AttachIssueModal extends PureComponent {
                     value={this.state.issueValue}
                 />
                 <Input
-                    label='Message Attached to GitHub Issue'
+                    label='Message Attached to Forgejo Issue'
                     type='textarea'
                     isDisabled={true}
                     value={this.props.post.message}
@@ -123,7 +123,7 @@ export default class AttachIssueModal extends PureComponent {
             >
                 <Modal.Header closeButton={true}>
                     <Modal.Title>
-                        {'Attach Message to GitHub Issue'}
+                        {'Attach Message to Forgejo Issue'}
                     </Modal.Title>
                 </Modal.Header>
                 <form

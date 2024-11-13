@@ -32,14 +32,14 @@ const (
 	actionDeleted = "deleted"
 	actionEdited  = "edited"
 
-	postPropGithubRepo       = "gh_repo"
-	postPropGithubObjectID   = "gh_object_id"
-	postPropGithubObjectType = "gh_object_type"
+	postPropForgejoRepo       = "gh_repo"
+	postPropForgejoObjectID   = "gh_object_id"
+	postPropForgejoObjectType = "gh_object_type"
 
-	githubObjectTypeIssue             = "issue"
-	githubObjectTypeIssueComment      = "issue_comment"
-	githubObjectTypePRReviewComment   = "pr_review_comment"
-	githubObjectTypeDiscussionComment = "discussion_comment"
+	forgejoObjectTypeIssue             = "issue"
+	forgejoObjectTypeIssueComment      = "issue_comment"
+	forgejoObjectTypePRReviewComment   = "pr_review_comment"
+	forgejoObjectTypeDiscussionComment = "discussion_comment"
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -87,7 +87,7 @@ func signBody(secret, body []byte) ([]byte, error) {
 	return computed.Sum(nil), nil
 }
 
-// GetEventWithRenderConfig wraps any github Event into an EventWithRenderConfig
+// GetEventWithRenderConfig wraps any forgejo Event into an EventWithRenderConfig
 // which also contains per-subscription configuration options.
 func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
 	style := ""
@@ -207,7 +207,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	event, err := github.ParseWebHook(github.WebHookType(r), body)
 	if err != nil {
-		p.client.Log.Debug("GitHub webhook content type should be set to \"application/json\"", "error", err.Error())
+		p.client.Log.Debug("Forgejo webhook content type should be set to \"application/json\"", "error", err.Error())
 		http.Error(w, "wrong mime-type. should be \"application/json\"", http.StatusBadRequest)
 		return
 	}
@@ -356,7 +356,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	}
 
 	githubClient := p.githubConnectUser(context.Background(), info)
-	organization := p.getConfiguration().GitHubOrg
+	organization := p.getConfiguration().ForgejoOrg
 
 	return p.isUserOrganizationMember(githubClient, user, organization)
 }
@@ -429,9 +429,9 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		post := p.makeBotPost("", "custom_git_pr")
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, prNumber)
-		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
+		post.AddProp(postPropForgejoRepo, repoName)
+		post.AddProp(postPropForgejoObjectID, prNumber)
+		post.AddProp(postPropForgejoObjectType, forgejoObjectTypeIssue)
 
 		if action == actionLabeled {
 			if label != "" && label == eventLabel {
@@ -618,9 +618,9 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		issueNumber := issue.Number
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, issueNumber)
-		post.AddProp(postPropGithubObjectType, githubObjectTypeIssue)
+		post.AddProp(postPropForgejoRepo, repoName)
+		post.AddProp(postPropForgejoObjectID, issueNumber)
+		post.AddProp(postPropForgejoObjectType, forgejoObjectTypeIssue)
 
 		label := sub.Label()
 
@@ -813,9 +813,9 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, commentID)
-		post.AddProp(postPropGithubObjectType, githubObjectTypeIssueComment)
+		post.AddProp(postPropForgejoRepo, repoName)
+		post.AddProp(postPropForgejoObjectID, commentID)
+		post.AddProp(postPropForgejoObjectType, forgejoObjectTypeIssueComment)
 
 		if event.GetAction() == actionCreated {
 			post.Message = message
@@ -951,9 +951,9 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, commentID)
-		post.AddProp(postPropGithubObjectType, githubObjectTypePRReviewComment)
+		post.AddProp(postPropForgejoRepo, repoName)
+		post.AddProp(postPropForgejoObjectID, commentID)
+		post.AddProp(postPropForgejoObjectType, forgejoObjectTypePRReviewComment)
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -971,7 +971,7 @@ func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEven
 	body := event.GetComment().GetBody()
 
 	// Try to parse out email footer junk
-	if strings.Contains(body, "notifications@github.com") {
+	if strings.Contains(body, "notifications@forgejo.com") {
 		body = strings.Split(body, "\n\nOn")[0]
 	}
 
@@ -1422,9 +1422,9 @@ func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
 		repoName := strings.ToLower(repo.GetFullName())
 		discussionNumber := event.GetDiscussion().GetNumber()
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, discussionNumber)
-		post.AddProp(postPropGithubObjectType, "discussion")
+		post.AddProp(postPropForgejoRepo, repoName)
+		post.AddProp(postPropForgejoObjectID, discussionNumber)
+		post.AddProp(postPropForgejoObjectType, "discussion")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error creating discussion notification post", "Post", post, "Error", err.Error())
@@ -1463,9 +1463,9 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
 
-		post.AddProp(postPropGithubRepo, repoName)
-		post.AddProp(postPropGithubObjectID, commentID)
-		post.AddProp(postPropGithubObjectType, githubObjectTypeDiscussionComment)
+		post.AddProp(postPropForgejoRepo, repoName)
+		post.AddProp(postPropForgejoObjectID, commentID)
+		post.AddProp(postPropForgejoObjectType, forgejoObjectTypeDiscussionComment)
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {

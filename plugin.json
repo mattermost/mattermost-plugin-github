@@ -1,7 +1,7 @@
 {
-    "id": "github",
-    "name": "GitHub",
-    "description": "GitHub plugin for Mattermost.",
+    "id": "forgejo",
+    "name": "Forgejo",
+    "description": "Forgejo plugin for Mattermost.",
     "homepage_url": "https://github.com/mattermost/mattermost-plugin-github",
     "support_url": "https://github.com/mattermost/mattermost-plugin-github/issues",
     "icon_path": "assets/icon.svg",
@@ -19,34 +19,34 @@
         "bundle_path": "webapp/dist/main.js"
     },
     "settings_schema": {
-        "header": "The GitHub plugin for Mattermost allows users to subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common GitHub actions - directly from Mattermost. \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration).",
+        "header": "The Forgejo plugin for Mattermost allows users to subscribe to notifications, stay up-to-date with reviews, see the status of pull requests at a glance, and other common Forgejo actions - directly from Mattermost. \n \n Instructions for setup are [available here](https://www.mattermost.com/pl/default-github-plugin#configuration).",
         "settings": [
             {
                 "key": "UsePreregisteredApplication",
                 "display_name": "Use Preregistered OAuth Application:",
                 "type": "bool",
-                "help_text": "Set to false if using GitHub Enterprise. When true, instructs the plugin to use the preregistered GitHub OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with GitHub enterprise.",
+                "help_text": "Set to false if using Forgejo Enterprise. When true, instructs the plugin to use the preregistered Forgejo OAuth application - application registration steps can be skipped. Requires [Chimera Proxy](https://github.com/mattermost/chimera) URL to be configured for the server. Cannot be used with Forgejo enterprise.",
                 "default": false,
                 "hosting": "cloud"
             },
             {
-                "key": "GitHubOAuthClientID",
-                "display_name": "GitHub OAuth Client ID:",
+                "key": "ForgejoOAuthClientID",
+                "display_name": "Forgejo OAuth Client ID:",
                 "type": "text",
                 "help_text": "The client ID for the OAuth app registered with GitHub."
             },
             {
-                "key": "GitHubOAuthClientSecret",
-                "display_name": "GitHub OAuth Client Secret:",
+                "key": "ForgejoOAuthClientSecret",
+                "display_name": "Forgejo OAuth Client Secret:",
                 "type": "text",
-                "help_text": "The client secret for the OAuth app registered with GitHub.",
+                "help_text": "The client secret for the OAuth app registered with Forgejo.",
                 "secret": true
             },
             {
                 "key": "WebhookSecret",
                 "display_name": "Webhook Secret:",
                 "type": "generated",
-                "help_text": "The webhook secret set in GitHub.",
+                "help_text": "The webhook secret set in Forgejo.",
                 "secret": true
             },
             {
@@ -57,22 +57,22 @@
                 "secret": true
             },
             {
-                "key": "GithubOrg",
-                "display_name": "GitHub Organizations:",
+                "key": "ForgejoOrg",
+                "display_name": "Forgejo Organizations:",
                 "type": "text",
-                "help_text": "(Optional) Set to lock the plugin to one or more GitHub organizations. Provide multiple orgs using a comma-separated list."
+                "help_text": "(Optional) Set to lock the plugin to one or more Forgejo organizations. Provide multiple orgs using a comma-separated list."
             },
             {
                 "key": "EnterpriseBaseURL",
                 "display_name": "Enterprise Base URL:",
                 "type": "text",
-                "help_text": "(Optional) The base URL for using the plugin with a GitHub Enterprise installation. Example: https://github.example.com"
+                "help_text": "(Optional) The base URL for using the plugin with a Forgejo Enterprise installation. Example: https://forgejo.example.com"
             },
             {
                 "key": "EnterpriseUploadURL",
                 "display_name": "Enterprise Upload URL:",
                 "type": "text",
-                "help_text": "(Optional) The upload URL for using the plugin with a GitHub Enterprise installation. This is often the same as your Base URL."
+                "help_text": "(Optional) The upload URL for using the plugin with a Forgejo Enterprise installation. This is often the same as your Base URL."
             },
             {
                 "key": "EnableLeftSidebar",
@@ -91,13 +91,13 @@
                 "key": "ConnectToPrivateByDefault",
                 "display_name": "Connect to private Repositories by default:",
                 "type": "bool",
-                "help_text": "(Optional) When enabled, /github connect command will let users connect to their github account and gain access to private repositories without explicitly mentioning private."
+                "help_text": "(Optional) When enabled, /forgejo connect command will let users connect to their github account and gain access to private repositories without explicitly mentioning private."
             },
             {
                 "key": "EnableCodePreview",
                 "display_name": "Enable Code Previews:",
                 "type": "dropdown",
-                "help_text": "Allow the plugin to expand permalinks to GitHub files with an actual preview of the linked file.",
+                "help_text": "Allow the plugin to expand permalinks to Forgejo files with an actual preview of the linked file.",
                 "default": "public",
                 "options": [
                     {

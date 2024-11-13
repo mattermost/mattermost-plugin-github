@@ -21,7 +21,7 @@ export const getGithubBotDMPageURL = async (client: Client4, teamName: string, u
         const teams = await client.getTeamsForUser(userId);
         team = teams[0].name;
     }
-    return `${team}/messages/@github?skip_github_fetch=true`;
+    return `${team}/messages/@forgejo?skip_forgejo_fetch=true`;
 };
 
 export const fillTextField = async (name: string, value: string, page: Page) => {

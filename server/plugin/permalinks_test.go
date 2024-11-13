@@ -258,12 +258,12 @@ func TestGetReplacements(t *testing.T) {
 			for i, r := range replacements {
 				assert.Equalf(t, tc.replacements[i].index, r.index, "unexpected replacement index")
 				assert.Equalf(t, tc.replacements[i].word, r.word, "unexpected replacement word")
-				assert.Equalf(t, tc.replacements[i].permalinkInfo.commit, r.permalinkInfo.commit, "unexpected github commit")
-				assert.Equalf(t, tc.replacements[i].permalinkInfo.haswww, r.permalinkInfo.haswww, "unexpected github www domain")
+				assert.Equalf(t, tc.replacements[i].permalinkInfo.commit, r.permalinkInfo.commit, "unexpected forgejo commit")
+				assert.Equalf(t, tc.replacements[i].permalinkInfo.haswww, r.permalinkInfo.haswww, "unexpected forgejo www domain")
 				assert.Equalf(t, tc.replacements[i].permalinkInfo.line, r.permalinkInfo.line, "unexpected line number")
 				assert.Equalf(t, tc.replacements[i].permalinkInfo.path, r.permalinkInfo.path, "unexpected file path")
-				assert.Equalf(t, tc.replacements[i].permalinkInfo.user, r.permalinkInfo.user, "unexpected github user")
-				assert.Equalf(t, tc.replacements[i].permalinkInfo.repo, r.permalinkInfo.repo, "unexpected github repo")
+				assert.Equalf(t, tc.replacements[i].permalinkInfo.user, r.permalinkInfo.user, "unexpected forgejo user")
+				assert.Equalf(t, tc.replacements[i].permalinkInfo.repo, r.permalinkInfo.repo, "unexpected forgejo repo")
 			}
 		})
 	}

@@ -3,11 +3,11 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
 import {GlobalState, PluginState} from './types/store';
-import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData} from './types/github_types';
+import {ForgejoIssueData, SidebarData, PrsDetailsData, UnreadsData} from './types/forgejo_types';
 
-const emptyArray: GithubIssueData[] | UnreadsData[] = [];
+const emptyArray: ForgejoIssueData[] | UnreadsData[] = [];
 
-export const getPluginState = (state: GlobalState): PluginState => state['plugins-github'];
+export const getPluginState = (state: GlobalState): PluginState => state['plugins-forgejo'];
 
 export const getServerRoute = (state: GlobalState) => {
     const config = getConfig(state);
@@ -22,12 +22,12 @@ export const getServerRoute = (state: GlobalState) => {
     return basePath;
 };
 
-function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
+function mapPrsToDetails(prs: ForgejoIssueData[], details: PrsDetailsData[]) {
     if (!prs) {
         return [];
     }
 
-    return prs.map((pr: GithubIssueData) => {
+    return prs.map((pr: ForgejoIssueData) => {
         let foundDetails;
         if (details) {
             foundDetails = details.find((prDetails: PrsDetailsData) => {

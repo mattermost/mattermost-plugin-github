@@ -9,7 +9,7 @@ import {GetStateFunc} from '../types/store';
 
 import Client from '../client';
 import ActionTypes from '../action_types';
-import {APIError, PrsDetailsData, ShowRhsPluginActionData} from '../types/github_types';
+import {APIError, PrsDetailsData, ShowRhsPluginActionData} from '../types/forgejo_types';
 
 export function getConnected(reminder = false) {
     return async (dispatch: DispatchFunc) => {
@@ -36,8 +36,8 @@ function checkAndHandleNotConnected(data: {id: string}) {
                 type: ActionTypes.RECEIVED_CONNECTED,
                 data: {
                     connected: false,
-                    github_username: '',
-                    github_client_id: '',
+                    forgejo_username: '',
+                    forgejo_client_id: '',
                     user_settings: {},
                 },
             });
@@ -220,16 +220,16 @@ export function getMentions() {
     };
 }
 
-const GITHUB_USER_GET_TIMEOUT_MILLISECONDS = 1000 * 60 * 60; // 1 hour
+const FORGEJO_USER_GET_TIMEOUT_MILLISECONDS = 1000 * 60 * 60; // 1 hour
 
-export function getGitHubUser(userID: string) {
+export function getForgejoUser(userID: string) {
     return async (dispatch: DispatchFunc, getState: GetStateFunc) => {
         if (!userID) {
             return {};
         }
 
-        const user = getPluginState(getState()).githubUsers[userID];
-        if (user && user.last_try && Date.now() - user.last_try < GITHUB_USER_GET_TIMEOUT_MILLISECONDS) {
+        const user = getPluginState(getState()).forgejoUsers[userID];
+        if (user && user.last_try && Date.now() - user.last_try < FORGEJO_USER_GET_TIMEOUT_MILLISECONDS) {
             return {};
         }
 
@@ -239,11 +239,11 @@ export function getGitHubUser(userID: string) {
 
         let data;
         try {
-            data = await Client.getGitHubUser(userID);
+            data = await Client.getForgejoUser(userID);
         } catch (error: unknown) {
             if ((error as APIError).status_code === 404) {
                 dispatch({
-                    type: ActionTypes.RECEIVED_GITHUB_USER,
+                    type: ActionTypes.RECEIVED_FORGEJO_USER,
                     userID,
                     data: {last_try: Date.now()},
                 });
@@ -252,7 +252,7 @@ export function getGitHubUser(userID: string) {
         }
 
         dispatch({
-            type: ActionTypes.RECEIVED_GITHUB_USER,
+            type: ActionTypes.RECEIVED_FORGEJO_USER,
             userID,
             data,
         });

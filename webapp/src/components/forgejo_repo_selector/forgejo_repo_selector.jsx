@@ -11,7 +11,7 @@ const initialState = {
     error: null,
 };
 
-export default class GithubRepoSelector extends PureComponent {
+export default class ForgejoRepoSelector extends PureComponent {
     static propTypes = {
         yourRepos: PropTypes.array.isRequired,
         theme: PropTypes.object.isRequired,
@@ -58,7 +58,7 @@ export default class GithubRepoSelector extends PureComponent {
                     value={repoOptions.find((option) => option.value === this.props.value)}
                 />
                 <div className={'help-text'}>
-                    {'Returns GitHub repositories connected to the user account'} <br/>
+                    {'Returns Forgejo repositories connected to the user account'} <br/>
                 </div>
             </div>
         );

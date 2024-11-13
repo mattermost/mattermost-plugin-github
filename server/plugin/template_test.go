@@ -10,13 +10,13 @@ import (
 )
 
 var repo = github.Repository{
-	FullName:        sToP("mattermost-plugin-github"),
+	FullName:        sToP("mattermost-plugin-forgejo"),
 	StargazersCount: iToP(1),
 	HTMLURL:         sToP("https://github.com/mattermost/mattermost-plugin-github"),
 }
 
 var pushEventRepository = github.PushEventRepository{
-	FullName: sToP("mattermost-plugin-github"),
+	FullName: sToP("mattermost-plugin-forgejo"),
 	HTMLURL:  sToP("https://github.com/mattermost/mattermost-plugin-github"),
 }
 
@@ -164,7 +164,7 @@ var usernameMap = map[string]string{
 }
 
 // gitHubMentions and usernameMentions are two strings that contain mentions to
-// the users stored in usernameMap, the first using their GitHub usernames and
+// the users stored in usernameMap, the first using their Forgejo usernames and
 // the second using their Mattermost usernames.
 // There is also an unknown user appended at the end of both strings that
 // should remain unchanged when resolving the usernames.
@@ -184,12 +184,12 @@ var gitHubMentions, usernameMentions = func() (string, string) {
 
 func withGitHubUserNameMapping(test func(*testing.T)) func(*testing.T) {
 	return func(t *testing.T) {
-		gitHubToUsernameMappingCallback = func(gitHubUsername string) string {
+		forgejoToUsernameMappingCallback = func(gitHubUsername string) string {
 			return usernameMap[gitHubUsername]
 		}
 
 		defer func() {
-			gitHubToUsernameMappingCallback = nil
+			forgejoToUsernameMappingCallback = nil
 		}()
 
 		test(t)
@@ -198,7 +198,7 @@ func withGitHubUserNameMapping(test func(*testing.T)) func(*testing.T) {
 
 func TestUserTemplate(t *testing.T) {
 	t.Run("no callback", func(t *testing.T) {
-		gitHubToUsernameMappingCallback = nil
+		forgejoToUsernameMappingCallback = nil
 
 		expected := "[panda](https://github.com/panda)"
 		actual, err := renderTemplate("user", &user)
@@ -207,11 +207,11 @@ func TestUserTemplate(t *testing.T) {
 	})
 
 	t.Run("no result", func(t *testing.T) {
-		gitHubToUsernameMappingCallback = func(githubUsername string) string {
+		forgejoToUsernameMappingCallback = func(githubUsername string) string {
 			return ""
 		}
 		defer func() {
-			gitHubToUsernameMappingCallback = nil
+			forgejoToUsernameMappingCallback = nil
 		}()
 
 		expected := "[panda](https://github.com/panda)"
@@ -1469,11 +1469,11 @@ func TestGitHubUsernameRegex(t *testing.T) {
 	}
 
 	for string, match := range stringAndMatchMap {
-		require.Equal(t, match, gitHubUsernameRegex.FindStringSubmatch(string)[2])
+		require.Equal(t, match, forgejoUsernameRegex.FindStringSubmatch(string)[2])
 	}
 
 	for _, string := range invalidUsernames {
-		require.False(t, gitHubUsernameRegex.MatchString(string))
+		require.False(t, forgejoUsernameRegex.MatchString(string))
 	}
 }
 

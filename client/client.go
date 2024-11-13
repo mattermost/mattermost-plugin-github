@@ -84,9 +84,9 @@ func (c *Client) GetConfiguration() (*plugin.Configuration, error) {
 
 	config := &plugin.Configuration{}
 	err = json.Unmarshal(respBody, config)
-	config.GitHubOrg = strings.TrimSpace(config.GitHubOrg)
-	config.GitHubOAuthClientID = strings.TrimSpace(config.GitHubOAuthClientID)
-	config.GitHubOAuthClientSecret = strings.TrimSpace(config.GitHubOAuthClientSecret)
+	config.ForgejoOrg = strings.TrimSpace(config.ForgejoOrg)
+	config.ForgejoOAuthClientID = strings.TrimSpace(config.ForgejoOAuthClientID)
+	config.ForgejoOAuthClientSecret = strings.TrimSpace(config.ForgejoOAuthClientSecret)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode GitHub config")
 	}

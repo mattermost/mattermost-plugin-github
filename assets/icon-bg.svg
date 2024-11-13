@@ -1,4 +1,40 @@
-<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 64C0 99.3462 28.6538 128 64 128C99.3462 128 128 99.3462 128 64C128 28.6538 99.3462 0 64 0C28.6538 0 0 28.6538 0 64Z" fill="white"/>
-<path d="M64 16.2126C36.9275 16.2126 15 38.1524 15 65.2126C15 86.8666 29.0385 105.229 48.5038 111.701C50.9538 112.163 51.8521 110.648 51.8521 109.345C51.8521 108.182 51.8113 105.099 51.7908 101.015C38.1607 103.972 35.286 94.4411 35.286 94.4411C33.0565 88.7857 29.8348 87.2749 29.8348 87.2749C25.3962 84.2369 30.1778 84.2981 30.1778 84.2981C35.0982 84.6411 37.6829 89.3451 37.6829 89.3451C42.0521 96.8381 49.153 94.6739 51.9542 93.4203C52.3952 90.2516 53.6569 88.0916 55.0575 86.8666C44.1754 85.6416 32.738 81.4276 32.738 62.6524C32.738 57.3032 34.6368 52.9341 37.7809 49.5041C37.2297 48.2668 35.5759 43.2851 38.2097 36.5354C38.2097 36.5354 42.3134 35.2206 51.6847 41.5579C55.6047 40.4676 59.7697 39.9286 63.9347 39.9041C68.0997 39.9286 72.2647 40.4676 76.1847 41.5579C85.4947 35.2206 89.5984 36.5354 89.5984 36.5354C92.2322 43.2851 90.5784 48.2668 90.0884 49.5041C93.2122 52.9341 95.1109 57.3032 95.1109 62.6524C95.1109 81.4766 83.6572 85.6211 72.7547 86.8257C74.4697 88.2957 76.0622 91.3011 76.0622 95.8907C76.0622 102.449 76.0009 107.716 76.0009 109.309C76.0009 110.595 76.8584 112.126 79.3697 111.636C98.9738 105.209 113 86.8339 113 65.2126C113 38.1524 91.0603 16.2126 64 16.2126Z" fill="black"/>
+<svg viewBox="0 0 212 212" xmlns="http://www.w3.org/2000/svg">
+  <metadata
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:dc="http://purl.org/dc/elements/1.1/"
+  >
+    <rdf:RDF>
+      <cc:Work rdf:about="https://codeberg.org/forgejo/meta/src/branch/readme/branding#logo">
+        <dc:title>Forgejo logo</dc:title>
+        <cc:creator rdf:resource="https://caesarschinas.com/"><cc:attributionName>Caesar Schinas</cc:attributionName></cc:creator>
+        <cc:license rdf:resource="http://creativecommons.org/licenses/by-sa/4.0/" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <style type="text/css">
+    circle {
+      fill: none;
+      stroke: #000;
+      stroke-width: 15;
+    }
+    path {
+      fill: none;
+      stroke: #000;
+      stroke-width: 25;
+    }
+    .orange {
+      stroke:#ff6600;
+    }
+    .red {
+      stroke:#d40000;
+    }
+  </style>
+  <g transform="translate(6,6)">
+    <path d="M58 168 v-98 a50 50 0 0 1 50-50 h20" class="orange" />
+    <path d="M58 168 v-30 a50 50 0 0 1 50-50 h20" class="red" />
+    <circle cx="142" cy="20" r="18" class="orange" />
+    <circle cx="142" cy="88" r="18" class="red" />
+    <circle cx="58" cy="180" r="18" class="red" />
+  </g>
 </svg>

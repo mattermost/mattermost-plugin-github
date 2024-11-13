@@ -6,7 +6,7 @@ import PropTypes from 'prop-types';
 
 import IssueAttributeSelector from 'components/issue_attribute_selector';
 
-export default class GithubAssigneeSelector extends PureComponent {
+export default class ForgejoAssigneeSelector extends PureComponent {
     static propTypes = {
         repoName: PropTypes.string.isRequired,
         theme: PropTypes.object.isRequired,

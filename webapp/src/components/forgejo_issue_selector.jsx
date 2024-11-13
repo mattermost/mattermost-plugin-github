@@ -12,7 +12,7 @@ import Client from 'client';
 
 const searchDebounceDelay = 400;
 
-export default class GithubIssueSelector extends PureComponent {
+export default class ForgejoIssueSelector extends PureComponent {
     static propTypes = {
         required: PropTypes.bool,
         theme: PropTypes.object.isRequired,
@@ -125,7 +125,7 @@ export default class GithubIssueSelector extends PureComponent {
                     className={'control-label'}
                     htmlFor={'issue'}
                 >
-                    {'GitHub Issue'}
+                    {'Forgejo Issue'}
                 </label>
                 {this.props.required && requiredStar}
                 <AsyncSelect

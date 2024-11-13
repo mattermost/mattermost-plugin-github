@@ -10,18 +10,18 @@ export default class UserAttribute extends React.PureComponent {
         username: PropTypes.string,
         enterpriseURL: PropTypes.string,
         actions: PropTypes.shape({
-            getGitHubUser: PropTypes.func.isRequired,
+            getForgejoUser: PropTypes.func.isRequired,
         }).isRequired,
     };
 
     constructor(props) {
         super(props);
-        props.actions.getGitHubUser(props.id);
+        props.actions.getForgejoUser(props.id);
     }
 
     render() {
         const username = this.props.username;
-        let baseURL = 'https://github.com';
+        let baseURL = 'https://src.pyn.ru';
         if (this.props.enterpriseURL) {
             baseURL = this.props.enterpriseURL;
         }
@@ -37,7 +37,7 @@ export default class UserAttribute extends React.PureComponent {
                     target='_blank'
                     rel='noopener noreferrer'
                 >
-                    <i className='fa fa-github'/>{' ' + username}
+                    <i className='fa fa-git'/>{' ' + username}
                 </a>
             </div>
         );

@@ -50,7 +50,7 @@ func TestGetConfiguration(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		config := &plugin.Configuration{
 			EnterpriseBaseURL: "http://example.org",
-			GitHubOrg:         "someOrg",
+			ForgejoOrg:        "someOrg",
 		}
 
 		b := new(bytes.Buffer)

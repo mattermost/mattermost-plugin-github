@@ -38,7 +38,7 @@ class PluginClass {
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
         registry.registerLinkTooltipComponent(LinkTooltip);
 
-        const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
+        const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'Forgejo');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));

@@ -13,7 +13,7 @@ export default {
     RECEIVED_MENTIONS: pluginId + '_received_mentions',
     RECEIVED_CONNECTED: pluginId + '_received_connected',
     RECEIVED_CONFIGURATION: pluginId + '_received_configuration',
-    RECEIVED_GITHUB_USER: pluginId + '_received_github_user',
+    RECEIVED_FORGEJO_USER: pluginId + '_received_forgejo_user',
     RECEIVED_SHOW_RHS_ACTION: pluginId + '_received_rhs_action',
     UPDATE_RHS_STATE: pluginId + '_update_rhs_state',
     CLOSE_CREATE_ISSUE_MODAL: pluginId + '_close_create_modal',

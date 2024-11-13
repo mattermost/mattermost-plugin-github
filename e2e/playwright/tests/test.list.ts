@@ -15,10 +15,10 @@ test.describe(autocomplete.noSetup);
 test.describe(me.noSetup);
 test.describe(todo.noSetup);
 
-// Test /github setup
+// Test /forgejo setup
 test.describe(core.setup);
 
-// Test /github connect
+// Test /forgejo connect
 test.describe(core.connect);
 
 // Test features that needs connect
@@ -26,7 +26,7 @@ test.describe(autocomplete.connected);
 test.describe(me.connected);
 test.describe(todo.connected);
 
-// Test /github disconnect
+// Test /forgejo disconnect
 test.describe(core.disconnect);
 
 // Test features when setup but no conection

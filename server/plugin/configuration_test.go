@@ -23,8 +23,8 @@ func TestIsValid(t *testing.T) {
 		{
 			description: "valid configuration: custom OAuth app",
 			config: &Configuration{
-				GitHubOAuthClientID:         "client-id",
-				GitHubOAuthClientSecret:     "client-secret",
+				ForgejoOAuthClientID:        "client-id",
+				ForgejoOAuthClientSecret:    "client-secret",
 				EncryptionKey:               "abcd",
 				UsePreregisteredApplication: false,
 			},
@@ -35,16 +35,16 @@ func TestIsValid(t *testing.T) {
 				EncryptionKey:               "abcd",
 				UsePreregisteredApplication: false,
 			},
-			errMsg: "must have a github oauth client id",
+			errMsg: "must have a forgejo oauth client id",
 		},
 		{
-			description: "invalid configuration: GitHub Enterprise URL with pre-registered app",
+			description: "invalid configuration: Forgejo Enterprise URL with pre-registered app",
 			config: &Configuration{
 				EnterpriseBaseURL:           "https://my-company.github.com",
 				UsePreregisteredApplication: true,
 				EncryptionKey:               "abcd",
 			},
-			errMsg: "cannot use pre-registered application with GitHub enterprise",
+			errMsg: "cannot use pre-registered application with Forgejo enterprise",
 		},
 	} {
 		t.Run(testCase.description, func(t *testing.T) {
@@ -144,8 +144,8 @@ func TestSetDefaults(t *testing.T) {
 				EncryptionKey:               "abcd",
 				WebhookSecret:               "efgh",
 				UsePreregisteredApplication: false,
-				GitHubOAuthClientID:         "some id",
-				GitHubOAuthClientSecret:     "some secret",
+				ForgejoOAuthClientID:        "some id",
+				ForgejoOAuthClientSecret:    "some secret",
 			},
 			shouldChange: false,
 			outputCheck: func(t *testing.T, c *Configuration) {
@@ -193,7 +193,7 @@ func TestGetOrganizations(t *testing.T) {
 
 	for _, tc := range tcs {
 		config := Configuration{
-			GitHubOrg: tc.Organizations,
+			ForgejoOrg: tc.Organizations,
 		}
 		orgList := config.getOrganizations()
 		assert.Equal(t, tc.ExpectedOrgList, orgList)

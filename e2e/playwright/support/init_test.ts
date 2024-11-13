@@ -78,16 +78,16 @@ type GithubPluginSettings = {
     encryptionkey: string;
     enterprisebaseurl: string;
     enterpriseuploadurl: string;
-    githuboauthclientid: string;
-    githuboauthclientsecret: string;
-    githuborg: string | null;
+    forgejooauthclientid: string;
+    forgejooauthclientsecret: string;
+    forgejoorg: string | null;
     usepreregisteredapplication: boolean;
     webhooksecret: string;
 }
 
 const githubConfig: GithubPluginSettings = {
-    githuboauthclientid: '',
-    githuboauthclientsecret: '',
+    forgejooauthclientid: '',
+    forgejooauthclientsecret: '',
 
     connecttoprivatebydefault: null,
     enablecodepreview: 'public',
@@ -97,7 +97,7 @@ const githubConfig: GithubPluginSettings = {
     encryptionkey: 'S9YasItflsENXnrnKUhMJkdosXTsr6Tc',
     enterprisebaseurl: '',
     enterpriseuploadurl: '',
-    githuborg: null,
+    forgejoorg: null,
     usepreregisteredapplication: false,
     webhooksecret: 'w7HfrdZ+mtJKnWnsmHMh8eKzWpQH7xET',
 };

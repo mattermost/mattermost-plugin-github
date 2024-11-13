@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import GitHubIcon from '../../icon';
+import ForgejoIcon from '../../icon';
 
 export default class CreateIssuePostMenuAction extends PureComponent {
     static propTypes = {
@@ -34,8 +34,8 @@ export default class CreateIssuePostMenuAction extends PureComponent {
                 role='presentation'
                 onClick={this.handleClick}
             >
-                <GitHubIcon type='menu'/>
-                {'Create GitHub Issue'}
+                <ForgejoIcon type='menu'/>
+                {'Create Forgejo Issue'}
             </button>
         );
 

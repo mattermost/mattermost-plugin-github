@@ -37,7 +37,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
-                await c.postMessage('/github');
+                await c.postMessage('/forgejo');
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -62,7 +62,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
-                await c.postMessage('/github ');
+                await c.postMessage('/forgejo ');
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -90,7 +90,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
-                await c.postMessage('/github');
+                await c.postMessage('/forgejo');
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -116,7 +116,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
-                await c.postMessage('/github ');
+                await c.postMessage('/forgejo ');
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -143,7 +143,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command to trigger help
-                await c.postMessage('/github');
+                await c.postMessage('/forgejo');
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();
@@ -166,7 +166,7 @@ export default {
                 const slash = new SlashCommandSuggestions(page.locator('#suggestionList'));
 
                 // # Run incomplete command+space to trigger autocomplete
-                await c.postMessage('/github ');
+                await c.postMessage('/forgejo ');
 
                 // * Assert suggestions are visible
                 await expect(slash.container).toBeVisible();

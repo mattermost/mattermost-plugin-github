@@ -7,7 +7,7 @@ import {bindActionCreators} from 'redux';
 import manifest from 'manifest';
 import {getRepos} from '../../actions';
 
-import GithubRepoSelector from './github_repo_selector.jsx';
+import ForgejoRepoSelector from './forgejo_repo_selector.jsx';
 
 function mapStateToProps(state) {
     return {
@@ -23,4 +23,4 @@ function mapDispatchToProps(dispatch) {
     };
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(GithubRepoSelector);
+export default connect(mapStateToProps, mapDispatchToProps)(ForgejoRepoSelector);
