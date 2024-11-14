@@ -127,6 +127,12 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                 <h5 className='mr-1'>{data.title}</h5>
                                 <span>{'#' + data.number}</span>
                             </a>
+                            {data?.user?.login && (
+                                <p className='opened-by'>
+                                    {'Opened by '}
+                                    <a href={`https://github.com/${data.user.login}`}>{data.user.login}</a>
+                                </p>
+                            )}
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown linkTarget='_blank'>{description}</ReactMarkdown>
                             </div>
