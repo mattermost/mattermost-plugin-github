@@ -123,6 +123,10 @@ func (s *Subscription) Stars() bool {
 	return strings.Contains(s.Features.String(), featureStars)
 }
 
+func (s *Subscription) Workflows() bool {
+	return strings.Contains(s.Features.String(), featureWorkflowFailure) || strings.Contains(s.Features.String(), featureWorkflowSuccess)
+}
+
 func (s *Subscription) Release() bool {
 	return strings.Contains(s.Features.String(), featureReleases)
 }

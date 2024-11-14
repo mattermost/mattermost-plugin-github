@@ -27,6 +27,8 @@ const (
 	featurePullReviews        = "pull_reviews"
 	featureStars              = "stars"
 	featureReleases           = "releases"
+	featureWorkflowFailure    = "workflow_failure"
+	featureWorkflowSuccess    = "workflow_success"
 	featureDiscussions        = "discussions"
 	featureDiscussionComments = "discussion_comments"
 )
@@ -48,6 +50,8 @@ var validFeatures = map[string]bool{
 	featurePullReviews:        true,
 	featureStars:              true,
 	featureReleases:           true,
+	featureWorkflowFailure:    true,
+	featureWorkflowSuccess:    true,
 	featureDiscussions:        true,
 	featureDiscussionComments: true,
 }
@@ -904,7 +908,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, discussions, discussion_comments, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, workflow_success, workflow_failure, discussions, discussion_comments, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
