@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strconv"
@@ -121,6 +122,10 @@ func (s *Subscription) PullReviews() bool {
 
 func (s *Subscription) Stars() bool {
 	return strings.Contains(s.Features.String(), featureStars)
+}
+
+func (s *Subscription) Workflows() bool {
+	return strings.Contains(s.Features.String(), featureWorkflowFailure) || strings.Contains(s.Features.String(), featureWorkflowSuccess)
 }
 
 func (s *Subscription) Release() bool {
@@ -307,11 +312,14 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 }
 
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
-	if _, err := p.store.Set(SubscriptionsKey, s); err != nil {
-		return errors.Wrap(err, "could not store subscriptions in KV store")
-	}
+	return p.store.SetAtomicWithRetries(SubscriptionsKey, func(_ []byte) (interface{}, error) {
+		modifiedBytes, err := json.Marshal(s)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not store subscriptions in KV store")
+		}
 
-	return nil
+		return modifiedBytes, nil
+	})
 }
 
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {

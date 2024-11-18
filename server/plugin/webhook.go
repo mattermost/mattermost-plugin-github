@@ -28,9 +28,13 @@ const (
 	actionLabeled              = "labeled"
 	actionAssigned             = "assigned"
 
-	actionCreated = "created"
-	actionDeleted = "deleted"
-	actionEdited  = "edited"
+	actionCreated   = "created"
+	actionDeleted   = "deleted"
+	actionEdited    = "edited"
+	actionCompleted = "completed"
+
+	workflowJobFail    = "failure"
+	workflowJobSuccess = "success"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -281,6 +285,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		repo = event.GetRepo()
 		handler = func() {
 			p.postStarEvent(event)
+		}
+	case *github.WorkflowJobEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postWorkflowJobEvent(event)
 		}
 	case *github.ReleaseEvent:
 		repo = event.GetRepo()
@@ -1346,6 +1355,47 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
+	if event.GetAction() != actionCompleted {
+		return
+	}
+
+	// Create a post only when the workflow job is completed and has either failed or succeeded
+	if event.GetWorkflowJob().GetConclusion() != workflowJobFail && event.GetWorkflowJob().GetConclusion() != workflowJobSuccess {
+		return
+	}
+
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	newWorkflowJobMessage, err := renderTemplate("newWorkflowJob", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
+	for _, sub := range subs {
+		if !sub.Workflows() {
+			continue
+		}
+
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_workflow_job",
+			Message:   newWorkflowJobMessage,
+			ChannelId: sub.ChannelID,
+		}
+
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
 	}
 }
