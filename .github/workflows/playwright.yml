@@ -6,6 +6,10 @@ on:
     workflows: ["ci"]
     types:
       - completed
+  push:
+    branches:
+      - "test*"
+
 
 env:
   TERM: xterm
