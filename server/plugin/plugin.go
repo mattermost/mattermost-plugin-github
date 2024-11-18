@@ -1072,7 +1072,7 @@ func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *git
 		return nil
 	})
 	if cErr != nil {
-		p.client.Log.Warn("Failed to check if user is org member", "GitHub username", *user.Login, "error", cErr.Error())
+		p.client.Log.Warn("Failed to check if user is an org member", "GitHub username", *user.Login, "error", cErr.Error())
 		return false
 	}
 
@@ -1169,7 +1169,7 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUserInfo, token *oauth2.Token) error) error {
 	err := toRun(info, info.Token)
 	if err != nil {
-		p.client.Log.Warn("Error occurred while using the github client", "error", err.Error())
+		p.client.Log.Warn("Error occurred while using the Github client", "error", err.Error())
 	}
 
 	if err != nil && strings.Contains(err.Error(), invalidTokenError) {

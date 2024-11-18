@@ -972,6 +972,11 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		if rawResponse != nil {
 			statusCode = rawResponse.StatusCode
 		}
+		c.Log.WithError(err).With(logger.LogContext{
+			"owner":  req.Owner,
+			"repo":   req.Repo,
+			"number": req.Number,
+		}).Errorf("failed to create an issue comment")
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(statusCode, req.Repo, currentUsername), StatusCode: statusCode})
 		return
 	}
@@ -1101,7 +1106,7 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 		return nil
 	}); cErr != nil {
 		// If the issue is not found, it's probably behind a private repo.
-		// Return an empty repose in this case.
+		// Return an empty response in this case.
 		var gerr *github.ErrorResponse
 		if errors.As(cErr, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
 			c.Log.WithError(err).With(logger.LogContext{
@@ -1196,7 +1201,10 @@ func (p *Plugin) getLabels(c *UserContext, w http.ResponseWriter, r *http.Reques
 			}
 			return nil
 		}); cErr != nil {
-			c.Log.WithError(cErr).Warnf("Failed to list labels")
+			c.Log.WithError(cErr).With(logger.LogContext{
+				"owner": owner,
+				"repo":  repo,
+			}).Warnf("Failed to list labels")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1231,7 +1239,10 @@ func (p *Plugin) getAssignees(c *UserContext, w http.ResponseWriter, r *http.Req
 			}
 			return nil
 		}); cErr != nil {
-			c.Log.WithError(cErr).Warnf("Failed to list assignees")
+			c.Log.WithError(cErr).With(logger.LogContext{
+				"owner": owner,
+				"repo":  repo,
+			}).Warnf("Failed to list assignees")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1266,7 +1277,10 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 			}
 			return nil
 		}); cErr != nil {
-			c.Log.WithError(cErr).Warnf("Failed to list milestones")
+			c.Log.WithError(cErr).With(logger.LogContext{
+				"owner": owner,
+				"repo":  repo,
+			}).Warnf("Failed to list milestones")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
 			return
 		}
