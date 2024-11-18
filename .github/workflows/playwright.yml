@@ -120,7 +120,7 @@ jobs:
       - name: ci/install-go-dependencies
         run: go mod tidy
       - name: ci/install-npm-dependencies
-        run: cd webapp && npm ci
+        run: cd webapp && npm ci && make dist
 
       - name: ci/build-and-install-plugin
         run: make deploy
