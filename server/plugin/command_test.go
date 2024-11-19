@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -1415,8 +1417,8 @@ func TestHandleSettings(t *testing.T) {
 }
 
 func TestHandleIssue(t *testing.T) {
-	mockClient, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockClient)
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
 	userInfo, err := GetMockGHUserInfo(p)
 	assert.NoError(t, err)
 
@@ -1483,8 +1485,8 @@ func TestHandleIssue(t *testing.T) {
 }
 
 func TestIsAuthorizedSysAdmin(t *testing.T) {
-	mockClient, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockClient)
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
 
 	tests := []struct {
 		name       string
@@ -1529,6 +1531,254 @@ func TestIsAuthorizedSysAdmin(t *testing.T) {
 			result, err := p.isAuthorizedSysAdmin(MockUserID)
 
 			tc.assertions(result, err)
+		})
+	}
+}
+
+func TestHandleSubscribe(t *testing.T) {
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		parameters []string
+		setup      func()
+		assertions func(result string)
+	}{
+		{
+			name:       "No parameters provided",
+			parameters: []string{},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Please specify a repository or 'list' command.", result)
+			},
+		},
+		{
+			name:       "List command provided",
+			parameters: []string{"list"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(errors.New("error getting subscription")).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "could not get subscriptions: could not get subscriptions from KVStore: error getting subscription", result)
+			},
+		},
+		{
+			name:       "default case, handleSubscribesAdd called",
+			parameters: []string{"invalid_parameter_1", "invalid_parameter_2", "invalid_parameter_3"},
+			setup: func() {
+
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "Please use the correct format for flags: --<name> <value>", result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			args := &model.CommandArgs{
+				UserId:    "test-user-id",
+				ChannelId: "test-channel-id",
+			}
+
+			result := p.handleSubscribe(nil, args, tc.parameters, userInfo)
+
+			tc.assertions(result)
+		})
+	}
+}
+
+func TestHandleSubscriptions(t *testing.T) {
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		parameters []string
+		setup      func()
+		assertions func(result string)
+	}{
+		{
+			name:       "No parameters provided",
+			parameters: []string{},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Invalid subscribe command. Available commands are 'list', 'add' and 'delete'.", result)
+			},
+		},
+		{
+			name:       "List command provided",
+			parameters: []string{"list"},
+			setup: func() {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(errors.New("error getting subscription")).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, "could not get subscriptions: could not get subscriptions from KVStore: error getting subscription", result)
+			},
+		},
+		{
+			name:       "Add command provided",
+			parameters: []string{"add", "invalid_parameter_1", "invalid_parameter_2", "invalid_parameter_3"},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Please use the correct format for flags: --<name> <value>", result)
+			},
+		},
+		{
+			name:       "Delete command provided",
+			parameters: []string{"delete"},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Please specify a repository.", result)
+			},
+		},
+		{
+			name:       "Unknown subcommand",
+			parameters: []string{"unknown"},
+			setup:      func() {},
+			assertions: func(result string) {
+				assert.Equal(t, "Unknown subcommand unknown", result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			args := &model.CommandArgs{
+				UserId:    "test-user-id",
+				ChannelId: "test-channel-id",
+			}
+
+			result := p.handleSubscriptions(nil, args, tc.parameters, userInfo)
+
+			tc.assertions(result)
+		})
+	}
+}
+
+func TestGetCommand(t *testing.T) {
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
+
+	// Creating a mock SVG file with dummy content.
+	tempDir := t.TempDir()
+	assetsDir := filepath.Join(tempDir, "assets")
+	err := os.Mkdir(assetsDir, 0755)
+	require.NoError(t, err)
+	tempFilePath := filepath.Join(assetsDir, "icon-bg.svg")
+	err = os.WriteFile(tempFilePath, []byte("<svg>icon data</svg>"), 0644)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		setup      func()
+		assertions func(*model.Command, error)
+	}{
+		{
+			name: "Error getting icon data",
+			setup: func() {
+				mockAPI.On("GetBundlePath").Return("", errors.New("error getting bundle path")).Times(1)
+			},
+			assertions: func(cmd *model.Command, err error) {
+				assert.Nil(t, cmd)
+				assert.EqualError(t, err, "failed to get icon data: couldn't get bundle path: error getting bundle path")
+			},
+		},
+		{
+			name: "Successfully retrieves command",
+			setup: func() {
+				mockAPI.On("GetBundlePath").Return(tempDir, nil).Times(1)
+			},
+			assertions: func(cmd *model.Command, err error) {
+				assert.NoError(t, err)
+				assert.Contains(t, cmd.AutocompleteIconData, "data:image/svg+xml;base64,")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			cmd, err := p.getCommand(&Configuration{})
+
+			tc.assertions(cmd, err)
+		})
+	}
+}
+
+func TestHandleHelp(t *testing.T) {
+	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKVStore)
+
+	t.Run("Successfully get help text", func(t *testing.T) {
+		response := p.handleHelp(&plugin.Context{}, &model.CommandArgs{}, []string{}, &GitHubUserInfo{})
+		assert.Contains(t, response, "###### Mattermost GitHub Plugin - Slash Command Help\n")
+	})
+}
+
+func TestFormattedString(t *testing.T) {
+	tests := []struct {
+		name           string
+		features       Features
+		expectedString string
+	}{
+		{
+			name:           "Single feature",
+			features:       "feature1",
+			expectedString: "`feature1`",
+		},
+		{
+			name:           "Multiple features",
+			features:       "feature1,feature2,feature3",
+			expectedString: "`feature1`, `feature2`, `feature3`",
+		},
+		{
+			name:           "Empty features",
+			features:       "",
+			expectedString: "``",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.features.FormattedString()
+			assert.Equal(t, tc.expectedString, result)
+		})
+	}
+}
+
+func TestToSlice(t *testing.T) {
+	tests := []struct {
+		name          string
+		features      Features
+		expectedSlice []string
+	}{
+		{
+			name:          "Single feature",
+			features:      "feature1",
+			expectedSlice: []string{"feature1"},
+		},
+		{
+			name:          "Multiple features",
+			features:      "feature1,feature2,feature3",
+			expectedSlice: []string{"feature1", "feature2", "feature3"},
+		},
+		{
+			name:          "Empty features",
+			features:      "",
+			expectedSlice: []string{""},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.features.ToSlice()
+			assert.Equal(t, tc.expectedSlice, result)
 		})
 	}
 }
