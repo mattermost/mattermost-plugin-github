@@ -86,6 +86,7 @@ export type GithubIssueData = {
 export type YourReposData = {
     name: string;
     full_name: string;
+    permissions: Record<string, boolean>;
 }
 
 export type UnreadsData = {
@@ -104,8 +105,21 @@ export type MentionsData = {
 }
 
 export type GithubUsersData = {
-    username: string;
+    username?: string;
     last_try: number;
+}
+
+export type GitHubPullRequestData = {
+    id: number;
+}
+
+export type MilestoneData = {
+    number: number;
+    title: string;
+}
+
+export type GitHubIssueCommentData = {
+    id: number;
 }
 
 export type ShowRhsPluginActionData = {
