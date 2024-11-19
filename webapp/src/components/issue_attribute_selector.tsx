@@ -3,25 +3,36 @@
 
 import React, {PureComponent} from 'react';
 import ReactSelect from 'react-select';
-import PropTypes from 'prop-types';
 
-import {getStyleForReactSelect} from 'utils/styles';
-import Setting from 'components/setting';
+import {Theme} from 'mattermost-redux/types/preferences';
 
-export default class IssueAttributeSelector extends PureComponent {
-    static propTypes = {
-        isMulti: PropTypes.bool.isRequired,
-        repoName: PropTypes.string.isRequired,
-        theme: PropTypes.object.isRequired,
-        onChange: PropTypes.func.isRequired,
-        loadOptions: PropTypes.func.isRequired,
-        selection: PropTypes.oneOfType([
-            PropTypes.array,
-            PropTypes.object,
-        ]).isRequired,
-    };
+import {getStyleForReactSelect} from '@/utils/styles';
+import Setting from '@/components/setting';
 
-    constructor(props) {
+export type ReactSelectOption = {
+    label: string;
+    value: string;
+};
+
+export type IssueAttributeSelectorSelection = ReactSelectOption | ReactSelectOption[] | null;
+
+export type Props = {
+    isMulti: boolean;
+    repoName: string;
+    theme: Theme;
+    onChange: (selection: ReactSelectOption | ReactSelectOption[] | null) => void;
+    loadOptions: () => Promise<ReactSelectOption[]>;
+    selection: ReactSelectOption | string[] | null;
+};
+
+type State = {
+    options: ReactSelectOption[];
+    isLoading: boolean;
+    error: Error | null;
+};
+
+export default class IssueAttributeSelector extends PureComponent<Props, State> {
+    constructor(props: Props) {
         super(props);
 
         this.state = {
@@ -37,7 +48,7 @@ export default class IssueAttributeSelector extends PureComponent {
         }
     }
 
-    componentDidUpdate(prevProps) {
+    componentDidUpdate(prevProps: Props) {
         if (this.props.repoName && prevProps.repoName !== this.props.repoName) {
             this.loadOptions();
         }
@@ -56,16 +67,18 @@ export default class IssueAttributeSelector extends PureComponent {
             });
         } catch (err) {
             this.filterSelection([]);
+            const error = err instanceof Error ? err : new Error('An unexpected error occurred');
             this.setState({
-                error: err,
+                error,
                 isLoading: false,
             });
         }
     };
 
-    filterSelection = (options) => {
-        if (this.props.isMulti) {
-            const filtered = options.filter((option) => this.props.selection.includes(option.value));
+    filterSelection = (options: ReactSelectOption[]) => {
+        if (this.props.isMulti || Array.isArray(this.props.selection)) {
+            const selection = this.props.selection as string[] | null;
+            const filtered = options.filter((option) => selection?.includes(option.value));
             this.props.onChange(filtered);
             return;
         }
@@ -85,7 +98,7 @@ export default class IssueAttributeSelector extends PureComponent {
         this.props.onChange(null);
     }
 
-    onChange = (selection) => {
+    onChange = (selection: ReactSelectOption | ReactSelectOption[] | null) => {
         if (this.props.isMulti) {
             this.props.onChange(selection || []);
             return;
@@ -95,29 +108,31 @@ export default class IssueAttributeSelector extends PureComponent {
     };
 
     render() {
-        let selection;
-        if (this.props.isMulti) {
+        let selection: ReactSelectOption | ReactSelectOption[] | null;
+        if (Array.isArray(this.props.selection)) {
             selection = this.props.selection.map((s) => ({label: s, value: s}));
         } else {
-            selection = this.props.selection || {};
+            selection = this.props.selection;
         }
 
         const noOptionsMessage = this.props.repoName ? 'No options' : 'Please select a repository first';
 
+        const {theme, ...props} = this.props;
+
         return (
             <Setting {...this.props}>
                 <ReactSelect
-                    {...this.props}
+                    {...props}
                     isClearable={true}
                     placeholder={'Select...'}
                     noOptionsMessage={() => noOptionsMessage}
                     closeMenuOnSelect={!this.props.isMulti}
                     hideSelectedOptions={this.props.isMulti}
-                    onChange={this.onChange}
+                    onChange={this.onChange as any}
                     options={this.state.options}
                     value={selection}
                     isLoading={this.state.isLoading}
-                    styles={getStyleForReactSelect(this.props.theme)}
+                    styles={getStyleForReactSelect(theme) as any}
                 />
 
                 {this.state.error && (
