@@ -1673,7 +1673,7 @@ func TestGetCommand(t *testing.T) {
 	err := os.Mkdir(assetsDir, 0755)
 	require.NoError(t, err)
 	tempFilePath := filepath.Join(assetsDir, "icon-bg.svg")
-	err = os.WriteFile(tempFilePath, []byte("<svg>icon data</svg>"), 0644)
+	err = os.WriteFile(tempFilePath, []byte("<svg>icon data</svg>"), 0600)
 	require.NoError(t, err)
 
 	tests := []struct {
