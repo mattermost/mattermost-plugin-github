@@ -19,9 +19,17 @@ const (
 	queryParamAssigneeQueryArg = "assigneeQueryArg"
 )
 
-func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
+type GithubPRDetails struct {
+	*github.Issue
+	Additions    *githubv4.Int `json:"additions,omitempty"`
+	Deletions    *githubv4.Int `json:"deletions,omitempty"`
+	ChangedFiles *githubv4.Int `json:"changed_files,omitempty"`
+}
+
+func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
 	orgsList := c.getOrganizations()
-	var resultReview, resultAssignee, resultOpenPR []*github.Issue
+	var resultAssignee []*github.Issue
+	var resultReview, resultOpenPR []*GithubPRDetails
 
 	params := map[string]interface{}{
 		queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
@@ -47,7 +55,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*github.Issue, []*github.Iss
 	return resultReview, resultAssignee, resultOpenPR, nil
 }
 
-func (c *Client) fetchLHSData(ctx context.Context, resultReview, resultAssignee, resultOpenPR []*github.Issue, org string, params map[string]interface{}) ([]*github.Issue, []*github.Issue, []*github.Issue, error) {
+func (c *Client) fetchLHSData(ctx context.Context, resultReview []*GithubPRDetails, resultAssignee []*github.Issue, resultOpenPR []*GithubPRDetails, org string, params map[string]interface{}) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
 	if org != "" {
 		params[queryParamOpenPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamOpenPRQueryArg]))
 		params[queryParamReviewPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamReviewPRQueryArg]))
@@ -111,11 +119,39 @@ func (c *Client) fetchLHSData(ctx context.Context, resultReview, resultAssignee,
 	return resultReview, resultAssignee, resultOpenPR, nil
 }
 
-func getPR(prResp *prSearchNodes) *github.Issue {
+func getPR(prResp *prSearchNodes) *GithubPRDetails {
 	resp := prResp.PullRequest
 	labels := getGithubLabels(resp.Labels.Nodes)
 
-	return newGithubIssue(resp.Number, resp.Title, resp.Author.Login, resp.Repository.URL, resp.URL, resp.CreatedAt, resp.UpdatedAt, labels, resp.Milestone.Title)
+	number := int(resp.Number)
+	repoURL := resp.Repository.URL.String()
+	issuetitle := string(resp.Title)
+	userLogin := string(resp.Author.Login)
+	milestoneTitle := string(resp.Milestone.Title)
+	url := resp.URL.String()
+	createdAtTime := github.Timestamp{Time: resp.CreatedAt.Time}
+	updatedAtTime := github.Timestamp{Time: resp.UpdatedAt.Time}
+
+	return &GithubPRDetails{
+		Issue: &github.Issue{
+			Number:        &number,
+			RepositoryURL: &repoURL,
+			Title:         &issuetitle,
+			CreatedAt:     &createdAtTime,
+			UpdatedAt:     &updatedAtTime,
+			User: &github.User{
+				Login: &userLogin,
+			},
+			Milestone: &github.Milestone{
+				Title: &milestoneTitle,
+			},
+			HTMLURL: &url,
+			Labels:  labels,
+		},
+		Additions:    &resp.Additions,
+		Deletions:    &resp.Deletions,
+		ChangedFiles: &resp.ChangedFiles,
+	}
 }
 
 func newIssueFromAssignmentResponse(assignmentResp *assignmentSearchNodes) *github.Issue {
