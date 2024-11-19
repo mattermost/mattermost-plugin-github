@@ -17,7 +17,6 @@ type Props = GitHubLabelSelectorDispatchProps & {
 };
 
 export default class GithubLabelSelector extends PureComponent<Props> {
-
     loadLabels = async () => {
         if (this.props.repoName === '') {
             return [];
