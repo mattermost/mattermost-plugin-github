@@ -5,7 +5,7 @@ import {changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 export const getStyleForReactSelect = (theme) => {
     if (!theme) {
-        return null;
+        return undefined;
     }
 
     return {

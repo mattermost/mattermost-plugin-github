@@ -16,6 +16,10 @@ type Props = GitHubLabelSelectorDispatchProps & {
     onChange: (selection: string[]) => void;
 };
 
+type Option = {
+    name: string;
+};
+
 export default class GithubLabelSelector extends PureComponent<Props> {
     loadLabels = async () => {
         if (this.props.repoName === '') {
@@ -32,7 +36,7 @@ export default class GithubLabelSelector extends PureComponent<Props> {
             return [];
         }
 
-        return options.data.map((option: any) => ({
+        return options.data.map((option: Option) => ({
             value: option.name,
             label: option.name,
         }));
