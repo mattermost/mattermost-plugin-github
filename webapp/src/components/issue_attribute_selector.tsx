@@ -103,7 +103,7 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
             this.props.onChange((selection as ReactSelectOption[]) || []);
             return;
         }
-    
+
         this.props.onChange(selection as ReactSelectOption | null);
     };
 
