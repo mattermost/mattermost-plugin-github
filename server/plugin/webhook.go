@@ -408,12 +408,18 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != actionClosed {
+		if sub.PullsMerged() && action != actionClosed && !sub.PullsCreated() {
 			continue
 		}
 
-		if sub.PullsCreated() && action != actionOpened {
+		if sub.PullsCreated() && action != actionOpened && !sub.PullsMerged() {
 			continue
+		}
+
+		if sub.PullsMerged() && sub.PullsCreated() {
+			if action != actionClosed && action != actionOpened {
+				continue
+			}
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
