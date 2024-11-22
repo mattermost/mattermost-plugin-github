@@ -70,11 +70,11 @@ export function getReviewsDetails(prList: PrsDetailsData[]) {
     };
 }
 
-export function getRepos() {
+export function getRepos(channelId: string) {
     return async (dispatch: DispatchFunc) => {
         let data;
         try {
-            data = await Client.getRepositories();
+            data = await Client.getRepositories(channelId);
         } catch (error) {
             dispatch({
                 type: ActionTypes.RECEIVED_REPOSITORIES,
