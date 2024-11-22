@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -69,6 +68,7 @@ type KvStore interface {
 	ListKeys(page int, count int, options ...pluginapi.ListKeysOption) ([]string, error)
 	Get(key string, o any) error
 	Delete(key string) error
+	SetAtomicWithRetries(key string, valueFunc func(oldValue []byte) (newValue interface{}, err error)) error
 }
 
 type Plugin struct {
@@ -170,7 +170,7 @@ func (p *Plugin) GetGitHubClient(ctx context.Context, userID string) (*github.Cl
 	return p.githubConnectUser(ctx, userInfo), nil
 }
 
-func (p *Plugin) githubConnectUser(ctx context.Context, info *GitHubUserInfo) *github.Client {
+func (p *Plugin) githubConnectUser(_ context.Context, info *GitHubUserInfo) *github.Client {
 	tok := *info.Token
 	return p.githubConnectToken(tok)
 }
@@ -203,14 +203,17 @@ func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*
 	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
 		return github.NewClient(authenticatedClient), nil
 	}
+	baseURL, err := url.JoinPath(config.EnterpriseBaseURL, "api", "v3")
+	if err != nil {
+		return nil, err
+	}
 
-	baseURL, _ := url.Parse(config.EnterpriseBaseURL)
-	baseURL.Path = path.Join(baseURL.Path, "api", "v3")
+	uploadURL, err := url.JoinPath(config.EnterpriseUploadURL, "api", "v3")
+	if err != nil {
+		return nil, err
+	}
 
-	uploadURL, _ := url.Parse(config.EnterpriseUploadURL)
-	uploadURL.Path = path.Join(uploadURL.Path, "api", "v3")
-
-	client, err := github.NewEnterpriseClient(baseURL.String(), uploadURL.String(), authenticatedClient)
+	client, err := github.NewEnterpriseClient(baseURL, uploadURL, authenticatedClient)
 	if err != nil {
 		return nil, err
 	}
@@ -244,12 +247,12 @@ func (p *Plugin) setDefaultConfiguration() error {
 func (p *Plugin) OnActivate() error {
 	p.ensurePluginAPIClient()
 
-	siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
-	if siteURL == nil || *siteURL == "" {
-		return errors.New("siteURL is not set. Please set it and restart the plugin")
+	_, err := getSiteURL(p.client)
+	if err != nil {
+		return err
 	}
 
-	err := p.setDefaultConfiguration()
+	err = p.setDefaultConfiguration()
 	if err != nil {
 		return errors.Wrap(err, "failed to set default configuration")
 	}
@@ -525,7 +528,7 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 	return post, ""
 }
 
-func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
+func (p *Plugin) getOAuthConfig(privateAllowed bool) (*oauth2.Config, error) {
 	config := p.getConfiguration()
 
 	repo := github.ScopePublicRepo
@@ -545,45 +548,54 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) *oauth2.Config {
 		baseURL = testOAuthServerURL + "/"
 	}
 
-	authURL, _ := url.Parse(baseURL)
-	tokenURL, _ := url.Parse(baseURL)
-
-	authURL.Path = path.Join(authURL.Path, "login", "oauth", "authorize")
-	tokenURL.Path = path.Join(tokenURL.Path, "login", "oauth", "access_token")
+	authURL, err := url.JoinPath(baseURL, "login", "oauth", "authorize")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build AuthURL")
+	}
+	tokenURL, err := url.JoinPath(baseURL, "login", "oauth", "access_token")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build TokenURL")
+	}
 
 	return &oauth2.Config{
 		ClientID:     config.GitHubOAuthClientID,
 		ClientSecret: config.GitHubOAuthClientSecret,
 		Scopes:       scopes,
 		Endpoint: oauth2.Endpoint{
-			AuthURL:   authURL.String(),
-			TokenURL:  tokenURL.String(),
+			AuthURL:   authURL,
+			TokenURL:  tokenURL,
 			AuthStyle: oauth2.AuthStyleInHeader,
 		},
-	}
+	}, nil
 }
 
-func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) *oauth2.Config {
+func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) (*oauth2.Config, error) {
 	baseURL := fmt.Sprintf("%s/v1/github/%s", p.chimeraURL, chimeraGitHubAppIdentifier)
-	authURL, _ := url.Parse(baseURL)
-	tokenURL, _ := url.Parse(baseURL)
 
-	authURL.Path = path.Join(authURL.Path, "oauth", "authorize")
-	tokenURL.Path = path.Join(tokenURL.Path, "oauth", "token")
-
-	redirectURL, _ := url.Parse(fmt.Sprintf("%s/plugins/github/oauth/complete", *p.client.Configuration.GetConfig().ServiceSettings.SiteURL))
+	authURL, err := url.JoinPath(baseURL, "oauth", "authorize")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build AuthURL")
+	}
+	tokenURL, err := url.JoinPath(baseURL, "oauth", "token")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build TokenURL")
+	}
+	redirectURL, err := buildPluginURL(p.client, "oauth", "token")
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build RedirectURL")
+	}
 
 	return &oauth2.Config{
 		ClientID:     "placeholder",
 		ClientSecret: "placeholder",
 		Scopes:       scopes,
-		RedirectURL:  redirectURL.String(),
+		RedirectURL:  redirectURL,
 		Endpoint: oauth2.Endpoint{
-			AuthURL:   authURL.String(),
-			TokenURL:  tokenURL.String(),
+			AuthURL:   authURL,
+			TokenURL:  tokenURL,
 			AuthStyle: oauth2.AuthStyleInHeader,
 		},
-	}
+	}, nil
 }
 
 type GitHubUserInfo struct {
