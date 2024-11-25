@@ -651,50 +651,35 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	repo := event.GetRepo()
-	fmt.Println("postPushEvent 1")
 
 	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
-	fmt.Println("postPushEvent 2")
 	if len(subs) == 0 {
-		fmt.Println("postPushEvent 3")
 		return
 	}
 
 	commits := event.Commits
-	fmt.Println("postPushEvent 4")
 	if len(commits) == 0 {
-		fmt.Println("postPushEvent 5")
 		return
 	}
 
 	setShowAuthorInCommitNotification(p.configuration.ShowAuthorInCommitNotification)
-	fmt.Println("postPushEvent 6")
 	pushedCommitsMessage, err := renderTemplate("pushedCommits", event)
-	fmt.Println("postPushEvent 7")
 	if err != nil {
-		fmt.Println("postPushEvent 8")
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
 	}
 
 	for _, sub := range subs {
-		fmt.Println("postPushEvent 9")
 		if !sub.Pushes() {
-			fmt.Println("postPushEvent 10")
 			continue
 		}
-		fmt.Println("postPushEvent 11")
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
-			fmt.Println("postPushEvent 12")
 			continue
 		}
-		fmt.Println("postPushEvent 13")
 		post := p.makeBotPost(pushedCommitsMessage, "custom_git_push")
 
 		post.ChannelId = sub.ChannelID
-		fmt.Println("postPushEvent 14")
 		if err = p.client.Post.CreatePost(post); err != nil {
-			fmt.Println("postPushEvent 15")
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
 		}
 	}
