@@ -53,19 +53,19 @@ func TestPostPushEvent(t *testing.T) {
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
 			},
 		},
-		// {
-		// 	name:      "Successful handle post push event",
-		// 	pushEvent: GetMockPushEvent(),
-		// 	setup: func() {
-		// 		mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-		// 			if v, ok := value.(**Subscriptions); ok {
-		// 				*v = GetMockSubscriptions()
-		// 			}
-		// 			return nil
-		// 		}).Times(1)
-		// 		mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-		// 	},
-		// },
+		{
+			name:      "Successful handle post push event",
+			pushEvent: GetMockPushEvent(),
+			setup: func() {
+				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptions()
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
