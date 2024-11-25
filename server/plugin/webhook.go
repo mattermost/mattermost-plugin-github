@@ -6,7 +6,6 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -653,6 +652,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 	repo := event.GetRepo()
 
 	subs := p.GetSubscribedChannelsForRepository(ConvertPushEventRepositoryToRepository(repo))
+
 	if len(subs) == 0 {
 		return
 	}
@@ -673,9 +673,11 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 		if !sub.Pushes() {
 			continue
 		}
+
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
 			continue
 		}
+
 		post := p.makeBotPost(pushedCommitsMessage, "custom_git_push")
 
 		post.ChannelId = sub.ChannelID
