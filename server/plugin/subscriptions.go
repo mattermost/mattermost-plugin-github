@@ -317,11 +317,13 @@ func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
 func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*Subscription {
 	name := repo.GetFullName()
 	name = strings.ToLower(name)
+	fmt.Println("name ", name)
 	org := strings.Split(name, "/")[0]
 	subs, err := p.GetSubscriptions()
 	if err != nil {
 		return nil
 	}
+	fmt.Println("subs ", subs)
 
 	// Add subscriptions for the specific repo
 	subsForRepo := []*Subscription{}
@@ -342,6 +344,7 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	subsToReturn := []*Subscription{}
 
 	for _, sub := range subsForRepo {
+		fmt.Println("sub 1", sub)
 		if repo.GetPrivate() && !p.permissionToRepo(sub.CreatorID, name) {
 			continue
 		}
