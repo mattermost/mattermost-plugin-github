@@ -368,14 +368,14 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 	}{
 		{
 			name:  "no subscriptions found",
-			event: GetMockPullRequestReviewEvent("submitted", "approved"),
+			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
 			setup: func() {
 				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
 			name:  "unsupported action in event",
-			event: GetMockPullRequestReviewEvent("deleted", "approved"),
+			event: GetMockPullRequestReviewEvent("deleted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
 			setup: func() {
 				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
@@ -387,7 +387,7 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 		},
 		{
 			name:  "unsupported review state",
-			event: GetMockPullRequestReviewEvent("submitted", "canceled"),
+			event: GetMockPullRequestReviewEvent("submitted", "canceled", MockRepoName, false, MockUserLogin, MockIssueAuthor),
 			setup: func() {
 				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
@@ -400,7 +400,7 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 		},
 		{
 			name:  "error creating post",
-			event: GetMockPullRequestReviewEvent("submitted", "approved"),
+			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
 			setup: func() {
 				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
@@ -414,7 +414,7 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 		},
 		{
 			name:  "successful handling of pull request review event",
-			event: GetMockPullRequestReviewEvent("submitted", "approved"),
+			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
 			setup: func() {
 				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
@@ -862,6 +862,531 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			tc.setup()
 
 			p.handlePullRequestNotification(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandleIssueNotification(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.IssuesEvent
+		setup func()
+	}{
+		{
+			name:  "issue closed by author",
+			event: GetMockIssuesEvent(actionClosed, MockRepo, false, "authorUser", "authorUser", ""),
+			setup: func() {},
+		},
+		{
+			name:  "issue closed successfully",
+			event: GetMockIssuesEvent(actionClosed, MockRepo, true, "authorUser", "senderUser", ""),
+			setup: func() {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte("authorUserID")
+					}
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "issue reopened with no repo permission",
+			event: GetMockIssuesEvent(actionReopened, MockRepo, true, "authorUser", "senderUser", ""),
+			setup: func() {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "issue assigned to self",
+			event: GetMockIssuesEvent(actionAssigned, MockRepo, false, "assigneeUser", "assigneeUser", "assigneeUser"),
+			setup: func() {},
+		},
+		{
+			name:  "issue assigned successfully",
+			event: GetMockIssuesEvent(actionAssigned, MockRepo, false, "senderUser", "assigneeUser", "assigneeUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte("assigneeUserID")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "issue assigned with no repo permission for assignee",
+			event: GetMockIssuesEvent(actionAssigned, MockRepo, true, "senderUser", "demoassigneeUser", "assigneeUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte("assigneeUserID")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "unhandled event action",
+			event: GetMockIssuesEvent("unsupported_action", MockRepo, false, "senderUser", "", ""),
+			setup: func() {
+				mockAPI.On("LogDebug", "Unhandled event action", "action", "unsupported_action").Return(nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.handleIssueNotification(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandlePullRequestReviewNotification(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.PullRequestReviewEvent
+		setup func()
+	}{
+		{
+			name:  "review submitted by author",
+			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "authorUser", "authorUser"),
+			setup: func() {},
+		},
+		{
+			name:  "review action not submitted",
+			event: GetMockPullRequestReviewEvent("dismissed", "approved", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func() {},
+		},
+		{
+			name:  "review with author not mapped to user ID",
+			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "unknownAuthor", "reviewerUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("reviewerUser_githubusername", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "private repo, no permission for author",
+			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, true, "authorUser", "reviewerUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("reviewerUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte("authorUserID")
+					}
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte("authorUserID")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "successful review notification",
+			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("reviewerUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte("authorUserID")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
+				mockAPI.On("LogWarn", "Couldn't get bot's DM channel", "userID", "authorUserID", "error", "error getting channel")
+				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.handlePullRequestReviewNotification(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestPostStarEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.StarEvent
+		setup func()
+	}{
+		{
+			name:  "no subscribed channels for repository",
+			event: GetMockStarEvent(MockRepo, MockOrg, false, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "error creating post",
+			event: GetMockStarEvent(MockRepo, MockOrg, false, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureStars,
+										Repository: MockRepo,
+									},
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDeletes,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+			},
+		},
+		{
+			name:  "successful star event notification",
+			event: GetMockStarEvent(MockRepo, MockOrg, false, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureStars,
+										Repository: MockRepo,
+									},
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDeletes,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.postStarEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestPostReleaseEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.ReleaseEvent
+		setup func()
+	}{
+		{
+			name:  "no subscribed channels for repository",
+			event: GetMockReleaseEvent(MockRepo, MockOrg, "created", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "unsupported action",
+			event: GetMockReleaseEvent(MockRepo, MockOrg, "edited", MockSender),
+			setup: func() {},
+		},
+		{
+			name:  "error creating post",
+			event: GetMockReleaseEvent(MockRepo, MockOrg, "created", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureReleases,
+										Repository: MockRepo,
+									},
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDeletes,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "Post", mock.Anything, "Error", "error creating post")
+			},
+		},
+		{
+			name:  "successful release event notification",
+			event: GetMockReleaseEvent(MockRepo, MockOrg, "created", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureReleases,
+										Repository: MockRepo,
+									},
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDeletes,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.postReleaseEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestPostDiscussionEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.DiscussionEvent
+		setup func()
+	}{
+		{
+			name:  "no subscribed channels for repository",
+			event: GetMockDiscussionEvent(MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "error creating discussion post",
+			event: GetMockDiscussionEvent(MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDiscussions,
+										Repository: MockRepo,
+									},
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDeletes,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error creating discussion notification post", "Post", mock.Anything, "Error", "error creating post")
+			},
+		},
+		{
+			name:  "successful discussion notification",
+			event: GetMockDiscussionEvent(MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDiscussions,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.postDiscussionEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestPostDiscussionCommentEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.DiscussionCommentEvent
+		setup func()
+	}{
+		{
+			name:  "no subscribed channels for repository",
+			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "unsupported action",
+			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "edited", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDiscussionComments,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "error creating discussion comment post",
+			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDiscussionComments,
+										Repository: MockRepo,
+									}, {
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDeletes,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error creating discussion comment post", "Post", mock.Anything, "Error", "error creating post")
+			},
+		},
+		{
+			name:  "successful discussion comment notification",
+			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockrepo/mockorg": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   featureDiscussionComments,
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.postDiscussionCommentEvent(tc.event)
 
 			mockAPI.AssertExpectations(t)
 		})

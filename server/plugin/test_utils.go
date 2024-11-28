@@ -21,6 +21,8 @@ const (
 	MockChannelID      = "mockChannelID"
 	MockCreatorID      = "mockCreatorID"
 	MockBotID          = "mockBotID"
+	MockOrg            = "mockOrg"
+	MockSender         = "mockSender"
 	MockPostMessage    = "mockPostMessage"
 	MockOrgRepo        = "mockOrg/mockRepo"
 	MockHead           = "mockHead"
@@ -253,22 +255,25 @@ func GetMockDeleteEventWithInvalidType() *github.DeleteEvent {
 	}
 }
 
-func GetMockPullRequestReviewEvent(action, state string) *github.PullRequestReviewEvent {
+func GetMockPullRequestReviewEvent(action, state, repo string, isPrivate bool, reviewer, author string) *github.PullRequestReviewEvent {
 	return &github.PullRequestReviewEvent{
 		Action: github.String(action),
 		Repo: &github.Repository{
-			Name:     github.String(MockRepoName),
+			Name:     github.String(repo),
 			FullName: github.String(MockOrgRepo),
-			Private:  github.Bool(false),
+			Private:  github.Bool(isPrivate),
 			HTMLURL:  github.String(fmt.Sprintf("%s%s", GithubBaseURL, MockOrgRepo)),
 		},
+		Sender: &github.User{Login: github.String(reviewer)},
 		Review: &github.PullRequestReview{
+			User: &github.User{
+				Login: github.String(reviewer),
+			},
 			State: github.String(state),
 		},
-		Sender: &github.User{
-			Login: github.String(MockUserLogin),
+		PullRequest: &github.PullRequest{
+			User: &github.User{Login: github.String(author)},
 		},
-		PullRequest: &github.PullRequest{},
 	}
 }
 
@@ -364,5 +369,72 @@ func GetMockPullRequestEvent(action, repoName string, isPrivate bool, sender, us
 			Login: github.String(sender),
 		},
 		RequestedReviewer: &github.User{Login: github.String(user)},
+	}
+}
+
+func GetMockIssuesEvent(action, repoName string, isPrivate bool, author, sender, assignee string) *github.IssuesEvent {
+	return &github.IssuesEvent{
+		Action: &action,
+		Repo:   &github.Repository{FullName: &repoName, Private: &isPrivate},
+		Issue:  &github.Issue{User: &github.User{Login: &author}},
+		Sender: &github.User{Login: &sender},
+		Assignee: func() *github.User {
+			if assignee == "" {
+				return nil
+			}
+			return &github.User{Login: &assignee}
+		}(),
+	}
+}
+
+func GetMockStarEvent(repo, org string, isPrivate bool, sender string) *github.StarEvent {
+	return &github.StarEvent{
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Private:  github.Bool(isPrivate),
+			FullName: github.String(fmt.Sprintf("%s/%s", repo, org)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+	}
+}
+
+func GetMockReleaseEvent(repo, org, action, sender string) *github.ReleaseEvent {
+	return &github.ReleaseEvent{
+		Action: &action,
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(fmt.Sprintf("%s/%s", repo, org)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+	}
+}
+
+func GetMockDiscussionEvent(repo, org, sender string) *github.DiscussionEvent {
+	return &github.DiscussionEvent{
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(fmt.Sprintf("%s/%s", repo, org)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+		Discussion: &github.Discussion{
+			Number: github.Int(123),
+		},
+	}
+}
+
+func GetMockDiscussionCommentEvent(repo, org, action, sender string) *github.DiscussionCommentEvent {
+	return &github.DiscussionCommentEvent{
+		Action: &action,
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(fmt.Sprintf("%s/%s", repo, org)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+		Comment: &github.CommentDiscussion{
+			ID: github.Int64(456),
+		},
 	}
 }
