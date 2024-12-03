@@ -215,7 +215,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("reviewer").Funcs(funcMap).Parse(`
 {{- if .RequestedReviewers }}
-Requested reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
+Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
 {{- end -}}
 `))
 
