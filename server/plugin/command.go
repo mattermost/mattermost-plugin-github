@@ -155,7 +155,7 @@ func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	return mutedUsers
 }
 
-func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleMuteList(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	var mutedUsers string
 	for _, user := range mutedUsernames {
@@ -176,7 +176,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	if contains(mutedUsernames, username) {
 		return username + " is already muted"
@@ -202,7 +202,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
-func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
@@ -215,7 +215,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	return fmt.Sprintf("`%v`", username) + " is no longer muted"
 }
 
-func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnmuteAll(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
@@ -297,7 +297,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	}
 }
 
-func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
+func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	txt := ""
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
@@ -713,7 +713,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {
