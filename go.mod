@@ -8,6 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/mattermost/mattermost/server/public v0.1.7-0.20240815110211-dd2cad30679b
 	github.com/microcosm-cc/bluemonday v1.0.19
+	github.com/nicksnyder/go-i18n/v2 v2.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/oauth2 v0.21.0
