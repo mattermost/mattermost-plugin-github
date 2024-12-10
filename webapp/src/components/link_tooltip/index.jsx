@@ -3,7 +3,7 @@
 
 import {connect} from 'react-redux';
 
-import manifest from 'manifest';
+import manifest from '@/manifest';
 
 import {LinkTooltip} from './link_tooltip';
 
