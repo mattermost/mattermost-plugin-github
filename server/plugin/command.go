@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
@@ -336,7 +337,7 @@ func (p *Plugin) createPost(channelID, userID, message string) error {
 	return nil
 }
 
-func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, repo, owner string) (bool, error) {
+func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, userInfo *GitHubUserInfo, repo, owner string) (bool, error) {
 	found := false
 	opt := &github.ListOptions{
 		PerPage: PerPageValue,
@@ -349,15 +350,27 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
-		var err error
+		var err, cErr error
 
 		if repo == "" {
-			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 		} else {
-			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 		}
 
-		if err != nil {
+		if cErr != nil {
 			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", err.Error())
 			return found, err
 		}
@@ -468,7 +481,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 		subOrgMsg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 
-		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
+		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, userInfo, repo, owner)
 		if foundErr != nil {
 			if strings.Contains(foundErr.Error(), "404 Not Found") {
 				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
@@ -497,18 +510,24 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += previousSubscribedEventMessage
 	}
 
-	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
-	if err != nil {
-		p.client.Log.Warn("Failed to fetch repository", "error", err.Error())
-	} else if ghRepo != nil && ghRepo.GetPrivate() {
-		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+	if cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
+		var ghRepo *github.Repository
+		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
+		if err != nil {
+			return err
+		} else if ghRepo != nil && ghRepo.GetPrivate() {
+			msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+		}
+		return nil
+	}); cErr != nil {
+		p.client.Log.Warn("Failed to fetch repository", "error", cErr.Error())
 	}
 
 	if err = p.createPost(args.ChannelId, p.BotUserID, msg); err != nil {
 		return fmt.Sprintf("%s\nError creating the public post: %s", msg, err.Error())
 	}
 
-	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
+	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, userInfo, repo, owner)
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
@@ -601,7 +620,7 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
-	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
+	text, err := p.GetToDo(context.Background(), userInfo, githubClient)
 	if err != nil {
 		p.client.Log.Warn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
@@ -612,8 +631,16 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
-	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
-	if err != nil {
+	var gitUser *github.User
+	cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
+		resp, _, err := githubClient.Users.Get(context.Background(), "")
+		if err != nil {
+			return err
+		}
+		gitUser = resp
+		return nil
+	})
+	if cErr != nil {
 		return "Encountered an error getting your GitHub profile."
 	}
 
