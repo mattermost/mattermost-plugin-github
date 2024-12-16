@@ -2,3 +2,4 @@
 junit.xml
 node_modules
 .npminstall
+coverage/
