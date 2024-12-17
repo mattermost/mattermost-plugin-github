@@ -1,0 +1,54 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`components/GithubRepoSelector should match snapshot 1`] = `
+<div
+  className="form-group x3"
+>
+  <ReactSelectSetting
+    addValidate={[MockFunction]}
+    isMulti={false}
+    key="repo"
+    label="Repository"
+    limitOptions={true}
+    name="repo"
+    onChange={[Function]}
+    options={
+      Array [
+        Object {
+          "label": "user/repo1",
+          "value": "user/repo1",
+        },
+        Object {
+          "label": "user/repo2",
+          "value": "user/repo2",
+        },
+      ]
+    }
+    removeValidate={[MockFunction]}
+    required={true}
+    theme={
+      Object {
+        "sidebarBg": "#ffffff",
+        "sidebarText": "#000000",
+      }
+    }
+    value={
+      Object {
+        "label": "user/repo1",
+        "value": "user/repo1",
+      }
+    }
+  />
+  <div
+    className="help-text"
+    style={
+      Object {
+        "marginBottom": "24px",
+        "marginTop": "8px",
+      }
+    }
+  >
+    Returns GitHub repositories connected to the user account
+  </div>
+</div>
+`;

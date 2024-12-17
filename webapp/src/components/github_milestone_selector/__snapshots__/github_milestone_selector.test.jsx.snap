@@ -1,0 +1,42 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`components/GithubMilestoneSelector should match snapshot 1`] = `
+<div
+  className="form-group margin-bottom x3"
+>
+  <label
+    className="control-label margin-bottom x2"
+  >
+    Milestone
+  </label>
+  <IssueAttributeSelector
+    actions={
+      Object {
+        "getMilestoneOptions": [MockFunction],
+      }
+    }
+    isMulti={false}
+    loadOptions={[Function]}
+    onChange={[MockFunction]}
+    repoName="test-repo"
+    selectedMilestone={
+      Object {
+        "label": "Milestone 1",
+        "value": 1,
+      }
+    }
+    selection={
+      Object {
+        "label": "Milestone 1",
+        "value": 1,
+      }
+    }
+    theme={
+      Object {
+        "sidebarBg": "#ffffff",
+        "sidebarText": "#000000",
+      }
+    }
+  />
+</div>
+`;
