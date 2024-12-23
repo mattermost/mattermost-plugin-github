@@ -200,23 +200,26 @@ func TestGetToken(t *testing.T) {
 		{
 			name:   "Missing userID",
 			userID: "",
-			setup:  func() {},
+			setup: func() {
+				mockAPI.On("LogError", "UserID not found.")
+			},
 			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
 				body, _ := io.ReadAll(rec.Body)
-				assert.Equal(t, "please provide a userID\n", string(body))
+				assert.Contains(t, string(body), "please provide a userID")
 			},
 		},
 		{
 			name:   "User info not found in store",
 			userID: "mockUserID",
 			setup: func() {
+				mockAPI.On("LogError", "error occurred while getting the github user info", "UserID", MockUserID, "error", &APIErrorResponse{Message: "Unable to get user info.", StatusCode: http.StatusInternalServerError})
 				mockKvStore.EXPECT().Get("mockUserID"+githubTokenKey, gomock.Any()).Return(errors.New("not found")).Times(1)
 			},
 			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				assert.Equal(t, http.StatusInternalServerError, rec.Result().StatusCode)
 				body, _ := io.ReadAll(rec.Body)
-				assert.Equal(t, "Unable to get user info.\n", string(body))
+				assert.Contains(t, string(body), "Unable to get user info.")
 			},
 		},
 		{

@@ -31,7 +31,7 @@ func getPluginTest(api *plugintest.API, mockKvStore *mocks.MockKvStore) *Plugin 
 
 	p.store = mockKvStore
 
-	p.BotUserID = "mockBotId"
+	p.BotUserID = "mockBotID"
 
 	p.SetAPI(api)
 	p.client = pluginapi.NewClient(api, p.Driver)
@@ -285,7 +285,7 @@ func TestExecuteCommand(t *testing.T) {
 		},
 
 		"help command": {
-			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelId", RootId: "test-rootId", UserId: "test-userId"},
+			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelID", RootId: "test-rootID", UserId: "test-userID"},
 			expectedMsg: "###### Mattermost GitHub Plugin - Slash Command Help\n",
 			SetupMockStore: func(mks *mocks.MockKvStore) {
 				mks.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
