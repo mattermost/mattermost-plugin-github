@@ -57,6 +57,7 @@ type RenderConfig struct {
 type EventWithRenderConfig struct {
 	Event  interface{}
 	Config RenderConfig
+	Label  string
 }
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -95,8 +96,10 @@ func signBody(secret, body []byte) ([]byte, error) {
 // which also contains per-subscription configuration options.
 func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
 	style := ""
+	subscriptionLabel := ""
 	if sub != nil {
 		style = sub.RenderStyle()
+		subscriptionLabel = sub.Label()
 	}
 
 	return &EventWithRenderConfig{
@@ -104,6 +107,7 @@ func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRe
 		Config: RenderConfig{
 			Style: style,
 		},
+		Label: subscriptionLabel,
 	}
 }
 
