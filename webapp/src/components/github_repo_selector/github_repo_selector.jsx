@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import ReactSelectSetting from 'components/react_select_setting';
+import ReactSelectSetting from '@/components/react_select_setting';
 
 const initialState = {
     invalid: false,
@@ -51,7 +51,7 @@ export default class GithubRepoSelector extends PureComponent {
         const repoOptions = this.props.yourRepos.repos.map((item) => ({value: item.full_name, label: item.full_name}));
 
         return (
-            <div className={'form-group margin-bottom x3'}>
+            <div className={'form-group x3'}>
                 <ReactSelectSetting
                     name={'repo'}
                     label={'Repository'}
@@ -66,8 +66,11 @@ export default class GithubRepoSelector extends PureComponent {
                     removeValidate={this.props.removeValidate}
                     value={repoOptions.find((option) => option.value === this.props.value)}
                 />
-                <div className={'help-text'}>
-                    {'Returns GitHub repositories connected to the user account'} <br/>
+                <div
+                    className={'help-text'}
+                    style={{marginTop: '8px', marginBottom: '24px'}}
+                >
+                    {'Returns GitHub repositories connected to the user account'}
                 </div>
             </div>
         );

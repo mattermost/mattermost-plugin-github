@@ -87,7 +87,7 @@ func (p *Plugin) initializeTelemetry() {
 	// Get config values
 	p.tracker = telemetry.NewTracker(
 		p.telemetryClient,
-		p.client.System.GetDiagnosticID(),
+		p.client.System.GetTelemetryID(),
 		p.client.System.GetServerVersion(),
 		Manifest.Id,
 		Manifest.Version,

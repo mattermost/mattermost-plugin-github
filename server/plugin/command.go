@@ -15,18 +15,22 @@ import (
 )
 
 const (
-	featureIssueCreation = "issue_creations"
-	featureIssues        = "issues"
-	featurePulls         = "pulls"
-	featurePullsMerged   = "pulls_merged"
-	featurePullsCreated  = "pulls_created"
-	featurePushes        = "pushes"
-	featureCreates       = "creates"
-	featureDeletes       = "deletes"
-	featureIssueComments = "issue_comments"
-	featurePullReviews   = "pull_reviews"
-	featureStars         = "stars"
-	featureReleases      = "releases"
+	featureIssueCreation      = "issue_creations"
+	featureIssues             = "issues"
+	featurePulls              = "pulls"
+	featurePullsMerged        = "pulls_merged"
+	featurePullsCreated       = "pulls_created"
+	featurePushes             = "pushes"
+	featureCreates            = "creates"
+	featureDeletes            = "deletes"
+	featureIssueComments      = "issue_comments"
+	featurePullReviews        = "pull_reviews"
+	featureStars              = "stars"
+	featureReleases           = "releases"
+	featureWorkflowFailure    = "workflow_failure"
+	featureWorkflowSuccess    = "workflow_success"
+	featureDiscussions        = "discussions"
+	featureDiscussionComments = "discussion_comments"
 )
 
 const (
@@ -36,18 +40,22 @@ const (
 const DefaultRepoKey string = "%s_%s-default-repo"
 
 var validFeatures = map[string]bool{
-	featureIssueCreation: true,
-	featureIssues:        true,
-	featurePulls:         true,
-	featurePullsMerged:   true,
-	featurePullsCreated:  true,
-	featurePushes:        true,
-	featureCreates:       true,
-	featureDeletes:       true,
-	featureIssueComments: true,
-	featurePullReviews:   true,
-	featureStars:         true,
-	featureReleases:      true,
+	featureIssueCreation:      true,
+	featureIssues:             true,
+	featurePulls:              true,
+	featurePullsMerged:        true,
+	featurePullsCreated:       true,
+	featurePushes:             true,
+	featureCreates:            true,
+	featureDeletes:            true,
+	featureIssueComments:      true,
+	featurePullReviews:        true,
+	featureStars:              true,
+	featureReleases:           true,
+	featureWorkflowFailure:    true,
+	featureWorkflowSuccess:    true,
+	featureDiscussions:        true,
+	featureDiscussionComments: true,
 }
 
 type Features string
@@ -149,7 +157,7 @@ func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	return mutedUsers
 }
 
-func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleMuteList(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	var mutedUsers string
 	for _, user := range mutedUsernames {
@@ -170,7 +178,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	if contains(mutedUsernames, username) {
 		return username + " is already muted"
@@ -196,7 +204,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
-func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
@@ -209,7 +217,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	return fmt.Sprintf("`%v`", username) + " is no longer muted"
 }
 
-func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnmuteAll(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
@@ -291,7 +299,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	}
 }
 
-func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
+func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	txt := ""
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
@@ -335,7 +343,10 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 	opt := &github.ListOptions{
 		PerPage: PerPageValue,
 	}
-	siteURL := *p.client.Configuration.GetConfig().ServiceSettings.SiteURL
+	siteURL, err := getSiteURL(p.client)
+	if err != nil {
+		return false, err
+	}
 
 	for {
 		var githubHooks []*github.Hook
@@ -808,7 +819,7 @@ func (p *Plugin) handleUnSetDefaultRepo(args *model.CommandArgs, userInfo *GitHu
 	return "The default repository has been unset successfully"
 }
 
-func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {
@@ -906,9 +917,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
-		if siteURL == nil {
-			p.postCommandResponse(args, "Encountered an error connecting to GitHub.")
+		connectURL, err := buildPluginURL(p.client, "oauth", "connect")
+		if err != nil {
+			p.postCommandResponse(args, fmt.Sprintf("Encountered an error connecting to GitHub: %s", err.Error()))
 			return &model.CommandResponse{}, nil
 		}
 
@@ -936,7 +947,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			qparams = "?private=true"
 		}
 
-		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/%s/oauth/connect%s)", *siteURL, Manifest.Id, qparams)
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s%s)", connectURL, qparams)
 		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}
@@ -1003,7 +1014,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, workflow_success, workflow_failure, discussions, discussion_comments, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{

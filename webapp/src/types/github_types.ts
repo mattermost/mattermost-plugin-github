@@ -42,6 +42,9 @@ export type GithubItem = PrsDetailsData & {
         title: string;
     }
     reason?: string;
+    additions?: number;
+    deletions?: number;
+    changed_files?: number;
 }
 
 export type GithubItemsProps = {
@@ -60,7 +63,7 @@ export type ConnectedData = {
     github_username: string;
     github_client_id: string;
     enterprise_base_url: string;
-    organization: string;
+    organizations: string[];
     user_settings: UserSettingsData;
     configuration: Record<string, unknown>;
 }
@@ -146,6 +149,6 @@ export type SidebarData = {
     yourPrs: GithubIssueData[];
     yourAssignments: GithubIssueData[],
     unreads: UnreadsData[]
-    org: string,
+    orgs: string[],
     rhsState?: string | null
 }

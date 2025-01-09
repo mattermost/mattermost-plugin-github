@@ -4,8 +4,40 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost-plugin-github/server/mocks"
 )
+
+// Function to get the plugin object for test cases.
+func getPluginTest(api *plugintest.API, mockKvStore *mocks.MockKvStore) *Plugin {
+	p := NewPlugin()
+	p.setConfiguration(
+		&Configuration{
+			GitHubOrg:               "mockOrg",
+			GitHubOAuthClientID:     "mockID",
+			GitHubOAuthClientSecret: "mockSecret",
+			EncryptionKey:           "mockKey123456789",
+		})
+	p.initializeAPI()
+
+	p.store = mockKvStore
+
+	p.BotUserID = "mockBotID"
+
+	p.SetAPI(api)
+	p.client = pluginapi.NewClient(api, p.Driver)
+
+	return p
+}
 
 func TestValidateFeatures(t *testing.T) {
 	type output struct {
@@ -236,6 +268,68 @@ func TestCheckConflictingFeatures(t *testing.T) {
 			got := output{ok, fs}
 			testFailureMessage := fmt.Sprintf("checkFeatureConflict() = %v, want %v", got, tt.want)
 			assert.EqualValues(t, tt.want, got, testFailureMessage)
+		})
+	}
+}
+
+func TestExecuteCommand(t *testing.T) {
+	tests := map[string]struct {
+		commandArgs    *model.CommandArgs
+		expectedMsg    string
+		SetupMockStore func(*mocks.MockKvStore)
+	}{
+		"about command": {
+			commandArgs:    &model.CommandArgs{Command: "/github about"},
+			expectedMsg:    "GitHub version",
+			SetupMockStore: func(mks *mocks.MockKvStore) {},
+		},
+
+		"help command": {
+			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelID", RootId: "test-rootID", UserId: "test-userID"},
+			expectedMsg: "###### Mattermost GitHub Plugin - Slash Command Help\n",
+			SetupMockStore: func(mks *mocks.MockKvStore) {
+				mks.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					// Cast the value to the appropriate type and updated it
+					if userInfoPtr, ok := value.(**GitHubUserInfo); ok {
+						*userInfoPtr = &GitHubUserInfo{
+							// Mock user info data
+							Token: &oauth2.Token{
+								AccessToken: "ycbODW-BWbNBGfF7ac4T5RL5ruNm5BChCXgbkY1bWHqMt80JTkLsicQwo8de3tqfqlfMaglpgjqGOmSHeGp0dA==",
+							},
+						}
+					}
+					return nil // no error, so return nil
+				})
+			},
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			isSendEphemeralPostCalled := false
+
+			// Controller for the mocks generated using mockgen
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			mockKvStore := mocks.NewMockKvStore(mockCtrl)
+
+			tt.SetupMockStore(mockKvStore)
+
+			currentTestAPI := &plugintest.API{}
+			currentTestAPI.On("SendEphemeralPost", mock.AnythingOfType("string"), mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+				isSendEphemeralPostCalled = true
+
+				post := args.Get(1).(*model.Post)
+				// Checking the contents of the post
+				assert.Contains(t, post.Message, tt.expectedMsg)
+			}).Once().Return(&model.Post{})
+
+			p := getPluginTest(currentTestAPI, mockKvStore)
+
+			_, err := p.ExecuteCommand(&plugin.Context{}, tt.commandArgs)
+			require.Nil(t, err)
+
+			assert.Equal(t, true, isSendEphemeralPostCalled)
 		})
 	}
 }

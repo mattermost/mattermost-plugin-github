@@ -6,7 +6,8 @@ import {bindActionCreators} from 'redux';
 
 import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
 
-import manifest from 'manifest';
+import manifest from '@/manifest';
+
 import {getRepos} from '../../actions';
 
 import GithubRepoSelector from './github_repo_selector.jsx';

@@ -5,14 +5,14 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import GithubLabelSelector from 'components/github_label_selector';
-import GithubAssigneeSelector from 'components/github_assignee_selector';
-import GithubMilestoneSelector from 'components/github_milestone_selector';
-import GithubRepoSelector from 'components/github_repo_selector';
-import Validator from 'components/validator';
-import FormButton from 'components/form_button';
-import Input from 'components/input';
-import {getErrorMessage} from 'utils/user_utils';
+import GithubLabelSelector from '@/components/github_label_selector';
+import GithubAssigneeSelector from '@/components/github_assignee_selector';
+import GithubMilestoneSelector from '@/components/github_milestone_selector';
+import GithubRepoSelector from '@/components/github_repo_selector';
+import Validator from '@/components/validator';
+import FormButton from '@/components/form_button';
+import Input from '@/components/input';
+import {getErrorMessage} from '@/utils/user_utils';
 
 const MAX_TITLE_LENGTH = 256;
 
@@ -71,7 +71,7 @@ export default class CreateIssueModal extends PureComponent {
         }
 
         const {post} = this.props;
-        const postId = (post) ? post.id : '';
+        const postId = post ? post.id : '';
 
         const issue = {
             title: this.state.issueTitle,
@@ -116,7 +116,8 @@ export default class CreateIssueModal extends PureComponent {
 
     handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
 
-    handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
+    handleIssueDescriptionChange = (issueDescription) =>
+        this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
         if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
@@ -147,7 +148,7 @@ export default class CreateIssueModal extends PureComponent {
                 />
             </>
         );
-    }
+    };
 
     render() {
         if (!this.props.visible) {
@@ -162,7 +163,10 @@ export default class CreateIssueModal extends PureComponent {
         let issueTitleValidationError = null;
         if (this.state.showErrors && !this.state.issueTitleValid) {
             issueTitleValidationError = (
-                <p className='help-text error-text'>
+                <p
+                    className='help-text error-text'
+                    style={{marginTop: '8px', marginBottom: '24px'}}
+                >
                     <span>{requiredMsg}</span>
                 </p>
             );
@@ -221,9 +225,7 @@ export default class CreateIssueModal extends PureComponent {
                 backdrop='static'
             >
                 <Modal.Header closeButton={true}>
-                    <Modal.Title>
-                        {'Create GitHub Issue'}
-                    </Modal.Title>
+                    <Modal.Title>{'Create GitHub Issue'}</Modal.Title>
                 </Modal.Header>
                 <form
                     role='form'
