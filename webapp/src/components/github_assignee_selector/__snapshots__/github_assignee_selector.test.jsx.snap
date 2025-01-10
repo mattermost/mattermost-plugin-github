@@ -1,0 +1,40 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`components/GithubAssigneeSelector should match snapshot 1`] = `
+<div
+  className="form-group margin-bottom x3"
+>
+  <label
+    className="control-label margin-bottom x2"
+  >
+    Assignees
+  </label>
+  <IssueAttributeSelector
+    actions={
+      Object {
+        "getAssigneeOptions": [MockFunction],
+      }
+    }
+    isMulti={true}
+    loadOptions={[Function]}
+    onChange={[Function]}
+    repoName="test-repo"
+    selectedAssignees={
+      Array [
+        "user1",
+      ]
+    }
+    selection={
+      Array [
+        "user1",
+      ]
+    }
+    theme={
+      Object {
+        "sidebarBg": "#ffffff",
+        "sidebarText": "#000000",
+      }
+    }
+  />
+</div>
+`;

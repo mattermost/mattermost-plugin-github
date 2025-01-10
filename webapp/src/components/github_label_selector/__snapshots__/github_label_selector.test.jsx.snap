@@ -1,0 +1,40 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`components/GithubLabelSelector should match snapshot 1`] = `
+<div
+  className="form-group margin-bottom x3"
+>
+  <label
+    className="control-label margin-bottom x2"
+  >
+    Labels
+  </label>
+  <IssueAttributeSelector
+    actions={
+      Object {
+        "getLabelOptions": [MockFunction],
+      }
+    }
+    isMulti={true}
+    loadOptions={[Function]}
+    onChange={[Function]}
+    repoName="test-repo"
+    selectedLabels={
+      Array [
+        "bug",
+      ]
+    }
+    selection={
+      Array [
+        "bug",
+      ]
+    }
+    theme={
+      Object {
+        "sidebarBg": "#ffffff",
+        "sidebarText": "#000000",
+      }
+    }
+  />
+</div>
+`;
