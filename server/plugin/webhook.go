@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )
@@ -57,6 +58,7 @@ type RenderConfig struct {
 type EventWithRenderConfig struct {
 	Event  interface{}
 	Config RenderConfig
+	Label  string
 }
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -95,8 +97,10 @@ func signBody(secret, body []byte) ([]byte, error) {
 // which also contains per-subscription configuration options.
 func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
 	style := ""
+	subscriptionLabel := ""
 	if sub != nil {
 		style = sub.RenderStyle()
+		subscriptionLabel = sub.Label()
 	}
 
 	return &EventWithRenderConfig{
@@ -104,6 +108,7 @@ func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRe
 		Config: RenderConfig{
 			Style: style,
 		},
+		Label: subscriptionLabel,
 	}
 }
 
@@ -343,14 +348,18 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
 
-	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
-		if err != nil {
-			p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
+	var result *github.Repository
+	var err error
+	cErr := p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		if result, _, err = githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+			if err != nil {
+				p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
+				return err
+			}
 		}
-		return false
-	}
-
-	return true
+		return nil
+	})
+	return cErr == nil && result != nil
 }
 
 func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscription) bool {
@@ -367,7 +376,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	githubClient := p.githubConnectUser(context.Background(), info)
 	organization := p.getConfiguration().GitHubOrg
 
-	return p.isUserOrganizationMember(githubClient, user, organization)
+	return p.isUserOrganizationMember(githubClient, user, info, organization)
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
