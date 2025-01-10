@@ -281,7 +281,14 @@ function GithubItems(props: GithubItemsProps) {
                             <CalendarIcon size={16}/> {'Opened '} {formatTimeSince(item.created_at)} {' ago'}
                         </>
                     )}
-                    {userName && ' by ' + userName}
+                    {userName && (
+                        <>
+                            {' by '}
+                            <a href={`https://github.com/${userName}`}>
+                                {userName}
+                            </a>
+                        </>
+                    )}
                     {(item.created_at || userName) && '.'}
                     {milestone}
                     {item.reason ? (<>
