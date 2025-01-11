@@ -1,0 +1,105 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`CreateIssueModal should render correctly with default props 1`] = `
+<Modal
+  animation={true}
+  autoFocus={true}
+  backdrop="static"
+  bsSize="large"
+  dialogAs={
+    Object {
+      "$$typeof": Symbol(react.forward_ref),
+      "displayName": "ModalDialog",
+      "render": [Function],
+    }
+  }
+  dialogClassName="modal--scroll"
+  enforceFocus={true}
+  keyboard={true}
+  onExited={[Function]}
+  onHide={[Function]}
+  restoreFocus={true}
+  show={true}
+>
+  <ModalHeader
+    closeButton={true}
+    closeLabel="Close"
+  >
+    <ModalTitle>
+      Create GitHub Issue
+    </ModalTitle>
+  </ModalHeader>
+  <form
+    onSubmit={[Function]}
+    role="form"
+  >
+    <ModalBody
+      style={
+        Object {
+          "backgroundColor": "#fff",
+          "color": "#000",
+          "padding": "2em 2em 3em",
+        }
+      }
+    >
+      <div>
+        <Connect(GithubRepoSelector)
+          addValidate={[Function]}
+          onChange={[Function]}
+          removeValidate={[Function]}
+          required={true}
+          theme={
+            Object {
+              "centerChannelBg": "#fff",
+              "centerChannelColor": "#000",
+            }
+          }
+          value={null}
+        />
+        <Input
+          disabled={false}
+          id="title"
+          label="Title for the GitHub Issue"
+          maxLength={256}
+          onChange={[Function]}
+          readOnly={false}
+          required={true}
+          type="input"
+          value=""
+        />
+        <Input
+          label="Description for the GitHub Issue"
+          maxLength={null}
+          onChange={[Function]}
+          readOnly={false}
+          required={false}
+          type="textarea"
+          value=""
+        />
+      </div>
+    </ModalBody>
+    <ModalFooter>
+      <FormButton
+        btnClass="btn-link"
+        defaultMessage="Cancel"
+        disabled={false}
+        extraClasses=""
+        onClick={[Function]}
+        savingMessage="Creating"
+        type="button"
+      />
+      <FormButton
+        btnClass="btn btn-primary"
+        defaultMessage="Submit"
+        disabled={false}
+        extraClasses=""
+        saving={false}
+        savingMessage="Submitting"
+        type="submit"
+      >
+        Submit
+      </FormButton>
+    </ModalFooter>
+  </form>
+</Modal>
+`;
