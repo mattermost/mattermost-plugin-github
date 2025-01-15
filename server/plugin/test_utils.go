@@ -2,8 +2,12 @@ package plugin
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1" // #nosec G505
+	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v54/github"
@@ -15,24 +19,30 @@ import (
 )
 
 const (
-	MockUserID         = "mockUserID"
-	MockUsername       = "mockUsername"
-	MockAccessToken    = "mockAccessToken"
-	MockChannelID      = "mockChannelID"
-	MockCreatorID      = "mockCreatorID"
-	MockBotID          = "mockBotID"
-	MockOrg            = "mockOrg"
-	MockSender         = "mockSender"
-	MockPostMessage    = "mockPostMessage"
-	MockOrgRepo        = "mockOrg/mockRepo"
-	MockHead           = "mockHead"
-	MockRepoName       = "mockRepoName"
-	MockEventReference = "refs/heads/main"
-	MockUserLogin      = "mockUser"
-	MockBranch         = "mockBranch"
-	MockRepo           = "mockRepo"
-	MockIssueAuthor    = "issueAuthor"
-	GithubBaseURL      = "https://github.com/"
+	MockUserID          = "mockUserID"
+	MockUsername        = "mockUsername"
+	MockAccessToken     = "mockAccessToken"
+	MockChannelID       = "mockChannelID"
+	MockCreatorID       = "mockCreatorID"
+	MockWebhookSecret   = "mockWebhookSecret" // #nosec G101
+	MockBotID           = "mockBotID"
+	MockOrg             = "mockOrg"
+	MockSender          = "mockSender"
+	MockPostMessage     = "mockPostMessage"
+	MockOrgRepo         = "mockOrg/mockRepo"
+	MockHead            = "mockHead"
+	MockPRTitle         = "mockPRTitle"
+	MockProfileUsername = "@username"
+	MockPostID          = "mockPostID"
+	MockRepoName        = "mockRepoName"
+	MockEventReference  = "refs/heads/main"
+	MockUserLogin       = "mockUser"
+	MockBranch          = "mockBranch"
+	MockRepo            = "mockRepo"
+	MockLabel           = "mockLabel"
+	MockValidLabel      = "validLabel"
+	MockIssueAuthor     = "issueAuthor"
+	GithubBaseURL       = "https://github.com/"
 )
 
 type GitHubUserResponse struct {
@@ -91,6 +101,104 @@ func GetMockUserContext(p *Plugin, mockLogger *mocks.MockLogger) (*UserContext, 
 	}
 
 	return mockUserContext, nil
+}
+
+func generateSignature(secret, body []byte) string {
+	h := hmac.New(sha1.New, secret)
+	h.Write(body)
+	return "sha1=" + hex.EncodeToString(h.Sum(nil))
+}
+
+func GetMockPingEvent() *github.PingEvent {
+	return &github.PingEvent{
+		Zen:    github.String("Keep it logically awesome."),
+		HookID: github.Int64(123456),
+		Hook: &github.Hook{
+			Type: github.String("Repository"),
+			ID:   github.Int64(654321),
+			Config: map[string]interface{}{
+				"url":          "https://example.com/webhook",
+				"content_type": "json",
+				"secret":       "mocksecret",
+				"insecure_ssl": "0",
+			},
+			Active: github.Bool(true),
+		},
+		Repo: &github.Repository{
+			Name:     github.String(MockRepoName),
+			FullName: github.String(MockOrgRepo),
+			Private:  github.Bool(false),
+			HTMLURL:  github.String(fmt.Sprintf("%s/%s", GithubBaseURL, MockOrgRepo)),
+		},
+		Org: &github.Organization{
+			Login: github.String("mockorg"),
+			ID:    github.Int64(12345),
+			URL:   github.String(fmt.Sprintf("%s/mockorg", GithubBaseURL)),
+		},
+		Sender: &github.User{
+			Login: github.String(MockUserLogin),
+			ID:    github.Int64(98765),
+			URL:   github.String(fmt.Sprintf("%s/users/%s", GithubBaseURL, MockUserLogin)),
+		},
+		Installation: &github.Installation{
+			ID:     github.Int64(246810),
+			NodeID: github.String("MDQ6VXNlcjE="),
+		},
+	}
+}
+
+func GetMockPRDescriptionEvent(repo, org, sender, prUser, action, label string) *github.PullRequestEvent {
+	return &github.PullRequestEvent{
+		Action: github.String(action),
+		PullRequest: &github.PullRequest{
+			Title:   github.String(MockPRTitle),
+			Body:    github.String("Mock PR description with label: " + label),
+			State:   github.String("open"),
+			User:    &github.User{Login: github.String(prUser)},
+			Head:    &github.PullRequestBranch{Ref: github.String(MockBranch)},
+			Base:    &github.PullRequestBranch{Ref: github.String("main")},
+			HTMLURL: github.String(GithubBaseURL + org + "/" + repo + "/pull/1"),
+			Number:  github.Int(1),
+		},
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(org + "/" + repo),
+		},
+		Sender: &github.User{
+			Login: github.String(sender),
+		},
+	}
+}
+
+func GetMockIssueEvent(repo, org, sender, action, label string) *github.IssuesEvent {
+	event := &github.IssuesEvent{
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(fmt.Sprintf("%s/%s", repo, org)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+		Issue: &github.Issue{
+			Number: github.Int(123),
+			Labels: []*github.Label{
+				{Name: github.String(label)},
+			},
+		},
+		Action: github.String(action),
+	}
+
+	if action == actionLabeled || action == "unlabeled" {
+		event.Label = &github.Label{Name: github.String(label)}
+	}
+
+	return event
+}
+
+func GetMockIssueEventWithTimeDiff(repo, org, sender, action, label string, timeDiff time.Duration) *github.IssuesEvent {
+	event := GetMockIssueEvent(repo, org, sender, action, label)
+	event.Issue.CreatedAt = &github.Timestamp{Time: time.Now().Add(timeDiff)}
+	return event
 }
 
 func GetMockPushEvent() *github.PushEvent {
@@ -351,9 +459,10 @@ func GetMockIssueCommentEventWithAssignees(eventType, action, body, sender strin
 	}
 }
 
-func GetMockPullRequestEvent(action, repoName string, isPrivate bool, sender, user, assignee string) *github.PullRequestEvent {
+func GetMockPullRequestEvent(action, repoName, eventLabel string, isPrivate bool, sender, user, assignee string) *github.PullRequestEvent {
 	return &github.PullRequestEvent{
 		Action: github.String(action),
+		Label:  &github.Label{Name: github.String(eventLabel)},
 		Repo: &github.Repository{
 			Name:     github.String(repoName),
 			FullName: github.String(fmt.Sprintf("mockOrg/%s", repoName)),
@@ -364,6 +473,8 @@ func GetMockPullRequestEvent(action, repoName string, isPrivate bool, sender, us
 			HTMLURL:            github.String(fmt.Sprintf("%s%s/%s/pull/123", GithubBaseURL, MockOrgRepo, repoName)),
 			Assignee:           &github.User{Login: github.String(assignee)},
 			RequestedReviewers: []*github.User{{Login: github.String(user)}},
+			Labels:             []*github.Label{{Name: github.String("validLabel")}},
+			Draft:              github.Bool(true),
 		},
 		Sender: &github.User{
 			Login: github.String(sender),

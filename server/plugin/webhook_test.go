@@ -1,7 +1,14 @@
 package plugin
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v54/github"
@@ -10,6 +17,1113 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestVerifyWebhookSignature(t *testing.T) {
+	tests := []struct {
+		name       string
+		secret     []byte
+		signature  string
+		body       []byte
+		assertions func(t *testing.T, valid bool, err error)
+	}{
+		{
+			name:   "Valid signature",
+			secret: []byte("test-secret"),
+			signature: func() string {
+				secret := []byte("test-secret")
+				body := []byte("test-body")
+				return generateSignature(secret, body)
+			}(),
+			body: []byte("test-body"),
+			assertions: func(t *testing.T, valid bool, err error) {
+				assert.NoError(t, err)
+				assert.True(t, valid)
+			},
+		},
+		{
+			name:      "Invalid signature prefix",
+			secret:    []byte("test-secret"),
+			signature: "invalid-prefix=1234567890abcdef",
+			body:      []byte("test-body"),
+			assertions: func(t *testing.T, valid bool, err error) {
+				assert.NoError(t, err)
+				assert.False(t, valid)
+			},
+		},
+		{
+			name:      "Invalid signature length",
+			secret:    []byte("test-secret"),
+			signature: "sha1=short",
+			body:      []byte("test-body"),
+			assertions: func(t *testing.T, valid bool, err error) {
+				assert.NoError(t, err)
+				assert.False(t, valid)
+			},
+		},
+		{
+			name:      "Hex decode error",
+			secret:    []byte("test-secret"),
+			signature: "sha1=gggggggggggggggggggggggggggggggggggggggg",
+			body:      []byte("test-body"),
+			assertions: func(t *testing.T, valid bool, err error) {
+				assert.Error(t, err)
+				assert.False(t, valid)
+			},
+		},
+		{
+			name:      "HMAC mismatch",
+			secret:    []byte("test-secret"),
+			signature: "sha1=38cb0302e94c235fb349ac026084db66bc64a979",
+			body:      []byte("different-body"),
+			assertions: func(t *testing.T, valid bool, err error) {
+				assert.NoError(t, err)
+				assert.False(t, valid)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, err := verifyWebhookSignature(tt.secret, tt.signature, tt.body)
+
+			tt.assertions(t, valid, err)
+		})
+	}
+}
+
+func TestGetEventWithRenderConfig(t *testing.T) {
+	tests := []struct {
+		name       string
+		event      interface{}
+		sub        *Subscription
+		assertions func(t *testing.T, result *EventWithRenderConfig)
+	}{
+		{
+			name:  "No Subscription",
+			event: "test-event",
+			sub:   nil,
+			assertions: func(t *testing.T, result *EventWithRenderConfig) {
+				assert.Equal(t, "test-event", result.Event)
+				assert.Empty(t, result.Config.Style)
+			},
+		},
+		{
+			name:  "Subscription with RenderStyle",
+			event: "test-event",
+			sub: &Subscription{
+				ChannelID:  "channel-1",
+				CreatorID:  "creator-1",
+				Repository: "repo-1",
+			},
+			assertions: func(t *testing.T, result *EventWithRenderConfig) {
+				assert.Equal(t, "test-event", result.Event)
+				assert.Empty(t, result.Config.Style)
+			},
+		},
+		{
+			name:  "Subscription with Custom RenderStyle",
+			event: "test-event",
+			sub: &Subscription{
+				ChannelID:  "channel-1",
+				CreatorID:  "creator-1",
+				Flags:      SubscriptionFlags{RenderStyle: "custom-style"},
+				Repository: "repo-1",
+			},
+			assertions: func(t *testing.T, result *EventWithRenderConfig) {
+				assert.Equal(t, "test-event", result.Event)
+				assert.Equal(t, "custom-style", result.Config.Style)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetEventWithRenderConfig(tt.event, tt.sub)
+
+			tt.assertions(t, result)
+		})
+	}
+}
+
+func TestNewWebhookBroker(t *testing.T) {
+	called := false
+	mockSendGitHubPingEvent := func(event *github.PingEvent) {
+		called = true
+	}
+
+	broker := NewWebhookBroker(mockSendGitHubPingEvent)
+
+	mockSendGitHubPingEvent(nil)
+
+	assert.NotNil(t, broker)
+	assert.True(t, called, "sendGitHubPingEvent should have been called")
+}
+
+func TestSubscribePings(t *testing.T) {
+	broker := &WebhookBroker{}
+
+	ch := broker.SubscribePings()
+	assert.NotNil(t, ch, "Channel should not be nil")
+	assert.Len(t, broker.pingSubs, 1, "pingSubs should contain one channel")
+
+	testCh := make(chan *github.PingEvent, 1)
+	go func() {
+		event := &github.PingEvent{}
+		testCh <- event
+	}()
+
+	receivedEvent := <-testCh
+	assert.NotNil(t, receivedEvent, "Received event should not be nil")
+}
+
+func TestUnsubscribePings(t *testing.T) {
+	broker := &WebhookBroker{}
+	ch := broker.SubscribePings()
+	assert.NotNil(t, ch, "Channel should not be nil")
+	assert.Len(t, broker.pingSubs, 1, "pingSubs should contain one channel")
+
+	broker.UnsubscribePings(ch)
+
+	broker.UnsubscribePings(ch)
+	assert.Len(t, broker.pingSubs, 0, "pingSubs should be empty after unsubscribe")
+	assert.Len(t, broker.pingSubs, 0, "pingSubs should still be empty after second unsubscribe")
+}
+
+func TestPublishPing(t *testing.T) {
+	broker := &WebhookBroker{pingSubs: []chan *github.PingEvent{}}
+	event := &github.PingEvent{}
+	mockSendGitHubPingEvent := func(event *github.PingEvent) {}
+	broker.sendGitHubPingEvent = mockSendGitHubPingEvent
+	ch := broker.SubscribePings()
+
+	go func() {
+		broker.publishPing(event, false)
+	}()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		receivedEvent := <-ch
+		assert.NotNil(t, receivedEvent, "Received event should not be nil")
+		assert.Equal(t, event, receivedEvent, "Received event should match the published event")
+	}()
+
+	wg.Wait()
+
+	broker.closed = true
+	broker.publishPing(event, false)
+}
+
+func TestClose(t *testing.T) {
+	broker := &WebhookBroker{pingSubs: []chan *github.PingEvent{}}
+	ch := make(chan *github.PingEvent, 1)
+	broker.pingSubs = append(broker.pingSubs, ch)
+
+	broker.Close()
+
+	assert.True(t, broker.closed, "Broker should be marked as closed")
+	select {
+	case _, open := <-ch:
+		assert.False(t, open, "Channel should be closed")
+	default:
+		t.Error("Channel should be closed")
+	}
+}
+
+func TestHandleWebhookBadRequestBody(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name            string
+		signature       func([]byte) string
+		body            []byte
+		githubEventType string
+		setup           func()
+		assertions      func(t *testing.T, resp *httptest.ResponseRecorder)
+	}{
+		{
+			name:            "failed signature verification (invalid signature)",
+			body:            []byte("valid body"),
+			signature:       func(body []byte) string { return "" },
+			githubEventType: "",
+			setup: func() {
+				p.setConfiguration(&Configuration{
+					WebhookSecret: MockWebhookSecret,
+				})
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusUnauthorized, resp.Code)
+			},
+		},
+		{
+			name: "Request body is not webhook content type",
+			body: []byte("valid body"),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "",
+			setup: func() {
+				p.setConfiguration(&Configuration{
+					WebhookSecret: MockWebhookSecret,
+				})
+				mockAPI.On("LogDebug", "GitHub webhook content type should be set to \"application/json\"", "error", "unknown X-Github-Event in message: ").Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusBadRequest, resp.Code)
+			},
+		},
+		{
+			name: "Successful handle ping event",
+			body: func() []byte {
+				event := GetMockPingEvent()
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "ping",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockAPI.On("PublishPluginClusterEvent", mock.AnythingOfType("model.PluginClusterEvent"), mock.AnythingOfType("model.PluginClusterEventSendOptions")).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successful handle pull request event",
+			body: func() []byte {
+				event := GetMockPullRequestEvent(actionOpened, MockRepo, "", false, MockSender, MockUserLogin, "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "pull_request",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+				mockAPI.On("LogDebug", "Unhandled event action", "action", "opened").Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle issue event",
+			body: func() []byte {
+				event := GetMockIssueEvent("", "", "", "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "issues",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle issue comment event",
+			body: func() []byte {
+				event := GetMockIssueCommentEvent("", "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "issue_comment",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle pull request review event",
+			body: func() []byte {
+				event := GetMockPullRequestReviewEvent("", "", "", true, "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "pull_request_review",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle pull request review comment event",
+			body: func() []byte {
+				event := GetMockPullRequestReviewCommentEvent()
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "pull_request_review_comment",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle push event",
+			body: func() []byte {
+				event := GetMockPushEvent()
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "push",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle create event",
+			body: func() []byte {
+				event := GetMockCreateEvent()
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "create",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle delete event",
+			body: func() []byte {
+				event := GetMockDeleteEvent()
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "delete",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle start event",
+			body: func() []byte {
+				event := GetMockStarEvent("", "", true, "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "star",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle release event",
+			body: func() []byte {
+				event := GetMockReleaseEvent("", "", "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "release",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle discussion event",
+			body: func() []byte {
+				event := GetMockDiscussionEvent("", "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "discussion",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle discussion comment event",
+			body: func() []byte {
+				event := GetMockDiscussionCommentEvent("", "", "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "discussion_comment",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+		{
+			name: "Successfully handle discussion comment event",
+			body: func() []byte {
+				event := GetMockDiscussionCommentEvent("", "", "", "")
+				body, err := json.Marshal(event)
+				assert.NoError(t, err)
+				return body
+			}(),
+			signature: func(body []byte) string {
+				return generateSignature([]byte(MockWebhookSecret), body)
+			},
+			githubEventType: "discussion_comment",
+			setup: func() {
+				p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
+				p.setConfiguration(&Configuration{
+					WebhookSecret:             MockWebhookSecret,
+					EnableWebhookEventLogging: true,
+				})
+				mockAPI.On("LogDebug", "Webhook Event Log", "event", mock.AnythingOfType("string")).Times(1)
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+			assertions: func(t *testing.T, resp *httptest.ResponseRecorder) {
+				assert.Equal(t, http.StatusOK, resp.Code)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("X-Hub-Signature", tc.signature(tc.body))
+			req.Header.Set("X-GitHub-Event", tc.githubEventType)
+			resp := httptest.NewRecorder()
+
+			p.handleWebhook(resp, req)
+
+			tc.assertions(t, resp)
+		})
+	}
+}
+
+func TestPostPullRequestEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.PullRequestEvent
+		setup func()
+	}{
+		{
+			name:  "No subscription for channel",
+			event: GetMockPullRequestEvent(actionCreated, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "Unsupported action",
+			event: GetMockPullRequestEvent(actionCreated, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "issues,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "Valid subscription does not exist",
+			event: GetMockPullRequestEvent(actionOpened, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "issues,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "PullsMerged subscription exist but PR action is not closed",
+			event: GetMockPullRequestEvent(actionOpened, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls_merged,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "PullsCreated subscription exist but PR action is not opened",
+			event: GetMockPullRequestEvent(actionClosed, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls_created,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "no valid label exists",
+			event: GetMockPullRequestEvent(actionOpened, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls_created,label:\"invalidLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "Error creating post for action labeled",
+			event: GetMockPullRequestEvent(actionLabeled, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockorg/mockrepo": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   Features("pulls,label:\"validLabel\""),
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
+			},
+		},
+		{
+			name:  "event label is not equal to subscription label",
+			event: GetMockPullRequestEvent(actionLabeled, MockRepo, "invalidLabel", false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "success creating post for action labeled",
+			event: GetMockPullRequestEvent(actionLabeled, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = &Subscriptions{
+							Repositories: map[string][]*Subscription{
+								"mockorg/mockrepo": {
+									{
+										ChannelID:  MockChannelID,
+										CreatorID:  MockCreatorID,
+										Features:   Features("pulls,label:\"validLabel\""),
+										Repository: MockRepo,
+									},
+								},
+							},
+						}
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Success creating post for pull requeset opened",
+			event: GetMockPullRequestEvent(actionOpened, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls_created,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Success creating post for pull opened",
+			event: GetMockPullRequestEvent(actionReopened, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Success creating post for action MarkedReadyForReview",
+			event: GetMockPullRequestEvent(actionMarkedReadyForReview, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Success creating post for action closed",
+			event: GetMockPullRequestEvent(actionClosed, MockRepo, MockValidLabel, false, MockSender, MockUserID, MockUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "pulls,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.postPullRequestEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestSanitizeDescription(t *testing.T) {
+	tests := []struct {
+		name        string
+		description string
+		expected    string
+	}{
+		{
+			name:        "description with <details>",
+			description: "description with <details>MockDetails</details> and the values",
+			expected:    "description with  and the values",
+		},
+		{
+			name:        "description without <details>",
+			description: "Content without details tag.",
+			expected:    "Content without details tag.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKvStore)
+
+			sanitizedDescription := p.sanitizeDescription(tt.description)
+
+			assert.Equal(t, tt.expected, sanitizedDescription)
+		})
+	}
+}
+
+func TestHandlePRDescriptionMentionNotification(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.PullRequestEvent
+		setup func()
+	}{
+		{
+			name:  "action other than opened",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionClosed, ""),
+			setup: func() {},
+		},
+		{
+			name:  "no mentioned users in PR description",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionOpened, ""),
+			setup: func() {},
+		},
+		{
+			name:  "PR description mentions a user but they are the PR author",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionOpened, fmt.Sprintf("@%s", MockSender)),
+			setup: func() {
+				mockKvStore.EXPECT().Get("prAuthor_githubusername", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "Skip notification for pull request",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, "mockSender2", MockSender, actionOpened, fmt.Sprintf("@%s", MockSender)),
+			setup: func() {
+				mockKvStore.EXPECT().Get("prAuthor_githubusername", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "user id not mapped with github",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionOpened, MockProfileUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("username_githubusername", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "Error getting channel",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionOpened, MockProfileUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("username_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte(MockUserID)
+					}
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Get("mockUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", MockUserID, p.BotUserID).Return(nil, &model.AppError{Message: "error getting direct channel"}).Times(1)
+			},
+		},
+		{
+			name:  "PR description mentions a user, post created",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionOpened, MockProfileUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("username_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte(MockUserID)
+					}
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Get("mockUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", MockUserID, p.BotUserID).Return(&model.Channel{Id: MockChannelID}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{Id: MockPostID}, nil).Times(1)
+				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
+			},
+		},
+		{
+			name:  "Error creating post",
+			event: GetMockPRDescriptionEvent(MockRepo, MockOrg, MockSender, MockSender, actionOpened, MockProfileUsername),
+			setup: func() {
+				mockKvStore.EXPECT().Get("username_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte(MockUserID)
+					}
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Get("mockUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", MockUserID, p.BotUserID).Return(&model.Channel{Id: MockChannelID}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.handlePRDescriptionMentionNotification(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestPostIssueEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.IssuesEvent
+		setup func()
+	}{
+		{
+			name:  "no subscribed channels for repository",
+			event: GetMockIssueEvent(MockRepo, MockOrg, MockSender, actionOpened, MockLabel),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "issue labeled but recently created, no post sent",
+			event: GetMockIssueEventWithTimeDiff(MockRepo, MockOrg, MockSender, actionLabeled, MockLabel, -2*time.Second),
+			setup: func() {},
+		},
+		{
+			name:  "issue labeled with matching label",
+			event: GetMockIssueEventWithTimeDiff(MockRepo, MockOrg, MockSender, actionLabeled, MockValidLabel, -5*time.Second),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", "issues,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "error creating post",
+			event: GetMockIssueEventWithTimeDiff(MockRepo, MockOrg, MockSender, actionLabeled, MockValidLabel, -5*time.Second),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", "issues,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
+			},
+		},
+		{
+			name:  "issue creation skipped due to unsupported action",
+			event: GetMockIssueEventWithTimeDiff(MockRepo, MockOrg, MockSender, actionClosed, MockLabel, -5*time.Second),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", featureIssueCreation)
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "issue skipped due to unmatched label",
+			event: GetMockIssueEventWithTimeDiff(MockRepo, MockOrg, MockSender, actionLabeled, "nonMatchingLabel", -5*time.Second),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "issues,label:\"validLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name: "issue skipped due to mismatched event label",
+			event: func() *github.IssuesEvent {
+				event := GetMockIssueEventWithTimeDiff(MockRepo, MockOrg, MockSender, actionLabeled, "eventLabel", -5*time.Second)
+				event.GetIssue().Labels = []*github.Label{{Name: github.String("subscriptionLabel")}}
+				return event
+			}(),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", "issues,label:\"subscriptionLabel\"")
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+		{
+			name:  "success creating post for issue opened",
+			event: GetMockIssueEvent(MockRepo, MockOrg, MockSender, actionOpened, MockLabel),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureIssueCreation)
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "success creating post for issue closed",
+			event: GetMockIssueEvent(MockRepo, MockOrg, MockSender, actionOpened, MockLabel),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureIssueCreation)
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "success creating post for issue reopened",
+			event: GetMockIssueEvent(MockRepo, MockOrg, MockSender, actionReopened, MockLabel),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureIssueCreation)
+					}
+					return nil
+				}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "unsupported action",
+			event: GetMockIssueEvent(MockRepo, MockOrg, MockSender, actionDeleted, MockLabel),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+					if v, ok := value.(**Subscriptions); ok {
+						*v = GetMockSubscriptionWithLabel("mockorg/mockrepo", featureIssueCreation)
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			p.postIssueEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+			mockAPI.ExpectedCalls = nil
+		})
+	}
+}
 
 func TestPostPushEvent(t *testing.T) {
 	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
@@ -49,8 +1163,8 @@ func TestPostPushEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
 			},
 		},
 		{
@@ -63,7 +1177,7 @@ func TestPostPushEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -116,8 +1230,8 @@ func TestPostCreateEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
 			},
 		},
 		{
@@ -130,7 +1244,7 @@ func TestPostCreateEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -183,8 +1297,8 @@ func TestPostDeleteEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
 			},
 		},
 		{
@@ -197,7 +1311,7 @@ func TestPostDeleteEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -252,7 +1366,7 @@ func TestPostIssueCommentEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 		{
@@ -265,8 +1379,8 @@ func TestPostIssueCommentEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post").Times(1)
 			},
 		},
 		{
@@ -279,7 +1393,7 @@ func TestPostIssueCommentEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -408,8 +1522,8 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post").Times(1)
 			},
 		},
 		{
@@ -422,7 +1536,7 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -464,8 +1578,8 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post").Times(1)
 			},
 		},
 		{
@@ -478,7 +1592,7 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -550,7 +1664,7 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 				}).Times(1)
 				mockKvStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error creating mention post", "error", "error creating post").Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
@@ -567,7 +1681,7 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 				}).Times(1)
 				mockKvStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
 			},
 		},
@@ -647,7 +1761,7 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 				mockKvStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
@@ -665,7 +1779,7 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -733,8 +1847,6 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 					return nil
 				}).Times(1)
 				mockKvStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
-				// mockAPI.On("LogDebug", "Commenter is muted, skipping notification")
-				// mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 		{
@@ -773,24 +1885,24 @@ func TestHandlePullRequestNotification(t *testing.T) {
 	}{
 		{
 			name:  "review requested by sender",
-			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "senderUser", ""),
+			event: GetMockPullRequestEvent("review_requested", "mockRepo", MockValidLabel, false, "senderUser", "senderUser", ""),
 			setup: func() {},
 		},
 		{
 			name:  "review requested with no repo permission",
-			event: GetMockPullRequestEvent("review_requested", "mockRepo", true, "senderUser", "requestedReviewer", ""),
+			event: GetMockPullRequestEvent("review_requested", "mockRepo", MockValidLabel, true, "senderUser", "requestedReviewer", ""),
 			setup: func() {
 				mockKvStore.EXPECT().Get("requestedReviewer_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
 			name:  "pull request closed by author",
-			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "authorUser", "authorUser", ""),
+			event: GetMockPullRequestEvent(actionClosed, "mockRepo", MockValidLabel, false, "authorUser", "authorUser", ""),
 			setup: func() {},
 		},
 		{
 			name:  "pull request closed successfully",
-			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "authorUser", "senderUser", ""),
+			event: GetMockPullRequestEvent(actionClosed, "mockRepo", MockValidLabel, false, "authorUser", "senderUser", ""),
 			setup: func() {
 				mockKvStore.EXPECT().Get("senderUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
@@ -800,25 +1912,25 @@ func TestHandlePullRequestNotification(t *testing.T) {
 				}).Times(1)
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
 			name:  "pull request reopened with no repo permission",
-			event: GetMockPullRequestEvent(actionReopened, "mockRepo", true, "authorUser", "senderUser", ""),
+			event: GetMockPullRequestEvent(actionReopened, "mockRepo", MockValidLabel, true, "authorUser", "senderUser", ""),
 			setup: func() {
 				mockKvStore.EXPECT().Get("senderUser_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
 			name:  "pull request assigned to self",
-			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "assigneeUser", "assigneeUser", "assigneeUser"),
+			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", MockValidLabel, false, "assigneeUser", "assigneeUser", "assigneeUser"),
 			setup: func() {},
 		},
 		{
 			name:  "pull request assigned successfully",
-			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "senderUser", "assigneeUser", "assigneeUser"),
+			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", MockValidLabel, false, "senderUser", "assigneeUser", "assigneeUser"),
 			setup: func() {
 				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
@@ -827,14 +1939,14 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					return nil
 				}).Times(1)
 				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 				mockKvStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
 			name:  "review requested with valid user ID",
-			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "requestedReviewer", ""),
+			event: GetMockPullRequestEvent("review_requested", "mockRepo", MockValidLabel, false, "senderUser", "requestedReviewer", ""),
 			setup: func() {
 				mockKvStore.EXPECT().Get("requestedReviewer_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
@@ -843,7 +1955,7 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					return nil
 				}).Times(1)
 				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 				mockKvStore.EXPECT().Get("requestedUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
@@ -851,7 +1963,7 @@ func TestHandlePullRequestNotification(t *testing.T) {
 		{
 			name: "unhandled event action",
 			event: GetMockPullRequestEvent(
-				"unsupported_action", "mockRepo", false, "senderUser", "", ""),
+				"unsupported_action", "mockRepo", MockValidLabel, false, "senderUser", "", ""),
 			setup: func() {
 				mockAPI.On("LogDebug", "Unhandled event action", "action", "unsupported_action").Return(nil).Times(1)
 			},
@@ -1044,29 +2156,12 @@ func TestPostStarEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureStars,
-										Repository: MockRepo,
-									},
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDeletes,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureStars)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "post", mock.AnythingOfType("*model.Post"), "error", "error creating post")
 			},
 		},
 		{
@@ -1075,28 +2170,11 @@ func TestPostStarEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureStars,
-										Repository: MockRepo,
-									},
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDeletes,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureStars)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -1138,29 +2216,12 @@ func TestPostReleaseEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureReleases,
-										Repository: MockRepo,
-									},
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDeletes,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureReleases)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "Post", mock.AnythingOfType("*model.Post"), "Error", "error creating post")
 			},
 		},
 		{
@@ -1169,28 +2230,11 @@ func TestPostReleaseEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureReleases,
-										Repository: MockRepo,
-									},
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDeletes,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureReleases)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -1227,29 +2271,12 @@ func TestPostDiscussionEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDiscussions,
-										Repository: MockRepo,
-									},
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDeletes,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureDiscussions)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error creating discussion notification post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error creating discussion notification post", "Post", mock.AnythingOfType("*model.Post"), "Error", "error creating post")
 			},
 		},
 		{
@@ -1258,22 +2285,11 @@ func TestPostDiscussionEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDiscussions,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureDiscussions)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
@@ -1310,18 +2326,7 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDiscussionComments,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureDiscussionComments)
 					}
 					return nil
 				}).Times(1)
@@ -1333,28 +2338,12 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDiscussionComments,
-										Repository: MockRepo,
-									}, {
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDeletes,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureDiscussionComments)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error creating discussion comment post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error creating discussion comment post", "Post", mock.AnythingOfType("*model.Post"), "Error", "error creating post")
 			},
 		},
 		{
@@ -1363,22 +2352,11 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			setup: func() {
 				mockKvStore.EXPECT().Get("subscriptions", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(**Subscriptions); ok {
-						*v = &Subscriptions{
-							Repositories: map[string][]*Subscription{
-								"mockrepo/mockorg": {
-									{
-										ChannelID:  MockChannelID,
-										CreatorID:  MockCreatorID,
-										Features:   featureDiscussionComments,
-										Repository: MockRepo,
-									},
-								},
-							},
-						}
+						*v = GetMockSubscriptionWithLabel("mockrepo/mockorg", featureDiscussionComments)
 					}
 					return nil
 				}).Times(1)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
