@@ -219,6 +219,12 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- end -}}
 `))
 
+	template.Must(masterTemplate.New("reviewer").Funcs(funcMap).Parse(`
+{{- if .RequestedReviewers }}
+Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
+{{- end -}}
+`))
+
 	template.Must(masterTemplate.New("newDraftPR").Funcs(funcMap).Parse(`
 {{template "repo" .Event.GetRepo}} New draft pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
 `))
@@ -233,6 +239,7 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
+{{- template "reviewer" .Event.GetPullRequest }}
 
 {{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
 {{- end -}}
