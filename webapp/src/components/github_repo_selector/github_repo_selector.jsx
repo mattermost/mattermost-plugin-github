@@ -43,12 +43,12 @@ export default class GithubRepoSelector extends PureComponent {
     }
 
     onChange = (_, name) => {
-        const repo = this.props.yourRepos.repos.find((r) => r.full_name === name);
+        const repo = this.props.yourRepos.repo.find((r) => r.full_name === name);
         this.props.onChange({name, permissions: repo.permissions});
     }
 
     render() {
-        const repoOptions = this.props.yourRepos.repos.map((item) => ({value: item.full_name, label: item.full_name}));
+        const repoOptions = this.props.yourRepos.repo.map((item) => ({value: item.full_name, label: item.full_name}));
 
         return (
             <div className={'form-group x3'}>
