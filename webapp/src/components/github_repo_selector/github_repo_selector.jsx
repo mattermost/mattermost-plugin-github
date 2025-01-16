@@ -37,7 +37,7 @@ export default class GithubRepoSelector extends PureComponent {
     componentDidUpdate() {
         const defaultRepo = this.props.yourRepos.defaultRepo;
 
-        if (!(this.props.value) && this.props.yourRepos.defaultRepo?.full_name) {
+        if (!(this.props.value) && defaultRepo?.full_name) {
             this.onChange(defaultRepo.name, defaultRepo.full_name);
         }
     }
