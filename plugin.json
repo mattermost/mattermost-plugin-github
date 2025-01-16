@@ -127,9 +127,9 @@
             },
             {
                 "key": "GetNotificationForDraftPRs",
-                "display_name": "Get Notification for Draft PRs:",
+                "display_name": "Get notifications for draft pull requests:",
                 "type": "bool",
-                "help_text": "When set to 'true' you will get notification with less details when a draft PR is created and a notification with complete details when they are marked as ready for review.",
+                "help_text": "When set to 'true' you will get a notification with less details when a draft pull request is created and a notification with complete details when they are marked as ready for review. When set to 'false' no notifications are delivered for draft pull requests.",
                 "default": false
             }
         ],
