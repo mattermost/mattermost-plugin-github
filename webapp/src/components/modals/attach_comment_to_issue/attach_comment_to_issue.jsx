@@ -5,11 +5,11 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import FormButton from 'components/form_button';
-import Input from 'components/input';
+import FormButton from '@/components/form_button';
+import Input from '@/components/input';
 
-import GithubIssueSelector from 'components/github_issue_selector';
-import {getErrorMessage} from 'utils/user_utils';
+import GithubIssueSelector from '@/components/github_issue_selector';
+import {getErrorMessage} from '@/utils/user_utils';
 
 const initialState = {
     submitting: false,

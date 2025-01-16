@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
@@ -33,6 +34,7 @@ type FlowManager struct {
 	router           *mux.Router
 	getConfiguration func() *Configuration
 	getGitHubClient  func(ctx context.Context, userID string) (*github.Client, error)
+	useGitHubClient  func(info *GitHubUserInfo, toRun func(info *GitHubUserInfo, token *oauth2.Token) error) error
 
 	pingBroker PingBroker
 	tracker    Tracker
@@ -51,6 +53,7 @@ func (p *Plugin) NewFlowManager() (*FlowManager, error) {
 		router:           p.router,
 		getConfiguration: p.getConfiguration,
 		getGitHubClient:  p.GetGitHubClient,
+		useGitHubClient:  p.useGitHubClient,
 
 		pingBroker: p.webhookBroker,
 		tracker:    p,
@@ -486,6 +489,11 @@ func (fm *FlowManager) submitEnterpriseConfig(f *flow.Flow, submitted map[string
 }
 
 func (fm *FlowManager) stepOAuthInfo() flow.Step {
+	callbackURL, err := buildPluginURL(fm.client, "oauth", "complete")
+	if err != nil {
+		fm.client.Log.Warn("Failed to build callbackURL", "err", err)
+	}
+
 	oauthPretext := `
 ##### :white_check_mark: Step 1: Register an OAuth Application in GitHub
 You must first register the Mattermost GitHub Plugin as an authorized OAuth app.`
@@ -494,11 +502,11 @@ You must first register the Mattermost GitHub Plugin as an authorized OAuth app.
 		"2. Set the following values:\n"+
 		"	- Application name: `Mattermost GitHub Plugin - <your company name>`\n"+
 		"	- Homepage URL: `https://github.com/mattermost/mattermost-plugin-github`\n"+
-		"	- Authorization callback URL: `%s/oauth/complete`\n"+
+		"	- Authorization callback URL: `%s`\n"+
 		"3. Select **Register application**\n"+
 		"4. Select **Generate a new client secret**.\n"+
 		"5. If prompted, complete 2FA.",
-		fm.pluginID,
+		callbackURL,
 	)
 
 	return flow.NewStep(stepOAuthInfo).
@@ -597,7 +605,11 @@ func (fm *FlowManager) submitOAuthConfig(f *flow.Flow, submitted map[string]inte
 
 func (fm *FlowManager) stepOAuthConnect() flow.Step {
 	connectPretext := "##### :white_check_mark: Step {{ if .UsePreregisteredApplication }}1{{ else }}2{{ end }}: Connect your GitHub account"
-	connectURL := fmt.Sprintf("%s/oauth/connect", fm.pluginID)
+	connectURL, err := buildPluginURL(fm.client, "oauth", "connect")
+	if err != nil {
+		fm.client.Log.Warn("Failed to build connectURL", "err", err)
+	}
+
 	connectText := fmt.Sprintf("Go [here](%s) to connect your account.", connectURL)
 	return flow.NewStep(stepOAuthConnect).
 		WithText(connectText).
@@ -685,11 +697,16 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 
 	webhookEvents := []string{"create", "delete", "issue_comment", "issues", "pull_request", "pull_request_review", "pull_request_review_comment", "push", "star"}
 
+	webHookURL, err := buildPluginURL(fm.client, "webhook")
+	if err != nil {
+		fm.client.Log.Warn("Failed to build webHookURL", "err", err)
+	}
+
 	webhookConfig := map[string]interface{}{
 		"content_type": "json",
 		"insecure_ssl": "0",
 		"secret":       config.WebhookSecret,
-		"url":          fmt.Sprintf("%s/webhook", fm.pluginID),
+		"url":          webHookURL,
 	}
 
 	hook := &github.Hook{
@@ -700,7 +717,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 	ctx, cancel := context.WithTimeout(context.Background(), 28*time.Second) // HTTP request times out after 30 seconds
 	defer cancel()
 
-	client, err := fm.getGitHubClient(ctx, f.UserID)
+	ghClient, err := fm.getGitHubClient(ctx, f.UserID)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -710,28 +727,41 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 	var resp *github.Response
 	var fullName string
 	var repoOrOrg string
+	var cErr error
 	if repo == "" {
 		fullName = org
 		repoOrOrg = "organization"
-		hook, resp, err = client.Organizations.CreateHook(ctx, org, hook)
+		cErr = fm.useGitHubClient(&GitHubUserInfo{UserID: f.UserID}, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			hook, resp, err = ghClient.Organizations.CreateHook(ctx, org, hook)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	} else {
 		fullName = org + "/" + repo
 		repoOrOrg = "repository"
-		hook, resp, err = client.Repositories.CreateHook(ctx, org, repo, hook)
+		cErr = fm.useGitHubClient(&GitHubUserInfo{UserID: f.UserID}, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			hook, resp, err = ghClient.Repositories.CreateHook(ctx, org, repo, hook)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
 		err = errors.Errorf("It seems like you don't have privileges to create webhooks in %s. Ask an admin of that %s to run /github setup webhook for you.", fullName, repoOrOrg)
-		return "", nil, nil, err
+		return "", nil, nil, cErr
 	}
 
-	if err != nil {
+	if cErr != nil {
 		var errResp *github.ErrorResponse
-		if errors.As(err, &errResp) {
+		if errors.As(cErr, &errResp) {
 			return "", nil, nil, printGithubErrorResponse(errResp)
 		}
 
-		return "", nil, nil, errors.Wrap(err, "failed to create hook")
+		return "", nil, nil, errors.Wrap(cErr, "failed to create hook")
 	}
 
 	var found bool
