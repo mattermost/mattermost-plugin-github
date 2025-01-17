@@ -93,7 +93,7 @@ export type DefaultRepo = {
 
 export type YourReposData = {
     defaultRepo?: DefaultRepo;
-    repo: ReposData[];
+    repos: ReposData[];
 }
 
 export type ReposData = {

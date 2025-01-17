@@ -107,7 +107,7 @@ function sidebarContent(state = {
 }
 
 function yourRepos(state: YourReposData = {
-    repo: [],
+    repos: [],
 }, action: {type: string, data: YourReposData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REPOSITORIES:
