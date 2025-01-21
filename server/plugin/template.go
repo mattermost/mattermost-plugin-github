@@ -136,7 +136,7 @@ func init() {
 
 	// The repo template links to the corresponding repository.
 	template.Must(masterTemplate.New("repo").Parse(
-		`[{{.GetFullName}}]({{.GetHTMLURL}})`,
+		`[\[{{.GetFullName}}\]]({{.GetHTMLURL}})`,
 	))
 
 	// The eventRepoPullRequest links to the corresponding pull request, anchored at the repo.
