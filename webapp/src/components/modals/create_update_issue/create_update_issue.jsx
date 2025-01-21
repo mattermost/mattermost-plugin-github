@@ -5,14 +5,14 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import GithubLabelSelector from 'components/github_label_selector';
-import GithubAssigneeSelector from 'components/github_assignee_selector';
-import GithubMilestoneSelector from 'components/github_milestone_selector';
-import GithubRepoSelector from 'components/github_repo_selector';
-import Validator from 'components/validator';
-import FormButton from 'components/form_button';
-import Input from 'components/input';
-import {getErrorMessage} from 'utils/user_utils';
+import GithubLabelSelector from '@/components/github_label_selector';
+import GithubAssigneeSelector from '@/components/github_assignee_selector';
+import GithubMilestoneSelector from '@/components/github_milestone_selector';
+import GithubRepoSelector from '@/components/github_repo_selector';
+import Validator from '@/components/validator';
+import FormButton from '@/components/form_button';
+import Input from '@/components/input';
+import {getErrorMessage} from '@/utils/user_utils';
 
 const MAX_TITLE_LENGTH = 256;
 
@@ -164,7 +164,8 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
 
     handleIssueTitleChange = (issueTitle) => this.setState({issueTitle});
 
-    handleIssueDescriptionChange = (issueDescription) => this.setState({issueDescription});
+    handleIssueDescriptionChange = (issueDescription) =>
+        this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
         if (!this.state.repo || !this.state.repo.name || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
@@ -195,7 +196,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
                 />
             </>
         );
-    }
+    };
 
     render() {
         if (!this.props.visible) {
@@ -214,9 +215,7 @@ export default class CreateOrUpdateIssueModal extends PureComponent {
             issueTitleValidationError = (
                 <p
                     className='help-text error-text'
-                    style={{
-                        marginBottom: '15px',
-                    }}
+                    style={{marginTop: '8px', marginBottom: '24px'}}
                 >
                     <span>{requiredMsg}</span>
                 </p>

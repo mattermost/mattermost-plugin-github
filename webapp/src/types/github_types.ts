@@ -42,6 +42,9 @@ export type GithubItem = PrsDetailsData & {
         title: string;
     }
     reason?: string;
+    additions?: number;
+    deletions?: number;
+    changed_files?: number;
 }
 
 export type GithubItemsProps = {

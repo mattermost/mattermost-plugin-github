@@ -6,8 +6,8 @@ import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 
-import manifest from 'manifest';
-import {openCreateIssueModalWithPost} from 'actions';
+import manifest from '@/manifest';
+import {openCreateIssueModalWithPost} from '@/actions';
 
 import CreateIssuePostMenuAction from './create_issue';
 

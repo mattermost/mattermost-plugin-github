@@ -1,7 +1,7 @@
 // Copyright (c) 2017-present Mattermost, Inc. All Rights Reserved.
 // See License.txt for license information.
-import AttachCommentToIssuePostMenuAction from 'components/post_menu_actions/attach_comment_to_issue';
-import AttachCommentToIssueModal from 'components/modals/attach_comment_to_issue';
+import AttachCommentToIssuePostMenuAction from '@/components/post_menu_actions/attach_comment_to_issue';
+import AttachCommentToIssueModal from '@/components/modals/attach_comment_to_issue';
 
 import CreateOrUpdateIssueModal from './components/modals/create_update_issue';
 import CloseOrReopenIssueModal from './components/modals/close_reopen_issue';

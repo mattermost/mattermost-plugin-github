@@ -1,18 +1,10 @@
 package plugin
 
 import (
-	"context"
 	"sync"
 
-	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"golang.org/x/oauth2"
 )
-
-type Context struct {
-	Ctx    context.Context
-	UserID string
-	Log    logger.Logger
-}
 
 type GitHubUserRequest struct {
 	UserID string `json:"user_id"`
@@ -54,11 +46,6 @@ type GitHubUserInfo struct {
 type OAuthCompleteEvent struct {
 	UserID string
 	Err    error
-}
-
-type UserContext struct {
-	Context
-	GHInfo *GitHubUserInfo
 }
 
 type OAuthState struct {

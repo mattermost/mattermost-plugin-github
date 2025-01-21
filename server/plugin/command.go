@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
@@ -27,6 +28,8 @@ const (
 	featurePullReviews        = "pull_reviews"
 	featureStars              = "stars"
 	featureReleases           = "releases"
+	featureWorkflowFailure    = "workflow_failure"
+	featureWorkflowSuccess    = "workflow_success"
 	featureDiscussions        = "discussions"
 	featureDiscussionComments = "discussion_comments"
 )
@@ -48,6 +51,8 @@ var validFeatures = map[string]bool{
 	featurePullReviews:        true,
 	featureStars:              true,
 	featureReleases:           true,
+	featureWorkflowFailure:    true,
+	featureWorkflowSuccess:    true,
 	featureDiscussions:        true,
 	featureDiscussionComments: true,
 }
@@ -151,7 +156,7 @@ func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
 	return mutedUsers
 }
 
-func (p *Plugin) handleMuteList(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleMuteList(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	var mutedUsers string
 	for _, user := range mutedUsernames {
@@ -172,7 +177,7 @@ func contains(s []string, e string) bool {
 	return false
 }
 
-func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	if contains(mutedUsernames, username) {
 		return username + " is already muted"
@@ -198,7 +203,7 @@ func (p *Plugin) handleMuteAdd(args *model.CommandArgs, username string, userInf
 	return fmt.Sprintf("`%v`", username) + " is now muted. You'll no longer receive notifications for comments in your PRs and issues."
 }
 
-func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames := p.getMutedUsernames(userInfo)
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
@@ -211,7 +216,7 @@ func (p *Plugin) handleUnmute(args *model.CommandArgs, username string, userInfo
 	return fmt.Sprintf("`%v`", username) + " is no longer muted"
 }
 
-func (p *Plugin) handleUnmuteAll(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+func (p *Plugin) handleUnmuteAll(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
 	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
@@ -293,7 +298,7 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	}
 }
 
-func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
+func (p *Plugin) handleSubscriptionsList(_ *plugin.Context, args *model.CommandArgs, _ []string, _ *GitHubUserInfo) string {
 	txt := ""
 	subs, err := p.GetSubscriptionsByChannel(args.ChannelId)
 	if err != nil {
@@ -332,25 +337,40 @@ func (p *Plugin) createPost(channelID, userID, message string) error {
 	return nil
 }
 
-func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, repo, owner string) (bool, error) {
+func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, userInfo *GitHubUserInfo, repo, owner string) (bool, error) {
 	found := false
 	opt := &github.ListOptions{
 		PerPage: PerPageValue,
 	}
-	siteURL := *p.client.Configuration.GetConfig().ServiceSettings.SiteURL
+	siteURL, err := getSiteURL(p.client)
+	if err != nil {
+		return false, err
+	}
 
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
-		var err error
+		var err, cErr error
 
 		if repo == "" {
-			githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 		} else {
-			githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 		}
 
-		if err != nil {
+		if cErr != nil {
 			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", err.Error())
 			return found, err
 		}
@@ -461,7 +481,7 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 
 		subOrgMsg := fmt.Sprintf("Successfully subscribed to organization %s.", owner)
 
-		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
+		found, foundErr := p.checkIfConfiguredWebhookExists(ctx, githubClient, userInfo, repo, owner)
 		if foundErr != nil {
 			if strings.Contains(foundErr.Error(), "404 Not Found") {
 				// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
@@ -490,18 +510,24 @@ func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs,
 		msg += previousSubscribedEventMessage
 	}
 
-	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
-	if err != nil {
-		p.client.Log.Warn("Failed to fetch repository", "error", err.Error())
-	} else if ghRepo != nil && ghRepo.GetPrivate() {
-		msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+	if cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
+		var ghRepo *github.Repository
+		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
+		if err != nil {
+			return err
+		} else if ghRepo != nil && ghRepo.GetPrivate() {
+			msg += "\n\n**Warning:** You subscribed to a private repository. Anyone with access to this channel will be able to read the events getting posted here."
+		}
+		return nil
+	}); cErr != nil {
+		p.client.Log.Warn("Failed to fetch repository", "error", cErr.Error())
 	}
 
 	if err = p.createPost(args.ChannelId, p.BotUserID, msg); err != nil {
 		return fmt.Sprintf("%s\nError creating the public post: %s", msg, err.Error())
 	}
 
-	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, repo, owner)
+	found, err := p.checkIfConfiguredWebhookExists(ctx, githubClient, userInfo, repo, owner)
 	if err != nil {
 		if strings.Contains(err.Error(), "404 Not Found") {
 			// We are not returning an error here and just a subscription success message, as the above error condition occurs when the user is not authorized to access webhooks.
@@ -594,7 +620,7 @@ func (p *Plugin) handleDisconnect(_ *plugin.Context, args *model.CommandArgs, _ 
 func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
-	text, err := p.GetToDo(context.Background(), userInfo.GitHubUsername, githubClient)
+	text, err := p.GetToDo(context.Background(), userInfo, githubClient)
 	if err != nil {
 		p.client.Log.Warn("Failed get get Todos", "error", err.Error())
 		return "Encountered an error getting your to do items."
@@ -605,8 +631,16 @@ func (p *Plugin) handleTodo(_ *plugin.Context, _ *model.CommandArgs, _ []string,
 
 func (p *Plugin) handleMe(_ *plugin.Context, _ *model.CommandArgs, _ []string, userInfo *GitHubUserInfo) string {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
-	gitUser, _, err := githubClient.Users.Get(context.Background(), "")
-	if err != nil {
+	var gitUser *github.User
+	cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
+		resp, _, err := githubClient.Users.Get(context.Background(), "")
+		if err != nil {
+			return err
+		}
+		gitUser = resp
+		return nil
+	})
+	if cErr != nil {
 		return "Encountered an error getting your GitHub profile."
 	}
 
@@ -706,7 +740,7 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
-func (p *Plugin) handleSetup(c *plugin.Context, args *model.CommandArgs, parameters []string) string {
+func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
 	if err != nil {
@@ -804,9 +838,9 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 	}
 
 	if action == "connect" {
-		siteURL := p.client.Configuration.GetConfig().ServiceSettings.SiteURL
-		if siteURL == nil {
-			p.postCommandResponse(args, "Encountered an error connecting to GitHub.")
+		connectURL, err := buildPluginURL(p.client, "oauth", "connect")
+		if err != nil {
+			p.postCommandResponse(args, fmt.Sprintf("Encountered an error connecting to GitHub: %s", err.Error()))
 			return &model.CommandResponse{}, nil
 		}
 
@@ -834,7 +868,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 			qparams = "?private=true"
 		}
 
-		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s/plugins/%s/oauth/connect%s)", *siteURL, Manifest.Id, qparams)
+		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s%s)", connectURL, qparams)
 		p.postCommandResponse(args, msg)
 		return &model.CommandResponse{}, nil
 	}
@@ -901,7 +935,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 	subscriptionsAdd := model.NewAutocompleteData("add", "[owner/repo] [features] [flags]", "Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository. [features] and [flags] are optional arguments")
 	subscriptionsAdd.AddTextArgument("Owner/repo to subscribe to", "[owner/repo]", "")
-	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, discussions, discussion_comments, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
+	subscriptionsAdd.AddNamedTextArgument("features", "Comma-delimited list of one or more of: issues, pulls, pulls_merged, pulls_created, pushes, creates, deletes, issue_creations, issue_comments, pull_reviews, releases, workflow_success, workflow_failure, discussions, discussion_comments, label:\"<labelname>\". Defaults to pulls,issues,creates,deletes", "", `/[^,-\s]+(,[^,-\s]+)*/`, false)
 
 	if config.GitHubOrg != "" {
 		subscriptionsAdd.AddNamedStaticListArgument("exclude-org-member", "Events triggered by organization members will not be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{

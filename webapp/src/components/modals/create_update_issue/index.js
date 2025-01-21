@@ -5,8 +5,8 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 
-import manifest from 'manifest';
-import {closeCreateOrUpdateIssueModal, createIssue, updateIssue, getIssueInfo} from 'actions';
+import manifest from '@/manifest';
+import {closeCreateOrUpdateIssueModal, createIssue, updateIssue, getIssueInfo} from '@/actions';
 
 import CreateOrUpdateIssueModal from './create_update_issue';
 
