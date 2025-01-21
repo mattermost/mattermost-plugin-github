@@ -160,6 +160,7 @@ install-go-tools:
 	@echo Installing go tools
 	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
 	$(GO) install gotest.tools/gotestsum@v1.7.0
+	$(GO) install github.com/mattermost/mattermost-govet/v2@51f518d9d62ea9f3bbcb172a1e52449f13940195
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
@@ -178,6 +179,7 @@ ifneq ($(HAS_SERVER),)
 	@echo Running golangci-lint
 	$(GO) vet ./...
 	$(GOBIN)/golangci-lint run ./...
+	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license ./...
 endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set
