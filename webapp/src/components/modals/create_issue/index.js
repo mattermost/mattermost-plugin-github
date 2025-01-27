@@ -6,6 +6,7 @@ import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 
 import manifest from '@/manifest';
+
 import {closeCreateIssueModal, createIssue} from '@/actions';
 
 import CreateIssueModal from './create_issue';

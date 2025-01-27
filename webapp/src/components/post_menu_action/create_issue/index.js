@@ -7,6 +7,7 @@ import {getPost} from 'mattermost-redux/selectors/entities/posts';
 import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 
 import manifest from '@/manifest';
+
 import {openCreateIssueModal} from '@/actions';
 
 import CreateIssuePostMenuAction from './create_issue';
