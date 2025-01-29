@@ -36,6 +36,8 @@ const (
 
 	requestTimeout       = 30 * time.Second
 	oauthCompleteTimeout = 2 * time.Minute
+
+	channelIDParam = "channelId"
 )
 
 type OAuthState struct {
@@ -52,6 +54,18 @@ type APIErrorResponse struct {
 
 func (e *APIErrorResponse) Error() string {
 	return e.Message
+}
+
+type RepoResponse struct {
+	Name        string          `json:"name,omitempty"`
+	FullName    string          `json:"full_name,omitempty"`
+	Permissions map[string]bool `json:"permissions,omitempty"`
+}
+
+// Only send down fields to client that are needed
+type RepositoryResponse struct {
+	DefaultRepo RepoResponse   `json:"defaultRepo,omitempty"`
+	Repos       []RepoResponse `json:"repos,omitempty"`
 }
 
 type PRDetails struct {
@@ -1354,9 +1368,25 @@ func (p *Plugin) getRepositoryListByOrg(c context.Context, ghInfo *GitHubUserInf
 	return allRepos, http.StatusOK, nil
 }
 
+func getRepository(c context.Context, org string, repo string, githubClient *github.Client) (*github.Repository, error) {
+	repository, _, err := githubClient.Repositories.Get(c, org, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	return repository, nil
+}
+
 func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 	org := p.getConfiguration().GitHubOrg
+
+	channelID := r.URL.Query().Get(channelIDParam)
+	if channelID == "" {
+		p.client.Log.Warn("Bad request: missing channelId")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Bad request: missing channelId", StatusCode: http.StatusBadRequest})
+		return
+	}
 
 	var allRepos []*github.Repository
 	var err error
@@ -1395,18 +1425,38 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 		}
 	}
 
-	// Only send down fields to client that are needed
-	type RepositoryResponse struct {
-		Name        string          `json:"name,omitempty"`
-		FullName    string          `json:"full_name,omitempty"`
-		Permissions map[string]bool `json:"permissions,omitempty"`
+	repoResp := make([]RepoResponse, len(allRepos))
+	for i, r := range allRepos {
+		repoResp[i].Name = r.GetName()
+		repoResp[i].FullName = r.GetFullName()
+		repoResp[i].Permissions = r.GetPermissions()
 	}
 
-	resp := make([]RepositoryResponse, len(allRepos))
-	for i, r := range allRepos {
-		resp[i].Name = r.GetName()
-		resp[i].FullName = r.GetFullName()
-		resp[i].Permissions = r.GetPermissions()
+	resp := RepositoryResponse{
+		Repos: repoResp,
+	}
+
+	defaultRepo, dErr := p.GetDefaultRepo(c.GHInfo.UserID, channelID)
+	if dErr != nil {
+		c.Log.WithError(dErr).Warnf("Failed to get the default repo for the channel. UserID: %s. ChannelID: %s", c.GHInfo.UserID, channelID)
+	}
+
+	if defaultRepo != "" {
+		config := p.getConfiguration()
+		baseURL := config.getBaseURL()
+		owner, repo := parseOwnerAndRepo(defaultRepo, baseURL)
+		defaultRepository, err := getRepository(c.Ctx, owner, repo, githubClient)
+		if err != nil {
+			c.Log.WithError(err).Warnf("Failed to get the default repo %s/%s", owner, repo)
+		}
+
+		if defaultRepository != nil {
+			resp.DefaultRepo = RepoResponse{
+				Name:        *defaultRepository.Name,
+				FullName:    *defaultRepository.FullName,
+				Permissions: defaultRepository.Permissions,
+			}
+		}
 	}
 
 	p.writeJSON(w, resp)

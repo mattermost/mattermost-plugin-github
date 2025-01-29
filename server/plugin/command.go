@@ -41,6 +41,8 @@ const (
 	PerPageValue = 50
 )
 
+const DefaultRepoKey string = "%s_%s-default-repo"
+
 var validFeatures = map[string]bool{
 	featureIssueCreation:      true,
 	featureIssues:             true,
@@ -127,7 +129,7 @@ func (p *Plugin) getCommand(config *Configuration) (*model.Command, error) {
 	return &model.Command{
 		Trigger:              "github",
 		AutoComplete:         true,
-		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about",
+		AutoCompleteDesc:     "Available commands: connect, disconnect, todo, subscriptions, issue, default-repo, me, mute, settings, help, about",
 		AutoCompleteHint:     "[command]",
 		AutocompleteData:     getAutocompleteData(config),
 		AutocompleteIconData: iconData,
@@ -743,6 +745,110 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	}
 }
 
+func (p *Plugin) handleDefaultRepo(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Invalid action. Available actions are 'set', 'get' and 'unset'."
+	}
+
+	command := parameters[0]
+	parameters = parameters[1:]
+
+	switch {
+	case command == "set":
+		return p.handleSetDefaultRepo(args, parameters, userInfo)
+	case command == "get":
+		return p.handleGetDefaultRepo(args, userInfo)
+	case command == "unset":
+		return p.handleUnSetDefaultRepo(args, userInfo)
+	default:
+		return fmt.Sprintf("Unknown subcommand %v", command)
+	}
+}
+
+func (p *Plugin) handleSetDefaultRepo(args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
+	if len(parameters) == 0 {
+		return "Please specify a repository."
+	}
+
+	repo := parameters[0]
+	config := p.getConfiguration()
+	baseURL := config.getBaseURL()
+	owner, repo := parseOwnerAndRepo(repo, baseURL)
+	if owner == "" || repo == "" {
+		return "Please provide a valid repository"
+	}
+
+	owner = strings.ToLower(owner)
+	repo = strings.ToLower(repo)
+
+	if config.GitHubOrg != "" && strings.ToLower(config.GitHubOrg) != owner {
+		return fmt.Sprintf("Repository is not part of the locked Github organization. Locked Github organization: %s", config.GitHubOrg)
+	}
+
+	ctx := context.Background()
+	githubClient := p.githubConnectUser(ctx, userInfo)
+
+	ghRepo, _, err := githubClient.Repositories.Get(ctx, owner, repo)
+	if err != nil {
+		return "Error occurred while getting github repository details"
+	}
+	if ghRepo == nil {
+		return fmt.Sprintf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
+	}
+
+	if _, err := p.store.Set(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID), []byte(fmt.Sprintf("%s/%s", owner, repo))); err != nil {
+		return "Error occurred saving the default repo"
+	}
+
+	repoLink := fmt.Sprintf("%s%s/%s", baseURL, owner, repo)
+	successMsg := fmt.Sprintf("The default repo has been set to [%s/%s](%s) for this channel", owner, repo, repoLink)
+
+	return successMsg
+}
+
+func (p *Plugin) GetDefaultRepo(userID, channelID string) (string, error) {
+	var defaultRepoBytes []byte
+	if err := p.store.Get(fmt.Sprintf(DefaultRepoKey, channelID, userID), &defaultRepoBytes); err != nil {
+		return "", err
+	}
+
+	return string(defaultRepoBytes), nil
+}
+
+func (p *Plugin) handleGetDefaultRepo(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+	defaultRepo, err := p.GetDefaultRepo(userInfo.UserID, args.ChannelId)
+	if err != nil {
+		p.client.Log.Warn("Not able to get the default repo", "UserID", userInfo.UserID, "ChannelID", args.ChannelId, "Error", err.Error())
+		return "Error occurred while getting the default repo"
+	}
+
+	if defaultRepo == "" {
+		return "You have not set a default repository for this channel"
+	}
+
+	config := p.getConfiguration()
+	repoLink := config.getBaseURL() + defaultRepo
+	return fmt.Sprintf("The default repository is [%s](%s)", defaultRepo, repoLink)
+}
+
+func (p *Plugin) handleUnSetDefaultRepo(args *model.CommandArgs, userInfo *GitHubUserInfo) string {
+	defaultRepo, err := p.GetDefaultRepo(userInfo.UserID, args.ChannelId)
+	if err != nil {
+		p.client.Log.Warn("Not able to get the default repo", "UserID", userInfo.UserID, "ChannelID", args.ChannelId, "Error", err.Error())
+		return "Error occurred while getting the default repo"
+	}
+
+	if defaultRepo == "" {
+		return "You have not set a default repository for this channel"
+	}
+
+	if err := p.store.Delete(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID)); err != nil {
+		return "Error occurred while unsetting the repo for this channel"
+	}
+
+	return "The default repository has been unset successfully"
+}
+
 func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {
 	userID := args.UserId
 	isSysAdmin, err := p.isAuthorizedSysAdmin(userID)
@@ -912,7 +1018,7 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 		return github
 	}
 
-	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscriptions, issue, me, mute, settings, help, about")
+	github := model.NewAutocompleteData("github", "[command]", "Available commands: connect, disconnect, todo, subscriptions, issue, default-repo, me, mute, settings, help, about")
 
 	connect := model.NewAutocompleteData("connect", "", "Connect your Mattermost account to your GitHub account")
 	if config.EnablePrivateRepo {
@@ -984,6 +1090,20 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	issue.AddCommand(issueCreate)
 
 	github.AddCommand(issue)
+
+	defaultRepo := model.NewAutocompleteData("default-repo", "[command]", "Available commands: set, get, unset")
+	defaultRepoSet := model.NewAutocompleteData("set", "[owner/repo]", "Set the default repository for the channel")
+	defaultRepoSet.AddTextArgument("Owner/repo to set as a default repository", "[owner/repo]", "")
+
+	defaultRepoGet := model.NewAutocompleteData("get", "", "Get the default repository already set for the channel")
+
+	defaultRepoDelete := model.NewAutocompleteData("unset", "", "Unset the default repository set for the channel")
+
+	defaultRepo.AddCommand(defaultRepoSet)
+	defaultRepo.AddCommand(defaultRepoGet)
+	defaultRepo.AddCommand(defaultRepoDelete)
+
+	github.AddCommand(defaultRepo)
 
 	me := model.NewAutocompleteData("me", "", "Display the connected GitHub account")
 	github.AddCommand(me)
