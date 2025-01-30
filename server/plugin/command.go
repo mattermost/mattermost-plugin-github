@@ -608,7 +608,8 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	}
 
 	repoLink := baseURL + owner + "/" + repo
-	unsubscribeMessage = fmt.Sprintf("@%v unsubscribed this channel from [%s/%s](%s)", user.Username, owner, repo, repoLink)
+	unsubscribeMessage = fmt.Sprintf("@%v Unsubscribed this channel from [%s/%s](%s)", user.Username, owner, repo, repoLink)
+	unsubscribeMessage += fmt.Sprintf("\n Please delete the [webhook](%s) for this subscription unless it's required for other subscriptions.", fmt.Sprintf("%s/settings/hooks", repoLink))
 
 	if err := p.createPost(args.ChannelId, p.BotUserID, unsubscribeMessage); err != nil {
 		return fmt.Sprintf("%s error creating the public post: %s", unsubscribeMessage, err.Error())
