@@ -284,7 +284,11 @@ function GithubItems(props: GithubItemsProps) {
                     {userName && (
                         <>
                             {' by '}
-                            <a href={`https://github.com/${userName}`}>
+                            <a
+                                href={`https://github.com/${userName}`}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                            >
                                 {userName}
                             </a>
                         </>
