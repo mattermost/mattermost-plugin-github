@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -73,6 +76,7 @@ const (
 	repoQueryParam         = "repo"
 	numberQueryParam       = "number"
 	postIDQueryParam       = "postId"
+	channelIDParam = "channelId"
 
 	issueStatus         = "status"
 	assigneesForProps   = "assignees"
@@ -163,6 +167,7 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
+		"default-repo":  p.handleDefaultRepo,
 	}
 
 	p.createGithubEmojiMap()

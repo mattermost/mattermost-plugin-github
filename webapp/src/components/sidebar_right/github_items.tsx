@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import * as React from 'react';
@@ -281,7 +281,18 @@ function GithubItems(props: GithubItemsProps) {
                             <CalendarIcon size={16}/> {'Opened '} {formatTimeSince(item.created_at)} {' ago'}
                         </>
                     )}
-                    {userName && ' by ' + userName}
+                    {userName && (
+                        <>
+                            {' by '}
+                            <a
+                                href={`https://github.com/${userName}`}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                            >
+                                {userName}
+                            </a>
+                        </>
+                    )}
                     {(item.created_at || userName) && '.'}
                     {milestone}
                     {item.reason ? (<>

@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import * as CSS from 'csstype';
 
 import {Theme} from 'mattermost-redux/types/preferences';
@@ -86,7 +89,17 @@ export type GithubIssueData = {
     repository_url: string;
 }
 
+export type DefaultRepo = {
+    name: string;
+    full_name: string;
+}
+
 export type YourReposData = {
+    defaultRepo?: DefaultRepo;
+    repos: ReposData[];
+}
+
+export type ReposData = {
     name: string;
     full_name: string;
 }

@@ -35,8 +35,8 @@ export default class Client {
         return this.doPost(`${this.url}/user`, {user_id: userID});
     }
 
-    getRepositories = async () => {
-        return this.doGet(`${this.url}/repositories`);
+    getRepositories = async (channelId) => {
+        return this.doGet(`${this.url}/repositories?channelId=${channelId}`);
     }
 
     getLabels = async (repo) => {
