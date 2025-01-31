@@ -12,6 +12,7 @@ import GithubIssueSelector from '@/components/github_issue_selector';
 import {getErrorMessage} from '@/utils/user_utils';
 
 const initialState = {
+    comment: '',
     submitting: false,
     issueValue: null,
     textSearchTerms: '',
@@ -25,6 +26,7 @@ export default class AttachIssueModal extends PureComponent {
         post: PropTypes.object,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
+        messageData: PropTypes.object,
     };
 
     constructor(props) {
@@ -38,6 +40,30 @@ export default class AttachIssueModal extends PureComponent {
         }
 
         if (!this.state.issueValue) {
+            if (!this.state.comment.trim()) {
+                this.setState({error: 'This field is required.', submitting: false});
+                return;
+            }
+
+            const {repo_owner, repo_name, issue_number, postId} = this.props.messageData ?? {};
+            const issue = {
+                owner: repo_owner,
+                repo: repo_name,
+                number: issue_number,
+                comment: this.state.comment,
+                post_id: postId,
+                show_attached_message: false,
+            };
+            this.setState({submitting: true});
+
+            this.props.create(issue).then((created) => {
+                if (created.error) {
+                    const errMessage = getErrorMessage(created.error.message);
+                    this.setState({error: errMessage, submitting: false});
+                    return;
+                }
+                this.handleClose(e);
+            });
             return;
         }
 
@@ -51,8 +77,9 @@ export default class AttachIssueModal extends PureComponent {
             owner,
             repo,
             number,
-            comment: this.props.post.message,
-            post_id: this.props.post.id,
+            comment: this.state.comment,
+            post_id: this.props.messageData?.postId,
+            show_attached_message: true,
         };
 
         this.setState({submitting: true});
@@ -68,6 +95,8 @@ export default class AttachIssueModal extends PureComponent {
         });
     };
 
+    handleIssueCommentChange = (comment) => this.setState({comment, error: ''});
+
     handleClose = (e) => {
         if (e && e.preventDefault) {
             e.preventDefault();
@@ -82,16 +111,34 @@ export default class AttachIssueModal extends PureComponent {
         });
     };
 
-    render() {
-        const {visible, theme} = this.props;
-        const {error, submitting} = this.state;
-        const style = getStyle(theme);
+    componentDidUpdate(prevProps) {
+        if (this.props.post && !this.props.messageData && !prevProps.post) {
+            this.setState({comment: this.props.post.message}); // eslint-disable-line react/no-did-update-set-state
+        }
+    }
 
+    render() {
+        const {error, submitting, comment, issueValue} = this.state;
+        const {visible, theme, messageData} = this.props;
+        const style = getStyle(theme);
         if (!visible) {
             return null;
         }
 
-        const component = (
+        const {issue_number} = messageData ?? {};
+        const modalTitle = issue_number ? 'Create a comment to GitHub Issue' : 'Attach Message to GitHub Issue';
+        const component = issue_number ? (
+            <div>
+                <Input
+                    label='Create a comment'
+                    type='textarea'
+                    required={true}
+                    onChange={this.handleIssueCommentChange}
+                    error={error}
+                    value={comment}
+                />
+            </div>
+        ) : (
             <div>
                 <GithubIssueSelector
                     id={'issue'}
@@ -99,15 +146,14 @@ export default class AttachIssueModal extends PureComponent {
                     required={true}
                     theme={theme}
                     error={error}
-                    value={this.state.issueValue}
+                    value={issueValue}
                 />
                 <Input
                     label='Message Attached to GitHub Issue'
                     type='textarea'
-                    isDisabled={true}
-                    value={this.props.post.message}
+                    value={comment}
                     disabled={false}
-                    readOnly={true}
+                    onChange={this.handleIssueCommentChange}
                 />
             </div>
         );
@@ -123,7 +169,7 @@ export default class AttachIssueModal extends PureComponent {
             >
                 <Modal.Header closeButton={true}>
                     <Modal.Title>
-                        {'Attach Message to GitHub Issue'}
+                        {modalTitle}
                     </Modal.Title>
                 </Modal.Header>
                 <form
