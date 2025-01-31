@@ -76,7 +76,7 @@ const (
 	repoQueryParam         = "repo"
 	numberQueryParam       = "number"
 	postIDQueryParam       = "postId"
-	channelIDParam = "channelId"
+	channelIDParam         = "channelId"
 
 	issueStatus         = "status"
 	assigneesForProps   = "assignees"
