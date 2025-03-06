@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -284,7 +287,7 @@ func TestMakeReplacements(t *testing.T) {
 		replacements []replacement
 	}{
 		{
-			name:   "basic one link",
+			name:   "basic one link with commit hash",
 			input:  "start https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22 lorem ipsum",
 			output: "start \n[mattermost/mattermost-server/app/authentication.go](https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22)\n```go\ntype TokenLocation int\n\nconst (\n\tTokenLocationNotFound TokenLocation = iota\n\tTokenLocationHeader\n\tTokenLocationCookie\n\tTokenLocationQueryString\n)\n```\n lorem ipsum",
 			replacements: []replacement{
@@ -354,13 +357,13 @@ func TestMakeReplacements(t *testing.T) {
 			},
 		},
 		{
-			name:   "bad commit hash",
-			input:  "start https://github.com/mattermost/mattermost-server/blob/badhash/app/authentication.go#L15-L22 lorem ipsum",
-			output: "start https://github.com/mattermost/mattermost-server/blob/badhash/app/authentication.go#L15-L22 lorem ipsum",
+			name:   "link with branch name",
+			input:  "start https://github.com/mattermost/mattermost-server/blob/TEST-branch_1/app/authentication.go#L15-L22 lorem ipsum",
+			output: "start \n[mattermost/mattermost-server/app/authentication.go](https://github.com/mattermost/mattermost-server/blob/TEST-branch_1/app/authentication.go#L15-L22)\n```go\ntype TokenLocation int\n\nconst (\n\tTokenLocationNotFound TokenLocation = iota\n\tTokenLocationHeader\n\tTokenLocationCookie\n\tTokenLocationQueryString\n)\n```\n lorem ipsum",
 			replacements: []replacement{
 				{
 					index: 6,
-					word:  "https://github.com/mattermost/mattermost-server/blob/badhash/app/authentication.go#L15-L22",
+					word:  "https://github.com/mattermost/mattermost-server/blob/TEST-branch_1/app/authentication.go#L15-L22",
 					permalinkInfo: struct {
 						haswww string
 						commit string
@@ -370,7 +373,7 @@ func TestMakeReplacements(t *testing.T) {
 						line   string
 					}{
 						haswww: "",
-						commit: "badhash",
+						commit: "master",
 						line:   "L15-L22",
 						path:   "app/authentication.go",
 						user:   "mattermost",
@@ -442,7 +445,6 @@ func TestMakeReplacements(t *testing.T) {
 		})
 	}
 
-	mockPluginAPI.AssertCalled(t, "LogWarn", "Bad git commit hash in permalink", "error", "encoding/hex: invalid byte: U+0068 'h'", "hash", "badhash")
 	mockPluginAPI.AssertCalled(t, "LogWarn", "Error while fetching file contents", "error", "unmarshalling failed for both file and directory content: unexpected end of JSON input and unexpected end of JSON input", "path", "path/file.go")
 }
 

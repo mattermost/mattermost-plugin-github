@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {combineReducers} from 'redux';
@@ -29,13 +29,13 @@ function enterpriseURL(state = '', action: {type: string, data: ConnectedData}) 
     }
 }
 
-function organization(state = '', action: {type: string, data: ConnectedData}) {
+function organizations(state: string[] = [], action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        if (action.data && action.data.organization) {
-            return action.data.organization;
+        if (action.data && action.data.organizations) {
+            return action.data.organizations;
         }
-        return '';
+        return [];
     default:
         return state;
     }
@@ -106,7 +106,9 @@ function sidebarContent(state = {
     }
 }
 
-function yourRepos(state: YourReposData[] = [], action: {type: string, data: YourReposData[]}) {
+function yourRepos(state: YourReposData = {
+    repos: [],
+}, action: {type: string, data: YourReposData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REPOSITORIES:
         return action.data;
@@ -217,7 +219,7 @@ const attachCommentToIssueModalForPostId = (state = '', action: {type: string, d
 export default combineReducers({
     connected,
     enterpriseURL,
-    organization,
+    organizations,
     username,
     userSettings,
     configuration,

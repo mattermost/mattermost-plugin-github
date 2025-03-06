@@ -11,3 +11,10 @@ export const RHSStates = {
     UNREADS: 'unreads',
     ASSIGNMENTS: 'assignments',
 };
+
+export const ReviewState = {
+    Commented: 'commented',
+    Dismissed: 'dismissed',
+    Approved: 'approved',
+    ChangesRequested: 'changes_requested',
+};
