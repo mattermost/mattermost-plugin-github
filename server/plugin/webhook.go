@@ -394,7 +394,7 @@ func (p *Plugin) shouldDenyEventDueToNotOrgMember(user *github.User, subscriptio
 	}
 
 	info, nErr := p.getGitHubUserInfo(subscription.CreatorID)
-	if err != nil {
+	if nErr != nil {
 		p.client.Log.Warn("Failed to exclude org member", "error", nErr.Message)
 		return false
 	}
