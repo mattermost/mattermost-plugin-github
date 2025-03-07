@@ -197,7 +197,7 @@ func (wb *WebhookBroker) Close() {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
-	p.client.Log.Info("Webhook event recieved")
+	p.client.Log.Info("Webhook event received")
 	config := p.getConfiguration()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
