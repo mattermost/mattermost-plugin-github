@@ -197,6 +197,7 @@ func (wb *WebhookBroker) Close() {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	p.client.Log.Info("Webhook event recieved")
 	config := p.getConfiguration()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -399,11 +400,7 @@ func (p *Plugin) shouldDenyEventDueToNotOrgMember(user *github.User, subscriptio
 		return false
 	}
 
-	if !p.isUserOrganizationMember(githubClient, user, info, p.getConfiguration().GitHubOrg) {
-		return false
-	}
-
-	return true
+	return !p.isUserOrganizationMember(githubClient, user, info, p.getConfiguration().GitHubOrg)
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
