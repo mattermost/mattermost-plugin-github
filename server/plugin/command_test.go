@@ -12,6 +12,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -333,6 +334,347 @@ func TestExecuteCommand(t *testing.T) {
 			require.Nil(t, err)
 
 			assert.Equal(t, true, isSendEphemeralPostCalled)
+		})
+	}
+}
+
+func TestGetMutedUsernames(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		setup      func()
+		assertions func(t *testing.T, result []string, err error)
+	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			assertions: func(t *testing.T, result []string, err error) {
+				assert.Nil(t, result)
+				assert.ErrorContains(t, err, "error retrieving muted users")
+			},
+		},
+		{
+			name: "No muted usernames set for user",
+			setup: func() {
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("")
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result []string, _ error) {
+				assert.Equal(t, []string(nil), result)
+			},
+		},
+		{
+			name: "Successfully retrieves muted usernames",
+			setup: func() {
+				mutedUsernames := []byte("user1,user2,user3")
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = mutedUsernames
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result []string, _ error) {
+				assert.Equal(t, []string{"user1", "user2", "user3"}, result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			mutedUsernames, err := p.getMutedUsernames(userInfo)
+
+			tc.assertions(t, mutedUsernames, err)
+		})
+	}
+}
+
+func TestHandleMuteList(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		setup      func()
+		assertions func(t *testing.T, result string)
+	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "An error occurred getting muted users. Please try again later", result)
+			},
+		},
+		{
+			name: "No muted usernames set for user",
+			setup: func() {
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("")
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "You have no muted users", result)
+			},
+		},
+		{
+			name: "Successfully retrieves and formats muted usernames",
+			setup: func() {
+				mutedUsernames := []byte("user1,user2,user3")
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = mutedUsernames
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				expectedOutput := "Your muted users:\n- user1\n- user2\n- user3\n"
+				assert.Equal(t, expectedOutput, result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			result := p.handleMuteList(nil, userInfo)
+
+			tc.assertions(t, result)
+		})
+	}
+}
+
+func TestContains(t *testing.T) {
+	tests := []struct {
+		name       string
+		slice      []string
+		element    string
+		assertions func(t *testing.T, result bool)
+	}{
+		{
+			name:    "Element is present in slice",
+			slice:   []string{"expectedElement1", "expectedElement2", "expectedElement3"},
+			element: "expectedElement2",
+			assertions: func(t *testing.T, result bool) {
+				assert.True(t, result)
+			},
+		},
+		{
+			name:    "Element is not present in slice",
+			slice:   []string{"expectedElement1", "expectedElement2", "expectedElement3"},
+			element: "expectedElement4",
+			assertions: func(t *testing.T, result bool) {
+				assert.False(t, result)
+			},
+		},
+		{
+			name:    "Empty slice",
+			slice:   []string{},
+			element: "expectedElement1",
+			assertions: func(t *testing.T, result bool) {
+				assert.False(t, result)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := contains(tc.slice, tc.element)
+			tc.assertions(t, result)
+		})
+	}
+}
+
+func TestHandleMuteAdd(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name       string
+		username   string
+		setup      func()
+		assertions func(t *testing.T, result string)
+	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "An error occurred getting muted users. Please try again later", result)
+			},
+		},
+		{
+			name:     "Error saving the new muted username",
+			username: "errorUser",
+			setup: func() {
+				mockKvStore.EXPECT().Get(userInfo.UserID+"-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("existingUser")
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("existingUser,errorUser")).Return(false, errors.New("store error")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "Error occurred saving list of muted users", result)
+			},
+		},
+		{
+			name:     "Username is already muted",
+			username: "alreadyMutedUser",
+			setup: func() {
+				mockKvStore.EXPECT().Get(userInfo.UserID+"-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("alreadyMutedUser")
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "alreadyMutedUser is already muted", result)
+			},
+		},
+		{
+			name:     "Invalid username with comma",
+			username: "invalid,user",
+			setup: func() {
+				mockKvStore.EXPECT().Get(userInfo.UserID+"-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("")
+					return nil
+				}).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "Invalid username provided", result)
+			},
+		},
+		{
+			name:     "Successfully adds new muted username",
+			username: "newUser",
+			setup: func() {
+				mockKvStore.EXPECT().Get(userInfo.UserID+"-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = []byte("existingUser")
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("existingUser,newUser")).Return(true, nil).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				expectedMessage := "`newUser` is now muted. You'll no longer receive notifications for comments in your PRs and issues."
+				assert.Equal(t, expectedMessage, result)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			result := p.handleMuteAdd(nil, tc.username, userInfo)
+			tc.assertions(t, result)
+		})
+	}
+}
+
+func TestHandleUnmute(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		username       string
+		setup          func()
+		expectedResult string
+	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			expectedResult: "An error occurred getting muted users. Please try again later",
+		},
+		{
+			name:     "Error occurred while unmuting the user",
+			username: "user1",
+			setup: func() {
+				mutedUsernames := []byte("user1,user2,user3")
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = mutedUsernames
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", gomock.Any()).Return(false, errors.New("error saving muted users")).Times(1)
+			},
+			expectedResult: "Error occurred unmuting users",
+		},
+		{
+			name:     "Successfully unmute a user",
+			username: "user1",
+			setup: func() {
+				mutedUsernames := []byte("user1,user2,user3")
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).DoAndReturn(func(key string, value *[]byte) error {
+					*value = mutedUsernames
+					return nil
+				}).Times(1)
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", gomock.Any()).Return(true, nil).Times(1)
+			},
+			expectedResult: "`user1` is no longer muted",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			result := p.handleUnmute(nil, tc.username, userInfo)
+			assert.Equal(t, tc.expectedResult, result)
+		})
+	}
+}
+
+func TestHandleUnmuteAll(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	userInfo, err := GetMockGHUserInfo(p)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name           string
+		setup          func()
+		assertions     func(string)
+		expectedResult string
+	}{
+		{
+			name: "Error occurred while unmuting all users",
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("")).Return(false, errors.New("error saving muted users")).Times(1)
+			},
+			assertions: func(expectedResult string) {
+				assert.Equal(t, expectedResult, "Error occurred unmuting users")
+			},
+		},
+		{
+			name: "Successfully unmute all users",
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+"-muted-users", []byte("")).Return(true, nil).Times(1)
+			},
+			assertions: func(expectedResult string) {
+				assert.Equal(t, expectedResult, "Unmuted all users")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			result := p.handleUnmuteAll(nil, userInfo)
+			tc.assertions(result)
 		})
 	}
 }
