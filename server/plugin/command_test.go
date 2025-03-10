@@ -789,44 +789,44 @@ func TestHandleMuteCommand(t *testing.T) {
 func TestArrayDifference(t *testing.T) {
 	tests := []struct {
 		name     string
-		arr1        []string
-		arr2        []string
+		arr1     []string
+		arr2     []string
 		expected []string
 	}{
 		{
 			name:     "No difference - all elements in a are in b",
-			arr1:        []string{"apple", "banana", "cherry"},
-			arr2:        []string{"apple", "banana", "cherry"},
+			arr1:     []string{"apple", "banana", "cherry"},
+			arr2:     []string{"apple", "banana", "cherry"},
 			expected: []string{},
 		},
 		{
 			name:     "Difference - some elements in a are not in b",
-			arr1:        []string{"apple", "banana", "cherry", "date"},
-			arr2:        []string{"apple", "banana"},
+			arr1:     []string{"apple", "banana", "cherry", "date"},
+			arr2:     []string{"apple", "banana"},
 			expected: []string{"cherry", "date"},
 		},
 		{
 			name:     "All elements different - no elements in a are in b",
-			arr1:        []string{"apple", "banana"},
-			arr2:        []string{"cherry", "date"},
+			arr1:     []string{"apple", "banana"},
+			arr2:     []string{"cherry", "date"},
 			expected: []string{"apple", "banana"},
 		},
 		{
 			name:     "Empty a - no elements to compare",
-			arr1:        []string{},
-			arr2:        []string{"apple", "banana"},
+			arr1:     []string{},
+			arr2:     []string{"apple", "banana"},
 			expected: []string{},
 		},
 		{
 			name:     "Empty b - all elements in a should be returned",
-			arr1:        []string{"apple", "banana"},
-			arr2:        []string{},
+			arr1:     []string{"apple", "banana"},
+			arr2:     []string{},
 			expected: []string{"apple", "banana"},
 		},
 		{
 			name:     "Both a and b empty - no elements to compare",
-			arr1:        []string{},
-			arr2:        []string{},
+			arr1:     []string{},
+			arr2:     []string{},
 			expected: []string{},
 		},
 	}
