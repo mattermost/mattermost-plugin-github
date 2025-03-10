@@ -1083,6 +1083,7 @@ func TestCreatePost(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
 			tc.setup()
 			err := p.createPost(MockChannelID, MockUserID, MockPostMessage)
 			tc.assertions(t, err)
@@ -1220,6 +1221,7 @@ func TestHandleUnsubscribe(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
 			tc.setup()
 
 			args := &model.CommandArgs{
@@ -1407,6 +1409,7 @@ func TestHandleSettings(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
 			tc.setup()
 
 			result := p.handleSettings(nil, nil, tc.parameters, userInfo)
@@ -1470,6 +1473,7 @@ func TestHandleIssue(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
 			tc.setup()
 
 			args := &model.CommandArgs{
@@ -1526,6 +1530,7 @@ func TestIsAuthorizedSysAdmin(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
 			tc.setup()
 
 			result, err := p.isAuthorizedSysAdmin(MockUserID)
@@ -1704,6 +1709,7 @@ func TestGetCommand(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
 			tc.setup()
 
 			cmd, err := p.getCommand(&Configuration{})
