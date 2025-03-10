@@ -789,50 +789,50 @@ func TestHandleMuteCommand(t *testing.T) {
 func TestArrayDifference(t *testing.T) {
 	tests := []struct {
 		name     string
-		a        []string
-		b        []string
+		arr1        []string
+		arr2        []string
 		expected []string
 	}{
 		{
 			name:     "No difference - all elements in a are in b",
-			a:        []string{"apple", "banana", "cherry"},
-			b:        []string{"apple", "banana", "cherry"},
+			arr1:        []string{"apple", "banana", "cherry"},
+			arr2:        []string{"apple", "banana", "cherry"},
 			expected: []string{},
 		},
 		{
 			name:     "Difference - some elements in a are not in b",
-			a:        []string{"apple", "banana", "cherry", "date"},
-			b:        []string{"apple", "banana"},
+			arr1:        []string{"apple", "banana", "cherry", "date"},
+			arr2:        []string{"apple", "banana"},
 			expected: []string{"cherry", "date"},
 		},
 		{
 			name:     "All elements different - no elements in a are in b",
-			a:        []string{"apple", "banana"},
-			b:        []string{"cherry", "date"},
+			arr1:        []string{"apple", "banana"},
+			arr2:        []string{"cherry", "date"},
 			expected: []string{"apple", "banana"},
 		},
 		{
 			name:     "Empty a - no elements to compare",
-			a:        []string{},
-			b:        []string{"apple", "banana"},
+			arr1:        []string{},
+			arr2:        []string{"apple", "banana"},
 			expected: []string{},
 		},
 		{
 			name:     "Empty b - all elements in a should be returned",
-			a:        []string{"apple", "banana"},
-			b:        []string{},
+			arr1:        []string{"apple", "banana"},
+			arr2:        []string{},
 			expected: []string{"apple", "banana"},
 		},
 		{
 			name:     "Both a and b empty - no elements to compare",
-			a:        []string{},
-			b:        []string{},
+			arr1:        []string{},
+			arr2:        []string{},
 			expected: []string{},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := arrayDifference(tc.a, tc.b)
+			result := arrayDifference(tc.arr1, tc.arr2)
 			assert.ElementsMatch(t, tc.expected, result)
 		})
 	}
