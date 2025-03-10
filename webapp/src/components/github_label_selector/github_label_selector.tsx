@@ -1,22 +1,26 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
-import PropTypes from 'prop-types';
 
-import IssueAttributeSelector from 'components/issue_attribute_selector';
+import {Theme} from 'mattermost-redux/types/preferences';
 
-export default class GithubLabelSelector extends PureComponent {
-    static propTypes = {
-        repoName: PropTypes.string.isRequired,
-        theme: PropTypes.object.isRequired,
-        selectedLabels: PropTypes.array.isRequired,
-        onChange: PropTypes.func.isRequired,
-        actions: PropTypes.shape({
-            getLabelOptions: PropTypes.func.isRequired,
-        }).isRequired,
-    };
+import IssueAttributeSelector, {IssueAttributeSelectorSelection} from '../issue_attribute_selector';
 
+import {GitHubLabelSelectorDispatchProps} from '.';
+
+type Props = GitHubLabelSelectorDispatchProps & {
+    repoName: string;
+    theme: Theme;
+    selectedLabels: string[];
+    onChange: (selection: string[]) => void;
+};
+
+type Option = {
+    name: string;
+};
+
+export default class GithubLabelSelector extends PureComponent<Props> {
     loadLabels = async () => {
         if (this.props.repoName === '') {
             return [];
@@ -32,13 +36,19 @@ export default class GithubLabelSelector extends PureComponent {
             return [];
         }
 
-        return options.data.map((option) => ({
+        return options.data.map((option: Option) => ({
             value: option.name,
             label: option.name,
         }));
     };
 
-    onChange = (selection) => this.props.onChange(selection.map((s) => s.value));
+    onChange = (selection: IssueAttributeSelectorSelection) => {
+        if (!selection || !Array.isArray(selection)) {
+            return;
+        }
+
+        this.props.onChange(selection.map((s) => s.value));
+    }
 
     render() {
         return (

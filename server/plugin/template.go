@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -113,6 +116,16 @@ func init() {
 		return commit.GetCommitter()
 	}
 
+	funcMap["workflowJobFailedStep"] = func(steps []*github.TaskStep) string {
+		for _, step := range steps {
+			if step.GetConclusion() == workflowJobFail {
+				return step.GetName()
+			}
+		}
+
+		return ""
+	}
+
 	masterTemplate = template.Must(template.New("master").Funcs(funcMap).Parse(""))
 
 	// The user template links to the corresponding GitHub user. If the GitHub user is a known
@@ -158,6 +171,11 @@ func init() {
 		`[#{{.GetNumber}} {{.GetTitle}}]({{.GetHTMLURL}})`,
 	))
 
+	// The workflow job links to the corresponding workflow.
+	template.Must(masterTemplate.New("workflowJob").Parse(
+		`[{{.GetName}}]({{.GetHTMLURL}})`,
+	))
+
 	// The release links to the corresponding release.
 	template.Must(masterTemplate.New("release").Parse(
 		`[{{.GetTagName}}]({{.GetHTMLURL}})`,
@@ -192,9 +210,21 @@ Labels: {{range $i, $el := .Labels -}}` + "{{- if $i}}, {{end}}[`{{ $el.Name }}`
 {{ end -}}
 `))
 
+	template.Must(masterTemplate.New("subscriptionLabel").Funcs(funcMap).Parse(`
+{{- if . }}
+{{- if ne . "" }} with the label ` + "`{{.}}`" + `{{- end }}
+{{- end -}}
+`))
+
 	template.Must(masterTemplate.New("assignee").Funcs(funcMap).Parse(`
 {{- if .Assignees }}
 Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
+{{- end -}}
+`))
+
+	template.Must(masterTemplate.New("reviewer").Funcs(funcMap).Parse(`
+{{- if .RequestedReviewers }}
+Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{template "user" $el}}{{end -}}
 {{- end -}}
 `))
 
@@ -204,14 +234,15 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("newPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}.
+{{template "repo" .Event.GetRepo}} New pull request {{template "pullRequest" .Event.GetPullRequest}} was opened by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
-#new-pull-request by {{template "user" .Event.GetSender}}
+#new-pull-request by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
+{{- template "reviewer" .Event.GetPullRequest }}
 
 {{.Event.GetPullRequest.GetBody | removeComments | replaceAllGitHubUsernames}}
 {{- end -}}
@@ -220,11 +251,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("markedReadyToReviewPR").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} Pull request {{template "pullRequest" .Event.GetPullRequest}} was marked ready for review by {{template "user" .Event.GetSender}}.
+{{template "repo" .Event.GetRepo}} Pull request {{template "pullRequest" .Event.GetPullRequest}} was marked ready for review by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" (dict "Label" .Label)}}.
 {{- else -}}
 #### {{.Event.GetPullRequest.GetTitle}}
 ##### {{template "eventRepoPullRequest" .Event}}
-#new-pull-request by {{template "user" .Event.GetSender}}
+#new-pull-request by {{template "user" .Event.PullRequest.User}}{{template "subscriptionLabel" .Label}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetPullRequest.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetPullRequest }}
@@ -257,11 +288,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 
 	template.Must(masterTemplate.New("newIssue").Funcs(funcMap).Parse(`
 {{ if eq .Config.Style "collapsed" -}}
-{{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}.
+{{template "repo" .Event.GetRepo}} New issue {{template "issue" .Event.GetIssue}} opened by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}.
 {{- else -}}
 #### {{.Event.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .Event}}
-#new-issue by {{template "user" .Event.GetSender}}
+#new-issue by {{template "user" .Event.GetSender}}{{template "subscriptionLabel" .Label}}
 {{- if ne .Config.Style "skip-body" -}}
 {{- template "labels" dict "Labels" .Event.GetIssue.Labels "RepositoryURL" .Event.GetRepo.GetHTMLURL  }}
 {{- template "assignee" .Event.GetIssue }}
@@ -412,6 +443,8 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"    	* `issue_comments` - includes new issue comments\n" +
 		"    	* `issue_creations` - includes new issues only \n" +
 		"    	* `pull_reviews` - includes pull request reviews\n" +
+		"    	* `workflow_failure` - includes workflow job failure\n" +
+		"    	* `workflow_success` - includes workflow job success\n" +
 		"    	* `releases` - includes release created and deleted\n" +
 		"    	* `label:<labelname>` - limit pull request and issue events to only this label. Must include `pulls` or `issues` in feature list when using a label.\n" +
 		"    	* `discussions` - includes new discussions\n" +
@@ -428,7 +461,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 		"  * `/github mute list` - list your muted GitHub users\n" +
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +
 		"  * `/github mute delete [username]` - remove a GitHub user from your muted list\n" +
-		"  * `/github mute delete-all` - unmute all GitHub users\n"))
+		"  * `/github mute delete-all` - unmute all GitHub users\n" +
+		"* `/github default-repo` - Manage the default repository per channel for the user. The default repository will be auto selected for creating the issues\n" +
+		"  * `/github default-repo set owner[/repo]` - set the default repo for the channel\n" +
+		"  * `/github default-repo get` - get the default repo for the channel\n" +
+		"  * `/github default-repo unset` - unset the default repo for the channel\n"))
 
 	template.Must(masterTemplate.New("newRepoStar").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}}
@@ -437,6 +474,11 @@ Assignees: {{range $i, $el := .Assignees -}} {{- if $i}}, {{end}}{{template "use
 {{- end }} by {{template "user" .GetSender}}
 It now has **{{.GetRepo.GetStargazersCount}}** stars.`))
 
+	template.Must(masterTemplate.New("newWorkflowJob").Funcs(funcMap).Parse(`
+{{template "repo" .GetRepo}} {{.GetWorkflowJob.GetWorkflowName}} workflow {{if eq .GetWorkflowJob.GetConclusion "success"}}succeeded{{else}}failed{{end}} (triggered by {{template "user" .GetSender}})
+{{if eq .GetWorkflowJob.GetConclusion "failure"}}Job failed: {{template "workflowJob" .GetWorkflowJob}}
+Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
+{{end}}Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowJob.GetHeadSHA}}`))
 	template.Must(masterTemplate.New("newReleaseEvent").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} {{template "user" .GetSender}}
 {{- if eq .GetAction "created" }} created a release {{template "release" .GetRelease}}

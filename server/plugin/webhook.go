@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -15,6 +18,7 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )
@@ -28,9 +32,13 @@ const (
 	actionLabeled              = "labeled"
 	actionAssigned             = "assigned"
 
-	actionCreated = "created"
-	actionDeleted = "deleted"
-	actionEdited  = "edited"
+	actionCreated   = "created"
+	actionDeleted   = "deleted"
+	actionEdited    = "edited"
+	actionCompleted = "completed"
+
+	workflowJobFail    = "failure"
+	workflowJobSuccess = "success"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -53,6 +61,7 @@ type RenderConfig struct {
 type EventWithRenderConfig struct {
 	Event  interface{}
 	Config RenderConfig
+	Label  string
 }
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -91,8 +100,10 @@ func signBody(secret, body []byte) ([]byte, error) {
 // which also contains per-subscription configuration options.
 func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
 	style := ""
+	subscriptionLabel := ""
 	if sub != nil {
 		style = sub.RenderStyle()
+		subscriptionLabel = sub.Label()
 	}
 
 	return &EventWithRenderConfig{
@@ -100,6 +111,7 @@ func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRe
 		Config: RenderConfig{
 			Style: style,
 		},
+		Label: subscriptionLabel,
 	}
 }
 
@@ -282,6 +294,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		handler = func() {
 			p.postStarEvent(event)
 		}
+	case *github.WorkflowJobEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postWorkflowJobEvent(event)
+		}
 	case *github.ReleaseEvent:
 		repo = event.GetRepo()
 		handler = func() {
@@ -334,14 +351,18 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
 
-	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
-		if err != nil {
-			p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
+	var result *github.Repository
+	var err error
+	cErr := p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		if result, _, err = githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+			if err != nil {
+				p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
+				return err
+			}
 		}
-		return false
-	}
-
-	return true
+		return nil
+	})
+	return cErr == nil && result != nil
 }
 
 func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscription) bool {
@@ -358,7 +379,7 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	githubClient := p.githubConnectUser(context.Background(), info)
 	organization := p.getConfiguration().GitHubOrg
 
-	return p.isUserOrganizationMember(githubClient, user, organization)
+	return p.isUserOrganizationMember(githubClient, user, info, organization)
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
@@ -399,12 +420,18 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != actionClosed {
+		if sub.PullsMerged() && action != actionClosed && !sub.PullsCreated() {
 			continue
 		}
 
-		if sub.PullsCreated() && action != actionOpened {
+		if sub.PullsCreated() && action != actionOpened && !sub.PullsMerged() {
 			continue
+		}
+
+		if sub.PullsMerged() && sub.PullsCreated() {
+			if action != actionClosed && action != actionOpened {
+				continue
+			}
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
@@ -1346,6 +1373,47 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
+	if event.GetAction() != actionCompleted {
+		return
+	}
+
+	// Create a post only when the workflow job is completed and has either failed or succeeded
+	if event.GetWorkflowJob().GetConclusion() != workflowJobFail && event.GetWorkflowJob().GetConclusion() != workflowJobSuccess {
+		return
+	}
+
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	newWorkflowJobMessage, err := renderTemplate("newWorkflowJob", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
+	for _, sub := range subs {
+		if !sub.Workflows() {
+			continue
+		}
+
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_workflow_job",
+			Message:   newWorkflowJobMessage,
+			ChannelId: sub.ChannelID,
+		}
+
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
 	}
 }

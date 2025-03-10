@@ -8,8 +8,8 @@ import ReactSelect from 'react-select';
 import AsyncSelect from 'react-select/async';
 import CreatableSelect from 'react-select/creatable';
 
-import Setting from 'components/setting';
-import {getStyleForReactSelect} from 'utils/styles';
+import Setting from '@/components/setting';
+import {getStyleForReactSelect} from '@/utils/styles';
 
 const MAX_NUM_OPTIONS = 100;
 
@@ -97,7 +97,10 @@ export default class ReactSelectSetting extends React.PureComponent {
         let validationError = null;
         if (this.props.required && this.state.invalid) {
             validationError = (
-                <p className='help-text error-text'>
+                <p
+                    className='help-text error-text'
+                    style={{marginTop: '8px', marginBottom: '8px'}}
+                >
                     <span>{requiredMsg}</span>
                 </p>
             );

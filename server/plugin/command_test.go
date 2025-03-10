@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -32,7 +35,7 @@ func getPluginTest(api *plugintest.API, mockKvStore *mocks.MockKvStore) *Plugin 
 
 	p.store = mockKvStore
 
-	p.BotUserID = "mockBotId"
+	p.BotUserID = "mockBotID"
 
 	p.SetAPI(api)
 	p.client = pluginapi.NewClient(api, p.Driver)
@@ -286,7 +289,7 @@ func TestExecuteCommand(t *testing.T) {
 		},
 
 		"help command": {
-			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelId", RootId: "test-rootId", UserId: "test-userId"},
+			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelID", RootId: "test-rootID", UserId: "test-userID"},
 			expectedMsg: "###### Mattermost GitHub Plugin - Slash Command Help\n",
 			SetupMockStore: func(mks *mocks.MockKvStore) {
 				mks.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
@@ -344,15 +347,16 @@ func TestGetMutedUsernames(t *testing.T) {
 	tests := []struct {
 		name       string
 		setup      func()
-		assertions func(t *testing.T, result []string)
+		assertions func(t *testing.T, result []string, err error)
 	}{
 		{
 			name: "Error retrieving muted usernames",
 			setup: func() {
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, err error) {
 				assert.Nil(t, result)
+				assert.ErrorContains(t, err, "error retrieving muted users")
 			},
 		},
 		{
@@ -363,7 +367,7 @@ func TestGetMutedUsernames(t *testing.T) {
 					return nil
 				}).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, _ error) {
 				assert.Equal(t, []string(nil), result)
 			},
 		},
@@ -376,7 +380,7 @@ func TestGetMutedUsernames(t *testing.T) {
 					return nil
 				}).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, _ error) {
 				assert.Equal(t, []string{"user1", "user2", "user3"}, result)
 			},
 		},
@@ -385,9 +389,9 @@ func TestGetMutedUsernames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.setup()
 
-			mutedUsernames := p.getMutedUsernames(userInfo)
+			mutedUsernames, err := p.getMutedUsernames(userInfo)
 
-			tc.assertions(t, mutedUsernames)
+			tc.assertions(t, mutedUsernames, err)
 		})
 	}
 }
@@ -406,10 +410,11 @@ func TestHandleMuteList(t *testing.T) {
 		{
 			name: "Error retrieving muted usernames",
 			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
 			assertions: func(t *testing.T, result string) {
-				assert.Equal(t, "You have no muted users", result)
+				assert.Equal(t, "An error occurred getting muted users. Please try again later", result)
 			},
 		},
 		{
@@ -503,6 +508,16 @@ func TestHandleMuteAdd(t *testing.T) {
 		assertions func(t *testing.T, result string)
 	}{
 		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "An error occurred getting muted users. Please try again later", result)
+			},
+		},
+		{
 			name:     "Error saving the new muted username",
 			username: "errorUser",
 			setup: func() {
@@ -580,6 +595,14 @@ func TestHandleUnmute(t *testing.T) {
 		setup          func()
 		expectedResult string
 	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			expectedResult: "An error occurred getting muted users. Please try again later",
+		},
 		{
 			name:     "Error occurred while unmuting the user",
 			username: "user1",
