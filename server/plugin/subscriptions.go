@@ -17,11 +17,12 @@ import (
 )
 
 const (
-	SubscriptionsKey      = "subscriptions"
-	flagExcludeOrgMember  = "exclude-org-member"
-	flagRenderStyle       = "render-style"
-	flagFeatures          = "features"
-	flagExcludeRepository = "exclude"
+	SubscriptionsKey        = "subscriptions"
+	flagExcludeOrgMember    = "exclude-org-member"
+	flagRenderStyle         = "render-style"
+	flagFeatures            = "features"
+	flagExcludeRepository   = "exclude"
+	SubscriptionUnavailable = "no subscription exist for `%s` in the channel"
 )
 
 type SubscriptionFlags struct {
@@ -388,7 +389,7 @@ func (p *Plugin) Unsubscribe(channelID, repo, owner string) error {
 
 	repoSubs := subs.Repositories[repoWithOwner]
 	if repoSubs == nil {
-		return nil
+		return errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/"))
 	}
 
 	removed := false
@@ -405,6 +406,8 @@ func (p *Plugin) Unsubscribe(channelID, repo, owner string) error {
 		if err := p.StoreSubscriptions(subs); err != nil {
 			return errors.Wrap(err, "could not store subscriptions")
 		}
+	} else {
+		return errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/"))
 	}
 
 	return nil
