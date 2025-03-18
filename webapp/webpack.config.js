@@ -12,10 +12,10 @@ const PLUGIN_ID = require('../plugin.json').id;
 const NPM_TARGET = process.env.npm_lifecycle_event; //eslint-disable-line no-process-env
 const E2E_TESTING = process.env.E2E_TESTING; //eslint-disable-line no-process-env
 let mode = 'production';
-let devtool = '';
+let devtool = 'source-map';
 if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
     mode = 'development';
-    devtool = 'source-map';
+    devtool = 'eval-source-map';
 }
 
 const plugins = [
