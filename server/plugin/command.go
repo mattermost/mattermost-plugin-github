@@ -599,6 +599,10 @@ func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, p
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 	if err := p.Unsubscribe(args.ChannelId, repo, owner); err != nil {
+		if strings.Contains(err.Error(), "no subscription exist") {
+			return err.Error()
+		}
+
 		p.client.Log.Warn("Failed to unsubscribe", "repo", repo, "error", err.Error())
 		return "Encountered an error trying to unsubscribe. Please try again."
 	}
