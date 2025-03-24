@@ -22,7 +22,7 @@ const (
 	flagRenderStyle         = "render-style"
 	flagFeatures            = "features"
 	flagExcludeRepository   = "exclude"
-	SubscriptionUnavailable = "no subscription exist for `%s` in the channel"
+	SubscriptionUnavailable = "no subscription exists for `%s` in the channel"
 )
 
 type SubscriptionFlags struct {
