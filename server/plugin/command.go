@@ -584,6 +584,7 @@ func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features,
 
 	return previousFeatures, nil
 }
+
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
