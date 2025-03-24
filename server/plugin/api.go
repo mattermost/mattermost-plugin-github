@@ -850,6 +850,27 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	searchTerm := r.FormValue("term")
 	orgsList := p.configuration.getOrganizations()
 	allIssues := []*github.Issue{}
+
+	if len(orgsList) == 0 {
+		query := getIssuesSearchQuery("", searchTerm)
+		var result *github.IssuesSearchResult
+		var err error
+		cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			result, _, err = githubClient.Search.Issues(c.Ctx, query, &github.SearchOptions{})
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		if cErr != nil {
+			c.Log.WithError(cErr).Warnf("Failed to search for issues")
+			p.writeJSON(w, make([]*github.Issue, 0))
+			return
+		}
+
+		allIssues = append(allIssues, result.Issues...)
+	}
+
 	for _, org := range orgsList {
 		query := getIssuesSearchQuery(org, searchTerm)
 		var result *github.IssuesSearchResult
