@@ -57,7 +57,6 @@ exports[`CreateIssueModal should render correctly with default props 1`] = `
           value={null}
         />
         <Input
-          disabled={false}
           id="title"
           label="Title for the GitHub Issue"
           maxLength={256}
