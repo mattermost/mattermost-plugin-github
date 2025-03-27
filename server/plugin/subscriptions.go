@@ -379,17 +379,32 @@ func (p *Plugin) GetSubscribedChannelsForRepository(repo *github.Repository) []*
 	return subsToReturn
 }
 
-func (p *Plugin) Unsubscribe(channelID, repo, owner string) error {
+type SubscriptionError struct {
+	Code  int
+	Error error
+}
+
+const (
+	SubscriptionNotFound = iota
+	SubscriptionAlreadyExists
+	InternalServerError
+)
+
+func NewSubscriptionError(code int, err error) *SubscriptionError {
+	return &SubscriptionError{Code: code, Error: err}
+}
+
+func (p *Plugin) Unsubscribe(channelID, repo, owner string) *SubscriptionError {
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
 	subs, err := p.GetSubscriptions()
 	if err != nil {
-		return errors.Wrap(err, "could not get subscriptions")
+		return NewSubscriptionError(InternalServerError, errors.Wrap(err, "could not get subscriptions"))
 	}
 
 	repoSubs := subs.Repositories[repoWithOwner]
 	if repoSubs == nil {
-		return errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/"))
+		return NewSubscriptionError(SubscriptionNotFound, errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/")))
 	}
 
 	removed := false
@@ -401,13 +416,13 @@ func (p *Plugin) Unsubscribe(channelID, repo, owner string) error {
 		}
 	}
 
-	if removed {
-		subs.Repositories[repoWithOwner] = repoSubs
-		if err := p.StoreSubscriptions(subs); err != nil {
-			return errors.Wrap(err, "could not store subscriptions")
-		}
-	} else {
-		return errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/"))
+	if !removed {
+		return NewSubscriptionError(SubscriptionNotFound, errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/")))
+	}
+
+	subs.Repositories[repoWithOwner] = repoSubs
+	if err := p.StoreSubscriptions(subs); err != nil {
+		return NewSubscriptionError(InternalServerError, errors.Wrap(err, "could not store subscriptions"))
 	}
 
 	return nil
