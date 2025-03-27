@@ -852,7 +852,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	allIssues := []*github.Issue{}
 
 	if len(orgsList) == 0 {
-		orgsList = []string{""};
+		orgsList = []string{""}
 	}
 
 	for _, org := range orgsList {
