@@ -45,7 +45,7 @@ func getIssuesSearchQuery(searchValue, searchTerm string) string {
 	searchField := ""
 	if len(searchValue) != 0 {
 		searchField = fmt.Sprintf("org:%v", searchValue)
-	} 
+	}
 
 	// get all the issues which involve the user in case no organizational lock is set
 	// else {
