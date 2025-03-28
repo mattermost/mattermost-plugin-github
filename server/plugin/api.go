@@ -850,6 +850,11 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 	searchTerm := r.FormValue("term")
 	orgsList := p.configuration.getOrganizations()
 	allIssues := []*github.Issue{}
+
+	if len(orgsList) == 0 {
+		orgsList = []string{""}
+	}
+
 	for _, org := range orgsList {
 		query := getIssuesSearchQuery(org, searchTerm)
 		var result *github.IssuesSearchResult
