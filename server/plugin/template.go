@@ -486,7 +486,11 @@ Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 {{- end -}}`))
 
 	template.Must(masterTemplate.New("newDiscussion").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} started a new discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
+{{template "user" .GetSender}}
+{{- if eq .GetAction "created" }} started a new
+{{- else if eq .GetAction "closed" }} closed a
+{{- else if eq .GetAction "reopened" }} reopened a
+{{- end }} discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
 `))
 
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
