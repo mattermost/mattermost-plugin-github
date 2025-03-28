@@ -494,9 +494,13 @@ Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 `))
 
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
+{{template "repo" .GetRepo}} 
+{{- if eq .GetAction "created" }} New comment 
+{{- else if eq .GetAction "edited" }} Comment edited
+{{- else if eq .GetAction "deleted" }} Comment deleted
+{{- end }} by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
 
-{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+> {{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 }
 

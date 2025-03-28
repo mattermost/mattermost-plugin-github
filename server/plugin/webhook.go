@@ -1508,10 +1508,6 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 		return
 	}
 
-	if event.GetAction() != actionCreated {
-		return
-	}
-
 	newDiscussionCommentMessage, err := renderTemplate("newDiscussionComment", event)
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
