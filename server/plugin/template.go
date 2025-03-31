@@ -490,6 +490,7 @@ Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 {{- if eq .GetAction "created" }} started a new
 {{- else if eq .GetAction "closed" }} closed a
 {{- else if eq .GetAction "reopened" }} reopened a
+{{- else if eq .GetAction "edited" }} edited a
 {{- end }} discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
 `))
 
