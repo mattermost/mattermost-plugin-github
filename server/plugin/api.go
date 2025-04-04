@@ -855,6 +855,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 		orgsList = []string{""}
 	}
 
+	hasFetchedIssues := false
 	for _, org := range orgsList {
 		query := getIssuesSearchQuery(org, searchTerm)
 		var result *github.IssuesSearchResult
@@ -868,11 +869,17 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 		})
 		if cErr != nil {
 			c.Log.WithError(cErr).With(logger.LogContext{"query": query}).Warnf("Failed to search for issues")
-			p.writeJSON(w, make([]*github.Issue, 0))
-			return
 		}
 
-		allIssues = append(allIssues, result.Issues...)
+		if result != nil && len(result.Issues) > 0 {
+			allIssues = append(allIssues, result.Issues...)
+			hasFetchedIssues = true
+		}
+	}
+
+	if !hasFetchedIssues {
+		p.writeJSON(w, make([]*github.Issue, 0))
+		return
 	}
 
 	p.writeJSON(w, allIssues)
@@ -1407,6 +1414,7 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 		}
 	} else {
 		orgsList := p.configuration.getOrganizations()
+		hasFetchedRepos := false
 		for _, org := range orgsList {
 			orgRepos, statusCode, err := p.getRepositoryListByOrg(c.Ctx, c.GHInfo, org, githubClient, opt)
 			if err != nil {
@@ -1414,19 +1422,21 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 					orgRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, org, githubClient, opt)
 					if err != nil {
 						c.Log.WithError(err).Warnf("Failed to list repositories", "Organization", org)
-						p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-						return
 					}
 				} else {
 					c.Log.WithError(err).Warnf("Failed to list repositories", "Organization", org)
-					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-					return
 				}
 			}
 
 			if len(orgRepos) > 0 {
 				allRepos = append(allRepos, orgRepos...)
+				hasFetchedRepos = true
 			}
+		}
+
+		if !hasFetchedRepos {
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+			return
 		}
 	}
 
