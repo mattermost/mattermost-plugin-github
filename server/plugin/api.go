@@ -855,6 +855,7 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 		orgsList = []string{""}
 	}
 
+	hasFetchedIssues := false
 	for _, org := range orgsList {
 		query := getIssuesSearchQuery(org, searchTerm)
 		var result *github.IssuesSearchResult
@@ -868,11 +869,17 @@ func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Req
 		})
 		if cErr != nil {
 			c.Log.WithError(cErr).With(logger.LogContext{"query": query}).Warnf("Failed to search for issues")
-			p.writeJSON(w, make([]*github.Issue, 0))
-			return
 		}
 
-		allIssues = append(allIssues, result.Issues...)
+		if result != nil && len(result.Issues) > 0 {
+			allIssues = append(allIssues, result.Issues...)
+			hasFetchedIssues = true
+		}
+	}
+
+	if !hasFetchedIssues {
+		p.writeJSON(w, make([]*github.Issue, 0))
+		return
 	}
 
 	p.writeJSON(w, allIssues)
