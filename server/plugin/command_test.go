@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -285,7 +288,7 @@ func TestExecuteCommand(t *testing.T) {
 		},
 
 		"help command": {
-			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelId", RootId: "test-rootId", UserId: "test-userId"},
+			commandArgs: &model.CommandArgs{Command: "/github help", ChannelId: "test-channelID", RootId: "test-rootID", UserId: "test-userID"},
 			expectedMsg: "###### Mattermost GitHub Plugin - Slash Command Help\n",
 			SetupMockStore: func(mks *mocks.MockKvStore) {
 				mks.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
@@ -343,15 +346,16 @@ func TestGetMutedUsernames(t *testing.T) {
 	tests := []struct {
 		name       string
 		setup      func()
-		assertions func(t *testing.T, result []string)
+		assertions func(t *testing.T, result []string, err error)
 	}{
 		{
 			name: "Error retrieving muted usernames",
 			setup: func() {
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, err error) {
 				assert.Nil(t, result)
+				assert.ErrorContains(t, err, "error retrieving muted users")
 			},
 		},
 		{
@@ -362,7 +366,7 @@ func TestGetMutedUsernames(t *testing.T) {
 					return nil
 				}).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, _ error) {
 				assert.Equal(t, []string(nil), result)
 			},
 		},
@@ -375,7 +379,7 @@ func TestGetMutedUsernames(t *testing.T) {
 					return nil
 				}).Times(1)
 			},
-			assertions: func(t *testing.T, result []string) {
+			assertions: func(t *testing.T, result []string, _ error) {
 				assert.Equal(t, []string{"user1", "user2", "user3"}, result)
 			},
 		},
@@ -384,9 +388,9 @@ func TestGetMutedUsernames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.setup()
 
-			mutedUsernames := p.getMutedUsernames(userInfo)
+			mutedUsernames, err := p.getMutedUsernames(userInfo)
 
-			tc.assertions(t, mutedUsernames)
+			tc.assertions(t, mutedUsernames, err)
 		})
 	}
 }
@@ -405,10 +409,11 @@ func TestHandleMuteList(t *testing.T) {
 		{
 			name: "Error retrieving muted usernames",
 			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
 				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
 			},
 			assertions: func(t *testing.T, result string) {
-				assert.Equal(t, "You have no muted users", result)
+				assert.Equal(t, "An error occurred getting muted users. Please try again later", result)
 			},
 		},
 		{
@@ -502,6 +507,16 @@ func TestHandleMuteAdd(t *testing.T) {
 		assertions func(t *testing.T, result string)
 	}{
 		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			assertions: func(t *testing.T, result string) {
+				assert.Equal(t, "An error occurred getting muted users. Please try again later", result)
+			},
+		},
+		{
 			name:     "Error saving the new muted username",
 			username: "errorUser",
 			setup: func() {
@@ -594,6 +609,14 @@ func TestHandleUnmute(t *testing.T) {
 		setup          func()
 		expectedResult string
 	}{
+		{
+			name: "Error retrieving muted usernames",
+			setup: func() {
+				mockAPI.On("LogError", "error occurred getting muted users.", "UserID", userInfo.UserID, "Error", mock.Anything)
+				mockKvStore.EXPECT().Get("mockUserID-muted-users", gomock.Any()).Return(errors.New("error retrieving muted users")).Times(1)
+			},
+			expectedResult: "An error occurred getting muted users. Please try again later",
+		},
 		{
 			name:     "Error occurred while unmuting the user",
 			username: "user1",
@@ -780,50 +803,50 @@ func TestHandleMuteCommand(t *testing.T) {
 func TestArrayDifference(t *testing.T) {
 	tests := []struct {
 		name     string
-		a        []string
-		b        []string
+		arr1     []string
+		arr2     []string
 		expected []string
 	}{
 		{
 			name:     "No difference - all elements in a are in b",
-			a:        []string{"apple", "banana", "cherry"},
-			b:        []string{"apple", "banana", "cherry"},
+			arr1:     []string{"apple", "banana", "cherry"},
+			arr2:     []string{"apple", "banana", "cherry"},
 			expected: []string{},
 		},
 		{
 			name:     "Difference - some elements in a are not in b",
-			a:        []string{"apple", "banana", "cherry", "date"},
-			b:        []string{"apple", "banana"},
+			arr1:     []string{"apple", "banana", "cherry", "date"},
+			arr2:     []string{"apple", "banana"},
 			expected: []string{"cherry", "date"},
 		},
 		{
 			name:     "All elements different - no elements in a are in b",
-			a:        []string{"apple", "banana"},
-			b:        []string{"cherry", "date"},
+			arr1:     []string{"apple", "banana"},
+			arr2:     []string{"cherry", "date"},
 			expected: []string{"apple", "banana"},
 		},
 		{
 			name:     "Empty a - no elements to compare",
-			a:        []string{},
-			b:        []string{"apple", "banana"},
+			arr1:     []string{},
+			arr2:     []string{"apple", "banana"},
 			expected: []string{},
 		},
 		{
 			name:     "Empty b - all elements in a should be returned",
-			a:        []string{"apple", "banana"},
-			b:        []string{},
+			arr1:     []string{"apple", "banana"},
+			arr2:     []string{},
 			expected: []string{"apple", "banana"},
 		},
 		{
 			name:     "Both a and b empty - no elements to compare",
-			a:        []string{},
-			b:        []string{},
+			arr1:     []string{},
+			arr2:     []string{},
 			expected: []string{},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := arrayDifference(tc.a, tc.b)
+			result := arrayDifference(tc.arr1, tc.arr2)
 			assert.ElementsMatch(t, tc.expected, result)
 		})
 	}
@@ -1195,11 +1218,11 @@ func TestHandleUnsubscribe(t *testing.T) {
 				}).Times(1)
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				post.Message = "@mockUsername unsubscribed this channel from [owner/repo](https://github.com/owner/repo)"
+				post.Message = "@mockUsername Unsubscribed this channel from [owner/repo](https://github.com/owner/repo)\n Please delete the [webhook](https://github.com/owner/repo/settings/hooks) for this subscription unless it's required for other subscriptions."
 				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
 			},
 			assertions: func(result string) {
-				assert.Equal(t, "@mockUsername unsubscribed this channel from [owner/repo](https://github.com/owner/repo) error creating the public post: error creating post", result)
+				assert.Equal(t, "@mockUsername Unsubscribed this channel from [owner/repo](https://github.com/owner/repo)\n Please delete the [webhook](https://github.com/owner/repo/settings/hooks) for this subscription unless it's required for other subscriptions. error creating the public post: error creating post", result)
 			},
 		},
 		{
@@ -1211,8 +1234,10 @@ func TestHandleUnsubscribe(t *testing.T) {
 						"owner/repo": {{ChannelID: "dummyChannelID", CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
 					return nil
 				}).Times(1)
+				mockAPI.ExpectedCalls = nil
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(post, nil).Times(1)
+				post.Message = ""
 			},
 			assertions: func(result string) {
 				assert.Empty(t, result)
