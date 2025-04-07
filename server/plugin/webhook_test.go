@@ -5,50 +5,41 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v54/github"
-	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+
+	"github.com/mattermost/mattermost-plugin-github/server/mocks"
 )
 
 func TestPostPushEvent(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name      string
 		pushEvent *github.PushEvent
-		setup     func()
+		setup     func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:      "no subscription found",
+			name:      "No subscription found",
 			pushEvent: GetMockPushEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:      "no commits found in event",
+			name:      "No commits found in event",
 			pushEvent: GetMockPushEventWithoutCommit(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 			},
 		},
 		{
 			name:      "Error creating post",
 			pushEvent: GetMockPushEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
 			},
@@ -56,20 +47,18 @@ func TestPostPushEvent(t *testing.T) {
 		{
 			name:      "Successful handle post push event",
 			pushEvent: GetMockPushEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
 	for _, tc := range tests {
+		mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKVStore)
+
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			tc.setup(mockAPI, mockKVStore)
 
 			p.postPushEvent(tc.pushEvent)
 
@@ -79,43 +68,30 @@ func TestPostPushEvent(t *testing.T) {
 }
 
 func TestPostCreateEvent(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name        string
 		createEvent *github.CreateEvent
-		setup       func()
+		setup       func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:        "no subscription found",
+			name:        "No subscription found",
 			createEvent: GetMockCreateEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:        "unsupported ref type",
+			name:        "Unsupported ref type",
 			createEvent: GetMockCreateEventWithUnsupportedRefType(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 			},
 		},
 		{
 			name:        "Error creating post",
 			createEvent: GetMockCreateEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
 			},
@@ -123,20 +99,18 @@ func TestPostCreateEvent(t *testing.T) {
 		{
 			name:        "Successfully handle post create event",
 			createEvent: GetMockCreateEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.postCreateEvent(tc.createEvent)
 
@@ -146,43 +120,30 @@ func TestPostCreateEvent(t *testing.T) {
 }
 
 func TestPostDeleteEvent(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name        string
 		deleteEvent *github.DeleteEvent
-		setup       func()
+		setup       func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:        "no subscription found",
+			name:        "No subscription found",
 			deleteEvent: GetMockDeleteEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:        "non-tag and non-branch event",
+			name:        "Non-tag and non-branch event",
 			deleteEvent: GetMockDeleteEventWithInvalidType(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 			},
 		},
 		{
 			name:        "Error creating post",
 			deleteEvent: GetMockDeleteEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
 			},
@@ -190,21 +151,18 @@ func TestPostDeleteEvent(t *testing.T) {
 		{
 			name:        "Successful handle post delete event",
 			deleteEvent: GetMockDeleteEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.postDeleteEvent(tc.deleteEvent)
 
@@ -214,79 +172,58 @@ func TestPostDeleteEvent(t *testing.T) {
 }
 
 func TestPostIssueCommentEvent(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name        string
 		event       *github.IssueCommentEvent
-		setup       func()
+		setup       func(*plugintest.API, *mocks.MockKvStore)
 		expectedErr string
 	}{
 		{
-			name:  "no subscriptions found",
+			name:  "No subscriptions found",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "event action is not created",
+			name:  "Event action is not created",
 			event: GetMockIssueCommentEvent("edited", "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 			},
 		},
 		{
-			name:  "successful event handling with no label filtering",
+			name:  "Successful event handling with no label filtering",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 		{
-			name:  "error creating post",
+			name:  "Error creating post",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
 			},
 		},
 		{
-			name:  "successful handle post issue comment event",
+			name:  "Successful handle post issue comment event",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.postIssueCommentEvent(tc.event)
 
@@ -296,22 +233,19 @@ func TestPostIssueCommentEvent(t *testing.T) {
 }
 
 func TestSenderMutedByReceiver(t *testing.T) {
-	mockStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockStore)
-
 	tests := []struct {
 		name   string
 		userID string
 		sender string
-		setup  func()
+		setup  func(*mocks.MockKvStore, *plugintest.API)
 		assert func(t *testing.T, muted bool)
 	}{
 		{
-			name:   "sender is muted",
+			name:   "Sender is muted",
 			userID: "user1",
 			sender: "sender1",
-			setup: func() {
-				mockStore.EXPECT().Get("user1-muted-users", gomock.Any()).Return(nil).Do(func(key string, value interface{}) {
+			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", gomock.Any()).Return(nil).Do(func(key string, value interface{}) {
 					*value.(*[]byte) = []byte("sender1,sender2")
 				}).Times(1)
 			},
@@ -320,11 +254,11 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			},
 		},
 		{
-			name:   "sender is not muted",
+			name:   "Sender is not muted",
 			userID: "user1",
 			sender: "sender3",
-			setup: func() {
-				mockStore.EXPECT().Get("user1-muted-users", gomock.Any()).Return(nil).Do(func(key string, value interface{}) {
+			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", gomock.Any()).Return(nil).Do(func(key string, value interface{}) {
 					*value.(*[]byte) = []byte("sender1,sender2")
 				}).Times(1)
 			},
@@ -333,11 +267,11 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			},
 		},
 		{
-			name:   "error fetching muted users",
+			name:   "Error fetching muted users",
 			userID: "user1",
 			sender: "sender1",
-			setup: func() {
-				mockStore.EXPECT().Get("user1-muted-users", gomock.Any()).Return(errors.New("store error")).Times(1)
+			setup: func(mockKVStore *mocks.MockKvStore, mockAPI *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", gomock.Any()).Return(errors.New("store error")).Times(1)
 				mockAPI.On("LogWarn", "Failed to get muted users", "userID", "user1").Times(1)
 			},
 			assert: func(t *testing.T, muted bool) {
@@ -347,7 +281,10 @@ func TestSenderMutedByReceiver(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockKVStore, mockAPI)
 
 			muted := p.senderMutedByReceiver(tc.userID, tc.sender)
 
@@ -358,78 +295,57 @@ func TestSenderMutedByReceiver(t *testing.T) {
 }
 
 func TestPostPullRequestReviewEvent(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name  string
 		event *github.PullRequestReviewEvent
-		setup func()
+		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:  "no subscriptions found",
-			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+			name:  "No subscriptions found",
+			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "unsupported action in event",
-			event: GetMockPullRequestReviewEvent("deleted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			name:  "Unsupported action in event",
+			event: GetMockPullRequestReviewEvent("deleted", "approved", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 			},
 		},
 		{
-			name:  "unsupported review state",
-			event: GetMockPullRequestReviewEvent("submitted", "canceled", MockRepoName, false, MockUserLogin, MockIssueAuthor),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			name:  "Unsupported review state",
+			event: GetMockPullRequestReviewEvent("submitted", "canceled", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("LogDebug", "Unhandled review state", "state", "canceled").Times(1)
 			},
 		},
 		{
-			name:  "error creating post",
-			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			name:  "Error creating post",
+			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
 			},
 		},
 		{
-			name:  "successful handling of pull request review event",
-			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepoName, false, MockUserLogin, MockIssueAuthor),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			name:  "Successful handling of pull request review event",
+			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepo, false, "authorUser", "reviewerUser"),
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.postPullRequestReviewEvent(tc.event)
 
@@ -439,52 +355,42 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 }
 
 func TestPostPullRequestReviewCommentEvent(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name  string
 		event *github.PullRequestReviewCommentEvent
-		setup func()
+		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:  "no subscriptions found",
+			name:  "No subscriptions found",
 			event: GetMockPullRequestReviewCommentEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "error creating post",
+			name:  "Error creating post",
 			event: GetMockPullRequestReviewCommentEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
 			},
 		},
 		{
-			name:  "successful handling of pull request review comment event",
+			name:  "Successful handling of pull request review comment event",
 			event: GetMockPullRequestReviewCommentEvent(),
-			setup: func() {
-				mockKvStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
-					if v, ok := value.(**Subscriptions); ok {
-						*v = GetMockSubscriptions()
-					}
-					return nil
-				}).Times(1)
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.postPullRequestReviewCommentEvent(tc.event)
 
@@ -494,61 +400,58 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 }
 
 func TestHandleCommentMentionNotification(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name  string
 		event *github.IssueCommentEvent
-		setup func()
+		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:  "unsupported action",
+			name:  "Unsupported action",
 			event: GetMockIssueCommentEvent(actionEdited, "mockBody", "mockUser"),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "commenter is the same as mentioned user",
+			name:  "Commenter is the same as mentioned user",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @mockUser", "mockUser"),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "comment mentions issue author",
+			name:  "Comment mentions issue author",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @issueAuthor", "mockUser"),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "error getting channel details",
+			name:  "Error getting channel details",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "error getting channel details",
+			name:  "Error getting channel details",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("otherUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
 			},
 		},
 		{
-			name:  "error creating post",
+			name:  "Error creating post",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("otherUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error creating mention post", "error", "error creating post").Times(1)
@@ -556,16 +459,16 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 			},
 		},
 		{
-			name:  "successful mention notification",
+			name:  "Successful mention notification",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("otherUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
@@ -573,8 +476,11 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 		},
 	}
 	for _, tc := range tests {
+		mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKVStore)
+
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			tc.setup(mockAPI, mockKVStore)
 
 			p.handleCommentMentionNotification(tc.event)
 
@@ -584,36 +490,33 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 }
 
 func TestHandleCommentAuthorNotification(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name  string
 		event *github.IssueCommentEvent
-		setup func()
+		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:  "author is the commenter",
+			name:  "Author is the commenter",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "issueAuthor"),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "unsupported action",
+			name:  "Unsupported action",
 			event: GetMockIssueCommentEvent(actionEdited, "mockBody", "mockUser"),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "author not mapped to user ID",
+			name:  "Author not mapped to user ID",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "author has no permission to repo",
+			name:  "Author has no permission to repo",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("authorUserID")
 					}
@@ -622,10 +525,10 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			},
 		},
 		{
-			name:  "unhandled issue type",
+			name:  "Unhandled issue type",
 			event: GetMockIssueCommentEventWithURL(actionCreated, "mockBody", "mockUser", "https://mockurl.com/unhandledType/123"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("authorUserID")
 					}
@@ -635,34 +538,34 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			},
 		},
 		{
-			name:  "error creating post",
+			name:  "Error creating post",
 			event: GetMockIssueCommentEventWithURL(actionCreated, "mockBody", "mockUser", "https://mockurl.com/issues/123"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("authorUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
-			name:  "successful notification",
+			name:  "Successful notification",
 			event: GetMockIssueCommentEventWithURL(actionCreated, "mockBody", "mockUser", "https://mockurl.com/issues/123"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("authorUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
@@ -671,7 +574,10 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.handleCommentAuthorNotification(tc.event)
 
@@ -681,33 +587,30 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 }
 
 func TestHandleCommentAssigneeNotification(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name  string
 		event *github.IssueCommentEvent
-		setup func()
+		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:  "unsupported issue type",
+			name:  "Unsupported issue type",
 			event: GetMockIssueCommentEventWithAssignees("mockType", actionCreated, "mockBody", "mockUser", []string{"assigneeUser"}),
-			setup: func() {
+			setup: func(mockAPI *plugintest.API, _ *mocks.MockKvStore) {
 				mockAPI.On("LogDebug", "Unhandled issue type", "Type", "mockType")
 			},
 		},
 		{
-			name:  "assignee is the author",
+			name:  "Assignee is the author",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "assigneeUser", []string{"assigneeUser"}),
-			setup: func() {
-				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "issue author is assignee",
+			name:  "Issue author is assignee",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "assigneeUser", []string{"issueAuthor"}),
-			setup: func() {
-				mockKvStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("issueAuthor")
 					}
@@ -716,44 +619,45 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 			},
 		},
 		{
-			name:  "assignee is the sender",
+			name:  "Assignee is the sender",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "mockUser", []string{"mockUser"}),
-			setup: func() {
-				mockKvStore.EXPECT().Get("mockUser_githubusername", gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("mockUser_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "comment mentions assignee (self-mention)",
+			name:  "Comment mentions assignee (self-mention)",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mention @assigneeUser", "mockUser", []string{"assigneeUser"}),
-			setup: func() {
-				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("assigneeUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
-				// mockAPI.On("LogDebug", "Commenter is muted, skipping notification")
-				// mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "no permission to the repo",
+			name:  "No permission to the repo",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "mockUser", []string{"assigneeUser"}),
-			setup: func() {
-				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("assigneeUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.handleCommentAssigneeNotification(tc.event)
 
@@ -763,64 +667,61 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 }
 
 func TestHandlePullRequestNotification(t *testing.T) {
-	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
-	p := getPluginTest(mockAPI, mockKvStore)
-
 	tests := []struct {
 		name  string
 		event *github.PullRequestEvent
-		setup func()
+		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
-			name:  "review requested by sender",
+			name:  "Review requested by sender",
 			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "senderUser", ""),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "review requested with no repo permission",
+			name:  "Review requested with no repo permission",
 			event: GetMockPullRequestEvent("review_requested", "mockRepo", true, "senderUser", "requestedReviewer", ""),
-			setup: func() {
-				mockKvStore.EXPECT().Get("requestedReviewer_githubusername", gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "pull request closed by author",
+			name:  "Pull request closed by author",
 			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "authorUser", "authorUser", ""),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "pull request closed successfully",
+			name:  "Pull request closed successfully",
 			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "authorUser", "senderUser", ""),
-			setup: func() {
-				mockKvStore.EXPECT().Get("senderUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("senderUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("authorUserID")
 					}
 					return nil
 				}).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
-			name:  "pull request reopened with no repo permission",
+			name:  "Pull request reopened with no repo permission",
 			event: GetMockPullRequestEvent(actionReopened, "mockRepo", true, "authorUser", "senderUser", ""),
-			setup: func() {
-				mockKvStore.EXPECT().Get("senderUser_githubusername", gomock.Any()).Return(nil).Times(1)
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("senderUser_githubusername", gomock.Any()).Return(nil).Times(1)
 			},
 		},
 		{
-			name:  "pull request assigned to self",
+			name:  "Pull request assigned to self",
 			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "assigneeUser", "assigneeUser", "assigneeUser"),
-			setup: func() {},
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
-			name:  "pull request assigned successfully",
+			name:  "Pull request assigned successfully",
 			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "senderUser", "assigneeUser", "assigneeUser"),
-			setup: func() {
-				mockKvStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("assigneeUserID")
 					}
@@ -828,15 +729,15 @@ func TestHandlePullRequestNotification(t *testing.T) {
 				}).Times(1)
 				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-				mockKvStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
-			name:  "review requested with valid user ID",
+			name:  "Review requested with valid user ID",
 			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "requestedReviewer", ""),
-			setup: func() {
-				mockKvStore.EXPECT().Get("requestedReviewer_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
 					if v, ok := value.(*[]byte); ok {
 						*v = []byte("requestedUserID")
 					}
@@ -844,22 +745,25 @@ func TestHandlePullRequestNotification(t *testing.T) {
 				}).Times(1)
 				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-				mockKvStore.EXPECT().Get("requestedUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("requestedUserID_githubtoken", gomock.Any()).Return(nil).Times(1)
 				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
-			name: "unhandled event action",
+			name: "Unhandled event action",
 			event: GetMockPullRequestEvent(
 				"unsupported_action", "mockRepo", false, "senderUser", "", ""),
-			setup: func() {
+			setup: func(mockAPI *plugintest.API, _ *mocks.MockKvStore) {
 				mockAPI.On("LogDebug", "Unhandled event action", "action", "unsupported_action").Return(nil).Times(1)
 			},
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.setup()
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			tc.setup(mockAPI, mockKVStore)
 
 			p.handlePullRequestNotification(tc.event)
 
@@ -1391,4 +1295,13 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			mockAPI.AssertExpectations(t)
 		})
 	}
+}
+
+func mockSubscription(mockKVStore *mocks.MockKvStore) {
+	mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value interface{}) error {
+		if v, ok := value.(**Subscriptions); ok {
+			*v = GetMockSubscriptions()
+		}
+		return nil
+	}).Times(1)
 }
