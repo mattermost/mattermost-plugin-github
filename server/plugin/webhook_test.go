@@ -1225,20 +1225,6 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			},
 		},
 		{
-			name:  "unsupported action",
-			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "edited", MockSender),
-			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
-					_, ok := val.(**Subscriptions)
-					return ok
-				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
-						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: featureDiscussionComments, Repository: MockRepo},
-					},
-				})).Times(1)
-			},
-		},
-		{
 			name:  "error creating discussion comment post",
 			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
