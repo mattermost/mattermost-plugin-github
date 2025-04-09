@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -14,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
@@ -35,14 +40,19 @@ func getYourAssigneeSearchQuery(username string, orgs []string) string {
 	return buildSearchQuery("is:open assignee:%v archived:false %v", username, orgs)
 }
 
-func getIssuesSearchQuery(org, searchTerm string) string {
+func getIssuesSearchQuery(searchValue, searchTerm string) string {
 	query := "is:open is:issue archived:false %v %v"
-	orgField := ""
-	if len(org) != 0 {
-		orgField = fmt.Sprintf("org:%v", org)
+	searchField := ""
+	if len(searchValue) != 0 {
+		searchField = fmt.Sprintf("org:%v", searchValue)
 	}
 
-	return fmt.Sprintf(query, orgField, searchTerm)
+	// get all the issues which involve the user in case no organizational lock is set
+	// else {
+	// 	searchField = "involves:@me"
+	// }
+
+	return fmt.Sprintf(query, searchField, searchTerm)
 }
 
 func buildSearchQuery(query, username string, orgs []string) string {
@@ -368,6 +378,29 @@ func isValidURL(rawURL string) error {
 	}
 
 	return nil
+}
+
+func buildPluginURL(client *pluginapi.Client, elem ...string) (string, error) {
+	siteURL, err := getSiteURL(client)
+	if err != nil {
+		return "", err
+	}
+
+	redirectURL, err := url.JoinPath(siteURL, append([]string{"plugins", Manifest.Id}, elem...)...)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to build pluginURL")
+	}
+
+	return redirectURL, nil
+}
+
+func getSiteURL(client *pluginapi.Client) (string, error) {
+	siteURL := client.Configuration.GetConfig().ServiceSettings.SiteURL
+	if siteURL == nil {
+		return "", errors.New("siteURL is not set. Please set it and restart the plugin")
+	}
+
+	return strings.TrimSuffix(*siteURL, "/"), nil
 }
 
 // lastN returns the last n characters of a string, with the rest replaced by *.
