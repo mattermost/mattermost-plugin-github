@@ -15,3 +15,6 @@ server/plugin/manifest.go
 
 # VS Code
 .vscode
+
+# notice
+.notice-work

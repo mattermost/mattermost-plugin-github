@@ -101,3 +101,11 @@ func (mr *MockKvStoreMockRecorder) Set(arg0, arg1 interface{}, arg2 ...interface
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Set", reflect.TypeOf((*MockKvStore)(nil).Set), varargs...)
 }
+
+// SetAtomicWithRetries mocks base method.
+func (m *MockKvStore) SetAtomicWithRetries(key string, valueFunc func(oldValue []byte) (newValue interface{}, err error)) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetAtomicWithRetries", key, valueFunc)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
