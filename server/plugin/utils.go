@@ -422,3 +422,18 @@ func lastN(s string, n int) string {
 
 	return string(out)
 }
+
+func GetMockSubscriptionWithLabel(repo string, feature string) *Subscriptions {
+	return &Subscriptions{
+		Repositories: map[string][]*Subscription{
+			repo: {
+				{
+					ChannelID:  MockChannelID,
+					CreatorID:  MockCreatorID,
+					Features:   Features(feature),
+					Repository: MockRepo,
+				},
+			},
+		},
+	}
+}
