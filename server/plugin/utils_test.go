@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -258,11 +261,11 @@ func TestGetToDoDisplayText(t *testing.T) {
 				"",
 				"Discussion",
 				&github.Repository{
-					HTMLURL: model.NewString("https://github.com/mattermost/mattermost-plugin-github"),
+					HTMLURL: model.NewPointer("https://github.com/mattermost/mattermost-plugin-github"),
 					Owner: &github.User{
-						Login: model.NewString("mattermost"),
+						Login: model.NewPointer("mattermost"),
 					},
-					Name: model.NewString("mattermost-plugin-github"),
+					Name: model.NewPointer("mattermost-plugin-github"),
 				},
 			},
 			want: "* [mattermost/...github](https://github.com/mattermost/mattermost-plugin-github) Discussion : Test discussion title!\n",
