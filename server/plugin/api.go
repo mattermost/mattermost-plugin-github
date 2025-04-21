@@ -112,7 +112,7 @@ const (
 	KeyIssueID     string = "issue_id"
 	KeyStatus      string = "status"
 	KeyChannelID   string = "channel_id"
-	KeyPostID      string = "postId"
+	KeyPostID      string = "post_id"
 
 	WebsocketEventOpenCommentModal string = "open_comment_modal"
 	WebsocketEventOpenStatusModal  string = "open_status_modal"
@@ -121,6 +121,8 @@ const (
 	PathOpenIssueCommentModal string = "/open-comment-modal"
 	PathOpenIssueEditModal    string = "/open-edit-modal"
 	PathOpenIssueStatusModal  string = "/open-status-modal"
+
+	PathHandleOpenIssueCommentModal string = "/submit_issue_comment_dialog"
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
@@ -190,6 +192,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc(PathOpenIssueCommentModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueCommentModal), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc(PathOpenIssueEditModal, p.checkAuth(p.attachUserContext(p.handleOpenEditIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc(PathOpenIssueStatusModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueStatusModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathHandleOpenIssueCommentModal, p.checkAuth(p.attachUserContext(p.handleSubmitIssueCommentDialog), ResponseTypePlain)).Methods(http.MethodPost)
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
@@ -908,71 +911,55 @@ func getFailReason(code int, repo string, username string) string {
 	return cause
 }
 
-func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	type CreateIssueCommentRequest struct {
-		PostID              string `json:"post_id"`
-		Owner               string `json:"owner"`
-		Repo                string `json:"repo"`
-		Number              int    `json:"number"`
-		Comment             string `json:"comment"`
-		ShowAttachedMessage bool   `json:"show_attached_message"`
-	}
+type CreateIssueCommentRequest struct {
+	PostID              string `json:"post_id"`
+	Owner               string `json:"owner"`
+	Repo                string `json:"repo"`
+	Number              int    `json:"number"`
+	Comment             string `json:"comment"`
+	ShowAttachedMessage bool   `json:"show_attached_message"`
+}
 
+func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	req := &CreateIssueCommentRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding CreateIssueCommentRequest JSON body")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
-	if req.PostID == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid post id", StatusCode: http.StatusBadRequest})
+	result, statusCode, err := p.handleCreateIssueComment(c, req)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: err.Error(), StatusCode: statusCode})
 		return
 	}
 
-	if req.Owner == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repository owner.", StatusCode: http.StatusBadRequest})
-		return
-	}
+	p.writeJSON(w, result)
+}
 
-	if req.Repo == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repository.", StatusCode: http.StatusBadRequest})
-		return
+func (p *Plugin) handleCreateIssueComment(c *UserContext, req *CreateIssueCommentRequest) (*github.IssueComment, int, error) {
+	if req.PostID == "" || req.Owner == "" || req.Repo == "" || req.Number == 0 || req.Comment == "" {
+		p.client.Log.Error("Error creating comment on issue", "missing request fields")
+		return nil, http.StatusBadRequest, errors.New("invalid request fields")
 	}
-
-	if req.Number == 0 {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue number.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
-	if req.Comment == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid non empty comment.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	post, err := p.client.Post.GetPost(req.PostID)
-	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", req.PostID), StatusCode: http.StatusInternalServerError})
-		return
-	}
-	if post == nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", req.PostID), StatusCode: http.StatusNotFound})
-		return
+	if err != nil || post == nil {
+		p.client.Log.Error("Error getting Post ID", "postID", req.PostID)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load post: %w", err)
 	}
 
 	commentUsername, err := p.getUsername(post.UserId)
 	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
-		return
+		p.client.Log.Error("Error getting username", "UserID", post.UserId, "error", err.Error())
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get username: %w", err)
 	}
 
 	currentUsername := c.GHInfo.GitHubUsername
 	permalink, err := p.getPermaLink(req.PostID)
 	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to generate permalink", StatusCode: http.StatusInternalServerError})
-		return
+		p.client.Log.Error("Error getting permalink for the post", "PostID", req.PostID, "error", err.Error())
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to generate permalink: %w", err)
 	}
 	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from %s*\n\n", currentUsername, permalink, commentUsername)
 
@@ -987,10 +974,7 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	var rawResponse *github.Response
 	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
 		result, rawResponse, err = githubClient.Issues.CreateComment(c.Ctx, req.Owner, req.Repo, req.Number, comment)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}); cErr != nil {
 		statusCode := 500
 		if rawResponse != nil {
@@ -1001,8 +985,7 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 			"repo":   req.Repo,
 			"number": req.Number,
 		}).Errorf("failed to create an issue comment")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(statusCode, req.Repo, currentUsername), StatusCode: statusCode})
-		return
+		return nil, statusCode, fmt.Errorf("GitHub comment creation failed: %w", err)
 	}
 
 	rootID := req.PostID
@@ -1023,13 +1006,48 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		UserId:    c.UserID,
 	}
 
-	err = p.client.Post.CreatePost(reply)
-	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", req.PostID), StatusCode: http.StatusInternalServerError})
+	if err := p.client.Post.CreatePost(reply); err != nil {
+		p.client.Log.Error("Error creating post for issue comment", "error", err.Error())
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create reply post: %w", err)
+	}
+
+	return result, http.StatusOK, nil
+}
+
+func (p *Plugin) handleSubmitIssueCommentDialog(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	var submission model.SubmitDialogRequest
+	if err := json.NewDecoder(r.Body).Decode(&submission); err != nil {
+		p.client.Log.Error("Error decoding the request body for submit issue comment dialog handling", "error", err.Error())
+		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
 
-	p.writeJSON(w, result)
+	state := make(map[string]string)
+	if err := json.Unmarshal([]byte(submission.State), &state); err != nil {
+		p.client.Log.Error("Error unmarshalling state for submit issue comment dialog handling", "error", err.Error())
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	comment := submission.Submission["comment"].(string)
+	issueNumber, _ := strconv.Atoi(state["issue_number"])
+
+	req := &CreateIssueCommentRequest{
+		PostID:              state[KeyPostID],
+		Owner:               state[KeyRepoOwner],
+		Repo:                state[KeyRepoName],
+		Number:              issueNumber,
+		Comment:             comment,
+		ShowAttachedMessage: false,
+	}
+
+	_, status, err := p.handleCreateIssueComment(c, req)
+	if err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetails, assignmentResp []*github.Issue, openPRResp []*graphql.GithubPRDetails, err error) {
@@ -1951,29 +1969,59 @@ func (p *Plugin) handleOpenIssueStatusModal(c *UserContext, w http.ResponseWrite
 }
 
 func (p *Plugin) handleOpenIssueCommentModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	response := &model.PostActionIntegrationResponse{}
 	decoder := json.NewDecoder(r.Body)
 	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
 	if err := decoder.Decode(&postActionIntegrationRequest); err != nil {
 		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
-		p.returnPostActionIntegrationResponse(w, response)
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
 		return
 	}
 
-	p.client.Frontend.PublishWebSocketEvent(
-		WebsocketEventOpenCommentModal,
-		map[string]interface{}{
-			KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName],
-			KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner],
-			KeyIssueNumber: postActionIntegrationRequest.Context[KeyIssueNumber],
-			KeyPostID:      postActionIntegrationRequest.PostId,
-			KeyStatus:      postActionIntegrationRequest.Context[KeyStatus],
-			KeyChannelID:   postActionIntegrationRequest.ChannelId,
-		},
-		&model.WebsocketBroadcast{UserId: postActionIntegrationRequest.UserId},
-	)
+	triggerID := postActionIntegrationRequest.TriggerId
+	if triggerID == "" {
+		p.API.LogError("Trigger ID missing in request")
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
 
-	p.returnPostActionIntegrationResponse(w, response)
+	dialog := model.OpenDialogRequest{
+		TriggerId: triggerID,
+		URL:       fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathHandleOpenIssueCommentModal),
+		Dialog: model.Dialog{
+			CallbackId:     "create_issue_comment",
+			Title:          "Create a comment to GitHub Issue",
+			SubmitLabel:    "Attach",
+			NotifyOnCancel: false,
+			Elements: []model.DialogElement{
+				{
+					DisplayName: "Create a comment",
+					Name:        "comment",
+					Type:        "textarea",
+					Placeholder: "Enter your comment here...",
+					Optional:    false,
+				},
+			},
+			State: toJSON(map[string]string{
+				KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner].(string),
+				KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName].(string),
+				KeyIssueNumber: fmt.Sprintf("%v", postActionIntegrationRequest.Context[KeyIssueNumber]),
+				KeyPostID:      postActionIntegrationRequest.PostId,
+			}),
+		},
+	}
+
+	if appErr := p.API.OpenInteractiveDialog(dialog); appErr != nil {
+		p.API.LogError("Failed to open interactive dialog", "Error", appErr.Error())
+	}
+
+	p.API.LogInfo("Dialog Title", "Title", dialog.Dialog.Title)
+
+	p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+}
+
+func toJSON(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }
 
 // parseRepo parses the owner & repository name from the repo query parameter
