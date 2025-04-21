@@ -451,6 +451,7 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 		"    	* `discussion_comments` - includes new discussion comments\n" +
 		"    	* Defaults to `pulls,issues,creates,deletes`\n\n" +
 		"    * `--exclude-org-member` - events triggered by organization members will not be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
+		"    * `--include-only-org-members` - events triggered only by organization members will be delivered (the GitHub organization config should be set, otherwise this flag has not effect)\n" +
 		"    * `--render-style` - notifications will be delivered in the specified style (for example, the body of a pull request will not be displayed). Supported values are `collapsed`, `skip-body` or `default` (same as omitting the flag).\n" +
 		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
 		"* `/github me` - Display the connected GitHub account\n" +
@@ -486,13 +487,22 @@ Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 {{- end -}}`))
 
 	template.Must(masterTemplate.New("newDiscussion").Funcs(funcMap).Parse(`
-{{template "user" .GetSender}} started a new discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
+{{template "user" .GetSender}}
+{{- if eq .GetAction "created" }} started a new
+{{- else if eq .GetAction "closed" }} closed a
+{{- else if eq .GetAction "reopened" }} reopened a
+{{- else if eq .GetAction "edited" }} edited a
+{{- end }} discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}) on {{template "repo" .GetRepo}}
 `))
 
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} New comment by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
+{{template "repo" .GetRepo}} 
+{{- if eq .GetAction "created" }} New comment 
+{{- else if eq .GetAction "edited" }} Comment edited
+{{- else if eq .GetAction "deleted" }} Comment deleted
+{{- end }} by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
 
-{{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
+> {{.GetComment.GetBody | trimBody | replaceAllGitHubUsernames}}
 `))
 }
 

@@ -44,14 +44,19 @@ func getYourAssigneeSearchQuery(username string, orgs []string) string {
 	return buildSearchQuery("is:open assignee:%v archived:false %v", username, orgs)
 }
 
-func getIssuesSearchQuery(org, searchTerm string) string {
+func getIssuesSearchQuery(searchValue, searchTerm string) string {
 	query := "is:open is:issue archived:false %v %v"
-	orgField := ""
-	if len(org) != 0 {
-		orgField = fmt.Sprintf("org:%v", org)
+	searchField := ""
+	if len(searchValue) != 0 {
+		searchField = fmt.Sprintf("org:%v", searchValue)
 	}
 
-	return fmt.Sprintf(query, orgField, searchTerm)
+	// get all the issues which involve the user in case no organizational lock is set
+	// else {
+	// 	searchField = "involves:@me"
+	// }
+
+	return fmt.Sprintf(query, searchField, searchTerm)
 }
 
 func buildSearchQuery(query, username string, orgs []string) string {

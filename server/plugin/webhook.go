@@ -193,6 +193,7 @@ func (wb *WebhookBroker) Close() {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	p.client.Log.Info("Webhook event received")
 	config := p.getConfiguration()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -378,6 +379,26 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	return p.isUserOrganizationMember(githubClient, user, info, organization)
 }
 
+func (p *Plugin) shouldDenyEventDueToNotOrgMember(user *github.User, subscription *Subscription) bool {
+	if !subscription.IncludeOnlyOrgMembers() {
+		return false
+	}
+
+	githubClient, err := p.GetGitHubClient(context.Background(), subscription.CreatorID)
+	if err != nil {
+		p.client.Log.Warn("Failed to get user info", "error", err.Error())
+		return false
+	}
+
+	info, nErr := p.getGitHubUserInfo(subscription.CreatorID)
+	if nErr != nil {
+		p.client.Log.Warn("Failed to exclude org member", "error", nErr.Message)
+		return false
+	}
+
+	return !p.isUserOrganizationMember(githubClient, user, info, p.getConfiguration().GitHubOrg)
+}
+
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	repo := event.GetRepo()
 
@@ -431,6 +452,10 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -629,6 +654,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		renderedMessage, err := renderTemplate(issueTemplate, GetEventWithRenderConfig(event, sub))
 		if err != nil {
 			p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -768,6 +797,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post := p.makeBotPost(pushedCommitsMessage, "custom_git_push")
 
 		post.ChannelId = sub.ChannelID
@@ -802,6 +835,10 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -844,6 +881,10 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post := p.makeBotPost(newDeleteMessage, "custom_git_delete")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -882,6 +923,10 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -972,6 +1017,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -1019,6 +1068,10 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -1430,6 +1483,10 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post := p.makeBotPost(newStarMessage, "custom_git_star")
 
 		post.ChannelId = sub.ChannelID
@@ -1567,10 +1624,6 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
-		return
-	}
-
-	if event.GetAction() != actionCreated {
 		return
 	}
 

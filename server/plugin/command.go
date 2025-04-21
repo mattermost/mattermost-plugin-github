@@ -146,23 +146,28 @@ func (p *Plugin) postCommandResponse(args *model.CommandArgs, text string) {
 	p.client.Post.SendEphemeralPost(args.UserId, post)
 }
 
-func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) []string {
+func (p *Plugin) getMutedUsernames(userInfo *GitHubUserInfo) ([]string, error) {
 	var mutedUsernameBytes []byte
 	err := p.store.Get(userInfo.UserID+"-muted-users", &mutedUsernameBytes)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	mutedUsernames := string(mutedUsernameBytes)
 	var mutedUsers []string
 	if len(mutedUsernames) == 0 {
-		return mutedUsers
+		return mutedUsers, nil
 	}
 	mutedUsers = strings.Split(mutedUsernames, ",")
-	return mutedUsers
+	return mutedUsers, nil
 }
 
 func (p *Plugin) handleMuteList(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
-	mutedUsernames := p.getMutedUsernames(userInfo)
+	mutedUsernames, err := p.getMutedUsernames(userInfo)
+	if err != nil {
+		p.client.Log.Error("error occurred getting muted users.", "UserID", userInfo.UserID, "Error", err)
+		return "An error occurred getting muted users. Please try again later"
+	}
+
 	var mutedUsers string
 	for _, user := range mutedUsernames {
 		mutedUsers += fmt.Sprintf("- %v\n", user)
@@ -183,7 +188,12 @@ func contains(s []string, e string) bool {
 }
 
 func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
-	mutedUsernames := p.getMutedUsernames(userInfo)
+	mutedUsernames, err := p.getMutedUsernames(userInfo)
+	if err != nil {
+		p.client.Log.Error("error occurred getting muted users.", "UserID", userInfo.UserID, "Error", err)
+		return "An error occurred getting muted users. Please try again later"
+	}
+
 	if contains(mutedUsernames, username) {
 		return username + " is already muted"
 	}
@@ -200,7 +210,7 @@ func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *
 		mutedUsers = username
 	}
 
-	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
+	_, err = p.store.Set(userInfo.UserID+"-muted-users", []byte(mutedUsers))
 	if err != nil {
 		return "Error occurred saving list of muted users"
 	}
@@ -209,11 +219,16 @@ func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *
 }
 
 func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
-	mutedUsernames := p.getMutedUsernames(userInfo)
+	mutedUsernames, err := p.getMutedUsernames(userInfo)
+	if err != nil {
+		p.client.Log.Error("error occurred getting muted users.", "UserID", userInfo.UserID, "Error", err)
+		return "An error occurred getting muted users. Please try again later"
+	}
+
 	userToMute := []string{username}
 	newMutedList := arrayDifference(mutedUsernames, userToMute)
 
-	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
+	_, err = p.store.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
 	if err != nil {
 		return "Error occurred unmuting users"
 	}
@@ -569,6 +584,7 @@ func (p *Plugin) getSubscribedFeatures(channelID, owner, repo string) (Features,
 
 	return previousFeatures, nil
 }
+
 func (p *Plugin) handleUnsubscribe(_ *plugin.Context, args *model.CommandArgs, parameters []string, _ *GitHubUserInfo) string {
 	if len(parameters) == 0 {
 		return "Please specify a repository."
@@ -1056,6 +1072,16 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 			{
 				Item:     "false",
 				HelpText: "Include posts from members of the configured organization",
+			},
+		})
+		subscriptionsAdd.AddNamedStaticListArgument("include-only-org-members", "Events triggered only by organization members will be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
+			{
+				Item:     "true",
+				HelpText: "Include posts only from members of the configured organization",
+			},
+			{
+				Item:     "false",
+				HelpText: "Include posts from members and collaborators of the configured organization",
 			},
 		})
 	}

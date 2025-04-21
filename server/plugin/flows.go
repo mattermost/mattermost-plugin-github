@@ -698,7 +698,7 @@ func (fm *FlowManager) submitWebhook(f *flow.Flow, submitted map[string]interfac
 		return "", nil, nil, errors.New("invalid format")
 	}
 
-	webhookEvents := []string{"create", "delete", "issue_comment", "issues", "pull_request", "pull_request_review", "pull_request_review_comment", "push", "star"}
+	webhookEvents := []string{"create", "delete", "issue_comment", "issues", "pull_request", "pull_request_review", "pull_request_review_comment", "push", "star", "workflow_job", "workflow_run", "discussion", "discussion_comment", "release"}
 
 	webHookURL, err := buildPluginURL(fm.client, "webhook")
 	if err != nil {
