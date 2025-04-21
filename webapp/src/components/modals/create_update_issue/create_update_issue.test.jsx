@@ -23,7 +23,6 @@ describe('CreateOrUpdateIssueModal', () => {
         },
         visible: true,
     };
-    
 
     it('should render correctly with default props', () => {
         const wrapper = shallow(<CreateOrUpdateIssueModal {...defaultProps}/>);
@@ -38,7 +37,7 @@ describe('CreateOrUpdateIssueModal', () => {
 
     it('should display error message when create returns an error', async () => {
         const mockCreateFunction = jest.fn().mockResolvedValue({error: {message: 'Some error'}});
-    
+
         const errorProps = {
             ...defaultProps,
             create: mockCreateFunction,
@@ -47,22 +46,22 @@ describe('CreateOrUpdateIssueModal', () => {
                 repo_name: 'repo',
             },
         };
-    
+
         const wrapper = shallow(<CreateOrUpdateIssueModal {...errorProps}/>);
         wrapper.setState({issueTitle: 'Test Issue'});
-    
+
         await wrapper.instance().handleCreateOrUpdate({preventDefault: jest.fn()});
         wrapper.update();
-    
+
         expect(wrapper.find('.help-text.error-text').text()).toEqual('Error occurred');
-    });    
+    });
 
     it('should show validation error when issueTitle is empty', async () => {
-        const wrapper = shallow(<CreateOrUpdateIssueModal {...defaultProps} />);
-        wrapper.setState({ issueTitle: '' });
-    
-        await wrapper.instance().handleCreateOrUpdate({ preventDefault: jest.fn() }); 
-    
+        const wrapper = shallow(<CreateOrUpdateIssueModal {...defaultProps}/>);
+        wrapper.setState({issueTitle: ''});
+
+        await wrapper.instance().handleCreateOrUpdate({preventDefault: jest.fn()});
+
         expect(wrapper.state('issueTitleValid')).toBe(false);
         expect(wrapper.state('showErrors')).toBe(true);
     });
