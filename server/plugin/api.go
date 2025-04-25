@@ -106,13 +106,17 @@ const (
 	// ResponseTypePlain indicates that response type is text plain
 	ResponseTypePlain ResponseType = "TEXT_RESPONSE"
 
-	KeyRepoName    string = "repo_name"
-	KeyRepoOwner   string = "repo_owner"
-	KeyIssueNumber string = "issue_number"
-	KeyIssueID     string = "issue_id"
-	KeyStatus      string = "status"
-	KeyChannelID   string = "channel_id"
-	KeyPostID      string = "post_id"
+	KeyRepoName     string = "repo_name"
+	KeyRepoOwner    string = "repo_owner"
+	KeyIssueNumber  string = "issue_number"
+	KeyIssueID      string = "issue_id"
+	KeyIssueComment string = "issue_comment"
+	KeyStatus       string = "status"
+	KeyStatusReason string = "status_reason"
+	KeyChannelID    string = "channel_id"
+	KeyPostID       string = "post_id"
+
+	IssueOpen string = "open"
 
 	WebsocketEventOpenCommentModal string = "open_comment_modal"
 	WebsocketEventOpenStatusModal  string = "open_status_modal"
@@ -122,7 +126,8 @@ const (
 	PathOpenIssueEditModal    string = "/open-edit-modal"
 	PathOpenIssueStatusModal  string = "/open-status-modal"
 
-	PathHandleOpenIssueCommentModal string = "/submit_issue_comment_dialog"
+	PathHandleOpenIssueCommentModal     string = "/submit_issue_comment_dialog"
+	PathHandleOpenIssueCloseReopenModal string = "/submit_issue_close_reopen_dialog"
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
@@ -193,6 +198,7 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc(PathOpenIssueEditModal, p.checkAuth(p.attachUserContext(p.handleOpenEditIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc(PathOpenIssueStatusModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueStatusModal), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc(PathHandleOpenIssueCommentModal, p.checkAuth(p.attachUserContext(p.handleSubmitIssueCommentDialog), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathHandleOpenIssueCloseReopenModal, p.checkAuth(p.attachUserContext(p.handleSubmitIssueCloseReopenDialog), ResponseTypePlain)).Methods(http.MethodPost)
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
@@ -921,13 +927,13 @@ type CreateIssueCommentRequest struct {
 }
 
 func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	req := &CreateIssueCommentRequest{}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	createIssueCommentRequest := &CreateIssueCommentRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&createIssueCommentRequest); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding CreateIssueCommentRequest JSON body")
 		return
 	}
 
-	result, statusCode, err := p.handleCreateIssueComment(c, req)
+	result, statusCode, err := p.handleCreateIssueComment(c, createIssueCommentRequest)
 	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: err.Error(), StatusCode: statusCode})
 		return
@@ -1048,6 +1054,47 @@ func (p *Plugin) handleSubmitIssueCommentDialog(c *UserContext, w http.ResponseW
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (p *Plugin) handleSubmitIssueCloseReopenDialog(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	var submission model.SubmitDialogRequest
+	if err := json.NewDecoder(r.Body).Decode(&submission); err != nil {
+		p.client.Log.Error("Error decoding the request body for submit issue close/reopen dialog", "error", err.Error())
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	state := make(map[string]string)
+	if err := json.Unmarshal([]byte(submission.State), &state); err != nil {
+		p.client.Log.Error("Error unmarshalling state for issue close/reopen dialog", "error", err.Error())
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	issueNumber, _ := strconv.Atoi(state[KeyIssueNumber])
+
+	req := &CommentAndCloseRequest{
+		PostID:       state[KeyPostID],
+		ChannelID:    state[KeyChannelID],
+		Owner:        state[KeyRepoOwner],
+		Repository:   state[KeyRepoName],
+		Number:       issueNumber,
+		Status:       state[KeyStatus],
+		IssueComment: submission.Submission[KeyIssueComment].(string),
+	}
+
+	if req.Status == IssueOpen {
+		req.StatusReason = submission.Submission[KeyStatusReason].(string)
+	} else {
+		req.StatusReason = state[KeyStatusReason]
+	}
+
+	if req.ChannelID == "" || req.Owner == "" || req.Repository == "" || req.Number == 0 || req.PostID == "" {
+		http.Error(w, "missing required issue data", http.StatusBadRequest)
+		return
+	}
+
+	p.handleCloseOrReopenIssue(c, w, req)
 }
 
 func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetails, assignmentResp []*github.Issue, openPRResp []*graphql.GithubPRDetails, err error) {
@@ -1686,33 +1733,38 @@ func (p *Plugin) updateIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) closeOrReopenIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	type CommentAndCloseRequest struct {
-		ChannelID    string `json:"channel_id"`
-		IssueComment string `json:"issue_comment"`
-		StatusReason string `json:"status_reason"`
-		Number       int    `json:"number"`
-		Owner        string `json:"owner"`
-		Repository   string `json:"repo"`
-		Status       string `json:"status"`
-		PostID       string `json:"postId"`
-	}
+type CommentAndCloseRequest struct {
+	ChannelID    string `json:"channel_id"`
+	IssueComment string `json:"issue_comment"`
+	StatusReason string `json:"status_reason"`
+	Number       int    `json:"number"`
+	Owner        string `json:"owner"`
+	Repository   string `json:"repo"`
+	Status       string `json:"status"`
+	PostID       string `json:"postId"`
+}
 
-	req := &CommentAndCloseRequest{}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+func (p *Plugin) closeOrReopenIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	closeReopenIssueRequest := &CommentAndCloseRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&closeReopenIssueRequest); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding the JSON body")
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
-	post, appErr := p.API.GetPost(req.PostID)
+	p.handleCloseOrReopenIssue(c, w, closeReopenIssueRequest)
+}
+
+func (p *Plugin) handleCloseOrReopenIssue(c *UserContext, w http.ResponseWriter, closeReopenIssueRequest *CommentAndCloseRequest) {
+	post, appErr := p.API.GetPost(closeReopenIssueRequest.PostID)
 	if appErr != nil {
-		p.client.Log.Error("Unable to get the post", "PostID", req.PostID, "Error", appErr.Error())
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", req.PostID), StatusCode: http.StatusInternalServerError})
+		p.client.Log.Error("Unable to get the post", "PostID", closeReopenIssueRequest.PostID, "Error", appErr.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", closeReopenIssueRequest.PostID), StatusCode: http.StatusInternalServerError})
 		return
 	}
+
 	if post == nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", req.PostID), StatusCode: http.StatusNotFound})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", closeReopenIssueRequest.PostID), StatusCode: http.StatusNotFound})
 		return
 	}
 
@@ -1721,15 +1773,17 @@ func (p *Plugin) closeOrReopenIssue(c *UserContext, w http.ResponseWriter, r *ht
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
 		return
 	}
-	if req.IssueComment != "" {
-		p.CreateCommentToIssue(c, w, req.IssueComment, req.Owner, req.Repository, post, req.Number)
+
+	if closeReopenIssueRequest.IssueComment != "" {
+		p.CreateCommentToIssue(c, w, closeReopenIssueRequest.IssueComment, closeReopenIssueRequest.Owner, closeReopenIssueRequest.Repository, post, closeReopenIssueRequest.Number)
 	}
 
-	if req.Status == statusClose {
-		p.CloseOrReopenIssue(c, w, issueClose, req.StatusReason, req.Owner, req.Repository, post, req.Number)
-	} else {
-		p.CloseOrReopenIssue(c, w, issueOpen, req.StatusReason, req.Owner, req.Repository, post, req.Number)
+	status := issueOpen
+	if closeReopenIssueRequest.Status == IssueOpen {
+		status = issueClose
 	}
+
+	p.CloseOrReopenIssue(c, w, status, closeReopenIssueRequest.StatusReason, closeReopenIssueRequest.Owner, closeReopenIssueRequest.Repository, post, closeReopenIssueRequest.Number)
 }
 
 func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1943,29 +1997,88 @@ func (p *Plugin) returnPostActionIntegrationResponse(w http.ResponseWriter, res 
 }
 
 func (p *Plugin) handleOpenIssueStatusModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	response := &model.PostActionIntegrationResponse{}
 	decoder := json.NewDecoder(r.Body)
 	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
-	if err := decoder.Decode(&postActionIntegrationRequest); err != nil {
+	if err := decoder.Decode(postActionIntegrationRequest); err != nil {
 		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
-		p.returnPostActionIntegrationResponse(w, response)
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
 		return
 	}
 
-	p.client.Frontend.PublishWebSocketEvent(
-		WebsocketEventOpenStatusModal,
-		map[string]interface{}{
-			KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName],
-			KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner],
-			KeyIssueNumber: postActionIntegrationRequest.Context[KeyIssueNumber],
-			KeyPostID:      postActionIntegrationRequest.PostId,
-			KeyStatus:      postActionIntegrationRequest.Context[KeyStatus],
-			KeyChannelID:   postActionIntegrationRequest.ChannelId,
-		},
-		&model.WebsocketBroadcast{UserId: postActionIntegrationRequest.UserId},
-	)
+	triggerID := postActionIntegrationRequest.TriggerId
+	if triggerID == "" {
+		p.API.LogError("Trigger ID missing in request")
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
 
-	p.returnPostActionIntegrationResponse(w, response)
+	repoOwner := postActionIntegrationRequest.Context[KeyRepoOwner].(string)
+	repoName := postActionIntegrationRequest.Context[KeyRepoName].(string)
+	issueNumber := fmt.Sprintf("%v", postActionIntegrationRequest.Context[KeyIssueNumber])
+	postID := postActionIntegrationRequest.PostId
+	channelID := postActionIntegrationRequest.ChannelId
+	status := postActionIntegrationRequest.Context[KeyStatus].(string)
+
+	dialogTitle := "Reopen Issue"
+	submitLabel := "Reopen Issue"
+	elements := []model.DialogElement{
+		{
+			DisplayName: "Leave a comment",
+			Name:        KeyIssueComment,
+			Type:        "textarea",
+			Placeholder: "Add a comment...",
+			Optional:    true,
+		},
+	}
+
+	stateMap := map[string]string{
+		KeyChannelID:   channelID,
+		KeyStatus:      status,
+		KeyIssueNumber: issueNumber,
+		KeyRepoOwner:   repoOwner,
+		KeyRepoName:    repoName,
+		KeyPostID:      postID,
+	}
+
+	if status == IssueOpen {
+		status = statusClose
+		dialogTitle = "Close Issue"
+		submitLabel = "Close Issue"
+
+		elements = append(elements, model.DialogElement{
+			DisplayName: "Mark issue as",
+			Name:        KeyStatusReason,
+			Type:        "radio",
+			Optional:    false,
+			Options: []*model.PostActionOptions{
+				{Text: "Completed", Value: "completed"},
+				{Text: "Not planned", Value: "not_planned"},
+			},
+		})
+	} else {
+		stateMap[KeyStatusReason] = "reopened"
+	}
+
+	state := toJSON(stateMap)
+
+	dialog := model.OpenDialogRequest{
+		TriggerId: triggerID,
+		URL:       fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathHandleOpenIssueCloseReopenModal),
+		Dialog: model.Dialog{
+			CallbackId:     "close_or_reopen_issue",
+			Title:          dialogTitle,
+			SubmitLabel:    submitLabel,
+			NotifyOnCancel: false,
+			Elements:       elements,
+			State:          state,
+		},
+	}
+
+	if appErr := p.API.OpenInteractiveDialog(dialog); appErr != nil {
+		p.API.LogError("Failed to open interactive dialog", "Error", appErr.Error())
+	}
+
+	p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
 }
 
 func (p *Plugin) handleOpenIssueCommentModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
