@@ -16,6 +16,7 @@ export default class Input extends PureComponent {
             PropTypes.string,
             PropTypes.number,
         ]),
+        error: PropTypes.string,
         addValidate: PropTypes.func,
         removeValidate: PropTypes.func,
         maxLength: PropTypes.number,
@@ -84,10 +85,10 @@ export default class Input extends PureComponent {
         const value = this.props.value || '';
 
         let validationError = null;
-        if (this.props.required && this.state.invalid) {
+        if ((this.props.required && this.state.invalid) || this.props.error) {
             validationError = (
                 <p className='help-text error-text'>
-                    <span>{requiredMsg}</span>
+                    <span>{requiredMsg || this.props.error}</span>
                 </p>
             );
         }
