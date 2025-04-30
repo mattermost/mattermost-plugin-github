@@ -2084,18 +2084,6 @@ func (p *Plugin) handleOpenEditIssueModal(c *UserContext, w http.ResponseWriter,
 	description, _ := issueInfo[KeyDescription].(string)
 	repoFullName, _ := issueInfo[KeyRepoFullName].(string)
 
-	labels, err := p.fetchLabels(c.Context.Ctx, c.GHInfo, repoOwner, repoName)
-	if err != nil {
-		p.API.LogError("Failed to fetch labels", "Error", err.Error())
-		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
-		return
-	}
-	assignees, err := p.fetchAssignees(c.Context.Ctx, c.GHInfo, repoOwner, repoName)
-	if err != nil {
-		p.API.LogError("Failed to fetch assignees", "Error", err.Error())
-		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
-		return
-	}
 	milestones, err := p.fetchMilestones(c.Context.Ctx, c.GHInfo, repoOwner, repoName)
 	if err != nil {
 		p.API.LogError("Failed to fetch milestones", "Error", err.Error())
@@ -2106,18 +2094,6 @@ func (p *Plugin) handleOpenEditIssueModal(c *UserContext, w http.ResponseWriter,
 	milestoneDefaultValue := ""
 	if len(milestones) > 0 {
 		milestoneDefaultValue = fmt.Sprintf("%d", milestones[0].GetNumber())
-	}
-
-	labelValues := []*model.PostActionOptions{}
-	for _, label := range labels {
-		name := label.GetName()
-		labelValues = append(labelValues, &model.PostActionOptions{Text: name, Value: name})
-	}
-
-	assigneeValues := []*model.PostActionOptions{}
-	for _, user := range assignees {
-		login := user.GetLogin()
-		assigneeValues = append(assigneeValues, &model.PostActionOptions{Text: login, Value: login})
 	}
 
 	milestoneValues := []*model.PostActionOptions{}
@@ -2241,7 +2217,6 @@ func (p *Plugin) handleOpenIssueStatusModal(c *UserContext, w http.ResponseWrite
 	}
 
 	if status == IssueOpen {
-		status = statusClose
 		dialogTitle = "Close Issue"
 		submitLabel = "Close Issue"
 
