@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import * as CSS from 'csstype';
 
 import {Theme} from 'mattermost-redux/types/preferences';
@@ -42,6 +45,9 @@ export type GithubItem = PrsDetailsData & {
         title: string;
     }
     reason?: string;
+    additions?: number;
+    deletions?: number;
+    changed_files?: number;
 }
 
 export type GithubItemsProps = {
@@ -60,7 +66,7 @@ export type ConnectedData = {
     github_username: string;
     github_client_id: string;
     enterprise_base_url: string;
-    organization: string;
+    organizations: string[];
     user_settings: UserSettingsData;
     configuration: Record<string, unknown>;
 }
@@ -83,7 +89,17 @@ export type GithubIssueData = {
     repository_url: string;
 }
 
+export type DefaultRepo = {
+    name: string;
+    full_name: string;
+}
+
 export type YourReposData = {
+    defaultRepo?: DefaultRepo;
+    repos: ReposData[];
+}
+
+export type ReposData = {
     name: string;
     full_name: string;
 }
@@ -136,7 +152,7 @@ export type SidebarData = {
     yourPrs: GithubIssueData[];
     yourAssignments: GithubIssueData[],
     unreads: UnreadsData[]
-    org: string,
+    orgs: string[],
     rhsState?: string | null
 }
 

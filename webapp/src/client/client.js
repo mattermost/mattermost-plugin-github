@@ -39,6 +39,10 @@ export default class Client {
         return this.doGet(`${this.url}/repositories`);
     }
 
+    getRepositoriesByChannelID = async (channelId) => {
+        return this.doGet(`${this.url}/repositories?channelId=${channelId}`);
+    }
+
     getRepositoriesByOrganization = async (organization) => {
         return this.doGet(`${this.url}/repos_by_org?organization=${organization}`);
     }

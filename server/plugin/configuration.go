@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -249,4 +252,21 @@ func generateSecret() (string, error) {
 	s = s[:32]
 
 	return s, nil
+}
+
+func (c *Configuration) getOrganizations() []string {
+	if c.GitHubOrg == "" {
+		return []string{}
+	}
+
+	list := strings.Split(c.GitHubOrg, ",")
+	allOrgs := []string{}
+	for _, org := range list {
+		org = strings.TrimSpace(strings.ToLower(org))
+		if org != "" {
+			allOrgs = append(allOrgs, org)
+		}
+	}
+
+	return allOrgs
 }

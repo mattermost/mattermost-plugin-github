@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {DispatchFunc} from 'mattermost-redux/types/actions';
@@ -116,12 +116,16 @@ export function getReposByOrg(organization: string) {
     };
 }
 
-export function getRepos() {
+export function getRepos(channelId: string) {
     return async (dispatch: DispatchFunc) => {
         let data;
         try {
             data = await Client.getRepositories();
         } catch (error) {
+            dispatch({
+                type: ActionTypes.RECEIVED_REPOSITORIES,
+                data: [],
+            });
             return {error: data};
         }
 

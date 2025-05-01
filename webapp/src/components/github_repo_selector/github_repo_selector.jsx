@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 
-import ReactSelectSetting from 'components/react_select_setting';
+import ReactSelectSetting from '@/components/react_select_setting';
 
 const initialState = {
     invalid: false,
@@ -19,6 +19,7 @@ export default class GithubRepoSelector extends PureComponent {
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         value: PropTypes.string,
+        currentChannelId: PropTypes.string,
         addValidate: PropTypes.func,
         removeValidate: PropTypes.func,
         actions: PropTypes.shape({
