@@ -464,7 +464,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			post.Message = p.sanitizeDescription(reopenedPRMessage)
 		}
 
-		if action == actionMarkedReadyForReview && p.configuration.GetNotificationForDraftPRs {
+		if action == actionMarkedReadyForReview {
 			markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
