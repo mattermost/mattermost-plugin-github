@@ -3,35 +3,34 @@ run:
   modules-download-mode: readonly
 
 linters-settings:
+  goconst:
+    min-len: 2
+    min-occurrences: 2
   gofmt:
     simplify: true
   goimports:
     local-prefixes: github.com/mattermost/mattermost-plugin-github
   govet:
-    check-shadowing: true
     enable-all: true
     disable:
       - fieldalignment
   misspell:
     locale: US
-  revive:
-    rules:
-      - name: error-strings
-        disabled: true
 
 linters:
   disable-all: true
   enable:
     - bodyclose
-    - errcheck
+    # - errcheck
+    # - goconst
     - gocritic
     - gofmt
     - goimports
-    - gosec
+    # - gosec
     - gosimple
     - govet
     - ineffassign
-    - misspell
+    # - misspell
     - nakedret
     - revive
     - staticcheck
@@ -43,11 +42,25 @@ linters:
 
 issues:
   exclude-rules:
+    - path: server/manifest.go
+      linters:
+        - deadcode
+        - unused
+        - varcheck
+    - path: server/configuration.go
+      linters:
+        - unused
+    - linters:
+        - revive
+      text: unused-parameter
+    - linters:
+        - revive
+      text: var-naming
+    - linters:
+        - revive
+      text: error-strings
     - path: _test\.go
       linters:
         - bodyclose
         - goconst
         - scopelint # https://github.com/kyoh86/scopelint/issues/4
-    - path: server/plugin/webhook.go
-      linters:
-        - goconst

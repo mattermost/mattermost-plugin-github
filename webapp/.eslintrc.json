@@ -39,6 +39,9 @@
                 ".ts",
                 ".tsx"
             ]
+        },
+        "react": {
+            "version": "16.13.1"
         }
     },
     "rules": {
