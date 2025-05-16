@@ -25,10 +25,6 @@ const (
 	MockPostMessage = "mockPostMessage"
 )
 
-type GitHubUserResponse struct {
-	Username string `json:"username"`
-}
-
 func GetMockGHUserInfo(p *Plugin) (*GitHubUserInfo, error) {
 	encryptionKey := "dummyEncryptKey1"
 	p.setConfiguration(&Configuration{EncryptionKey: encryptionKey})

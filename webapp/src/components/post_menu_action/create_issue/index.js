@@ -8,7 +8,7 @@ import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 
 import manifest from '@/manifest';
 
-import {openCreateIssueModal} from '@/actions';
+import {openCreateIssueModalWithPost} from '@/actions';
 
 import CreateIssuePostMenuAction from './create_issue';
 
@@ -22,7 +22,7 @@ const mapStateToProps = (state, ownProps) => {
 };
 
 const mapDispatchToProps = (dispatch) => bindActionCreators({
-    open: openCreateIssueModal,
+    open: openCreateIssueModalWithPost,
 }, dispatch);
 
 export default connect(mapStateToProps, mapDispatchToProps)(CreateIssuePostMenuAction);

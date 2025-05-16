@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`CreateIssueModal should render correctly with default props 1`] = `
+exports[`CreateOrUpdateIssueModal should render correctly with default props 1`] = `
 <Modal
   animation={true}
   autoFocus={true}

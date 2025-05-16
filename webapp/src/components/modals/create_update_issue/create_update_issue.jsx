@@ -22,6 +22,7 @@ const initialState = {
     repo: null,
     issueTitle: '',
     issueDescription: '',
+    channelId: '',
     labels: [],
     assignees: [],
     milestone: null,
@@ -29,15 +30,16 @@ const initialState = {
     issueTitleValid: true,
 };
 
-export default class CreateIssueModal extends PureComponent {
+export default class CreateOrUpdateIssueModal extends PureComponent {
     static propTypes = {
+        update: PropTypes.func.isRequired,
         close: PropTypes.func.isRequired,
         create: PropTypes.func.isRequired,
+        getIssueInfo: PropTypes.func.isRequired,
         post: PropTypes.object,
-        title: PropTypes.string,
-        channelId: PropTypes.string,
         theme: PropTypes.object.isRequired,
         visible: PropTypes.bool.isRequired,
+        messageData: PropTypes.object,
     };
 
     constructor(props) {
@@ -46,17 +48,50 @@ export default class CreateIssueModal extends PureComponent {
         this.validator = new Validator();
     }
 
-    componentDidUpdate(prevProps) {
-        if (this.props.post && !prevProps.post) {
-            this.setState({issueDescription: this.props.post.message}); //eslint-disable-line react/no-did-update-set-state
-        } else if (this.props.channelId && (this.props.channelId !== prevProps.channelId || this.props.title !== prevProps.title)) {
-            const title = this.props.title.substring(0, MAX_TITLE_LENGTH);
-            this.setState({issueTitle: title}); // eslint-disable-line react/no-did-update-set-state
-        }
+    getIssueInfo = async () => {
+        const {repo_owner, repo_name, issue_number, postId} = this.props.messageData;
+        const issueInfo = await this.props.getIssueInfo(repo_owner, repo_name, issue_number, postId);
+        return issueInfo;
     }
 
-    // handle issue creation after form is populated
-    handleCreate = async (e) => {
+    updateState(issueInfo) {
+        const {channel_id, title, description, milestone_title, milestone_number, repo_full_name} = issueInfo ?? {};
+        const assignees = issueInfo?.assignees ?? [];
+        const labels = issueInfo?.labels ?? [];
+
+        this.setState({milestone: {
+            value: milestone_number,
+            label: milestone_title,
+        },
+        repo: {
+            name: repo_full_name,
+        },
+        assignees,
+        labels,
+        channelId: channel_id,
+        issueDescription: description,
+        issueTitle: title.substring(0, MAX_TITLE_LENGTH)});
+    }
+
+    /* eslint-disable react/no-did-update-set-state*/
+    componentDidUpdate(prevProps) {
+        if (this.props.post && !this.props.messageData && !prevProps.post) {
+            this.setState({issueDescription: this.props.post.message});
+        }
+
+        if (this.props.messageData?.repo_owner && !prevProps.visible && this.props.visible) {
+            this.getIssueInfo().then((issueInfo) => {
+                this.updateState(issueInfo.data);
+            });
+        } else if (this.props.messageData?.channel_id && (this.props.messageData?.channel_id !== prevProps.messageData?.channel_id || this.props.messageData?.title !== prevProps.messageData?.title)) {
+            this.updateState(this.props.messageData);
+        }
+    }
+    /* eslint-enable */
+
+    // handle issue creation or updation after form is populated
+    handleCreateOrUpdate = async (e) => {
+        const {issue_number, postId} = this.props.messageData ?? {};
         if (e && e.preventDefault) {
             e.preventDefault();
         }
@@ -70,9 +105,6 @@ export default class CreateIssueModal extends PureComponent {
             return;
         }
 
-        const {post} = this.props;
-        const postId = post ? post.id : '';
-
         const issue = {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
@@ -81,20 +113,36 @@ export default class CreateIssueModal extends PureComponent {
             assignees: this.state.assignees,
             milestone: this.state.milestone && this.state.milestone.value,
             post_id: postId,
-            channel_id: this.props.channelId,
+            channel_id: this.state.channelId,
+            issue_number,
         };
 
+        if (!issue.repo) {
+            issue.repo = this.props.messageData.repo_owner + this.props.messageData.repo_name;
+        }
         this.setState({submitting: true});
-
-        const created = await this.props.create(issue);
-        if (created.error) {
-            const errMessage = getErrorMessage(created.error.message);
-            this.setState({
-                error: errMessage,
-                showErrors: true,
-                submitting: false,
-            });
-            return;
+        if (issue_number) {
+            const updated = await this.props.update(issue);
+            if (updated?.error) {
+                const errMessage = getErrorMessage(updated.error.message);
+                this.setState({
+                    error: errMessage,
+                    showErrors: true,
+                    submitting: false,
+                });
+                return;
+            }
+        } else {
+            const created = await this.props.create(issue);
+            if (created.error) {
+                const errMessage = getErrorMessage(created.error.message);
+                this.setState({
+                    error: errMessage,
+                    showErrors: true,
+                    submitting: false,
+                });
+                return;
+            }
         }
         this.handleClose(e);
     };
@@ -120,7 +168,7 @@ export default class CreateIssueModal extends PureComponent {
         this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
+        if (!this.state.repo || !this.state.repo.name || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
             return null;
         }
 
@@ -156,12 +204,14 @@ export default class CreateIssueModal extends PureComponent {
         }
 
         const theme = this.props.theme;
-        const {error, submitting} = this.state;
+        const {error, submitting, showErrors, issueTitle, issueDescription, repo} = this.state;
         const style = getStyle(theme);
+        const {repo_name, repo_owner} = this.props.messageData ?? {};
+        const modalTitle = repo_name ? 'Update GitHub Issue' : 'Create GitHub Issue';
 
         const requiredMsg = 'This field is required.';
         let issueTitleValidationError = null;
-        if (this.state.showErrors && !this.state.issueTitleValid) {
+        if (showErrors && !issueTitle) {
             issueTitleValidationError = (
                 <p
                     className='help-text error-text'
@@ -181,24 +231,23 @@ export default class CreateIssueModal extends PureComponent {
             );
         }
 
-        const component = (
+        const component = repo_name ? (
             <div>
-                <GithubRepoSelector
-                    onChange={this.handleRepoChange}
-                    value={this.state.repo && this.state.repo.name}
+                <Input
+                    label='Repository'
+                    type='input'
                     required={true}
-                    theme={theme}
-                    addValidate={this.validator.addComponent}
-                    removeValidate={this.validator.removeComponent}
+                    disabled={true}
+                    value={`${repo_owner}/${repo_name}`}
                 />
 
                 <Input
-                    id={'title'}
+                    id='title'
                     label='Title for the GitHub Issue'
                     type='input'
                     required={true}
                     maxLength={MAX_TITLE_LENGTH}
-                    value={this.state.issueTitle}
+                    value={issueTitle}
                     onChange={this.handleIssueTitleChange}
                 />
                 {issueTitleValidationError}
@@ -208,7 +257,38 @@ export default class CreateIssueModal extends PureComponent {
                 <Input
                     label='Description for the GitHub Issue'
                     type='textarea'
-                    value={this.state.issueDescription}
+                    value={issueDescription}
+                    onChange={this.handleIssueDescriptionChange}
+                />
+            </div>
+        ) : (
+            <div>
+                <GithubRepoSelector
+                    onChange={this.handleRepoChange}
+                    value={repo && repo.name}
+                    required={true}
+                    theme={theme}
+                    addValidate={this.validator.addComponent}
+                    removeValidate={this.validator.removeComponent}
+                />
+
+                <Input
+                    id='title'
+                    label='Title for the GitHub Issue'
+                    type='input'
+                    required={true}
+                    maxLength={MAX_TITLE_LENGTH}
+                    value={issueTitle}
+                    onChange={this.handleIssueTitleChange}
+                />
+                {issueTitleValidationError}
+
+                {this.renderIssueAttributeSelectors()}
+
+                <Input
+                    label='Description for the GitHub Issue'
+                    type='textarea'
+                    value={issueDescription}
                     onChange={this.handleIssueDescriptionChange}
                 />
             </div>
@@ -224,11 +304,13 @@ export default class CreateIssueModal extends PureComponent {
                 backdrop='static'
             >
                 <Modal.Header closeButton={true}>
-                    <Modal.Title>{'Create GitHub Issue'}</Modal.Title>
+                    <Modal.Title>
+                        {modalTitle}
+                    </Modal.Title>
                 </Modal.Header>
                 <form
                     role='form'
-                    onSubmit={this.handleCreate}
+                    onSubmit={this.handleCreateOrUpdate}
                 >
                     <Modal.Body
                         style={style.modal}
