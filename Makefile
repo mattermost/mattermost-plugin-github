@@ -158,7 +158,7 @@ apply:
 ## Install go tools
 install-go-tools:
 	@echo Installing go tools
-	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1
+	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.7
 	$(GO) install gotest.tools/gotestsum@v1.7.0
 	$(GO) install github.com/mattermost/mattermost-govet/v2@3f08281c344327ac09364f196b15f9a81c7eff08
 
