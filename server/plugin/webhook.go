@@ -502,8 +502,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == actionOpened {
 			prNotificationType := "newPR"
 			if isPRInDraftState {
+				if !p.configuration.GetNotificationForDraftPRs {
+					return // Draft PR notifications are disabled
+				}
 				prNotificationType = "newDraftPR"
 			}
+
 			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
