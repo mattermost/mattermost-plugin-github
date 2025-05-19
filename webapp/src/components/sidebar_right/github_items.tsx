@@ -21,6 +21,14 @@ import ChangesRequestedIcon from '../../images/icons/changes_requested';
 import {getLabelFontColor} from '../../utils/styles';
 import {ReviewState} from '../../constants';
 
+type ReviewStyle = {
+    prOpenSince: React.CSSProperties;
+    icon: React.CSSProperties;
+    iconChangesRequested: React.CSSProperties;
+    subtitle: React.CSSProperties;
+    subtitleSecondLine: React.CSSProperties;
+};
+
 const notificationReasons = {
     assign:	'You were assigned to the issue',
     author:	'You created the thread.',
@@ -388,7 +396,7 @@ function getGithubLabels(labels: GithubLabel[]) {
     });
 }
 
-function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
+function getReviewText(item: GithubItem, style: ReviewStyle, secondLine: boolean) {
     if (!item.reviews || !item.requestedReviewers) {
         return null;
     }
@@ -440,12 +448,6 @@ function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
 
     const totalReviewers = finishedReviewers.length + item.requestedReviewers.length;
     if (totalReviewers > 0) {
-        let reviewName;
-        if (totalReviewers === 1) {
-            reviewName = 'review';
-        } else {
-            reviewName = 'reviews';
-        }
         reviews = (
             <div
                 className='light'
@@ -481,7 +483,8 @@ function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
             style={secondLine ? style.subtitleSecondLine : style.subtitle}
         >
             {reviews} {changes}
-        </div>);
+        </div>
+    );
 }
 
 const itemStyle: CSS.Properties = {

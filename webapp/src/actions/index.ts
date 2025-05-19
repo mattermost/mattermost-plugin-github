@@ -305,7 +305,7 @@ export function closeCreateIssueModal() {
 }
 
 export function createIssue(payload: CreateIssuePayload) {
-    return async (dispatch: DispatchFunc) => {
+    return async () => {
         let data;
         try {
             data = await Client.createIssue(payload);
