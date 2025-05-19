@@ -19,3 +19,18 @@ type CreateIssuePayload = {
     assignees: string[];
     milestone: number;
 }
+
+type UpdateIssuePayload = CreateIssuePayload & {
+    issue_number: number;
+}
+
+type CloseOrReopenIssuePayload = {
+    channel_id: string;
+    issue_comment: string;
+    status_reason: string;
+    number: number;
+    owner: string;
+    repo: string;
+    status: string;
+    postId: string;
+}

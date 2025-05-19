@@ -9,6 +9,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -43,11 +44,6 @@ const (
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
 	postPropGithubObjectType = "gh_object_type"
-
-	githubObjectTypeIssue             = "issue"
-	githubObjectTypeIssueComment      = "issue_comment"
-	githubObjectTypePRReviewComment   = "pr_review_comment"
-	githubObjectTypeDiscussionComment = "discussion_comment"
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -426,8 +422,8 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 	isPRInDraftState := pr.GetDraft()
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(pr.Labels))
-	for i, v := range pr.Labels {
-		labels[i] = v.GetName()
+	for index, label := range pr.Labels {
+		labels[index] = label.GetName()
 	}
 
 	closedPRMessage, err := renderTemplate("closedPR", event)
@@ -645,8 +641,8 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 	eventLabel := event.GetLabel().GetName()
 	labels := make([]string, len(issue.Labels))
-	for i, v := range issue.Labels {
-		labels[i] = v.GetName()
+	for index, label := range issue.Labels {
+		labels[index] = label.GetName()
 	}
 
 	for _, sub := range subscribedChannels {
@@ -673,8 +669,75 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 		}
 		renderedMessage = p.sanitizeDescription(renderedMessage)
 
-		post := p.makeBotPost(renderedMessage, "custom_git_issue")
+		assignees := make([]string, len(issue.Assignees))
+		for index, user := range issue.Assignees {
+			assignees[index] = user.GetLogin()
+		}
+		description := ""
+		if issue.Body != nil {
+			description = *issue.Body
+		}
 
+		post := &model.Post{
+			UserId: p.BotUserID,
+			Type:   "custom_git_release",
+		}
+
+		if action == actionOpened {
+			post.Props = model.StringInterface{
+				"attachments": []*model.SlackAttachment{
+					{
+						Pretext:   renderedMessage,
+						Title:     fmt.Sprintf("%s #%d", *issue.Title, *issue.Number),
+						TitleLink: *issue.HTMLURL,
+						Text:      description,
+						Actions: []*model.PostAction{
+							{
+								Name: "Comment",
+								Integration: &model.PostActionIntegration{
+									Context: map[string]interface{}{
+										KeyRepoOwner:   repo.GetOwner().GetLogin(),
+										KeyRepoName:    repo.GetName(),
+										KeyIssueNumber: issue.GetNumber(),
+										KeyIssueID:     issue.GetID(),
+										KeyStatus:      *issue.State,
+									},
+									URL: fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathOpenIssueCommentModal),
+								},
+								Style: "primary",
+							},
+							{
+								Name: "Edit",
+								Integration: &model.PostActionIntegration{
+									Context: map[string]interface{}{
+										KeyRepoOwner:   repo.GetOwner().GetLogin(),
+										KeyRepoName:    repo.GetName(),
+										KeyIssueNumber: issue.GetNumber(),
+										KeyIssueID:     issue.GetID(),
+										KeyStatus:      *issue.State,
+									},
+									URL: fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathOpenIssueEditModal),
+								},
+							},
+							{
+								Name: "Close",
+								Integration: &model.PostActionIntegration{
+									Context: map[string]interface{}{
+										KeyRepoOwner:   repo.GetOwner().GetLogin(),
+										KeyRepoName:    repo.GetName(),
+										KeyIssueNumber: issue.GetNumber(),
+										KeyIssueID:     issue.GetID(),
+										KeyStatus:      *issue.State,
+									},
+									URL: fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathOpenIssueStatusModal),
+								},
+							},
+						},
+						Fields: p.CreateFieldsForIssuePost(assignees, labels),
+					},
+				},
+			}
+		}
 		repoName := strings.ToLower(repo.GetFullName())
 		issueNumber := issue.Number
 
@@ -854,8 +917,8 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 	}
 
 	labels := make([]string, len(event.GetIssue().Labels))
-	for i, v := range event.GetIssue().Labels {
-		labels[i] = v.GetName()
+	for index, label := range event.GetIssue().Labels {
+		labels[index] = label.GetName()
 	}
 
 	for _, sub := range subs {
@@ -907,8 +970,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 
 func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
 	var mutedUsernameBytes []byte
-	err := p.store.Get(userID+"-muted-users", &mutedUsernameBytes)
-	if err != nil {
+	if err := p.store.Get(fmt.Sprintf("%s-muted-users", userID), &mutedUsernameBytes); err != nil {
 		p.client.Log.Warn("Failed to get muted users", "userID", userID)
 		return false
 	}
@@ -946,8 +1008,8 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
-	for i, v := range event.GetPullRequest().Labels {
-		labels[i] = v.GetName()
+	for index, label := range event.GetPullRequest().Labels {
+		labels[index] = label.GetName()
 	}
 
 	for _, sub := range subs {
@@ -1000,8 +1062,8 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 	}
 
 	labels := make([]string, len(event.GetPullRequest().Labels))
-	for i, v := range event.GetPullRequest().Labels {
-		labels[i] = v.GetName()
+	for index, label := range event.GetPullRequest().Labels {
+		labels[index] = label.GetName()
 	}
 
 	for _, sub := range subs {

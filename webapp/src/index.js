@@ -4,7 +4,8 @@
 import AttachCommentToIssuePostMenuAction from '@/components/post_menu_actions/attach_comment_to_issue';
 import AttachCommentToIssueModal from '@/components/modals/attach_comment_to_issue';
 
-import CreateIssueModal from './components/modals/create_issue';
+import CreateOrUpdateIssueModal from './components/modals/create_update_issue';
+import CloseOrReopenIssueModal from './components/modals/close_reopen_issue';
 import CreateIssuePostMenuAction from './components/post_menu_action/create_issue';
 import SidebarHeader from './components/sidebar_header';
 import TeamSidebar from './components/team_sidebar';
@@ -14,7 +15,7 @@ import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
 import Client from './client';
 import {getConnected, setShowRHSAction} from './actions';
-import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
+import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateOrUpdateIssueModal, handleOpenCreateCommentOnIssueModal, handleOpenCloseOrReopenIssueModal, handleReconnect, handleRefresh, handleOpenEditIssueModal} from './websocket';
 import {getServerRoute} from './selectors';
 import manifest from './manifest';
 
@@ -33,7 +34,8 @@ class PluginClass {
         registry.registerLeftSidebarHeaderComponent(SidebarHeader);
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
-        registry.registerRootComponent(CreateIssueModal);
+        registry.registerRootComponent(CreateOrUpdateIssueModal);
+        registry.registerRootComponent(CloseOrReopenIssueModal);
         registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
         registry.registerRootComponent(AttachCommentToIssueModal);
         registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
@@ -46,7 +48,11 @@ class PluginClass {
         registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_config_update`, handleConfigurationUpdate(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_refresh`, handleRefresh(store));
-        registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateIssueModal(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_createIssue`, handleOpenCreateOrUpdateIssueModal(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_open_comment_modal`, handleOpenCreateCommentOnIssueModal(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_open_edit_modal`, handleOpenEditIssueModal(store));
+        registry.registerWebSocketEventHandler(`custom_${pluginId}_open_status_modal`, handleOpenCloseOrReopenIssueModal(store));
+
         registry.registerReconnectHandler(handleReconnect(store));
 
         activityFunc = () => {

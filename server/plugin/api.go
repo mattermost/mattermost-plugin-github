@@ -29,31 +29,25 @@ import (
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
-const (
-	apiErrorIDNotConnected = "not_connected"
-	// TokenTTL is the OAuth token expiry duration in seconds
-	TokenTTL = 10 * 60
+// HTTPHandlerFuncWithUserContext is http.HandleFunc but with a UserContext attached
+type HTTPHandlerFuncWithUserContext func(c *UserContext, w http.ResponseWriter, r *http.Request)
 
-	requestTimeout       = 30 * time.Second
-	oauthCompleteTimeout = 2 * time.Minute
+// HTTPHandlerFuncWithContext is http.HandleFunc but with a .ontext attached
+type HTTPHandlerFuncWithContext func(c *Context, w http.ResponseWriter, r *http.Request)
 
-	channelIDParam = "channelId"
-)
+// ResponseType indicates type of response returned by api
+type ResponseType string
 
-type OAuthState struct {
-	UserID         string `json:"user_id"`
-	Token          string `json:"token"`
-	PrivateAllowed bool   `json:"private_allowed"`
-}
-
-type APIErrorResponse struct {
-	ID         string `json:"id"`
-	Message    string `json:"message"`
-	StatusCode int    `json:"status_code"`
-}
-
-func (e *APIErrorResponse) Error() string {
-	return e.Message
+type UpdateIssueRequest struct {
+	Title       string   `json:"title"`
+	Body        string   `json:"body"`
+	Repo        string   `json:"repo"`
+	PostID      string   `json:"post_id"`
+	ChannelID   string   `json:"channel_id"`
+	Labels      []string `json:"labels"`
+	Assignees   []string `json:"assignees"`
+	Milestone   int      `json:"milestone"`
+	IssueNumber int      `json:"issue_number"`
 }
 
 type RepoResponse struct {
@@ -95,25 +89,51 @@ type Context struct {
 	Log    logger.Logger
 }
 
-// HTTPHandlerFuncWithContext is http.HandleFunc but with a Context attached
-type HTTPHandlerFuncWithContext func(c *Context, w http.ResponseWriter, r *http.Request)
-
 type UserContext struct {
 	Context
 	GHInfo *GitHubUserInfo
 }
 
-// HTTPHandlerFuncWithUserContext is http.HandleFunc but with a UserContext attached
-type HTTPHandlerFuncWithUserContext func(c *UserContext, w http.ResponseWriter, r *http.Request)
-
-// ResponseType indicates type of response returned by api
-type ResponseType string
+type APIErrorResponse struct {
+	ID         string `json:"id"`
+	Message    string `json:"message"`
+	StatusCode int    `json:"status_code"`
+}
 
 const (
 	// ResponseTypeJSON indicates that response type is json
 	ResponseTypeJSON ResponseType = "JSON_RESPONSE"
 	// ResponseTypePlain indicates that response type is text plain
 	ResponseTypePlain ResponseType = "TEXT_RESPONSE"
+
+	KeyRepoName     string = "repo_name"
+	KeyRepoOwner    string = "repo_owner"
+	KeyIssueNumber  string = "issue_number"
+	KeyIssueID      string = "issue_id"
+	KeyIssueComment string = "issue_comment"
+	KeyStatus       string = "status"
+	KeyStatusReason string = "status_reason"
+	KeyChannelID    string = "channel_id"
+	KeyPostID       string = "post_id"
+	KeyTitle        string = "title"
+	KeyAssignees    string = "assignees"
+	KeyLabels       string = "labels"
+	KeyDescription  string = "description"
+	KeyRepoFullName string = "repo_full_name"
+
+	IssueOpen string = "open"
+
+	WebsocketEventOpenCommentModal string = "open_comment_modal"
+	WebsocketEventOpenStatusModal  string = "open_status_modal"
+	WebsocketEventOpenEditModal    string = "open_edit_modal"
+
+	PathOpenIssueCommentModal string = "/open-comment-modal"
+	PathOpenIssueEditModal    string = "/open-edit-modal"
+	PathOpenIssueStatusModal  string = "/open-status-modal"
+
+	PathHandleOpenIssueCommentModal     string = "/submit_issue_comment_dialog"
+	PathHandleOpenIssueCloseReopenModal string = "/submit_issue_close_reopen_dialog"
+	PathHandleOpenIssueEditModal        string = "/submit_issue_edit_dialog"
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
@@ -123,8 +143,7 @@ func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	_, err = w.Write(b)
-	if err != nil {
+	if _, err := w.Write(b); err != nil {
 		p.client.Log.Warn("Failed to write JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -141,8 +160,7 @@ func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) 
 
 	w.WriteHeader(apiErr.StatusCode)
 
-	_, err = w.Write(b)
-	if err != nil {
+	if _, err := w.Write(b); err != nil {
 		p.client.Log.Warn("Failed to write JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -166,10 +184,13 @@ func (p *Plugin) initializeAPI() {
 
 	apiRouter.HandleFunc("/user", p.checkAuth(p.attachContext(p.getGitHubUser), ResponseTypeJSON)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/todo", p.checkAuth(p.attachUserContext(p.postToDo), ResponseTypeJSON)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/prsdetails", p.checkAuth(p.attachUserContext(p.getPrsDetails), ResponseTypePlain)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/searchissues", p.checkAuth(p.attachUserContext(p.searchIssues), ResponseTypePlain)).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/createissue", p.checkAuth(p.attachUserContext(p.createIssue), ResponseTypePlain)).Methods(http.MethodPost)
-	apiRouter.HandleFunc("/createissuecomment", p.checkAuth(p.attachUserContext(p.createIssueComment), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/prs_details", p.checkAuth(p.attachUserContext(p.getPrsDetails), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/search_issues", p.checkAuth(p.attachUserContext(p.searchIssues), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/create_issue", p.checkAuth(p.attachUserContext(p.createIssue), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/close_or_reopen_issue", p.checkAuth(p.attachUserContext(p.closeOrReopenIssue), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/update_issue", p.checkAuth(p.attachUserContext(p.updateIssue), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/issue_info", p.checkAuth(p.attachUserContext(p.getIssueInfo), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/create_issue_comment", p.checkAuth(p.attachUserContext(p.createIssueComment), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/mentions", p.checkAuth(p.attachUserContext(p.getMentions), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/labels", p.checkAuth(p.attachUserContext(p.getLabels), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/milestones", p.checkAuth(p.attachUserContext(p.getMilestones), ResponseTypePlain)).Methods(http.MethodGet)
@@ -179,6 +200,12 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/issue", p.checkAuth(p.attachUserContext(p.getIssueByNumber), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/pr", p.checkAuth(p.attachUserContext(p.getPrByNumber), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/lhs-content", p.checkAuth(p.attachUserContext(p.getSidebarContent), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc(PathOpenIssueCommentModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueCommentModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathOpenIssueEditModal, p.checkAuth(p.attachUserContext(p.handleOpenEditIssueModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathOpenIssueStatusModal, p.checkAuth(p.attachUserContext(p.handleOpenIssueStatusModal), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathHandleOpenIssueCommentModal, p.checkAuth(p.attachUserContext(p.handleSubmitIssueCommentDialog), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathHandleOpenIssueCloseReopenModal, p.checkAuth(p.attachUserContext(p.handleSubmitIssueCloseReopenDialog), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc(PathHandleOpenIssueEditModal, p.checkAuth(p.attachUserContext(p.handleSubmitIssueEditDialog), ResponseTypePlain)).Methods(http.MethodPost)
 
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
@@ -215,7 +242,7 @@ func (p *Plugin) checkConfigured(next http.Handler) http.Handler {
 
 func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Header.Get("Mattermost-User-ID")
+		userID := r.Header.Get(headerMattermostUserID)
 		if userID == "" {
 			switch responseType {
 			case ResponseTypeJSON:
@@ -233,7 +260,7 @@ func (p *Plugin) checkAuth(handler http.HandlerFunc, responseType ResponseType) 
 }
 
 func (p *Plugin) createContext(_ http.ResponseWriter, r *http.Request) (*Context, context.CancelFunc) {
-	userID := r.Header.Get("Mattermost-User-ID")
+	userID := r.Header.Get(headerMattermostUserID)
 
 	logger := logger.New(p.API).With(logger.LogContext{
 		"userid": userID,
@@ -322,7 +349,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		PrivateAllowed: privateAllowed,
 	}
 
-	_, err = p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
+	_, err = p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(tokenTTL))
 	if err != nil {
 		c.Log.WithError(err).Warnf("error occurred while trying to store oauth state into KV store")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error saving the oauth state", StatusCode: http.StatusInternalServerError})
@@ -464,8 +491,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	if stepName == stepOAuthConnect {
-		err = flow.Go(stepWebhookQuestion)
-		if err != nil {
+		if err = flow.Go(stepWebhookQuestion); err != nil {
 			c.Log.WithError(err).Warnf("Failed go to next step")
 		}
 	} else {
@@ -530,8 +556,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 			`
 
 	w.Header().Set("Content-Type", "text/html")
-	_, err = w.Write([]byte(html))
-	if err != nil {
+	if _, err = w.Write([]byte(html)); err != nil {
 		c.Log.WithError(err).Warnf("Failed to write HTML response")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to write HTML response", StatusCode: http.StatusInternalServerError})
 		return
@@ -539,14 +564,10 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 }
 
 func (p *Plugin) getGitHubUser(c *Context, w http.ResponseWriter, r *http.Request) {
-	type GitHubUserRequest struct {
-		UserID string `json:"user_id"`
-	}
-
 	req := &GitHubUserRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding GitHubUserRequest from JSON body")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -570,27 +591,12 @@ func (p *Plugin) getGitHubUser(c *Context, w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	type GitHubUserResponse struct {
-		Username string `json:"username"`
-	}
-
 	resp := &GitHubUserResponse{Username: userInfo.GitHubUsername}
 	p.writeJSON(w, resp)
 }
 
 func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request) {
 	config := p.getConfiguration()
-
-	type ConnectedResponse struct {
-		Connected           bool                   `json:"connected"`
-		GitHubUsername      string                 `json:"github_username"`
-		GitHubClientID      string                 `json:"github_client_id"`
-		EnterpriseBaseURL   string                 `json:"enterprise_base_url,omitempty"`
-		Organizations       []string               `json:"organizations"`
-		UserSettings        *UserSettings          `json:"user_settings"`
-		ClientConfiguration map[string]interface{} `json:"configuration"`
-	}
-
 	orgList := p.configuration.getOrganizations()
 	resp := &ConnectedResponse{
 		Connected:           false,
@@ -649,7 +655,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	privateRepoStoreKey := info.UserID + githubPrivateRepoKey
+	privateRepoStoreKey := fmt.Sprintf("%s%s", info.UserID, githubPrivateRepoKey)
 	if config.EnablePrivateRepo && !info.AllowedPrivateRepos {
 		var val []byte
 		err := p.store.Get(privateRepoStoreKey, &val)
@@ -750,7 +756,7 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 	var prList []*PRDetails
 	if err := json.NewDecoder(r.Body).Decode(&prList); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding PRDetails JSON body")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -918,74 +924,61 @@ func getFailReason(code int, repo string, username string) string {
 	return cause
 }
 
+type CreateIssueCommentRequest struct {
+	PostID              string `json:"post_id"`
+	Owner               string `json:"owner"`
+	Repo                string `json:"repo"`
+	Number              int    `json:"number"`
+	Comment             string `json:"comment"`
+	ShowAttachedMessage bool   `json:"show_attached_message"`
+}
+
 func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	type CreateIssueCommentRequest struct {
-		PostID  string `json:"post_id"`
-		Owner   string `json:"owner"`
-		Repo    string `json:"repo"`
-		Number  int    `json:"number"`
-		Comment string `json:"comment"`
-	}
-
-	req := &CreateIssueCommentRequest{}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	createIssueCommentRequest := &CreateIssueCommentRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&createIssueCommentRequest); err != nil {
 		c.Log.WithError(err).Warnf("Error decoding CreateIssueCommentRequest JSON body")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
-	if req.PostID == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid post id", StatusCode: http.StatusBadRequest})
+	result, statusCode, err := p.handleCreateIssueComment(c, createIssueCommentRequest)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: err.Error(), StatusCode: statusCode})
 		return
 	}
 
-	if req.Owner == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo owner.", StatusCode: http.StatusBadRequest})
-		return
-	}
+	p.writeJSON(w, result)
+}
 
-	if req.Repo == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo.", StatusCode: http.StatusBadRequest})
-		return
+func (p *Plugin) handleCreateIssueComment(c *UserContext, req *CreateIssueCommentRequest) (*github.IssueComment, int, error) {
+	if req.PostID == "" || req.Owner == "" || req.Repo == "" || req.Number == 0 || req.Comment == "" {
+		p.client.Log.Error("Error creating comment on issue", "missing request fields")
+		return nil, http.StatusBadRequest, errors.New("invalid request fields")
 	}
-
-	if req.Number == 0 {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue number.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
-	if req.Comment == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid non empty comment.", StatusCode: http.StatusBadRequest})
-		return
-	}
-
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 
 	post, err := p.client.Post.GetPost(req.PostID)
-	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID, StatusCode: http.StatusInternalServerError})
-		return
-	}
-	if post == nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + req.PostID + ": not found", StatusCode: http.StatusNotFound})
-		return
+	if err != nil || post == nil {
+		p.client.Log.Error("Error getting Post ID", "postID", req.PostID)
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to load post: %w", err)
 	}
 
 	commentUsername, err := p.getUsername(post.UserId)
 	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
-		return
+		p.client.Log.Error("Error getting username", "UserID", post.UserId, "error", err.Error())
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to get username: %w", err)
 	}
 
 	currentUsername := c.GHInfo.GitHubUsername
 	permalink, err := p.getPermaLink(req.PostID)
 	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to generate permalink", StatusCode: http.StatusInternalServerError})
-		return
+		p.client.Log.Error("Error getting permalink for the post", "PostID", req.PostID, "error", err.Error())
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to generate permalink: %w", err)
 	}
 	permalinkMessage := fmt.Sprintf("*@%s attached a* [message](%s) *from %s*\n\n", currentUsername, permalink, commentUsername)
 
-	req.Comment = permalinkMessage + req.Comment
+	if req.ShowAttachedMessage {
+		req.Comment = fmt.Sprintf("%s%s", permalinkMessage, req.Comment)
+	}
 	comment := &github.IssueComment{
 		Body: &req.Comment,
 	}
@@ -994,10 +987,7 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	var rawResponse *github.Response
 	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
 		result, rawResponse, err = githubClient.Issues.CreateComment(c.Ctx, req.Owner, req.Repo, req.Number, comment)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}); cErr != nil {
 		statusCode := 500
 		if rawResponse != nil {
@@ -1008,8 +998,7 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 			"repo":   req.Repo,
 			"number": req.Number,
 		}).Errorf("failed to create an issue comment")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create an issue comment: " + getFailReason(statusCode, req.Repo, currentUsername), StatusCode: statusCode})
-		return
+		return nil, statusCode, fmt.Errorf("GitHub comment creation failed: %w", err)
 	}
 
 	rootID := req.PostID
@@ -1018,7 +1007,11 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		rootID = post.RootId
 	}
 
-	permalinkReplyMessage := fmt.Sprintf("[Message](%v) attached to GitHub issue [#%v](%v)", permalink, req.Number, result.GetHTMLURL())
+	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v)", req.Number, result.GetHTMLURL())
+	if req.ShowAttachedMessage {
+		permalinkReplyMessage = fmt.Sprintf("[Message](%v) attached to GitHub issue [#%v](%v)", permalink, req.Number, result.GetHTMLURL())
+	}
+
 	reply := &model.Post{
 		Message:   permalinkReplyMessage,
 		ChannelId: post.ChannelId,
@@ -1026,13 +1019,140 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		UserId:    c.UserID,
 	}
 
-	err = p.client.Post.CreatePost(reply)
-	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post " + req.PostID, StatusCode: http.StatusInternalServerError})
+	if err := p.client.Post.CreatePost(reply); err != nil {
+		p.client.Log.Error("Error creating post for issue comment", "error", err.Error())
+		return nil, http.StatusInternalServerError, fmt.Errorf("failed to create reply post: %w", err)
+	}
+
+	return result, http.StatusOK, nil
+}
+
+func (p *Plugin) handleSubmitIssueCommentDialog(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	var submission model.SubmitDialogRequest
+	if err := json.NewDecoder(r.Body).Decode(&submission); err != nil {
+		p.client.Log.Error("Error decoding the request body for submit issue comment dialog handling", "error", err.Error())
+		http.Error(w, "invalid payload", http.StatusBadRequest)
 		return
 	}
 
-	p.writeJSON(w, result)
+	state := make(map[string]string)
+	if err := json.Unmarshal([]byte(submission.State), &state); err != nil {
+		p.client.Log.Error("Error unmarshalling state for submit issue comment dialog handling", "error", err.Error())
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	comment := submission.Submission["comment"].(string)
+	issueNumber, _ := strconv.Atoi(state["issue_number"])
+
+	req := &CreateIssueCommentRequest{
+		PostID:              state[KeyPostID],
+		Owner:               state[KeyRepoOwner],
+		Repo:                state[KeyRepoName],
+		Number:              issueNumber,
+		Comment:             comment,
+		ShowAttachedMessage: false,
+	}
+
+	_, status, err := p.handleCreateIssueComment(c, req)
+	if err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (p *Plugin) handleSubmitIssueCloseReopenDialog(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	var submission model.SubmitDialogRequest
+	if err := json.NewDecoder(r.Body).Decode(&submission); err != nil {
+		p.client.Log.Error("Error decoding the request body for submit issue close/reopen dialog", "error", err.Error())
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	state := make(map[string]string)
+	if err := json.Unmarshal([]byte(submission.State), &state); err != nil {
+		p.client.Log.Error("Error unmarshalling state for issue close/reopen dialog", "error", err.Error())
+		http.Error(w, "invalid state", http.StatusBadRequest)
+		return
+	}
+
+	issueNumber, _ := strconv.Atoi(state[KeyIssueNumber])
+
+	req := &CommentAndCloseRequest{
+		PostID:       state[KeyPostID],
+		ChannelID:    state[KeyChannelID],
+		Owner:        state[KeyRepoOwner],
+		Repository:   state[KeyRepoName],
+		Number:       issueNumber,
+		Status:       state[KeyStatus],
+		IssueComment: submission.Submission[KeyIssueComment].(string),
+	}
+
+	if req.Status == IssueOpen {
+		req.StatusReason = submission.Submission[KeyStatusReason].(string)
+	} else {
+		req.StatusReason = state[KeyStatusReason]
+	}
+
+	if req.ChannelID == "" || req.Owner == "" || req.Repository == "" || req.Number == 0 || req.PostID == "" {
+		http.Error(w, "missing required issue data", http.StatusBadRequest)
+		return
+	}
+
+	p.handleCloseOrReopenIssue(c, w, req)
+}
+
+func (p *Plugin) handleSubmitIssueEditDialog(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var submission model.SubmitDialogRequest
+	if err := json.NewDecoder(r.Body).Decode(&submission); err != nil {
+		c.Log.WithError(err).Warnf("Failed to decode SubmitDialogRequest")
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	var state map[string]interface{}
+	if err := json.Unmarshal([]byte(submission.State), &state); err != nil {
+		c.Log.WithError(err).Warnf("Failed to decode dialog state")
+		http.Error(w, "Invalid state", http.StatusBadRequest)
+		return
+	}
+
+	issueNumberStr := fmt.Sprintf("%v", state[KeyIssueNumber])
+	issueNumber, err := strconv.Atoi(issueNumberStr)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Invalid issue number in state")
+		http.Error(w, "Invalid issue number", http.StatusBadRequest)
+		return
+	}
+
+	milestone := 0
+	if v, ok := submission.Submission["milestone"].(string); ok && v != "" {
+		milestone, _ = strconv.Atoi(v)
+	}
+
+	issue := &UpdateIssueRequest{
+		Title:       submission.Submission["Title"].(string),
+		Body:        submission.Submission["Description"].(string),
+		Repo:        fmt.Sprintf("%v/%v", state[KeyRepoOwner], state[KeyRepoName]),
+		PostID:      fmt.Sprintf("%v", state[KeyPostID]),
+		ChannelID:   fmt.Sprintf("%v", state[KeyChannelID]),
+		Labels:      []string{submission.Submission["Label"].(string)},
+		Assignees:   []string{submission.Submission["Assignee"].(string)},
+		Milestone:   milestone,
+		IssueNumber: issueNumber,
+	}
+
+	if _, err := p.updateGithubIssue(c, issue); err != nil {
+		c.Log.WithError(err).Warnf("Failed to update issue")
+		http.Error(w, "Failed to update issue", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetails, assignmentResp []*github.Issue, openPRResp []*graphql.GithubPRDetails, err error) {
@@ -1116,11 +1236,105 @@ func (p *Plugin) updateSettings(c *UserContext, w http.ResponseWriter, r *http.R
 	p.writeJSON(w, info.Settings)
 }
 
+func (p *Plugin) getGitHubIssueInfo(c *UserContext, owner, repo string, issueNumber int, postID string) (map[string]interface{}, *APIErrorResponse) {
+	client := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+
+	issue, _, err := client.Issues.Get(c.Context.Ctx, owner, repo, issueNumber)
+	if err != nil {
+		var gerr *github.ErrorResponse
+		if errors.As(err, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
+			c.Log.WithError(err).With(logger.LogContext{
+				"owner":  owner,
+				"repo":   repo,
+				"number": issueNumber,
+			}).Debugf("Issue not found")
+			return nil, nil
+		}
+
+		c.Log.WithError(err).With(logger.LogContext{
+			"owner":  owner,
+			"repo":   repo,
+			"number": issueNumber,
+		}).Debugf("Could not get the issue")
+		return nil, &APIErrorResponse{Message: "Could not get the issue", StatusCode: http.StatusInternalServerError}
+	}
+
+	post, appErr := p.API.GetPost(postID)
+	if appErr != nil {
+		p.client.Log.Error("Unable to get the post", "PostID", postID, "Error", appErr.Error())
+		return nil, &APIErrorResponse{Message: fmt.Sprintf("failed to load the post %s", postID), StatusCode: http.StatusInternalServerError}
+	}
+	if post == nil {
+		return nil, &APIErrorResponse{Message: fmt.Sprintf("failed to load the post %s : not found", postID), StatusCode: http.StatusNotFound}
+	}
+
+	description := ""
+	if issue.Body != nil {
+		description = mdCommentRegex.ReplaceAllString(issue.GetBody(), "")
+	}
+
+	assignees := make([]string, len(issue.Assignees))
+	for index, user := range issue.Assignees {
+		assignees[index] = user.GetLogin()
+	}
+
+	labels := make([]string, len(issue.Labels))
+	for index, label := range issue.Labels {
+		labels[index] = label.GetName()
+	}
+
+	milestoneTitle := ""
+	milestoneNumber := 0
+	if issue.Milestone != nil && issue.Milestone.Title != nil {
+		milestoneTitle = *issue.Milestone.Title
+		milestoneNumber = *issue.Milestone.Number
+	}
+
+	return map[string]interface{}{
+		KeyTitle:           issue.GetTitle(),
+		KeyChannelID:       post.ChannelId,
+		KeyPostID:          postID,
+		"milestone_title":  milestoneTitle,
+		"milestone_number": milestoneNumber,
+		KeyAssignees:       assignees,
+		KeyLabels:          labels,
+		KeyDescription:     description,
+		KeyRepoFullName:    fmt.Sprintf("%s/%s", owner, repo),
+		"issue_number":     issue.GetNumber(),
+	}, nil
+}
+
+func (p *Plugin) getIssueInfo(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	owner := r.FormValue(ownerQueryParam)
+	repo := r.FormValue(repoQueryParam)
+	number := r.FormValue(numberQueryParam)
+	postID := r.FormValue(postIDQueryParam)
+
+	issueNumber, err := strconv.Atoi(number)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid param 'number'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	issueInfo, apiErr := p.getGitHubIssueInfo(c, owner, repo, issueNumber, postID)
+
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+	if issueInfo == nil {
+		p.writeJSON(w, nil)
+		return
+	}
+
+	p.writeJSON(w, issueInfo)
+}
+
 func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	owner := r.FormValue("owner")
-	repo := r.FormValue("repo")
-	number := r.FormValue("number")
-	numberInt, err := strconv.Atoi(number)
+	owner := r.FormValue(ownerQueryParam)
+	repo := r.FormValue(repoQueryParam)
+	number := r.FormValue(numberQueryParam)
+	issueNumber, err := strconv.Atoi(number)
 	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid param 'number'.", StatusCode: http.StatusBadRequest})
 		return
@@ -1130,7 +1344,7 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 
 	var result *github.Issue
 	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-		result, _, err = githubClient.Issues.Get(c.Ctx, owner, repo, numberInt)
+		result, _, err = githubClient.Issues.Get(c.Ctx, owner, repo, issueNumber)
 		if err != nil {
 			return err
 		}
@@ -1143,8 +1357,8 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 			c.Log.WithError(err).With(logger.LogContext{
 				"owner":  owner,
 				"repo":   repo,
-				"number": numberInt,
-			}).Debugf("Issue  not found")
+				"number": issueNumber,
+			}).Debugf("Issue not found")
 			p.writeJSON(w, nil)
 			return
 		}
@@ -1152,11 +1366,12 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 		c.Log.WithError(cErr).With(logger.LogContext{
 			"owner":  owner,
 			"repo":   repo,
-			"number": numberInt,
-		}).Debugf("Could not get issue")
-		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get issue", StatusCode: http.StatusInternalServerError})
+			"number": issueNumber,
+		}).Debugf("Could not get the issue")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get the issue", StatusCode: http.StatusInternalServerError})
 		return
 	}
+
 	if result.Body != nil {
 		*result.Body = mdCommentRegex.ReplaceAllString(result.GetBody(), "")
 	}
@@ -1164,11 +1379,11 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 }
 
 func (p *Plugin) getPrByNumber(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	owner := r.FormValue("owner")
-	repo := r.FormValue("repo")
-	number := r.FormValue("number")
+	owner := r.FormValue(ownerQueryParam)
+	repo := r.FormValue(repoQueryParam)
+	number := r.FormValue(numberQueryParam)
 
-	numberInt, err := strconv.Atoi(number)
+	prNumber, err := strconv.Atoi(number)
 	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid param 'number'.", StatusCode: http.StatusBadRequest})
 		return
@@ -1177,20 +1392,20 @@ func (p *Plugin) getPrByNumber(c *UserContext, w http.ResponseWriter, r *http.Re
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 	var result *github.PullRequest
 	if cErr := p.useGitHubClient(c.GHInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
-		result, _, err = githubClient.PullRequests.Get(c.Ctx, owner, repo, numberInt)
+		result, _, err = githubClient.PullRequests.Get(c.Ctx, owner, repo, prNumber)
 		if err != nil {
 			return err
 		}
 		return nil
 	}); cErr != nil {
 		// If the pull request is not found, it's probably behind a private repo.
-		// Return an empty repose in this case.
+		// Return an empty response in that case.
 		var gerr *github.ErrorResponse
 		if errors.As(cErr, &gerr) && gerr.Response.StatusCode == http.StatusNotFound {
 			c.Log.With(logger.LogContext{
 				"owner":  owner,
 				"repo":   repo,
-				"number": numberInt,
+				"number": prNumber,
 			}).Debugf("Pull request not found")
 
 			p.writeJSON(w, nil)
@@ -1200,7 +1415,7 @@ func (p *Plugin) getPrByNumber(c *UserContext, w http.ResponseWriter, r *http.Re
 		c.Log.WithError(cErr).With(logger.LogContext{
 			"owner":  owner,
 			"repo":   repo,
-			"number": numberInt,
+			"number": prNumber,
 		}).Debugf("Could not get pull request")
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get pull request", StatusCode: http.StatusInternalServerError})
 		return
@@ -1211,33 +1426,21 @@ func (p *Plugin) getPrByNumber(c *UserContext, w http.ResponseWriter, r *http.Re
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getLabels(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
-	if err != nil {
-		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
-		return
-	}
-
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+func (p *Plugin) fetchLabels(ctx context.Context, ghInfo *GitHubUserInfo, owner, repo string) ([]*github.Label, error) {
+	githubClient := p.githubConnectUser(ctx, ghInfo)
 	var allLabels []*github.Label
 	opt := github.ListOptions{PerPage: 50}
 
 	for {
 		var labels []*github.Label
 		var resp *github.Response
-		if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-			labels, resp, err = githubClient.Issues.ListLabels(c.Ctx, owner, repo, &opt)
-			if err != nil {
-				return err
-			}
-			return nil
-		}); cErr != nil {
-			c.Log.WithError(cErr).With(logger.LogContext{
-				"owner": owner,
-				"repo":  repo,
-			}).Warnf("Failed to list labels")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
-			return
+		err := p.useGitHubClient(ghInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			var e error
+			labels, resp, e = githubClient.Issues.ListLabels(ctx, owner, repo, &opt)
+			return e
+		})
+		if err != nil {
+			return nil, err
 		}
 		allLabels = append(allLabels, labels...)
 		if resp.NextPage == 0 {
@@ -1246,7 +1449,76 @@ func (p *Plugin) getLabels(c *UserContext, w http.ResponseWriter, r *http.Reques
 		opt.Page = resp.NextPage
 	}
 
-	p.writeJSON(w, allLabels)
+	return allLabels, nil
+}
+
+func (p *Plugin) fetchAssignees(ctx context.Context, ghInfo *GitHubUserInfo, owner, repo string) ([]*github.User, error) {
+	githubClient := p.githubConnectUser(ctx, ghInfo)
+	var allAssignees []*github.User
+	opt := github.ListOptions{PerPage: 50}
+
+	for {
+		var assignees []*github.User
+		var resp *github.Response
+		err := p.useGitHubClient(ghInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			var e error
+			assignees, resp, e = githubClient.Issues.ListAssignees(ctx, owner, repo, &opt)
+			return e
+		})
+		if err != nil {
+			return nil, err
+		}
+		allAssignees = append(allAssignees, assignees...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	return allAssignees, nil
+}
+
+func (p *Plugin) fetchMilestones(ctx context.Context, ghInfo *GitHubUserInfo, owner, repo string) ([]*github.Milestone, error) {
+	githubClient := p.githubConnectUser(ctx, ghInfo)
+	var allMilestones []*github.Milestone
+	opt := github.ListOptions{PerPage: 50}
+
+	for {
+		var milestones []*github.Milestone
+		var resp *github.Response
+		err := p.useGitHubClient(ghInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			var e error
+			milestones, resp, e = githubClient.Issues.ListMilestones(ctx, owner, repo, &github.MilestoneListOptions{ListOptions: opt})
+			return e
+		})
+		if err != nil {
+			return nil, err
+		}
+		allMilestones = append(allMilestones, milestones...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	return allMilestones, nil
+}
+
+func (p *Plugin) getLabels(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	owner, repo, err := parseRepo(r.URL.Query().Get("repo"))
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: err.Error(), StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	labels, err := p.fetchLabels(c.Context.Ctx, c.GHInfo, owner, repo)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to list labels")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, labels)
 }
 
 func (p *Plugin) getAssignees(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1256,35 +1528,14 @@ func (p *Plugin) getAssignees(c *UserContext, w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-	var allAssignees []*github.User
-	opt := github.ListOptions{PerPage: 50}
-
-	for {
-		var assignees []*github.User
-		var resp *github.Response
-		if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-			assignees, resp, err = githubClient.Issues.ListAssignees(c.Ctx, owner, repo, &opt)
-			if err != nil {
-				return err
-			}
-			return nil
-		}); cErr != nil {
-			c.Log.WithError(cErr).With(logger.LogContext{
-				"owner": owner,
-				"repo":  repo,
-			}).Warnf("Failed to list assignees")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
-			return
-		}
-		allAssignees = append(allAssignees, assignees...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.Page = resp.NextPage
+	assignees, err := p.fetchAssignees(c.Context.Ctx, c.GHInfo, owner, repo)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to list assignees")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
+		return
 	}
 
-	p.writeJSON(w, allAssignees)
+	p.writeJSON(w, assignees)
 }
 
 func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1294,35 +1545,14 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
-	var allMilestones []*github.Milestone
-	opt := github.ListOptions{PerPage: 50}
-
-	for {
-		var milestones []*github.Milestone
-		var resp *github.Response
-		if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-			milestones, resp, err = githubClient.Issues.ListMilestones(c.Ctx, owner, repo, &github.MilestoneListOptions{ListOptions: opt})
-			if err != nil {
-				return err
-			}
-			return nil
-		}); cErr != nil {
-			c.Log.WithError(cErr).With(logger.LogContext{
-				"owner": owner,
-				"repo":  repo,
-			}).Warnf("Failed to list milestones")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
-			return
-		}
-		allMilestones = append(allMilestones, milestones...)
-		if resp.NextPage == 0 {
-			break
-		}
-		opt.Page = resp.NextPage
+	milestones, err := p.fetchMilestones(c.Context.Ctx, c.GHInfo, owner, repo)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Failed to list milestones")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
+		return
 	}
 
-	p.writeJSON(w, allMilestones)
+	p.writeJSON(w, milestones)
 }
 
 func (p *Plugin) getRepositoryList(c context.Context, ghInfo *GitHubUserInfo, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, error) {
@@ -1477,8 +1707,166 @@ func (p *Plugin) getRepositories(c *UserContext, w http.ResponseWriter, r *http.
 	p.writeJSON(w, resp)
 }
 
+func (p *Plugin) updateIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	issue := &UpdateIssueRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&issue); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding the JSON body")
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if !p.validateIssueRequestForUpdation(issue, w) {
+		return
+	}
+
+	result, apiErr := p.updateGithubIssue(c, issue)
+	if apiErr != nil {
+		p.writeAPIError(w, apiErr)
+		return
+	}
+
+	p.writeJSON(w, result)
+}
+
+func (p *Plugin) updateGithubIssue(c *UserContext, issue *UpdateIssueRequest) (*github.Issue, *APIErrorResponse) {
+	var post *model.Post
+	if issue.PostID != "" {
+		var appErr *model.AppError
+		post, appErr = p.API.GetPost(issue.PostID)
+		if appErr != nil {
+			p.client.Log.Error("Unable to get the post", "PostID", issue.PostID, "Error", appErr.Error())
+			return nil, &APIErrorResponse{Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError}
+		}
+		if post == nil {
+			return nil, &APIErrorResponse{Message: fmt.Sprintf("post %s not found", issue.PostID), StatusCode: http.StatusNotFound}
+		}
+	}
+
+	githubIssue := &github.IssueRequest{
+		Title:     &issue.Title,
+		Body:      &issue.Body,
+		Labels:    &issue.Labels,
+		Assignees: &issue.Assignees,
+	}
+	if issue.Milestone > 0 {
+		githubIssue.Milestone = &issue.Milestone
+	}
+
+	currentUser, appErr := p.API.GetUser(c.UserID)
+	if appErr != nil {
+		p.client.Log.Error("Unable to get the user", "UserID", c.UserID, "Error", appErr.Error())
+		return nil, &APIErrorResponse{Message: "failed to load current user", StatusCode: http.StatusInternalServerError}
+	}
+
+	splittedRepo := strings.Split(issue.Repo, "/")
+	if len(splittedRepo) < 2 {
+		return nil, &APIErrorResponse{Message: "Please provide a valid repository", StatusCode: http.StatusBadRequest}
+	}
+
+	owner, repoName := splittedRepo[0], splittedRepo[1]
+	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+
+	result, resp, err := githubClient.Issues.Edit(c.Ctx, owner, repoName, issue.IssueNumber, githubIssue)
+	if err != nil {
+		if resp != nil && resp.Response.StatusCode == http.StatusGone {
+			return nil, &APIErrorResponse{Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed}
+		}
+		c.Log.WithError(err).Warnf("Failed to update the issue")
+		return nil, &APIErrorResponse{
+			Message:    fmt.Sprintf("failed to update the issue: %s", getFailReason(resp.StatusCode, issue.Repo, currentUser.Username)),
+			StatusCode: resp.StatusCode,
+		}
+	}
+
+	rootID := issue.PostID
+	channelID := issue.ChannelID
+	message := fmt.Sprintf("Updated GitHub issue [#%v](%v)", result.GetNumber(), result.GetHTMLURL())
+	if post != nil {
+		if post.RootId != "" {
+			rootID = post.RootId
+		}
+		channelID = post.ChannelId
+	}
+
+	reply := &model.Post{
+		Message:   message,
+		ChannelId: channelID,
+		RootId:    rootID,
+		UserId:    c.UserID,
+	}
+
+	if post != nil {
+		if _, appErr = p.API.CreatePost(reply); appErr != nil {
+			c.Log.WithError(appErr).Warnf("failed to create notification post")
+			return nil, &APIErrorResponse{
+				Message:    fmt.Sprintf("failed to create the notification post, postID: %s, channelID: %s", issue.PostID, channelID),
+				StatusCode: http.StatusInternalServerError,
+			}
+		}
+	} else {
+		_ = p.API.SendEphemeralPost(c.UserID, reply)
+	}
+
+	p.updatePost(issue, nil)
+
+	return result, nil
+}
+
+type CommentAndCloseRequest struct {
+	ChannelID    string `json:"channel_id"`
+	IssueComment string `json:"issue_comment"`
+	StatusReason string `json:"status_reason"`
+	Number       int    `json:"number"`
+	Owner        string `json:"owner"`
+	Repository   string `json:"repo"`
+	Status       string `json:"status"`
+	PostID       string `json:"postId"`
+}
+
+func (p *Plugin) closeOrReopenIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	closeReopenIssueRequest := &CommentAndCloseRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&closeReopenIssueRequest); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding the JSON body")
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	p.handleCloseOrReopenIssue(c, w, closeReopenIssueRequest)
+}
+
+func (p *Plugin) handleCloseOrReopenIssue(c *UserContext, w http.ResponseWriter, closeReopenIssueRequest *CommentAndCloseRequest) {
+	post, appErr := p.API.GetPost(closeReopenIssueRequest.PostID)
+	if appErr != nil {
+		p.client.Log.Error("Unable to get the post", "PostID", closeReopenIssueRequest.PostID, "Error", appErr.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", closeReopenIssueRequest.PostID), StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	if post == nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", closeReopenIssueRequest.PostID), StatusCode: http.StatusNotFound})
+		return
+	}
+
+	if _, err := p.getUsername(post.UserId); err != nil {
+		p.client.Log.Error("Unable to get the username", "UserID", post.UserId, "Error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	if closeReopenIssueRequest.IssueComment != "" {
+		p.CreateCommentToIssue(c, w, closeReopenIssueRequest.IssueComment, closeReopenIssueRequest.Owner, closeReopenIssueRequest.Repository, post, closeReopenIssueRequest.Number)
+	}
+
+	status := issueOpen
+	if closeReopenIssueRequest.Status == IssueOpen {
+		status = issueClose
+	}
+
+	p.CloseOrReopenIssue(c, w, status, closeReopenIssueRequest.StatusReason, closeReopenIssueRequest.Owner, closeReopenIssueRequest.Repository, post, closeReopenIssueRequest.Number)
+}
+
 func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Request) {
-	type IssueRequest struct {
+	type CreateIssueRequest struct {
 		Title     string   `json:"title"`
 		Body      string   `json:"body"`
 		Repo      string   `json:"repo"`
@@ -1489,12 +1877,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		Milestone int      `json:"milestone"`
 	}
 
-	// get data for the issue from the request body and fill IssueRequest object
-	issue := &IssueRequest{}
-
+	// get data for the issue from the request body and fill CreateIssueRequest object to create the issue
+	issue := &CreateIssueRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&issue); err != nil {
-		c.Log.WithError(err).Warnf("Error decoding JSON body")
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		c.Log.WithError(err).Warnf("Error decoding the JSON body")
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid JSON object.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -1504,7 +1891,7 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 
 	if issue.Repo == "" {
-		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repo name.", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid repository name.", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -1520,11 +1907,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		var err error
 		post, err = p.client.Post.GetPost(issue.PostID)
 		if err != nil {
-			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID, StatusCode: http.StatusInternalServerError})
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
 			return
 		}
 		if post == nil {
-			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID + ": not found", StatusCode: http.StatusNotFound})
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", issue.PostID), StatusCode: http.StatusNotFound})
 			return
 		}
 
@@ -1543,7 +1930,7 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		mmMessage = fmt.Sprintf("_Issue created from a [Mattermost message](%v) *by %s*._", permalink, username)
 	}
 
-	ghIssue := &github.IssueRequest{
+	githubIssue := &github.IssueRequest{
 		Title:     &issue.Title,
 		Body:      &issue.Body,
 		Labels:    &issue.Labels,
@@ -1551,15 +1938,15 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 
 	// submitting the request with an invalid milestone ID results in a 422 error
-	// we make sure it's not zero here, because the webapp client might have left this field empty
+	// we should make sure it's not zero here because the webapp client might have left this field empty
 	if issue.Milestone > 0 {
-		ghIssue.Milestone = &issue.Milestone
+		githubIssue.Milestone = &issue.Milestone
 	}
 
-	if ghIssue.GetBody() != "" && mmMessage != "" {
+	if githubIssue.GetBody() != "" && mmMessage != "" {
 		mmMessage = "\n\n" + mmMessage
 	}
-	*ghIssue.Body = ghIssue.GetBody() + mmMessage
+	*githubIssue.Body = fmt.Sprintf("%s%s", githubIssue.GetBody(), mmMessage)
 
 	currentUser, err := p.client.User.Get(c.UserID)
 	if err != nil {
@@ -1568,14 +1955,13 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 	}
 
 	splittedRepo := strings.Split(issue.Repo, "/")
-	owner := splittedRepo[0]
-	repoName := splittedRepo[1]
+	owner, repoName := splittedRepo[0], splittedRepo[1]
 
 	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
 	var resp *github.Response
 	var result *github.Issue
 	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-		result, resp, err = githubClient.Issues.Create(c.Ctx, owner, repoName, ghIssue)
+		result, resp, err = githubClient.Issues.Create(c.Ctx, owner, repoName, githubIssue)
 		if err != nil {
 			return err
 		}
@@ -1653,6 +2039,277 @@ func (p *Plugin) getToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.writeJSON(w, info.Token)
+}
+
+func (p *Plugin) handleOpenEditIssueModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
+	if err := decoder.Decode(postActionIntegrationRequest); err != nil {
+		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	triggerID := postActionIntegrationRequest.TriggerId
+	if triggerID == "" {
+		p.API.LogError("Trigger ID missing in request")
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	repoOwner := postActionIntegrationRequest.Context[KeyRepoOwner].(string)
+	repoName := postActionIntegrationRequest.Context[KeyRepoName].(string)
+	issueNumber := fmt.Sprintf("%v", postActionIntegrationRequest.Context[KeyIssueNumber])
+	postID := postActionIntegrationRequest.PostId
+	channelID := postActionIntegrationRequest.ChannelId
+	status := postActionIntegrationRequest.Context[KeyStatus].(string)
+
+	issueNum, err := strconv.Atoi(issueNumber)
+	if err != nil {
+		p.API.LogError("Invalid issue number", "IssueNumber", issueNumber, "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	issueInfo, apiErr := p.getGitHubIssueInfo(c, repoOwner, repoName, issueNum, postID)
+	if apiErr != nil {
+		p.API.LogError("Failed to fetch issue info", "Error", apiErr.Message)
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	issueTitle, _ := issueInfo[KeyTitle].(string)
+	assigneesList, _ := issueInfo[KeyAssignees].([]string)
+	labelsList, _ := issueInfo[KeyLabels].([]string)
+	description, _ := issueInfo[KeyDescription].(string)
+	repoFullName, _ := issueInfo[KeyRepoFullName].(string)
+
+	milestones, err := p.fetchMilestones(c.Context.Ctx, c.GHInfo, repoOwner, repoName)
+	if err != nil {
+		p.API.LogError("Failed to fetch milestones", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	milestoneDefaultValue := ""
+	if len(milestones) > 0 {
+		milestoneDefaultValue = fmt.Sprintf("%d", milestones[0].GetNumber())
+	}
+
+	milestoneValues := []*model.PostActionOptions{}
+	for _, milestone := range milestones {
+		milestoneValues = append(milestoneValues, &model.PostActionOptions{Text: milestone.GetTitle(), Value: fmt.Sprintf("%d", milestone.GetNumber())})
+	}
+
+	var elements []model.DialogElement
+
+	elements = append(elements, model.DialogElement{
+		DisplayName: "Title for the GitHub Issue",
+		Name:        "Title",
+		Type:        "text",
+		Optional:    false,
+		Default:     issueTitle,
+	})
+
+	elements = append(elements, model.DialogElement{
+		DisplayName: "Description for the GitHub Issue",
+		Name:        "Description",
+		Placeholder: "Add description to the issue...",
+		Type:        "textarea",
+		Optional:    true,
+		Default:     description,
+	})
+
+	elements = append(elements, model.DialogElement{
+		DisplayName: "Milestone",
+		Name:        "Milestone",
+		Type:        "select",
+		Placeholder: "Select...",
+		Optional:    true,
+		Options:     milestoneValues,
+		Default:     milestoneDefaultValue,
+	})
+
+	stateMap := map[string]string{
+		KeyChannelID:   channelID,
+		KeyStatus:      status,
+		KeyIssueNumber: issueNumber,
+		KeyRepoOwner:   repoOwner,
+		KeyRepoName:    repoName,
+		KeyPostID:      postID,
+	}
+
+	state := toJSON(stateMap)
+
+	introduction := fmt.Sprintf("##### Repository: `%s`\n ##### Labels: `%s` \n ##### Assignees: `%s`", repoFullName, strings.Join(labelsList, ", "), strings.Join(assigneesList, ", "))
+
+	dialog := model.OpenDialogRequest{
+		TriggerId: triggerID,
+		URL:       fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathHandleOpenIssueEditModal),
+		Dialog: model.Dialog{
+			CallbackId:       "edit_issue",
+			Title:            "Update GitHub Issue",
+			IntroductionText: introduction,
+			SubmitLabel:      "Submit",
+			NotifyOnCancel:   false,
+			Elements:         elements,
+			State:            state,
+		},
+	}
+
+	if appErr := p.API.OpenInteractiveDialog(dialog); appErr != nil {
+		p.API.LogError("Failed to open interactive dialog", "Error", appErr.Error())
+	}
+
+	p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+}
+
+func (p *Plugin) returnPostActionIntegrationResponse(w http.ResponseWriter, res *model.PostActionIntegrationResponse) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		p.API.LogWarn("Failed to write PostActionIntegrationResponse", "Error", err.Error())
+	}
+}
+
+func (p *Plugin) handleOpenIssueStatusModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
+	if err := decoder.Decode(postActionIntegrationRequest); err != nil {
+		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	triggerID := postActionIntegrationRequest.TriggerId
+	if triggerID == "" {
+		p.API.LogError("Trigger ID missing in request")
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	repoOwner := postActionIntegrationRequest.Context[KeyRepoOwner].(string)
+	repoName := postActionIntegrationRequest.Context[KeyRepoName].(string)
+	issueNumber := fmt.Sprintf("%v", postActionIntegrationRequest.Context[KeyIssueNumber])
+	postID := postActionIntegrationRequest.PostId
+	channelID := postActionIntegrationRequest.ChannelId
+	status := postActionIntegrationRequest.Context[KeyStatus].(string)
+
+	dialogTitle := "Reopen Issue"
+	submitLabel := "Reopen Issue"
+	elements := []model.DialogElement{
+		{
+			DisplayName: "Leave a comment",
+			Name:        KeyIssueComment,
+			Type:        "textarea",
+			Placeholder: "Add a comment...",
+			Optional:    true,
+		},
+	}
+
+	stateMap := map[string]string{
+		KeyChannelID:   channelID,
+		KeyStatus:      status,
+		KeyIssueNumber: issueNumber,
+		KeyRepoOwner:   repoOwner,
+		KeyRepoName:    repoName,
+		KeyPostID:      postID,
+	}
+
+	if status == IssueOpen {
+		dialogTitle = "Close Issue"
+		submitLabel = "Close Issue"
+
+		elements = append(elements, model.DialogElement{
+			DisplayName: "Mark issue as",
+			Name:        KeyStatusReason,
+			Type:        "radio",
+			Optional:    false,
+			Options: []*model.PostActionOptions{
+				{Text: "Completed", Value: "completed"},
+				{Text: "Not planned", Value: "not_planned"},
+			},
+		})
+	} else {
+		stateMap[KeyStatusReason] = "reopened"
+	}
+
+	state := toJSON(stateMap)
+
+	dialog := model.OpenDialogRequest{
+		TriggerId: triggerID,
+		URL:       fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathHandleOpenIssueCloseReopenModal),
+		Dialog: model.Dialog{
+			CallbackId:     "close_or_reopen_issue",
+			Title:          dialogTitle,
+			SubmitLabel:    submitLabel,
+			NotifyOnCancel: false,
+			Elements:       elements,
+			State:          state,
+		},
+	}
+
+	if appErr := p.API.OpenInteractiveDialog(dialog); appErr != nil {
+		p.API.LogError("Failed to open interactive dialog", "Error", appErr.Error())
+	}
+
+	p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+}
+
+func (p *Plugin) handleOpenIssueCommentModal(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	postActionIntegrationRequest := &model.PostActionIntegrationRequest{}
+	if err := decoder.Decode(&postActionIntegrationRequest); err != nil {
+		p.API.LogError("Error decoding PostActionIntegrationRequest params", "Error", err.Error())
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	triggerID := postActionIntegrationRequest.TriggerId
+	if triggerID == "" {
+		p.API.LogError("Trigger ID missing in request")
+		p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+		return
+	}
+
+	dialog := model.OpenDialogRequest{
+		TriggerId: triggerID,
+		URL:       fmt.Sprintf("%s%s", p.GetPluginAPIPath(), PathHandleOpenIssueCommentModal),
+		Dialog: model.Dialog{
+			CallbackId:     "create_issue_comment",
+			Title:          "Create a comment to GitHub Issue",
+			SubmitLabel:    "Attach",
+			NotifyOnCancel: false,
+			Elements: []model.DialogElement{
+				{
+					DisplayName: "Create a comment",
+					Name:        "comment",
+					Type:        "textarea",
+					Placeholder: "Enter your comment here...",
+					Optional:    false,
+				},
+			},
+			State: toJSON(map[string]string{
+				KeyRepoOwner:   postActionIntegrationRequest.Context[KeyRepoOwner].(string),
+				KeyRepoName:    postActionIntegrationRequest.Context[KeyRepoName].(string),
+				KeyIssueNumber: fmt.Sprintf("%v", postActionIntegrationRequest.Context[KeyIssueNumber]),
+				KeyPostID:      postActionIntegrationRequest.PostId,
+			}),
+		},
+	}
+
+	if appErr := p.API.OpenInteractiveDialog(dialog); appErr != nil {
+		p.API.LogError("Failed to open interactive dialog", "Error", appErr.Error())
+	}
+
+	p.API.LogInfo("Dialog Title", "Title", dialog.Dialog.Title)
+
+	p.returnPostActionIntegrationResponse(w, &model.PostActionIntegrationResponse{})
+}
+
+func toJSON(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
 }
 
 // parseRepo parses the owner & repository name from the repo query parameter

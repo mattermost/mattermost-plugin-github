@@ -1,12 +1,12 @@
 // Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {getConfig} from 'mattermost-redux/selectors/entities/general';
-
 import {createSelector} from 'reselect';
 
+import {getConfig} from 'mattermost-redux/selectors/entities/general';
+
 import {GlobalState, PluginState} from './types/store';
-import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData} from './types/github_types';
+import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData, CloseOrReopenIssueModalData} from './types/github_types';
 
 const emptyArray: GithubIssueData[] | UnreadsData[] = [];
 
@@ -24,6 +24,17 @@ export const getServerRoute = (state: GlobalState) => {
 
     return basePath;
 };
+
+export const getCloseOrReopenIssueModalData = createSelector(
+    getPluginState,
+    (pluginState) => {
+        const {messageData} = pluginState.closeOrReopenIssueModal as CloseOrReopenIssueModalData;
+        return {
+            visible: pluginState.isCloseOrReopenIssueModalVisible,
+            messageData,
+        };
+    },
+);
 
 function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
     if (!prs) {

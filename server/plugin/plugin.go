@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
@@ -30,10 +31,14 @@ import (
 )
 
 const (
-	githubTokenKey       = "_githubtoken"
-	githubOauthKey       = "githuboauthkey_"
-	githubUsernameKey    = "_githubusername"
-	githubPrivateRepoKey = "_githubprivate"
+	githubTokenKey                    = "_githubtoken"
+	githubOauthKey                    = "githuboauthkey_"
+	githubUsernameKey                 = "_githubusername"
+	githubPrivateRepoKey              = "_githubprivate"
+	githubObjectTypeIssue             = "issue"
+	githubObjectTypeIssueComment      = "issue_comment"
+	githubObjectTypePRReviewComment   = "pr_review_comment"
+	githubObjectTypeDiscussionComment = "discussion_comment"
 
 	mm34646MutexKey = "mm34646_token_reset_mutex"
 	mm34646DoneKey  = "mm34646_token_reset_done"
@@ -58,6 +63,39 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+
+	apiErrorIDNotConnected = "not_connected"
+
+	// TokenTTL is the OAuth token expiry duration in seconds
+	tokenTTL = 600
+
+	requestTimeout         = 30 * time.Second
+	oauthCompleteTimeout   = 2 * time.Minute
+	headerMattermostUserID = "Mattermost-User-ID"
+	ownerQueryParam        = "owner"
+	repoQueryParam         = "repo"
+	numberQueryParam       = "number"
+	postIDQueryParam       = "postId"
+	channelIDParam         = "channelId"
+
+	issueStatus         = "status"
+	assigneesForProps   = "assignees"
+	labelsForProps      = "labels"
+	descriptionForProps = "description"
+	titleForProps       = "title"
+	attachmentsForProps = "attachments"
+	issueNumberForProps = "issue_number"
+	issueURLForProps    = "issue_url"
+	repoOwnerForProps   = "repo_owner"
+	repoNameForProps    = "repo_name"
+
+	statusClose  = "Close"
+	statusReopen = "Reopen"
+
+	issueCompleted  = "completed"
+	issueNotPlanned = "not_planned"
+	issueClose      = "closed"
+	issueOpen       = "open"
 
 	invalidTokenError = "401 Bad credentials" //#nosec G101 -- False positive
 )
@@ -604,25 +642,6 @@ func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) (*oauth2.Config, e
 	}, nil
 }
 
-type GitHubUserInfo struct {
-	UserID              string
-	Token               *oauth2.Token
-	GitHubUsername      string
-	LastToDoPostAt      int64
-	Settings            *UserSettings
-	AllowedPrivateRepos bool
-
-	// MM34646ResetTokenDone is set for a user whose token has been reset for MM-34646.
-	MM34646ResetTokenDone bool
-}
-
-type UserSettings struct {
-	SidebarButtons        string `json:"sidebar_buttons"`
-	DailyReminder         bool   `json:"daily_reminder"`
-	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
-	Notifications         bool   `json:"notifications"`
-}
-
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 	config := p.getConfiguration()
 
@@ -1123,7 +1142,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 		return
 	}
 
-	contentMap, err := sidebarContent.toMap()
+	contentMap, err := sidebarContent.ToMap()
 	if err != nil {
 		p.client.Log.Warn("Failed to convert sidebar content to map", "error", err.Error())
 		return
@@ -1136,7 +1155,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 	)
 }
 
-func (s *SidebarContent) toMap() (map[string]interface{}, error) {
+func (s *SidebarContent) ToMap() (map[string]interface{}, error) {
 	var m map[string]interface{}
 	bytes, err := json.Marshal(&s)
 	if err != nil {
@@ -1148,6 +1167,10 @@ func (s *SidebarContent) toMap() (map[string]interface{}, error) {
 	}
 
 	return m, nil
+}
+
+func (e *APIErrorResponse) Error() string {
+	return e.Message
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,
@@ -1169,6 +1192,10 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 	}
 
 	return "@" + info.GitHubUsername, nil
+}
+
+func (p *Plugin) GetPluginAPIPath() string {
+	return fmt.Sprintf("%s/plugins/%s/api/v1", *p.client.Configuration.GetConfig().ServiceSettings.SiteURL, Manifest.Id)
 }
 
 func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUserInfo, token *oauth2.Token) error) error {

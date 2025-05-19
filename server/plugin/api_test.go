@@ -127,7 +127,7 @@ func TestPlugin_ServeHTTP(t *testing.T) {
 			p.SetAPI(&plugintest.API{})
 
 			req := test.httpTest.CreateHTTPRequest(test.request)
-			req.Header.Add("Mattermost-User-ID", test.userID)
+			req.Header.Add(headerMattermostUserID, test.userID)
 			rr := httptest.NewRecorder()
 			p.ServeHTTP(&plugin.Context{}, rr, req)
 			test.httpTest.CompareHTTPResponse(rr, test.expectedResponse)
@@ -356,7 +356,7 @@ func TestGetGitHubUser(t *testing.T) {
 
 				var response APIErrorResponse
 				_ = json.NewDecoder(rec.Body).Decode(&response)
-				assert.Contains(t, response.Message, "Please provide a JSON object.")
+				assert.Contains(t, response.Message, "Please provide a valid JSON object.")
 			},
 		},
 		{

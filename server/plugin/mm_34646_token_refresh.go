@@ -115,7 +115,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 	info.MM34646ResetTokenDone = true
 	err = p.storeGitHubUserInfo(info)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
+		return "", errors.Wrap(err, "failed to store updated serializer.GitHubUserInfo")
 	}
 	p.client.Log.Debug("Updated user access token for MM-34646", "user_id", info.UserID)
 

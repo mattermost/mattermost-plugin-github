@@ -10,8 +10,10 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"path"
 	"strconv"
@@ -22,6 +24,8 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
+
+	"github.com/mattermost/mattermost/server/public/model"
 )
 
 func getMentionSearchQuery(username string, orgs []string) string {
@@ -380,6 +384,195 @@ func isValidURL(rawURL string) error {
 	return nil
 }
 
+func (p *Plugin) validateIssueRequestForUpdation(issue *UpdateIssueRequest, w http.ResponseWriter) bool {
+	if issue.Title == "" {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide a valid issue title.", StatusCode: http.StatusBadRequest})
+		return false
+	}
+	if issue.PostID == "" && issue.ChannelID == "" {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Please provide either a postID or a channelID", StatusCode: http.StatusBadRequest})
+		return false
+	}
+
+	return true
+}
+
+func (p *Plugin) updatePost(issue *UpdateIssueRequest, w http.ResponseWriter) {
+	post, appErr := p.API.GetPost(issue.PostID)
+	if appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
+		return
+	}
+	if post == nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to load the post %s : not found", issue.PostID), StatusCode: http.StatusNotFound})
+		return
+	}
+
+	attachments, err := getAttachmentsFromProps(post.Props)
+	if err != nil {
+		p.client.Log.Warn("Error occurred while getting attachments from props", "PostID", post.Id, "error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("existing attachments format error: %v", err), StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	attachments[0].Fields = p.CreateFieldsForIssuePost(issue.Assignees, issue.Labels)
+	attachments[0].Title = fmt.Sprintf("%s #%d", issue.Title, issue.IssueNumber)
+	attachments[0].Text = issue.Body
+
+	post.Props[attachmentsForProps] = attachments
+
+	if _, appErr = p.API.UpdatePost(post); appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", issue.PostID), StatusCode: http.StatusInternalServerError})
+	}
+}
+
+func getAttachmentsFromProps(props map[string]interface{}) ([]*model.SlackAttachment, error) {
+	attachments, ok := props["attachments"]
+	if !ok {
+		return nil, fmt.Errorf("no attachments found in props")
+	}
+
+	attachmentsData, err := json.Marshal(attachments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal attachments: %v", err)
+	}
+
+	var slackAttachments []*model.SlackAttachment
+	err = json.Unmarshal(attachmentsData, &slackAttachments)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal attachments: %v", err)
+	}
+
+	return slackAttachments, nil
+}
+
+func (p *Plugin) CreateCommentToIssue(c *UserContext, w http.ResponseWriter, comment, owner, repo string, post *model.Post, issueNumber int) {
+	currentUsername := c.GHInfo.GitHubUsername
+	issueComment := &github.IssueComment{
+		Body: &comment,
+	}
+	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+
+	result, rawResponse, err := githubClient.Issues.CreateComment(c.Ctx, owner, repo, issueNumber, issueComment)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		if rawResponse != nil {
+			statusCode = rawResponse.StatusCode
+		}
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create an issue comment: %s", getFailReason(statusCode, repo, currentUsername)), StatusCode: statusCode})
+		return
+	}
+
+	rootID := post.Id
+	if post.RootId != "" {
+		// the original post was a reply
+		rootID = post.RootId
+	}
+
+	permalinkReplyMessage := fmt.Sprintf("Comment attached to GitHub issue [#%v](%v)", issueNumber, result.GetHTMLURL())
+	reply := &model.Post{
+		Message:   permalinkReplyMessage,
+		ChannelId: post.ChannelId,
+		RootId:    rootID,
+		UserId:    c.UserID,
+	}
+
+	if _, appErr := p.API.CreatePost(reply); appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
+		return
+	}
+}
+
+func (p *Plugin) CloseOrReopenIssue(c *UserContext, w http.ResponseWriter, status, statusReason, owner, repo string, post *model.Post, issueNumber int) {
+	currentUsername := c.GHInfo.GitHubUsername
+	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+	githubIssue := &github.IssueRequest{
+		State:       &(status),
+		StateReason: &(statusReason),
+	}
+
+	issue, resp, err := githubClient.Issues.Edit(c.Ctx, owner, repo, issueNumber, githubIssue)
+	if err != nil {
+		if resp != nil && resp.Response.StatusCode == http.StatusGone {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Issues are disabled on this repository.", StatusCode: http.StatusMethodNotAllowed})
+			return
+		}
+
+		c.Log.WithError(err).Warnf("Failed to update the issue")
+		p.writeAPIError(w, &APIErrorResponse{
+			ID: "",
+			Message: fmt.Sprintf("failed to update the issue: %s", getFailReason(resp.StatusCode,
+				repo,
+				currentUsername,
+			)),
+			StatusCode: resp.StatusCode,
+		})
+		return
+	}
+
+	var permalinkReplyMessage string
+	switch statusReason {
+	case issueCompleted:
+		permalinkReplyMessage = fmt.Sprintf("Issue closed as completed [#%v](%v)", issueNumber, issue.GetHTMLURL())
+	case issueNotPlanned:
+		permalinkReplyMessage = fmt.Sprintf("Issue closed as not planned [#%v](%v)", issueNumber, issue.GetHTMLURL())
+	default:
+		permalinkReplyMessage = fmt.Sprintf("Issue reopend [#%v](%v)", issueNumber, issue.GetHTMLURL())
+	}
+
+	rootID := post.Id
+	if post.RootId != "" {
+		// the original post was a reply
+		rootID = post.RootId
+	}
+
+	reply := &model.Post{
+		Message:   permalinkReplyMessage,
+		ChannelId: post.ChannelId,
+		RootId:    rootID,
+		UserId:    c.UserID,
+	}
+
+	if _, appErr := p.API.CreatePost(reply); appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to create the notification post %s", post.Id), StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	var actionButtonTitle string
+	if status == issueClose {
+		post.Props[issueStatus] = statusReopen
+		actionButtonTitle = statusReopen
+	} else {
+		post.Props[issueStatus] = statusClose
+		actionButtonTitle = statusClose
+	}
+
+	attachment, err := getAttachmentsFromProps(post.Props)
+	if err != nil {
+		p.client.Log.Error("Error occurred while getting attachments from props", "PostID", post.Id, "Error", err.Error())
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("existing attachments format error: %v", err), StatusCode: http.StatusInternalServerError})
+		return
+	}
+	actions := attachment[0].Actions
+	for _, action := range actions {
+		if action.Name == statusClose || action.Name == statusReopen {
+			action.Name = actionButtonTitle
+			if status == issueClose {
+				action.Integration.Context["status"] = "close"
+			} else {
+				action.Integration.Context["status"] = "open"
+			}
+		}
+	}
+	attachment[0].Actions = actions
+	post.Props[attachmentsForProps] = attachment
+
+	if _, appErr := p.API.UpdatePost(post); appErr != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: fmt.Sprintf("failed to update the post %s", post.Id), StatusCode: http.StatusInternalServerError})
+	}
+	p.writeJSON(w, issue)
+}
+
 func buildPluginURL(client *pluginapi.Client, elem ...string) (string, error) {
 	siteURL, err := getSiteURL(client)
 	if err != nil {
@@ -421,4 +614,25 @@ func lastN(s string, n int) string {
 	}
 
 	return string(out)
+}
+
+func (p *Plugin) CreateFieldsForIssuePost(assignees []string, labels []string) []*model.SlackAttachmentField {
+	fields := []*model.SlackAttachmentField{}
+	if len(assignees) > 0 {
+		fields = append(fields, &model.SlackAttachmentField{
+			Title: "Assignees",
+			Value: strings.Join(assignees, ", "),
+			Short: true,
+		})
+	}
+
+	if len(labels) > 0 {
+		fields = append(fields, &model.SlackAttachmentField{
+			Title: "Labels",
+			Value: strings.Join(labels, ", "),
+			Short: true,
+		})
+	}
+
+	return fields
 }

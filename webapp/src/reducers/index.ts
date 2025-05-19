@@ -3,7 +3,7 @@
 
 import {combineReducers} from 'redux';
 
-import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData} from '../types/github_types';
+import {AttachCommentToIssueModalForPostIdData, CloseOrReopenIssueModalData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, MessageData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData} from '../types/github_types';
 
 import ActionTypes from '../action_types';
 import Constants from '../constants';
@@ -165,12 +165,23 @@ function rhsState(state = null, action: {type: string, state: string}) {
     }
 }
 
-const isCreateIssueModalVisible = (state = false, action: {type: string}) => {
+const isCreateOrUpdateIssueModalVisible = (state = false, action: {type: string}) => {
     switch (action.type) {
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITH_POST:
+    case ActionTypes.OPEN_CREATE_OR_UPDATE_ISSUE_MODAL:
         return true;
-    case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
+    case ActionTypes.CLOSE_CREATE_OR_UPDATE_ISSUE_MODAL:
+        return false;
+    default:
+        return state;
+    }
+};
+
+const isCloseOrReopenIssueModalVisible = (state = false, action: {type: string}) => {
+    switch (action.type) {
+    case ActionTypes.OPEN_CLOSE_OR_REOPEN_ISSUE_MODAL:
+        return true;
+    case ActionTypes.CLOSE_CLOSE_OR_REOPEN_ISSUE_MODAL:
         return false;
     default:
         return state;
@@ -188,27 +199,44 @@ const attachCommentToIssueModalVisible = (state = false, action: {type: string})
     }
 };
 
-const createIssueModal = (state = {} as CreateIssueModalData, action: {type: string, data: CreateIssueModalData}) => {
+const createOrUpdateIssueModal = (state = {} as CreateIssueModalData, action: {type: string, data: CreateIssueModalData}) => {
     switch (action.type) {
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
-    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
+    case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITH_POST:
+    case ActionTypes.OPEN_CREATE_OR_UPDATE_ISSUE_MODAL:
         return {
             ...state,
             postId: action.data.postId,
-            title: action.data.title,
-            channelId: action.data.channelId,
+            messageData: action.data.messageData,
         };
-    case ActionTypes.CLOSE_CREATE_ISSUE_MODAL:
+    case ActionTypes.CLOSE_CREATE_OR_UPDATE_ISSUE_MODAL:
         return {};
     default:
         return state;
     }
 };
 
-const attachCommentToIssueModalForPostId = (state = '', action: {type: string, data: AttachCommentToIssueModalForPostIdData}) => {
+const closeOrReopenIssueModal = (state = {}, action: {type: string, data: CloseOrReopenIssueModalData}) => {
+    switch (action.type) {
+    case ActionTypes.OPEN_CLOSE_OR_REOPEN_ISSUE_MODAL:
+        return {
+            ...state,
+            messageData: action.data.messageData,
+        };
+    case ActionTypes.CLOSE_CLOSE_OR_REOPEN_ISSUE_MODAL:
+        return {};
+    default:
+        return state;
+    }
+};
+
+const attachCommentToIssueModalForPostId = (state = {}, action: {type: string, data: AttachCommentToIssueModalForPostIdData}) => {
     switch (action.type) {
     case ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL:
-        return action.data.postId;
+        return {
+            ...state,
+            postId: action.data.postId,
+            messageData: action.data.messageData,
+        };
     case ActionTypes.CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL:
         return '';
     default:
@@ -231,8 +259,10 @@ export default combineReducers({
     githubUsers,
     rhsPluginAction,
     rhsState,
-    isCreateIssueModalVisible,
-    createIssueModal,
+    isCreateOrUpdateIssueModalVisible,
+    isCloseOrReopenIssueModalVisible,
+    createOrUpdateIssueModal,
+    closeOrReopenIssueModal,
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
     sidebarContent,
