@@ -7,6 +7,8 @@ const {id: pluginId} = manifest;
 
 export default {
     RECEIVED_REPOSITORIES: pluginId + '_received_repositories',
+    RECEIVED_ORGANIZATIONS: pluginId + '_received_organizations',
+    RECEIVED_REPOSITORIES_BY_ORGANIZATION: pluginId + '_received_repositories_by_organization',
     RECEIVED_REVIEWS_DETAILS: pluginId + '_received_reviews_details',
     RECEIVED_YOUR_PRS_DETAILS: pluginId + '_received_your_prs_details',
     RECEIVED_SIDEBAR_CONTENT: pluginId + '_received_sidebar_content',

@@ -524,7 +524,7 @@ func TestUpdateSettings(t *testing.T) {
 				})
 				mockKvStore.EXPECT().Set(gomock.Any(), gomock.Any()).Return(false, errors.New("store error")).Times(1)
 				mockLogger.EXPECT().WithError(gomock.Any()).Return(mockLoggerWith).Times(1)
-				mockLoggerWith.EXPECT().Warnf("Failed to store GitHub user info").Times(1)
+				mockLoggerWith.EXPECT().Errorf("Failed to store GitHub user info").Times(1)
 			},
 			expectedStatusCode: http.StatusInternalServerError,
 			assertions: func(t *testing.T, rec *httptest.ResponseRecorder) {
