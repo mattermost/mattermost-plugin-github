@@ -62,7 +62,7 @@ export default class GithubIssueSelector extends PureComponent {
     onChange = (e) => {
         const value = e ? e.value : '';
         this.props.onChange(value);
-    }
+    };
 
     isValid = () => {
         if (!this.props.required) {

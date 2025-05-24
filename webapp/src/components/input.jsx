@@ -125,7 +125,6 @@ export default class Input extends PureComponent {
             input = (
                 <textarea
                     style={style.textarea}
-                    resize='none'
                     id={this.props.id}
                     className='form-control'
                     rows='5'

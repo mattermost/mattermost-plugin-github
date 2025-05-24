@@ -56,7 +56,7 @@ export default class GithubRepoSelector extends PureComponent {
     onChangeForRepo = (_, name) => {
         const repo = this.props.yourReposByOrg.find((r) => r.full_name === name);
         this.props.onChange({name, permissions: repo.permissions});
-    }
+    };
 
     render() {
         const orgOptions = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}));
