@@ -119,13 +119,13 @@ const (
 func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		p.client.Log.Warn("Failed to marshal JSON response", "error", err.Error())
+		p.client.Log.Error("Failed to marshal JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	_, err = w.Write(b)
 	if err != nil {
-		p.client.Log.Warn("Failed to write JSON response", "error", err.Error())
+		p.client.Log.Error("Failed to write JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -134,7 +134,7 @@ func (p *Plugin) writeJSON(w http.ResponseWriter, v interface{}) {
 func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) {
 	b, err := json.Marshal(apiErr)
 	if err != nil {
-		p.client.Log.Warn("Failed to marshal API error", "error", err.Error())
+		p.client.Log.Error("Failed to marshal API error", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -143,7 +143,7 @@ func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) 
 
 	_, err = w.Write(b)
 	if err != nil {
-		p.client.Log.Warn("Failed to write JSON response", "error", err.Error())
+		p.client.Log.Error("Failed to write JSON response", "error", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -174,6 +174,8 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/labels", p.checkAuth(p.attachUserContext(p.getLabels), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/milestones", p.checkAuth(p.attachUserContext(p.getMilestones), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/assignees", p.checkAuth(p.attachUserContext(p.getAssignees), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/organizations", p.checkAuth(p.attachUserContext(p.getOrganizations), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/repos_by_org", p.checkAuth(p.attachUserContext(p.getReposByOrg), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/repositories", p.checkAuth(p.attachUserContext(p.getRepositories), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/settings", p.checkAuth(p.attachUserContext(p.updateSettings), ResponseTypePlain)).Methods(http.MethodPost)
 	apiRouter.HandleFunc("/issue", p.checkAuth(p.attachUserContext(p.getIssueByNumber), ResponseTypePlain)).Methods(http.MethodGet)
@@ -324,7 +326,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 
 	_, err = p.store.Set(githubOauthKey+state.Token, state, pluginapi.SetExpiry(TokenTTL))
 	if err != nil {
-		c.Log.WithError(err).Warnf("error occurred while trying to store oauth state into KV store")
+		c.Log.WithError(err).Errorf("error occurred while trying to store oauth state into KV store")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error saving the oauth state", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -388,7 +390,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	err = p.store.Delete(githubOauthKey + stateToken)
 	if err != nil {
-		c.Log.WithError(err).Warnf("error occurred while trying to delete oauth state from KV store")
+		c.Log.WithError(err).Errorf("error occurred while trying to delete oauth state from KV store")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error deleting stored state", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -416,7 +418,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 
 	tok, err := conf.Exchange(ctx, code)
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to exchange oauth code into token")
+		c.Log.WithError(err).Errorf("Failed to exchange oauth code into token")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to exchange oauth code into token", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -424,7 +426,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	githubClient := p.githubConnectToken(*tok)
 	gitUser, _, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to get authenticated GitHub user")
+		c.Log.WithError(err).Errorf("Failed to get authenticated GitHub user")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get authenticated GitHub user", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -447,7 +449,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	if err = p.storeGitHubUserInfo(userInfo); err != nil {
-		c.Log.WithError(err).Warnf("Failed to store GitHub user info")
+		c.Log.WithError(err).Errorf("Failed to store GitHub user info")
 		p.writeAPIError(w, &APIErrorResponse{Message: "unable to connect user to GitHub", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -532,7 +534,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	w.Header().Set("Content-Type", "text/html")
 	_, err = w.Write([]byte(html))
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to write HTML response")
+		c.Log.WithError(err).Errorf("Failed to write HTML response")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to write HTML response", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -606,7 +608,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 
 	info, err := p.getGitHubUserInfo(c.UserID)
 	if err != nil {
-		c.Log.WithError(err).Warnf("failed to get GitHub user info")
+		c.Log.WithError(err).Errorf("failed to get GitHub user info")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get GitHub user info", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -655,7 +657,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 		err := p.store.Get(privateRepoStoreKey, &val)
 		if err != nil {
 			p.writeAPIError(w, &APIErrorResponse{Message: "Unable to get private repo key value", StatusCode: http.StatusInternalServerError})
-			c.Log.WithError(err).Warnf("Unable to get private repo key value")
+			c.Log.WithError(err).Errorf("Unable to get private repo key value")
 			return
 		}
 
@@ -669,7 +671,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 			}
 			if _, err := p.store.Set(privateRepoStoreKey, []byte("1")); err != nil {
 				p.writeAPIError(w, &APIErrorResponse{Message: "unable to set private repo key value", StatusCode: http.StatusInternalServerError})
-				c.Log.WithError(err).Warnf("Unable to set private repo key value")
+				c.Log.WithError(err).Errorf("Unable to set private repo key value")
 			}
 		}
 	}
@@ -694,7 +696,7 @@ func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Requ
 	})
 	if cErr != nil {
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to search for issues", StatusCode: http.StatusInternalServerError})
-		c.Log.WithError(cErr).With(logger.LogContext{"query": query}).Warnf("Failed to search for issues")
+		c.Log.WithError(cErr).With(logger.LogContext{"query": query}).Errorf("Failed to search for issues")
 		return
 	}
 
@@ -1063,7 +1065,7 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	sidebarContent, err := p.getSidebarData(c)
 	if err != nil {
-		c.Log.WithError(err).Warnf("Failed to search for the sidebar data")
+		c.Log.WithError(err).Errorf("Failed to search for the sidebar data")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to search for the sidebar data", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1108,7 +1110,7 @@ func (p *Plugin) updateSettings(c *UserContext, w http.ResponseWriter, r *http.R
 	info.Settings = settings
 
 	if err := p.storeGitHubUserInfo(info); err != nil {
-		c.Log.WithError(err).Warnf("Failed to store GitHub user info")
+		c.Log.WithError(err).Errorf("Failed to store GitHub user info")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error occurred while updating settings", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1153,7 +1155,7 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 			"owner":  owner,
 			"repo":   repo,
 			"number": numberInt,
-		}).Debugf("Could not get issue")
+		}).Errorf("Could not get issue")
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get issue", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1201,7 +1203,7 @@ func (p *Plugin) getPrByNumber(c *UserContext, w http.ResponseWriter, r *http.Re
 			"owner":  owner,
 			"repo":   repo,
 			"number": numberInt,
-		}).Debugf("Could not get pull request")
+		}).Errorf("Could not get pull request")
 		p.writeAPIError(w, &APIErrorResponse{Message: "Could not get pull request", StatusCode: http.StatusInternalServerError})
 		return
 	}
@@ -1235,7 +1237,7 @@ func (p *Plugin) getLabels(c *UserContext, w http.ResponseWriter, r *http.Reques
 			c.Log.WithError(cErr).With(logger.LogContext{
 				"owner": owner,
 				"repo":  repo,
-			}).Warnf("Failed to list labels")
+			}).Errorf("Failed to list labels")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch labels", StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1273,7 +1275,7 @@ func (p *Plugin) getAssignees(c *UserContext, w http.ResponseWriter, r *http.Req
 			c.Log.WithError(cErr).With(logger.LogContext{
 				"owner": owner,
 				"repo":  repo,
-			}).Warnf("Failed to list assignees")
+			}).Errorf("Failed to list assignees")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch assignees", StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1311,7 +1313,7 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 			c.Log.WithError(cErr).With(logger.LogContext{
 				"owner": owner,
 				"repo":  repo,
-			}).Warnf("Failed to list milestones")
+			}).Errorf("Failed to list milestones")
 			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch milestones", StatusCode: http.StatusInternalServerError})
 			return
 		}
@@ -1323,6 +1325,25 @@ func (p *Plugin) getMilestones(c *UserContext, w http.ResponseWriter, r *http.Re
 	}
 
 	p.writeJSON(w, allMilestones)
+}
+
+func getOrganizationList(c context.Context, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Organization, error) {
+	var allOrgs []*github.Organization
+	for {
+		orgs, resp, err := githubClient.Organizations.List(c, userName, &opt)
+		if err != nil {
+			return nil, err
+		}
+
+		allOrgs = append(allOrgs, orgs...)
+		if resp.NextPage == 0 {
+			break
+		}
+
+		opt.Page = resp.NextPage
+	}
+
+	return allOrgs, nil
 }
 
 func (p *Plugin) getRepositoryList(c context.Context, ghInfo *GitHubUserInfo, userName string, githubClient *github.Client, opt github.ListOptions) ([]*github.Repository, error) {
@@ -1378,6 +1399,102 @@ func (p *Plugin) getRepositoryListByOrg(c context.Context, ghInfo *GitHubUserInf
 	}
 
 	return allRepos, http.StatusOK, nil
+}
+
+func (p *Plugin) getOrganizations(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	var allOrgs []*github.Organization
+	org := p.getConfiguration().GitHubOrg
+
+	if org == "" {
+		includeLoggedInUser := r.URL.Query().Get("includeLoggedInUser")
+		if includeLoggedInUser == "true" {
+			allOrgs = append(allOrgs, &github.Organization{Login: &c.GHInfo.GitHubUsername})
+		}
+		githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+		orgList, err := getOrganizationList(c.Ctx, "", githubClient, github.ListOptions{PerPage: 50})
+		if err != nil {
+			c.Log.WithError(err).Errorf("Failed to list organizations")
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch organizations", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allOrgs = append(allOrgs, orgList...)
+	} else {
+		allOrgs = append(allOrgs, &github.Organization{Login: &org})
+	}
+	// Only send required organizations to the client
+	type OrganizationResponse struct {
+		Login string `json:"login,omitempty"`
+	}
+
+	resp := make([]*OrganizationResponse, len(allOrgs))
+	for i, r := range allOrgs {
+		resp[i] = &OrganizationResponse{
+			Login: r.GetLogin(),
+		}
+	}
+
+	p.writeJSON(w, resp)
+}
+
+func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	githubClient := p.githubConnectUser(c.Context.Ctx, c.GHInfo)
+
+	opt := github.ListOptions{PerPage: 50}
+
+	org := r.URL.Query().Get("organization")
+
+	if org == "" {
+		c.Log.Warnf("Organization query param is empty")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Organization query is empty, must include organization name ", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	var allRepos []*github.Repository
+	var err error
+	var statusCode int
+
+	// If an organization is the username of an authenticated user then return repos where the authenticated user is the owner
+	if org == c.GHInfo.GitHubUsername {
+		allRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, "", githubClient, opt)
+		if err != nil {
+			c.Log.WithError(err).Errorf("Failed to list repositories")
+			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+			return
+		}
+	} else {
+		allRepos, statusCode, err = p.getRepositoryListByOrg(c.Ctx, c.GHInfo, org, githubClient, opt)
+		if err != nil {
+			if statusCode == http.StatusNotFound {
+				allRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, org, githubClient, opt)
+				if err != nil {
+					c.Log.WithError(err).Errorf("Failed to list repositories")
+					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
+					return
+				}
+			} else {
+				c.Log.WithError(err).Warnf("Failed to list repositories")
+				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: statusCode})
+				return
+			}
+		}
+	}
+	// Only send repositories which are part of the requested organization
+	type RepositoryResponse struct {
+		Name        string          `json:"name,omitempty"`
+		FullName    string          `json:"full_name,omitempty"`
+		Permissions map[string]bool `json:"permissions,omitempty"`
+	}
+
+	resp := make([]*RepositoryResponse, len(allRepos))
+	for i, r := range allRepos {
+		resp[i] = &RepositoryResponse{
+			Name:        r.GetName(),
+			FullName:    r.GetFullName(),
+			Permissions: r.GetPermissions(),
+		}
+	}
+
+	p.writeJSON(w, resp)
 }
 
 func getRepository(c context.Context, org string, repo string, githubClient *github.Client) (*github.Repository, error) {
@@ -1623,7 +1740,7 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		p.client.Post.SendEphemeralPost(c.UserID, reply)
 	}
 	if err != nil {
-		c.Log.WithError(err).Warnf("failed to create notification post")
+		c.Log.WithError(err).Errorf("failed to create notification post")
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to create notification post, postID: " + issue.PostID + ", channelID: " + channelID, StatusCode: http.StatusInternalServerError})
 		return
 	}

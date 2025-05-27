@@ -208,7 +208,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	signature := r.Header.Get("X-Hub-Signature")
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
-		p.client.Log.Warn("Failed to verify webhook signature", "error", err.Error())
+		p.client.Log.Error("Failed to verify webhook signature", "error", err.Error())
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
@@ -502,8 +502,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == actionOpened {
 			prNotificationType := "newPR"
 			if isPRInDraftState {
+				if !p.configuration.GetNotificationForDraftPRs {
+					return // Draft PR notifications are disabled
+				}
 				prNotificationType = "newDraftPR"
 			}
+
 			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
