@@ -14,7 +14,8 @@ export function renderView(props) {
         <div
             {...props}
             className='scrollbar--view'
-        />);
+        />
+    );
 }
 
 export function renderThumbHorizontal(props) {
@@ -22,7 +23,8 @@ export function renderThumbHorizontal(props) {
         <div
             {...props}
             className='scrollbar--horizontal'
-        />);
+        />
+    );
 }
 
 export function renderThumbVertical(props) {
@@ -30,7 +32,8 @@ export function renderThumbVertical(props) {
         <div
             {...props}
             className='scrollbar--vertical'
-        />);
+        />
+    );
 }
 
 function mapGithubItemListToPrList(gilist) {

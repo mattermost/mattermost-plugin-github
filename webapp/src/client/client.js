@@ -13,23 +13,23 @@ export default class Client {
 
     getConnected = async (reminder = false) => {
         return this.doGet(`${this.url}/connected?reminder=${reminder}`);
-    }
+    };
 
     getSidebarContent = async () => {
         return this.doGet(`${this.url}/lhs-content`);
-    }
+    };
 
     getPrsDetails = async (prList) => {
         return this.doPost(`${this.url}/prsdetails`, prList);
-    }
+    };
 
     getMentions = async () => {
         return this.doGet(`${this.url}/mentions`);
-    }
+    };
 
     getGitHubUser = async (userID) => {
         return this.doPost(`${this.url}/user`, {user_id: userID});
-    }
+    };
 
     getOrganizations = async () => {
         return this.doGet(`${this.url}/organizations?includeLoggedInUser=true`);
@@ -41,7 +41,7 @@ export default class Client {
 
     getRepositoriesByChannelID = async (channelId) => {
         return this.doGet(`${this.url}/repositories?channelId=${channelId}`);
-    }
+    };
 
     getRepositoriesByOrganization = async (organization) => {
         return this.doGet(`${this.url}/repos_by_org?organization=${organization}`);
@@ -49,35 +49,35 @@ export default class Client {
 
     getLabels = async (repo) => {
         return this.doGet(`${this.url}/labels?repo=${repo}`);
-    }
+    };
 
     getAssignees = async (repo) => {
         return this.doGet(`${this.url}/assignees?repo=${repo}`);
-    }
+    };
 
     getMilestones = async (repo) => {
         return this.doGet(`${this.url}/milestones?repo=${repo}`);
-    }
+    };
 
     createIssue = async (payload) => {
         return this.doPost(`${this.url}/createissue`, payload);
-    }
+    };
 
     searchIssues = async (searchTerm) => {
         return this.doGet(`${this.url}/searchissues?term=${searchTerm}`);
-    }
+    };
 
     attachCommentToIssue = async (payload) => {
         return this.doPost(`${this.url}/createissuecomment`, payload);
-    }
+    };
 
     getIssue = async (owner, repo, issueNumber) => {
         return this.doGet(`${this.url}/issue?owner=${owner}&repo=${repo}&number=${issueNumber}`);
-    }
+    };
 
     getPullRequest = async (owner, repo, prNumber) => {
         return this.doGet(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
-    }
+    };
 
     doGet = async (url, body, headers = {}) => {
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
@@ -100,7 +100,7 @@ export default class Client {
             status_code: response.status,
             url,
         });
-    }
+    };
 
     doPost = async (url, body, headers = {}) => {
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
@@ -124,7 +124,7 @@ export default class Client {
             status_code: response.status,
             url,
         });
-    }
+    };
 
     doDelete = async (url, body, headers = {}) => {
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
@@ -147,7 +147,7 @@ export default class Client {
             status_code: response.status,
             url,
         });
-    }
+    };
 
     doPut = async (url, body, headers = {}) => {
         headers['X-Timezone-Offset'] = new Date().getTimezoneOffset();
@@ -171,5 +171,5 @@ export default class Client {
             status_code: response.status,
             url,
         });
-    }
+    };
 }
