@@ -4,7 +4,7 @@
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from 'mattermost-redux/client/client4';
 
-import {ConnectedData, GithubIssueData, GithubLabel, GithubUsersData, GitHubIssueCommentData, MentionsData, MilestoneData, PrsDetailsData, SidebarContentData, YourReposData, GitHubPullRequestData} from '../types/github_types';
+import {ConnectedData, GithubIssueData, GithubLabel, GithubUsersData, GitHubIssueCommentData, MentionsData, MilestoneData, PrsDetailsData, SidebarContentData, YourReposData, GitHubPullRequestData, ChannelRepositoriesData, RepositoryData, Organization} from '../types/github_types';
 
 import manifest from '../manifest';
 
@@ -29,16 +29,16 @@ export default class Client {
         return this.doGet<SidebarContentData>(`${this.url}/lhs-content`);
     }
 
-    getOrganizations = async () => {
-        return this.doGet(`${this.url}/organizations?includeLoggedInUser=true`);
+    getOrganizations = async (): Promise<Organization[] | ApiError> => {
+        return this.doGet<Organization[]>(`${this.url}/organizations?includeLoggedInUser=true`);
     }
 
-    getRepositoriesByChannelID = async (channelId: string) => {
-        return this.doGet(`${this.url}/repositories?channelId=${channelId}`);
+    getRepositoriesByChannelID = async (channelId: string): Promise<ChannelRepositoriesData | ApiError> => {
+        return this.doGet<ChannelRepositoriesData>(`${this.url}/repositories?channelId=${channelId}`);
     }
 
-    getRepositoriesByOrganization = async (organization: string) => {
-        return this.doGet(`${this.url}/repos_by_org?organization=${organization}`);
+    getRepositoriesByOrganization = async (organization: string): Promise<RepositoryData[] | ApiError> => {
+        return this.doGet<RepositoryData[]>(`${this.url}/repos_by_org?organization=${organization}`);
     }
 
     getPrsDetails = async (prList: {url: string, number: number}[]) => {

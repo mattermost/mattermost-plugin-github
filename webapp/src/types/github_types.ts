@@ -177,3 +177,14 @@ export type RepositoriesByOrg = {
     name: string;
     fullName: string;
 }
+
+export type RepositoryData = {
+    name: string;
+    full_name: string;
+    permissions: Record<string, boolean>;
+};
+
+export type ChannelRepositoriesData = {
+    channel_id: string;
+    repositories: RepositoryData[];
+};
