@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {Client4} from 'mattermost-redux/client';
@@ -27,6 +27,18 @@ export default class Client {
 
     getSidebarContent = async () => {
         return this.doGet<SidebarContentData>(`${this.url}/lhs-content`);
+    }
+
+    getOrganizations = async () => {
+        return this.doGet(`${this.url}/organizations?includeLoggedInUser=true`);
+    }
+
+    getRepositoriesByChannelID = async (channelId: string) => {
+        return this.doGet(`${this.url}/repositories?channelId=${channelId}`);
+    }
+
+    getRepositoriesByOrganization = async (organization: string) => {
+        return this.doGet(`${this.url}/repos_by_org?organization=${organization}`);
     }
 
     getPrsDetails = async (prList: {url: string, number: number}[]) => {

@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -15,6 +18,7 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/microcosm-cc/bluemonday"
+	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
 )
@@ -57,6 +61,7 @@ type RenderConfig struct {
 type EventWithRenderConfig struct {
 	Event  interface{}
 	Config RenderConfig
+	Label  string
 }
 
 func verifyWebhookSignature(secret []byte, signature string, body []byte) (bool, error) {
@@ -95,8 +100,10 @@ func signBody(secret, body []byte) ([]byte, error) {
 // which also contains per-subscription configuration options.
 func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
 	style := ""
+	subscriptionLabel := ""
 	if sub != nil {
 		style = sub.RenderStyle()
+		subscriptionLabel = sub.Label()
 	}
 
 	return &EventWithRenderConfig{
@@ -104,6 +111,7 @@ func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRe
 		Config: RenderConfig{
 			Style: style,
 		},
+		Label: subscriptionLabel,
 	}
 }
 
@@ -189,6 +197,7 @@ func (wb *WebhookBroker) Close() {
 }
 
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
+	p.client.Log.Info("Webhook event received")
 	config := p.getConfiguration()
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -199,7 +208,7 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	signature := r.Header.Get("X-Hub-Signature")
 	valid, err := verifyWebhookSignature([]byte(config.WebhookSecret), signature, body)
 	if err != nil {
-		p.client.Log.Warn("Failed to verify webhook signature", "error", err.Error())
+		p.client.Log.Error("Failed to verify webhook signature", "error", err.Error())
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
@@ -343,14 +352,18 @@ func (p *Plugin) permissionToRepo(userID string, ownerAndRepo string) bool {
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
 
-	if result, _, err := githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
-		if err != nil {
-			p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
+	var result *github.Repository
+	var err error
+	cErr := p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		if result, _, err = githubClient.Repositories.Get(ctx, owner, repo); result == nil || err != nil {
+			if err != nil {
+				p.client.Log.Warn("Failed fetch repository to check permission", "error", err.Error())
+				return err
+			}
 		}
-		return false
-	}
-
-	return true
+		return nil
+	})
+	return cErr == nil && result != nil
 }
 
 func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscription) bool {
@@ -367,7 +380,27 @@ func (p *Plugin) excludeConfigOrgMember(user *github.User, subscription *Subscri
 	githubClient := p.githubConnectUser(context.Background(), info)
 	organization := p.getConfiguration().GitHubOrg
 
-	return p.isUserOrganizationMember(githubClient, user, organization)
+	return p.isUserOrganizationMember(githubClient, user, info, organization)
+}
+
+func (p *Plugin) shouldDenyEventDueToNotOrgMember(user *github.User, subscription *Subscription) bool {
+	if !subscription.IncludeOnlyOrgMembers() {
+		return false
+	}
+
+	githubClient, err := p.GetGitHubClient(context.Background(), subscription.CreatorID)
+	if err != nil {
+		p.client.Log.Warn("Failed to get user info", "error", err.Error())
+		return false
+	}
+
+	info, nErr := p.getGitHubUserInfo(subscription.CreatorID)
+	if nErr != nil {
+		p.client.Log.Warn("Failed to exclude org member", "error", nErr.Message)
+		return false
+	}
+
+	return !p.isUserOrganizationMember(githubClient, user, info, p.getConfiguration().GitHubOrg)
 }
 
 func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
@@ -408,15 +441,25 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 			continue
 		}
 
-		if sub.PullsMerged() && action != actionClosed {
+		if sub.PullsMerged() && action != actionClosed && !sub.PullsCreated() {
 			continue
 		}
 
-		if sub.PullsCreated() && action != actionOpened {
+		if sub.PullsCreated() && action != actionOpened && !sub.PullsMerged() {
 			continue
+		}
+
+		if sub.PullsMerged() && sub.PullsCreated() {
+			if action != actionClosed && action != actionOpened {
+				continue
+			}
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -459,8 +502,12 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 		if action == actionOpened {
 			prNotificationType := "newPR"
 			if isPRInDraftState {
+				if !p.configuration.GetNotificationForDraftPRs {
+					return // Draft PR notifications are disabled
+				}
 				prNotificationType = "newDraftPR"
 			}
+
 			newPRMessage, err := renderTemplate(prNotificationType, GetEventWithRenderConfig(event, sub))
 			if err != nil {
 				p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -615,6 +662,10 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		renderedMessage, err := renderTemplate(issueTemplate, GetEventWithRenderConfig(event, sub))
 		if err != nil {
 			p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -687,6 +738,10 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post := p.makeBotPost(pushedCommitsMessage, "custom_git_push")
 
 		post.ChannelId = sub.ChannelID
@@ -721,6 +776,10 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -763,6 +822,10 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post := p.makeBotPost(newDeleteMessage, "custom_git_delete")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
@@ -801,6 +864,10 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -892,6 +959,10 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		label := sub.Label()
 
 		contained := false
@@ -939,6 +1010,10 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 		}
 
 		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
@@ -1350,6 +1425,10 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 			continue
 		}
 
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
 		post := p.makeBotPost(newStarMessage, "custom_git_star")
 
 		post.ChannelId = sub.ChannelID
@@ -1487,10 +1566,6 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
-		return
-	}
-
-	if event.GetAction() != actionCreated {
 		return
 	}
 

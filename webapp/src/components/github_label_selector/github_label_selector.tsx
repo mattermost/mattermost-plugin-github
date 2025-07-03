@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
@@ -14,6 +14,10 @@ type Props = GitHubLabelSelectorDispatchProps & {
     theme: Theme;
     selectedLabels: string[];
     onChange: (selection: string[]) => void;
+};
+
+type Option = {
+    name: string;
 };
 
 export default class GithubLabelSelector extends PureComponent<Props> {
@@ -32,7 +36,7 @@ export default class GithubLabelSelector extends PureComponent<Props> {
             return [];
         }
 
-        return options.data.map((option: any) => ({
+        return options.data.map((option: Option) => ({
             value: option.name,
             label: option.name,
         }));

@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -55,6 +58,8 @@ const (
 	dailySummary                 = "_dailySummary"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
+
+	invalidTokenError = "401 Bad credentials" //#nosec G101 -- False positive
 )
 
 var (
@@ -63,7 +68,7 @@ var (
 	testOAuthServerURL = ""
 )
 
-type kvStore interface {
+type KvStore interface {
 	Set(key string, value any, options ...pluginapi.KVSetOption) (bool, error)
 	ListKeys(page int, count int, options ...pluginapi.ListKeysOption) ([]string, error)
 	Get(key string, o any) error
@@ -75,7 +80,7 @@ type Plugin struct {
 	plugin.MattermostPlugin
 	client *pluginapi.Client
 
-	store kvStore
+	store KvStore
 
 	// configurationLock synchronizes access to the configuration.
 	configurationLock sync.RWMutex
@@ -124,6 +129,7 @@ func NewPlugin() *Plugin {
 		"":              p.handleHelp,
 		"settings":      p.handleSettings,
 		"issue":         p.handleIssue,
+		"default-repo":  p.handleDefaultRepo,
 	}
 
 	p.createGithubEmojiMap()
@@ -648,7 +654,7 @@ func (p *Plugin) getGitHubUserInfo(userID string) (*GitHubUserInfo, *APIErrorRes
 
 	unencryptedToken, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken)
 	if err != nil {
-		p.client.Log.Warn("Failed to decrypt access token", "error", err.Error())
+		p.client.Log.Error("Failed to decrypt access token", "error", err.Error())
 		return nil, &APIErrorResponse{ID: "", Message: "Unable to decrypt access token.", StatusCode: http.StatusInternalServerError}
 	}
 
@@ -788,7 +794,7 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 
 func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 	ctx := context.Background()
-	text, err := p.GetToDo(ctx, info.GitHubUsername, p.githubConnectUser(ctx, info))
+	text, err := p.GetToDo(ctx, info, p.githubConnectUser(ctx, info))
 	if err != nil {
 		return err
 	}
@@ -810,28 +816,58 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 	return nil
 }
 
-func (p *Plugin) GetToDo(ctx context.Context, username string, githubClient *github.Client) (string, error) {
+func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
 	orgList := p.configuration.getOrganizations()
-	issueResults, _, err := githubClient.Search.Issues(ctx, getReviewSearchQuery(username, orgList), &github.SearchOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "Error occurred while searching for reviews")
+
+	var issueResults *github.IssuesSearchResult
+	var err error
+	cErr := p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		issueResults, _, err = githubClient.Search.Issues(ctx, getReviewSearchQuery(info.GitHubUsername, orgList), &github.SearchOptions{})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
+		return "", errors.Wrap(cErr, "error occurred while searching for reviews")
 	}
 
-	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "error occurred while listing notifications")
+	var notifications []*github.Notification
+	cErr = p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		notifications, _, err = githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
+		return "", errors.Wrap(cErr, "error occurred while listing notifications")
 	}
 
-	yourPrs, _, err := githubClient.Search.Issues(ctx, getYourPrsSearchQuery(username, orgList), &github.SearchOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "error occurred while searching for PRs")
+	var yourPrs *github.IssuesSearchResult
+	cErr = p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		yourPrs, _, err = githubClient.Search.Issues(ctx, getYourPrsSearchQuery(info.GitHubUsername, orgList), &github.SearchOptions{})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
+		return "", errors.Wrap(cErr, "error occurred while searching for PRs")
 	}
 
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(username, orgList), &github.SearchOptions{})
-	if err != nil {
-		return "", errors.Wrap(err, "error occurred while searching for assignments")
+	var yourAssignments *github.IssuesSearchResult
+	cErr = p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		yourAssignments, _, err = githubClient.Search.Issues(ctx, getYourAssigneeSearchQuery(info.GitHubUsername, orgList), &github.SearchOptions{})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
+		return "", errors.Wrap(cErr, "error occurred while searching for assignments")
 	}
 
 	text := "##### Unread Messages\n"
@@ -926,31 +962,61 @@ func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
 	ctx := context.Background()
 	githubClient := p.githubConnectUser(ctx, info)
 	orgList := p.configuration.getOrganizations()
-	query := getReviewSearchQuery(username, orgList)
-	issues, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to search for review", "query", query, "error", err.Error())
+
+	var issues *github.IssuesSearchResult
+	var err error
+	cErr := p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		query := getReviewSearchQuery(username, orgList)
+		issues, _, err = githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
+		if err != nil {
+			p.client.Log.Warn("Failed to search for review", "query", query, "error", err.Error())
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
 		return false
 	}
 
-	query = getYourPrsSearchQuery(username, orgList)
-	yourPrs, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to search for PRs", "query", query, "error", "error", err.Error())
+	var yourPrs *github.IssuesSearchResult
+	cErr = p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		query := getYourPrsSearchQuery(username, orgList)
+		yourPrs, _, err = githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
+		if err != nil {
+			p.client.Log.Warn("Failed to search for PRs", "query", query, "error", "error", err.Error())
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
 		return false
 	}
 
-	query = getYourAssigneeSearchQuery(username, orgList)
-	yourAssignments, _, err := githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to search for assignments", "query", query, "error", "error", err.Error())
+	var yourAssignments *github.IssuesSearchResult
+	cErr = p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		query := getYourAssigneeSearchQuery(username, orgList)
+		yourAssignments, _, err = githubClient.Search.Issues(ctx, query, &github.SearchOptions{})
+		if err != nil {
+			p.client.Log.Warn("Failed to search for assignments", "query", query, "error", "error", err.Error())
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
 		return false
 	}
 
 	relevantNotifications := false
-	notifications, _, err := githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
-	if err != nil {
-		p.client.Log.Warn("Failed to list notifications", "error", err.Error())
+	var notifications []*github.Notification
+	cErr = p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		notifications, _, err = githubClient.Activity.ListNotifications(ctx, &github.NotificationListOptions{})
+		if err != nil {
+			p.client.Log.Warn("Failed to list notifications", "error", err.Error())
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
 		return false
 	}
 
@@ -996,14 +1062,22 @@ func (p *Plugin) checkOrg(org string) error {
 	return errors.Errorf("only repositories in the %v organization(s) are supported", config.GitHubOrg)
 }
 
-func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, organization string) bool {
+func (p *Plugin) isUserOrganizationMember(githubClient *github.Client, user *github.User, info *GitHubUserInfo, organization string) bool {
 	if organization == "" {
 		return false
 	}
 
-	isMember, _, err := githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
-	if err != nil {
-		p.client.Log.Warn("Failled to check if user is org member", "GitHub username", *user.Login, "error", err.Error())
+	var isMember bool
+	var err error
+	cErr := p.useGitHubClient(info, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		isMember, _, err = githubClient.Organizations.IsMember(context.Background(), organization, *user.Login)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if cErr != nil {
+		p.client.Log.Warn("Failed to check if user is an org member", "GitHub username", *user.Login, "error", cErr.Error())
 		return false
 	}
 
@@ -1095,4 +1169,22 @@ func (p *Plugin) getUsername(mmUserID string) (string, error) {
 	}
 
 	return "@" + info.GitHubUsername, nil
+}
+
+func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUserInfo, token *oauth2.Token) error) error {
+	err := toRun(info, info.Token)
+	if err != nil {
+		p.client.Log.Warn("Error occurred while using the Github client", "error", err.Error())
+	}
+
+	if err != nil && strings.Contains(err.Error(), invalidTokenError) {
+		p.handleRevokedToken(info)
+	}
+
+	return err
+}
+
+func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
+	p.disconnectGitHubAccount(info.UserID)
+	p.CreateBotDMPost(info.UserID, "Your Github account was disconnected due to an invalid or revoked authorization token. Reconnect your account using the `/github connect` command.", "custom_git_revoked_token")
 }

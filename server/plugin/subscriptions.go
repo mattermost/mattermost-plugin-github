@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -10,20 +13,23 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
+	"golang.org/x/oauth2"
 )
 
 const (
-	SubscriptionsKey      = "subscriptions"
-	flagExcludeOrgMember  = "exclude-org-member"
-	flagRenderStyle       = "render-style"
-	flagFeatures          = "features"
-	flagExcludeRepository = "exclude"
+	SubscriptionsKey          = "subscriptions"
+	flagExcludeOrgMember      = "exclude-org-member"
+	flagIncludeOnlyOrgMembers = "include-only-org-members"
+	flagRenderStyle           = "render-style"
+	flagFeatures              = "features"
+	flagExcludeRepository     = "exclude"
 )
 
 type SubscriptionFlags struct {
-	ExcludeOrgMembers bool
-	RenderStyle       string
-	ExcludeRepository []string
+	ExcludeOrgMembers     bool
+	IncludeOnlyOrgMembers bool
+	RenderStyle           string
+	ExcludeRepository     []string
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
@@ -34,6 +40,12 @@ func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
 			return err
 		}
 		s.ExcludeOrgMembers = parsed
+	case flagIncludeOnlyOrgMembers:
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		s.IncludeOnlyOrgMembers = parsed
 	case flagRenderStyle:
 		s.RenderStyle = value
 	case flagExcludeRepository:
@@ -52,6 +64,11 @@ func (s SubscriptionFlags) String() string {
 
 	if s.ExcludeOrgMembers {
 		flag := "--" + flagExcludeOrgMember + " true"
+		flags = append(flags, flag)
+	}
+
+	if s.IncludeOnlyOrgMembers {
+		flag := "--" + flagIncludeOnlyOrgMembers + " true"
 		flags = append(flags, flag)
 	}
 
@@ -157,6 +174,10 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
 }
 
+func (s *Subscription) IncludeOnlyOrgMembers() bool {
+	return s.Flags.IncludeOnlyOrgMembers
+}
+
 func (s *Subscription) RenderStyle() string {
 	return s.Flags.RenderStyle
 }
@@ -186,11 +207,21 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		return errors.New("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
 	}
 
-	var err error
+	if flags.IncludeOnlyOrgMembers && !p.isOrganizationLocked() {
+		return errors.New("Unable to set --include-only-org-members flag. The GitHub plugin is not locked to a single organization.")
+	}
+
+	var err, cErr error
 
 	if repo == "" {
 		var ghOrg *github.Organization
-		ghOrg, _, err = githubClient.Organizations.Get(ctx, owner)
+		cErr = p.useGitHubClient(&GitHubUserInfo{UserID: userID}, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			ghOrg, _, err = githubClient.Organizations.Get(ctx, owner)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if ghOrg == nil {
 			var ghUser *github.User
 			ghUser, _, err = githubClient.Users.Get(ctx, owner)
@@ -200,14 +231,20 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 		}
 	} else {
 		var ghRepo *github.Repository
-		ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
+		cErr = p.useGitHubClient(&GitHubUserInfo{UserID: userID}, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			ghRepo, _, err = githubClient.Repositories.Get(ctx, owner, repo)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 
 		if ghRepo == nil {
 			return errors.Errorf("unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 		}
 	}
 
-	if err != nil {
+	if cErr != nil {
 		p.client.Log.Warn("Failed to get repository or org for subscribe action", "error", err.Error())
 		return errors.Errorf("Encountered an error subscribing to %s", fullNameFromOwnerAndRepo(owner, repo))
 	}

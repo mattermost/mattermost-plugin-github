@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -39,6 +42,7 @@ type Configuration struct {
 	EnableWebhookEventLogging      bool   `json:"enablewebhookeventlogging"`
 	UsePreregisteredApplication    bool   `json:"usepreregisteredapplication"`
 	ShowAuthorInCommitNotification bool   `json:"showauthorincommitnotification"`
+	GetNotificationForDraftPRs     bool   `json:"getnotificationfordraftprs"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {

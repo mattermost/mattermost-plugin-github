@@ -1,8 +1,8 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
-import ReactSelect from 'react-select';
+import ReactSelect, {ValueType, ActionMeta} from 'react-select';
 
 import {Theme} from 'mattermost-redux/types/preferences';
 
@@ -98,13 +98,13 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
         this.props.onChange(null);
     }
 
-    onChange = (selection: ReactSelectOption | ReactSelectOption[] | null) => {
+    onChange = (selection: ValueType<ReactSelectOption, boolean>, actionMeta: ActionMeta<ReactSelectOption>) => {
         if (this.props.isMulti) {
-            this.props.onChange(selection || []);
+            this.props.onChange((selection as ReactSelectOption[]) || []);
             return;
         }
 
-        this.props.onChange(selection);
+        this.props.onChange(selection as ReactSelectOption | null);
     };
 
     render() {
@@ -132,7 +132,7 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
                     options={this.state.options}
                     value={selection}
                     isLoading={this.state.isLoading}
-                    styles={getStyleForReactSelect(theme) as any}
+                    styles={getStyleForReactSelect(theme)}
                 />
 
                 {this.state.error && (

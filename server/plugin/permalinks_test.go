@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -432,8 +435,8 @@ func TestMakeReplacements(t *testing.T) {
 			},
 		},
 	}
-	client, close := getClient()
-	defer close()
+	client, closer := getClient()
+	defer closer()
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package graphql
 
 import (
@@ -38,6 +41,9 @@ type (
 			Milestone struct {
 				Title githubv4.String
 			}
+			Additions    githubv4.Int
+			Deletions    githubv4.Int
+			ChangedFiles githubv4.Int
 		} `graphql:"... on PullRequest"`
 	}
 )
@@ -80,6 +86,9 @@ type (
 			Milestone struct {
 				Title githubv4.String
 			}
+			Additions    githubv4.Int
+			Deletions    githubv4.Int
+			ChangedFiles githubv4.Int
 		} `graphql:"... on PullRequest"`
 	}
 )
