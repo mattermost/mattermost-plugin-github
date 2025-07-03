@@ -3,7 +3,7 @@
 
 import {DispatchFunc} from 'mattermost-redux/types/actions';
 
-import {ClientError} from 'mattermost-redux/client/client4';
+import {ClientError} from '@mattermost/client';
 
 import {ApiError} from '../client/client';
 import Client from '../client';

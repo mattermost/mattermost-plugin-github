@@ -3,7 +3,7 @@
 
 import * as CSS from 'csstype';
 
-import {Theme} from 'mattermost-redux/types/preferences';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 
 export type GithubLabel = {
     id: number;

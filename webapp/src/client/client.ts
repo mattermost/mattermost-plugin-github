@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import {Client4} from 'mattermost-redux/client';
-import {ClientError} from 'mattermost-redux/client/client4';
+import {ClientError} from '@mattermost/client';
 
 import {ConnectedData, GithubIssueData, GithubLabel, GithubUsersData, GitHubIssueCommentData, MentionsData, MilestoneData, PrsDetailsData, SidebarContentData, YourReposData, GitHubPullRequestData, ChannelRepositoriesData, RepositoryData, Organization} from '../types/github_types';
 
