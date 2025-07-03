@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@babel/cli": "7.20.7",
-    "@babel/core": "7.11.6",
+    "@babel/core": "7.24.7",
     "@babel/plugin-proposal-class-properties": "7.10.4",
     "@babel/plugin-proposal-object-rest-spread": "7.11.0",
     "@babel/plugin-proposal-optional-chaining": "7.11.0",
@@ -39,11 +39,13 @@
     "@types/react-transition-group": "4.4.0",
     "@typescript-eslint/eslint-plugin": "4.1.1",
     "@typescript-eslint/parser": "4.1.1",
+    "@mattermost/client": "10.8.0",
+    "@mattermost/types": "10.8.0",
     "babel-eslint": "10.1.0",
-    "babel-jest": "26.3.0",
-    "babel-loader": "8.1.0",
-    "babel-plugin-typescript-to-proptypes": "1.4.1",
-    "css-loader": "4.3.0",
+    "babel-jest": "29.5.0",
+    "babel-loader": "9.1.3",
+    "babel-plugin-typescript-to-proptypes": "2.1.0",
+    "css-loader": "6.11.0",
     "enzyme": "3.11.0",
     "enzyme-adapter-react-16": "1.15.4",
     "enzyme-to-json": "3.5.0",
@@ -62,16 +64,19 @@
     "sass": "1.60.0",
     "sass-loader": "10.4.1",
     "style-loader": "1.2.1",
-    "typescript": "4.2.3",
-    "webpack": "4.44.2",
-    "webpack-cli": "3.3.12"
+    "typescript": "5.6.3",
+    "webpack": "5.96.1",
+    "webpack-cli": "5.1.4"
+  },
+  "overrides": {
+    "@mattermost/types": "10.8.0"
   },
   "dependencies": {
     "@primer/octicons-react": "10.1.0",
     "core-js": "3.6.5",
     "csstype": "3.0.3",
     "debounce-promise": "3.1.2",
-    "mattermost-redux": "5.33.1",
+    "mattermost-redux": "10.8.0",
     "node-fetch": "2.6.7",
     "prop-types": "15.7.2",
     "react": "16.13.1",
@@ -81,7 +86,9 @@
     "react-markdown": "^8.0.5",
     "react-redux": "7.2.1",
     "react-select": "3.1.0",
-    "redux": "4.0.5"
+    "redux": "4.0.5",
+    "reselect": "4.1.8"
+
   },
   "jest": {
     "snapshotSerializers": [
