@@ -14,7 +14,7 @@
   },
   "devDependencies": {
     "@babel/cli": "7.20.7",
-    "@babel/core": "7.24.7",
+    "@babel/core": "7.28.0",
     "@babel/plugin-proposal-class-properties": "7.10.4",
     "@babel/plugin-proposal-object-rest-spread": "7.11.0",
     "@babel/plugin-proposal-optional-chaining": "7.11.0",
@@ -26,6 +26,8 @@
     "@babel/runtime": "7.27.1",
     "@emotion/babel-preset-css-prop": "10.0.27",
     "@emotion/core": "10.0.35",
+    "@mattermost/client": "10.8.0",
+    "@mattermost/types": "10.8.0",
     "@types/enzyme": "3.10.6",
     "@types/enzyme-adapter-react-16": "1.0.9",
     "@types/jest": "26.0.14",
@@ -39,10 +41,8 @@
     "@types/react-transition-group": "4.4.0",
     "@typescript-eslint/eslint-plugin": "4.1.1",
     "@typescript-eslint/parser": "4.1.1",
-    "@mattermost/client": "10.8.0",
-    "@mattermost/types": "10.8.0",
     "babel-eslint": "10.1.0",
-    "babel-jest": "29.5.0",
+    "babel-jest": "30.0.4",
     "babel-loader": "9.1.3",
     "babel-plugin-typescript-to-proptypes": "2.1.0",
     "css-loader": "6.11.0",
@@ -58,7 +58,7 @@
     "eslint-plugin-react-hooks": "4.1.2",
     "file-loader": "6.1.0",
     "identity-obj-proxy": "3.0.0",
-    "jest": "26.4.2",
+    "jest": "30.0.4",
     "jest-canvas-mock": "2.2.0",
     "jest-junit": "11.1.0",
     "sass": "1.60.0",
@@ -88,7 +88,6 @@
     "react-select": "3.1.0",
     "redux": "4.0.5",
     "reselect": "4.1.8"
-
   },
   "jest": {
     "snapshotSerializers": [
