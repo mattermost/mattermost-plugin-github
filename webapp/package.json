@@ -90,9 +90,7 @@
     "reselect": "4.1.8"
   },
   "jest": {
-    "snapshotSerializers": [
-      "<rootDir>/node_modules/enzyme-to-json/serializer.js"
-    ],
+    "snapshotSerializers": ["enzyme-to-json/serializer"],
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/non_npm_dependencies/"
