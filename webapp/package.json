@@ -26,7 +26,7 @@
     "@babel/runtime": "7.27.1",
     "@emotion/babel-preset-css-prop": "10.0.27",
     "@emotion/core": "10.0.35",
-    "@mattermost/client": "10.8.0",
+    "@mattermost/client": "10.7.0",
     "@mattermost/types": "10.8.0",
     "@types/cheerio": "0.22.30",
     "@types/enzyme": "3.10.6",
