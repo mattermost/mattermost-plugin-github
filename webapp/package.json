@@ -103,7 +103,7 @@
       "text-summary"
     ],
     "transform": {
-      "^.+\\.[t|j]sx?$": "babel-jest"
+      "^.+\\.[jt]sx?$": "babel-jest"
     },
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1",
@@ -113,7 +113,6 @@
       "^bundle-loader\\?lazy\\!(.*)$": "$1"
     },
     "moduleDirectories": [
-      "",
       "node_modules",
       "non_npm_dependencies"
     ],
@@ -122,7 +121,7 @@
       "jest-junit"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!react-native|react-router|mattermost-webapp)"
+      "node_modules/(?!react-native|react-router|mattermost-webapp|enzyme)"
     ],
     "setupFiles": [
       "jest-canvas-mock"
@@ -130,6 +129,9 @@
     "setupFilesAfterEnv": [
       "<rootDir>/tests/setup.tsx"
     ],
-    "testURL": "http://localhost:8065"
+    "testEnvironment": "jsdom",
+    "testEnvironmentOptions": {
+      "url": "http://localhost:8065"
+    }
   }
 }
