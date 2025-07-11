@@ -13,7 +13,7 @@ const emptyArray: GithubIssueData[] | UnreadsData[] = [];
 export const getPluginState = (state: GlobalState): PluginState => state['plugins-github'];
 
 export const getServerRoute = (state: GlobalState) => {
-    const config = getConfig(state);
+    const config = getConfig(state as any);
     let basePath = '';
     if (config && config.SiteURL) {
         basePath = new URL(config.SiteURL).pathname;
