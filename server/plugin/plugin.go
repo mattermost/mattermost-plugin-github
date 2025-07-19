@@ -25,6 +25,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
+	"github.com/mattermost/mattermost/server/public/pluginapi/i18n"
 
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
@@ -99,6 +100,8 @@ type Plugin struct {
 	BotUserID   string
 	poster      poster.Poster
 	flowManager *FlowManager
+
+	b *i18n.Bundle
 
 	CommandHandlers map[string]CommandHandleFunc
 
@@ -275,6 +278,12 @@ func (p *Plugin) OnActivate() error {
 
 	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
 	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
+
+	i18nBundle, err := i18n.InitBundle(p.API, filepath.Join("assets", "i18n"))
+	if err != nil {
+		return err
+	}
+	p.b = i18nBundle
 
 	botID, err := p.client.Bot.EnsureBot(&model.Bot{
 		OwnerId:     Manifest.Id, // Workaround to support older server version affected by https://github.com/mattermost/mattermost-server/pull/21560
