@@ -68,6 +68,7 @@ export default class SidebarRight extends React.PureComponent {
         username: PropTypes.string,
         orgs: PropTypes.array.isRequired,
         enterpriseURL: PropTypes.string,
+        mentions: PropTypes.arrayOf(PropTypes.object),
         reviews: PropTypes.arrayOf(PropTypes.object),
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
@@ -107,7 +108,7 @@ export default class SidebarRight extends React.PureComponent {
             orgQuery += ('+org%3A' + org);
             return orgQuery;
         });
-        const {yourPrs, reviews, unreads, yourAssignments, username, rhsState} = this.props;
+        const {yourPrs, mentions, reviews, unreads, yourAssignments, username, rhsState} = this.props;
 
         let title = '';
         let githubItems = [];
@@ -119,6 +120,13 @@ export default class SidebarRight extends React.PureComponent {
             githubItems = yourPrs;
             title = 'Your Open Pull Requests';
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + username + '+archived%3Afalse' + orgQuery;
+
+            break;
+        case RHSStates.MENTIONS:
+
+            githubItems = mentions;
+            title = 'Your mentions';
+            listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+mentions%3A' + username + '+archived%3Afalse' + orgQuery;
 
             break;
         case RHSStates.REVIEWS:
