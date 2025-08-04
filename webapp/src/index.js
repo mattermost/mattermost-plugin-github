@@ -34,9 +34,9 @@ class PluginClass {
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
         registry.registerRootComponent(CreateIssueModal);
-        registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
+        registry.registerPostDropdownMenuAction(CreateIssuePostMenuAction);
         registry.registerRootComponent(AttachCommentToIssueModal);
-        registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
+        registry.registerPostDropdownMenuAction(AttachCommentToIssuePostMenuAction);
         registry.registerLinkTooltipComponent(LinkTooltip);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
