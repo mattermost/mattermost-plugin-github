@@ -16,10 +16,12 @@ const (
 	queryParamReviewsCursor     = "reviewsCursor"
 	queryParamAssignmentsCursor = "assignmentsCursor"
 	queryParamOpenPRsCursor     = "openPrsCursor"
+	queryParamMentionsCursor    = "mentionsCursor"
 
 	queryParamOpenPRQueryArg   = "prOpenQueryArg"
 	queryParamReviewPRQueryArg = "prReviewQueryArg"
 	queryParamAssigneeQueryArg = "assigneeQueryArg"
+	queryParamMentionsQueryArg = "prMentionsQueryArg"
 )
 
 type GithubPRDetails struct {
@@ -29,51 +31,54 @@ type GithubPRDetails struct {
 	ChangedFiles *githubv4.Int `json:"changed_files,omitempty"`
 }
 
-func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
+func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, []*GithubPRDetails, error) {
 	orgsList := c.getOrganizations()
 	var resultAssignee []*github.Issue
-	var resultReview, resultOpenPR []*GithubPRDetails
+	var resultReview, resultOpenPR, resultMentions []*GithubPRDetails
 
 	params := map[string]interface{}{
 		queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
 		queryParamReviewPRQueryArg:  githubv4.String(fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
 		queryParamAssigneeQueryArg:  githubv4.String(fmt.Sprintf("assignee:%s is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
+		queryParamMentionsQueryArg:  githubv4.String(fmt.Sprintf("mentions:%s is:%s is:pr archived:false", c.username, githubv4.PullRequestStateOpen)),
 		queryParamReviewsCursor:     (*githubv4.String)(nil),
 		queryParamAssignmentsCursor: (*githubv4.String)(nil),
 		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
+		queryParamMentionsCursor:    (*githubv4.String)(nil),
 	}
 
 	var err error
 	for _, org := range orgsList {
-		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, params)
+		resultReview, resultAssignee, resultOpenPR, resultMentions, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, resultMentions, org, params)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
 
 	if len(orgsList) == 0 {
-		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", params)
+		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, resultMentions, "", params)
 	}
 
-	return resultReview, resultAssignee, resultOpenPR, nil
+	return resultReview, resultAssignee, resultOpenPR, resultMentions, nil
 }
 
-func (c *Client) fetchLHSData(ctx context.Context, resultReview []*GithubPRDetails, resultAssignee []*github.Issue, resultOpenPR []*GithubPRDetails, org string, params map[string]interface{}) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
+func (c *Client) fetchLHSData(ctx context.Context, resultReview []*GithubPRDetails, resultAssignee []*github.Issue, resultOpenPR []*GithubPRDetails, resultMentions []*GithubPRDetails, org string, params map[string]interface{}) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, []*GithubPRDetails, error) {
 	if org != "" {
 		params[queryParamOpenPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamOpenPRQueryArg]))
 		params[queryParamReviewPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamReviewPRQueryArg]))
 		params[queryParamAssigneeQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamAssigneeQueryArg]))
+		params[queryParamMentionsQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", c.org, params[queryParamMentionsQueryArg]))
 	}
 
-	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched := false, false, false
+	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched, allMentionsFetched := false, false, false, false
 
 	for {
-		if allReviewRequestsFetched && allAssignmentsFetched && allOpenPRsFetched {
+		if allReviewRequestsFetched && allAssignmentsFetched && allOpenPRsFetched && allMentionsFetched {
 			break
 		}
 
 		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
+			return nil, nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
 		}
 
 		if !allReviewRequestsFetched {
@@ -117,9 +122,23 @@ func (c *Client) fetchLHSData(ctx context.Context, resultReview []*GithubPRDetai
 
 			params[queryParamOpenPRsCursor] = githubv4.NewString(mainQuery.OpenPullRequests.PageInfo.EndCursor)
 		}
+
+		if !allMentionsFetched {
+			for i := range mainQuery.Mentions.Nodes {
+				resp := mainQuery.Mentions.Nodes[i]
+				pr := getPR(&resp)
+				resultMentions = append(resultMentions, pr)
+			}
+
+			if !mainQuery.Mentions.PageInfo.HasNextPage {
+				allMentionsFetched = true
+			}
+
+			params[queryParamMentionsCursor] = githubv4.NewString(mainQuery.Mentions.PageInfo.EndCursor)
+		}
 	}
 
-	return resultReview, resultAssignee, resultOpenPR, nil
+	return resultReview, resultAssignee, resultOpenPR, resultMentions, nil
 }
 
 func getPR(prResp *prSearchNodes) *GithubPRDetails {
