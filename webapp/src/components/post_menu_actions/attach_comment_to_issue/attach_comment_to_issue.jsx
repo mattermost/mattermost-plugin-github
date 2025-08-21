@@ -7,17 +7,9 @@ import GitHubIcon from '../../icon';
 
 export default function AttachCommentToIssuePostMenuAction() {
     return (
-        <li
-            className='MenuItem'
-            role='menuitem'
-        >
-            <button className='style--none'>
-                <span className='MenuItem__icon'>
-                    <GitHubIcon type='menu'/>
-                </span>
-                {'Attach to GitHub Issue'}
-            </button>
-        </li>
+        <>
+            <GitHubIcon type='menu'/>
+            {'Attach to GitHub Issue'}
+        </>
     );
 }
-
