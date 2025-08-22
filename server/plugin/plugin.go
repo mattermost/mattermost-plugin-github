@@ -321,6 +321,10 @@ func (p *Plugin) getPostPropsForReaction(reaction *model.Reaction) (org, repo st
 		return org, repo, id, objectType, false
 	}
 
+	if post.UserId != p.BotUserID {
+		return org, repo, id, objectType, false
+	}
+
 	// Getting the Github repository from notification post props
 	repo, ok = post.GetProp(postPropGithubRepo).(string)
 	if !ok || repo == "" {
