@@ -7,7 +7,6 @@ import {getPost} from 'mattermost-redux/selectors/entities/posts';
 import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 
 import manifest from '@/manifest';
-
 import {openAttachCommentToIssueModal} from '@/actions';
 
 import AttachCommentToIssuePostMenuAction from './attach_comment_to_issue';
