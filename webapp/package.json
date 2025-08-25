@@ -26,8 +26,8 @@
     "@babel/runtime": "7.27.1",
     "@emotion/babel-preset-css-prop": "10.0.27",
     "@emotion/core": "10.0.35",
-    "@mattermost/client": "10.7.0",
-    "@mattermost/types": "10.8.0",
+    "@mattermost/client": "10.9.0",
+    "@mattermost/types": "10.9.0",
     "@types/cheerio": "0.22.30",
     "@types/enzyme": "3.10.6",
     "@types/enzyme-adapter-react-16": "1.0.9",
@@ -73,16 +73,12 @@
     "webpack": "5.96.1",
     "webpack-cli": "5.1.4"
   },
-  "overrides": {
-    "cheerio": "0.22.0",
-    "@mattermost/types": "$@mattermost/types"
-  },
   "dependencies": {
     "@primer/octicons-react": "10.1.0",
     "core-js": "3.6.5",
     "csstype": "3.0.3",
     "debounce-promise": "3.1.2",
-    "mattermost-redux": "10.8.0",
+    "mattermost-redux": "10.9.0",
     "node-fetch": "2.6.7",
     "prop-types": "15.7.2",
     "react": "16.13.1",
