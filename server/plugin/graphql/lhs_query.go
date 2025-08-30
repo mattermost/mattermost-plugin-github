@@ -120,4 +120,13 @@ var mainQuery struct {
 			HasNextPage bool
 		}
 	} `graphql:"graphql: search(first:100, after:$openPrsCursor, query: $prOpenQueryArg, type: ISSUE)"`
+
+	Mentions struct {
+		IssueCount int
+		Nodes      []prSearchNodes
+		PageInfo   struct {
+			EndCursor   githubv4.String
+			HasNextPage bool
+		}
+	} `graphql:"mentions: search(first:100, after:$mentionsCursor, query: $prMentionsQueryArg, type: ISSUE)"`
 }

@@ -11,11 +11,12 @@ import {getSidebarData} from 'src/selectors';
 import SidebarRight from './sidebar_right.jsx';
 
 function mapStateToProps(state) {
-    const {username, reviews, yourPrs, yourAssignments, unreads, enterpriseURL, orgs, rhsState} = getSidebarData(state);
+    const {username, mentions, reviews, yourPrs, yourAssignments, unreads, enterpriseURL, orgs, rhsState} = getSidebarData(state);
     return {
         username,
         reviews,
         yourPrs,
+        mentions,
         yourAssignments,
         unreads,
         enterpriseURL,
