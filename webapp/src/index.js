@@ -1,8 +1,13 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
+import {getPost} from 'mattermost-redux/selectors/entities/posts';
+import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
+
 import AttachCommentToIssuePostMenuAction from '@/components/post_menu_actions/attach_comment_to_issue';
 import AttachCommentToIssueModal from '@/components/modals/attach_comment_to_issue';
+
+import {getConnected, openAttachCommentToIssueModal, openCreateIssueModal, setShowRHSAction} from '@/actions';
 
 import CreateIssueModal from './components/modals/create_issue';
 import CreateIssuePostMenuAction from './components/post_menu_action/create_issue';
@@ -13,7 +18,7 @@ import SidebarRight from './components/sidebar_right';
 import LinkTooltip from './components/link_tooltip';
 import Reducer from './reducers';
 import Client from './client';
-import {getConnected, setShowRHSAction} from './actions';
+
 import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 import {getServerRoute} from './selectors';
 import manifest from './manifest';
@@ -34,9 +39,33 @@ class PluginClass {
         registry.registerBottomTeamSidebarComponent(TeamSidebar);
         registry.registerPopoverUserAttributesComponent(UserAttribute);
         registry.registerRootComponent(CreateIssueModal);
-        registry.registerPostDropdownMenuComponent(CreateIssuePostMenuAction);
+        registry.registerPostDropdownMenuAction({
+            text: CreateIssuePostMenuAction,
+            action: (postId) => {
+                store.dispatch(openCreateIssueModal(postId));
+            },
+            filter: (postId) => {
+                const state = store.getState();
+                const post = getPost(state, postId);
+                const systemMessage = post ? isSystemMessage(post) : true;
+
+                return state[`plugins-${manifest.id}`].connected && !systemMessage;
+            },
+        });
         registry.registerRootComponent(AttachCommentToIssueModal);
-        registry.registerPostDropdownMenuComponent(AttachCommentToIssuePostMenuAction);
+        registry.registerPostDropdownMenuAction({
+            text: AttachCommentToIssuePostMenuAction,
+            action: (postId) => {
+                store.dispatch(openAttachCommentToIssueModal(postId));
+            },
+            filter: (postId) => {
+                const state = store.getState();
+                const post = getPost(state, postId);
+                const systemMessage = post ? isSystemMessage(post) : true;
+
+                return state[`plugins-${manifest.id}`].connected && !systemMessage;
+            },
+        });
         registry.registerLinkTooltipComponent(LinkTooltip);
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
