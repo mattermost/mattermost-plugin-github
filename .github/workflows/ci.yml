@@ -11,10 +11,11 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   plugin-ci:
     uses: mattermost/actions-workflows/.github/workflows/plugin-ci.yml@main
     secrets: inherit
     with:
-      golang-version: "1.22"
+      golang-version: "1.23"

@@ -3,7 +3,7 @@ import {shallow} from 'enzyme';
 
 import CreateIssueModal from './create_issue';
 
-jest.mock('utils/user_utils', () => ({
+jest.mock('@/utils/user_utils', () => ({
     getErrorMessage: jest.fn(() => 'Error occurred'),
 }));
 

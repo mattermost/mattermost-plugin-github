@@ -4,7 +4,7 @@
 import React, {PureComponent} from 'react';
 import ReactSelect, {ValueType, ActionMeta} from 'react-select';
 
-import {Theme} from 'mattermost-redux/types/preferences';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 
 import {getStyleForReactSelect} from '@/utils/styles';
 import Setting from '@/components/setting';
@@ -128,7 +128,7 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
                     noOptionsMessage={() => noOptionsMessage}
                     closeMenuOnSelect={!this.props.isMulti}
                     hideSelectedOptions={this.props.isMulti}
-                    onChange={this.onChange}
+                    onChange={this.onChange as any}
                     options={this.state.options}
                     value={selection}
                     isLoading={this.state.isLoading}

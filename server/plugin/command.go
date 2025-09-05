@@ -1078,6 +1078,16 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 				HelpText: "Include posts from members of the configured organization",
 			},
 		})
+		subscriptionsAdd.AddNamedStaticListArgument("include-only-org-members", "Events triggered only by organization members will be delivered (the organization config should be set, otherwise this flag has not effect)", false, []model.AutocompleteListItem{
+			{
+				Item:     "true",
+				HelpText: "Include posts only from members of the configured organization",
+			},
+			{
+				Item:     "false",
+				HelpText: "Include posts from members and collaborators of the configured organization",
+			},
+		})
 	}
 
 	subscriptionsAdd.AddNamedStaticListArgument("render-style", "Determine the rendering style of various notifications.", false, []model.AutocompleteListItem{

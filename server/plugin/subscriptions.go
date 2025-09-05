@@ -17,18 +17,20 @@ import (
 )
 
 const (
-	SubscriptionsKey        = "subscriptions"
-	flagExcludeOrgMember    = "exclude-org-member"
-	flagRenderStyle         = "render-style"
-	flagFeatures            = "features"
-	flagExcludeRepository   = "exclude"
-	SubscriptionUnavailable = "no subscription exists for `%s` in the channel"
+	SubscriptionsKey          = "subscriptions"
+	flagExcludeOrgMember      = "exclude-org-member"
+	flagRenderStyle           = "render-style"
+	flagFeatures              = "features"
+	flagExcludeRepository     = "exclude"
+	SubscriptionUnavailable   = "no subscription exists for `%s` in the channel"
+	flagIncludeOnlyOrgMembers = "include-only-org-members"
 )
 
 type SubscriptionFlags struct {
-	ExcludeOrgMembers bool
-	RenderStyle       string
-	ExcludeRepository []string
+	ExcludeOrgMembers     bool
+	IncludeOnlyOrgMembers bool
+	RenderStyle           string
+	ExcludeRepository     []string
 }
 
 func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
@@ -39,6 +41,12 @@ func (s *SubscriptionFlags) AddFlag(flag string, value string) error {
 			return err
 		}
 		s.ExcludeOrgMembers = parsed
+	case flagIncludeOnlyOrgMembers:
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		s.IncludeOnlyOrgMembers = parsed
 	case flagRenderStyle:
 		s.RenderStyle = value
 	case flagExcludeRepository:
@@ -57,6 +65,11 @@ func (s SubscriptionFlags) String() string {
 
 	if s.ExcludeOrgMembers {
 		flag := "--" + flagExcludeOrgMember + " true"
+		flags = append(flags, flag)
+	}
+
+	if s.IncludeOnlyOrgMembers {
+		flag := "--" + flagIncludeOnlyOrgMembers + " true"
 		flags = append(flags, flag)
 	}
 
@@ -162,6 +175,10 @@ func (s *Subscription) ExcludeOrgMembers() bool {
 	return s.Flags.ExcludeOrgMembers
 }
 
+func (s *Subscription) IncludeOnlyOrgMembers() bool {
+	return s.Flags.IncludeOnlyOrgMembers
+}
+
 func (s *Subscription) RenderStyle() string {
 	return s.Flags.RenderStyle
 }
@@ -189,6 +206,10 @@ func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, use
 
 	if flags.ExcludeOrgMembers && !p.isOrganizationLocked() {
 		return errors.New("Unable to set --exclude-org-member flag. The GitHub plugin is not locked to a single organization.")
+	}
+
+	if flags.IncludeOnlyOrgMembers && !p.isOrganizationLocked() {
+		return errors.New("Unable to set --include-only-org-members flag. The GitHub plugin is not locked to a single organization.")
 	}
 
 	var err, cErr error
