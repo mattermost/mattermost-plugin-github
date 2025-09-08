@@ -9,8 +9,6 @@ import AttachCommentToIssueModal from '@/components/modals/attach_comment_to_iss
 
 import {getConnected, openAttachCommentToIssueModal, openCreateIssueModal, setShowRHSAction} from '@/actions';
 
-import {isUrlCanPreview} from 'utils/github_utils';
-
 import CreateIssueModal from './components/modals/create_issue';
 import CreateIssuePostMenuAction from './components/post_menu_action/create_issue';
 import SidebarHeader from './components/sidebar_header';
@@ -25,6 +23,7 @@ import Client from './client';
 import {handleConnect, handleDisconnect, handleConfigurationUpdate, handleOpenCreateIssueModal, handleReconnect, handleRefresh} from './websocket';
 import {getServerRoute} from './selectors';
 import manifest from './manifest';
+import {isUrlCanPreview} from './utils/github_utils';
 
 let activityFunc;
 let lastActivityTime = Number.MAX_SAFE_INTEGER;

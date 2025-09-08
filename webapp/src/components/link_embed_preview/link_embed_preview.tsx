@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon, SkipIcon, IconProps} from '@primer/octicons-react';
 import PropTypes from 'prop-types';
 import React, {useEffect, useState} from 'react';
@@ -50,37 +53,32 @@ export const LinkEmbedPreview = ({embed: {url}, connected}: LinkEmbedProps) => {
             if (isUrlCanPreview(url)) {
                 const [owner, repo, type, number] = url.split('github.com/')[1].split('/');
 
-                try {
-                    let issueOrPR: any;
+                let issueOrPR: any;
+                if (type === 'issues') {
+                    issueOrPR = await Client.getIssue(owner, repo, Number(number));
+                } else if (type === 'pull') {
+                    issueOrPR = await Client.getPullRequest(owner, repo, Number(number));
+                } else {
+                    return;
+                }
 
-                    if (type === 'issues') {
-                        issueOrPR = await Client.getIssue(owner, repo, Number(number));
-                    } else if (type === 'pull') {
-                        issueOrPR = await Client.getPullRequest(owner, repo, Number(number));
-                    } else {
-                        return;
-                    }
-
-                    if (issueOrPR && !('error' in issueOrPR)) {
-                        const githubData: GitHubData = {
-                            owner,
-                            repo,
-                            type: type as 'issues' | 'pull',
-                            state: issueOrPR.state || '',
-                            created_at: issueOrPR.created_at || '',
-                            title: issueOrPR.title || '',
-                            number: issueOrPR.number || 0,
-                            merged: type === 'pull' ? issueOrPR.merged : undefined,
-                            state_reason: issueOrPR.state_reason,
-                            body: issueOrPR.body,
-                            labels: Array.isArray(issueOrPR.labels) ? issueOrPR.labels : [],
-                            base: type === 'pull' && issueOrPR.base ? issueOrPR.base : undefined,
-                            head: type === 'pull' && issueOrPR.head ? issueOrPR.head : undefined,
-                        };
-                        setData(githubData);
-                    }
-                } catch (error) {
-                    console.error('Error fetching GitHub data:', error);
+                if (issueOrPR && !('error' in issueOrPR)) {
+                    const githubData: GitHubData = {
+                        owner,
+                        repo,
+                        type: type as 'issues' | 'pull',
+                        state: issueOrPR.state || '',
+                        created_at: issueOrPR.created_at || '',
+                        title: issueOrPR.title || '',
+                        number: issueOrPR.number || 0,
+                        merged: type === 'pull' && issueOrPR.merged,
+                        state_reason: issueOrPR.state_reason,
+                        body: issueOrPR.body,
+                        labels: Array.isArray(issueOrPR.labels) ? issueOrPR.labels : [],
+                        base: type === 'pull' && issueOrPR.base && issueOrPR.base,
+                        head: type === 'pull' && issueOrPR.head && issueOrPR.head,
+                    };
+                    setData(githubData);
                 }
             }
         };
@@ -93,8 +91,10 @@ export const LinkEmbedPreview = ({embed: {url}, connected}: LinkEmbedProps) => {
     }, [connected, data, url]);
 
     const getIconElement = () => {
-        if (!data) return null;
-        
+        if (!data) {
+            return null;
+        }
+
         const iconProps = {
             size: 16, // Use a number instead of 'small'
             verticalAlign: 'text-bottom' as const,
