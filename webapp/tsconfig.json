@@ -20,8 +20,12 @@
     "noEmit": true,
 	"experimentalDecorators": true,
     "jsx": "react",
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
+  "typeRoots": ["./src/types"],
   "include": [
     "./**/*"
   ],

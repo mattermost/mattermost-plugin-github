@@ -1,6 +1,10 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 const exec = require('child_process').exec;
 
 const path = require('path');
+
 const webpack = require('webpack');
 
 const PLUGIN_ID = require('../plugin.json').id;
@@ -8,10 +12,10 @@ const PLUGIN_ID = require('../plugin.json').id;
 const NPM_TARGET = process.env.npm_lifecycle_event; //eslint-disable-line no-process-env
 const E2E_TESTING = process.env.E2E_TESTING; //eslint-disable-line no-process-env
 let mode = 'production';
-let devtool = '';
+let devtool = false;
 if (NPM_TARGET === 'debug' || NPM_TARGET === 'debug:watch') {
     mode = 'development';
-    devtool = 'source-map';
+    devtool = 'eval-cheap-module-source-map';
 }
 
 const plugins = [
@@ -44,6 +48,9 @@ module.exports = {
         './src/index.js',
     ],
     resolve: {
+        alias: {
+            '@': path.resolve(__dirname, 'src'),
+        },
         modules: [
             'src',
             'node_modules',

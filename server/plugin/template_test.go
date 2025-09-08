@@ -1,3 +1,6 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
@@ -924,7 +927,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("APPROVED"),
+				State: sToP("approved"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -944,7 +947,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("COMMENTED"),
+				State: sToP("commented"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -964,7 +967,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("CHANGES_REQUESTED"),
+				State: sToP("changes_requested"),
 				Body:  sToP("Excited to see git-get-head land!"),
 			},
 		})
@@ -985,7 +988,7 @@ Excited to see git-get-head land!
 			PullRequest: &pullRequest,
 			Sender:      &user,
 			Review: &github.PullRequestReview{
-				State: sToP("APPROVED"),
+				State: sToP("approved"),
 				Body:  sToP("Excited to see git-get-head land!\n" + gitHubMentions),
 			},
 		})
@@ -999,7 +1002,6 @@ func TestPullRequestReviewCommentEventTemplate(t *testing.T) {
 		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
-HUNK
 Should this be here?
 `
 
@@ -1007,8 +1009,7 @@ Should this be here?
 			Repo:        &repo,
 			PullRequest: &pullRequest,
 			Comment: &github.PullRequestComment{
-				Body:     sToP("Should this be here?"),
-				DiffHunk: sToP("HUNK"),
+				Body: sToP("Should this be here?"),
 			},
 			Sender: &user,
 		})
@@ -1020,7 +1021,6 @@ Should this be here?
 		expected := `
 [\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by @pandabot on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
-HUNK
 Should this be here?
 ` + usernameMentions + `
 `
@@ -1029,8 +1029,7 @@ Should this be here?
 			Repo:        &repo,
 			PullRequest: &pullRequest,
 			Comment: &github.PullRequestComment{
-				Body:     sToP("Should this be here?\n" + gitHubMentions),
-				DiffHunk: sToP("HUNK"),
+				Body: sToP("Should this be here?\n" + gitHubMentions),
 			},
 			Sender: &user,
 		})
@@ -1407,6 +1406,42 @@ func TestPullRequestReviewNotification(t *testing.T) {
 	}))
 }
 
+func TestReleaseNotification(t *testing.T) {
+	t.Run("created", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) created a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
+
+		actual, err := renderTemplate("newReleaseEvent", &github.ReleaseEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCreated),
+			Release: &github.RepositoryRelease{
+				TagName: sToP("v0.0.1"),
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("deleted", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) [panda](https://github.com/panda) deleted a release [v0.0.1](https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1)`
+
+		actual, err := renderTemplate("newReleaseEvent", &github.ReleaseEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionDeleted),
+			Release: &github.RepositoryRelease{
+				TagName: sToP("v0.0.1"),
+				HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/releases/tag/v0.0.1"),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+}
+
 func TestGitHubUsernameRegex(t *testing.T) {
 	stringAndMatchMap := map[string]string{
 		// Contain valid usernames
@@ -1443,6 +1478,80 @@ func TestGitHubUsernameRegex(t *testing.T) {
 	for _, string := range invalidUsernames {
 		require.False(t, gitHubUsernameRegex.MatchString(string))
 	}
+}
+
+func TestWorkflowJobNotification(t *testing.T) {
+	t.Run("failed", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) mock-workflow-name workflow failed (triggered by [panda](https://github.com/panda))
+Job failed: [mock-workflow-job](https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890)
+Step failed: mock-job-2
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890`
+
+		actual, err := renderTemplate("newWorkflowJob", &github.WorkflowJobEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			WorkflowJob: &github.WorkflowJob{
+				Conclusion:   sToP("failure"),
+				Name:         sToP("mock-workflow-job"),
+				HeadSHA:      sToP("1234567890"),
+				HTMLURL:      sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890"),
+				WorkflowName: sToP("mock-workflow-name"),
+				Steps: []*github.TaskStep{
+					{
+						Name:       sToP("mock-job-1"),
+						Conclusion: sToP("success"),
+					},
+					{
+						Name:       sToP("mock-job-2"),
+						Conclusion: sToP("failure"),
+					},
+					{
+						Name:       sToP("mock-job-3"),
+						Conclusion: sToP("success"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) mock-workflow-name workflow succeeded (triggered by [panda](https://github.com/panda))
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890`
+
+		actual, err := renderTemplate("newWorkflowJob", &github.WorkflowJobEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			WorkflowJob: &github.WorkflowJob{
+				Conclusion:   sToP("success"),
+				Name:         sToP("mock-workflow-job"),
+				HeadSHA:      sToP("1234567890"),
+				HTMLURL:      sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/12345/job/67890"),
+				WorkflowName: sToP("mock-workflow-name"),
+				Steps: []*github.TaskStep{
+					{
+						Name:       sToP("mock-job-1"),
+						Conclusion: sToP("success"),
+					},
+					{
+						Name:       sToP("mock-job-2"),
+						Conclusion: sToP("success"),
+					},
+					{
+						Name:       sToP("mock-job-3"),
+						Conclusion: sToP("success"),
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func sToP(s string) *string {

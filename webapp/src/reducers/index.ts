@@ -1,12 +1,14 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {combineReducers} from 'redux';
 
+import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData, Organization, RepositoriesByOrg} from '../types/github_types';
+
 import ActionTypes from '../action_types';
 import Constants from '../constants';
 
-function connected(state = false, action) {
+function connected(state = false, action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return action.data.connected;
@@ -15,7 +17,7 @@ function connected(state = false, action) {
     }
 }
 
-function enterpriseURL(state = '', action) {
+function enterpriseURL(state = '', action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         if (action.data && action.data.enterprise_base_url) {
@@ -27,19 +29,19 @@ function enterpriseURL(state = '', action) {
     }
 }
 
-function organization(state = '', action) {
+function organizations(state: string[] = [], action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        if (action.data && action.data.organization) {
-            return action.data.organization;
+        if (action.data && action.data.organizations) {
+            return action.data.organizations;
         }
-        return '';
+        return [];
     default:
         return state;
     }
 }
 
-function username(state = '', action) {
+function username(state = '', action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return action.data.github_username;
@@ -48,7 +50,11 @@ function username(state = '', action) {
     }
 }
 
-function userSettings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, daily_reminder: true, notifications: true}, action) {
+function userSettings(state = {
+    sidebar_buttons: Constants.SETTING_BUTTONS_TEAM,
+    daily_reminder: true,
+    notifications: true,
+} as UserSettingsData, action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return action.data.user_settings;
@@ -57,18 +63,18 @@ function userSettings(state = {sidebar_buttons: Constants.SETTING_BUTTONS_TEAM, 
     }
 }
 
-function configuration(state = {left_sidebar_enabled: true}, action) {
+function configuration(state = true, action: {type: string, data: ConnectedData | ConfigurationData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
-        return action.data.configuration;
+        return (action.data as ConnectedData).configuration;
     case ActionTypes.RECEIVED_CONFIGURATION:
-        return action.data;
+        return action.data as ConfigurationData;
     default:
         return state;
     }
 }
 
-function clientId(state = '', action) {
+function clientId(state = '', action: {type: string, data: ConnectedData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return action.data.github_client_id;
@@ -77,7 +83,7 @@ function clientId(state = '', action) {
     }
 }
 
-function reviewDetails(state = [], action) {
+function reviewDetails(state: PrsDetailsData[] = [], action: {type: string, data: PrsDetailsData[]}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REVIEWS_DETAILS:
         return action.data;
@@ -86,14 +92,12 @@ function reviewDetails(state = [], action) {
     }
 }
 
-const defaultSidebarContent = {
+function sidebarContent(state = {
     reviews: [],
-    prs: [],
     assignments: [],
+    prs: [],
     unreads: [],
-};
-
-function sidebarContent(state = defaultSidebarContent, action) {
+} as SidebarContentData, action: {type: string, data: SidebarContentData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_SIDEBAR_CONTENT:
         return action.data;
@@ -102,7 +106,9 @@ function sidebarContent(state = defaultSidebarContent, action) {
     }
 }
 
-function yourRepos(state = [], action) {
+function yourRepos(state: YourReposData = {
+    repos: [],
+}, action: {type: string, data: YourReposData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REPOSITORIES:
         return action.data;
@@ -111,7 +117,7 @@ function yourRepos(state = [], action) {
     }
 }
 
-function yourPrDetails(state = [], action) {
+function yourPrDetails(state: PrsDetailsData[] = [], action: {type: string, data: PrsDetailsData[]}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_YOUR_PRS_DETAILS:
         return action.data;
@@ -120,7 +126,7 @@ function yourPrDetails(state = [], action) {
     }
 }
 
-function mentions(state = [], action) {
+function mentions(state: MentionsData[] = [], action: {type: string, data: MentionsData[]}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_MENTIONS:
         return action.data;
@@ -129,7 +135,7 @@ function mentions(state = [], action) {
     }
 }
 
-function githubUsers(state = {}, action) {
+function githubUsers(state: Record<string, GithubUsersData | undefined> = {}, action: {type: string, data: GithubUsersData, userID: string}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_GITHUB_USER: {
         const nextState = {...state};
@@ -141,7 +147,7 @@ function githubUsers(state = {}, action) {
     }
 }
 
-function rhsPluginAction(state = null, action) {
+function rhsPluginAction(state = null, action: {type: string, showRHSPluginAction: ShowRhsPluginActionData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_SHOW_RHS_ACTION:
         return action.showRHSPluginAction;
@@ -150,7 +156,7 @@ function rhsPluginAction(state = null, action) {
     }
 }
 
-function rhsState(state = null, action) {
+function rhsState(state = null, action: {type: string, state: string}) {
     switch (action.type) {
     case ActionTypes.UPDATE_RHS_STATE:
         return action.state;
@@ -159,7 +165,7 @@ function rhsState(state = null, action) {
     }
 }
 
-const isCreateIssueModalVisible = (state = false, action) => {
+const isCreateIssueModalVisible = (state = false, action: {type: string}) => {
     switch (action.type) {
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
@@ -171,7 +177,7 @@ const isCreateIssueModalVisible = (state = false, action) => {
     }
 };
 
-const attachCommentToIssueModalVisible = (state = false, action) => {
+const attachCommentToIssueModalVisible = (state = false, action: {type: string}) => {
     switch (action.type) {
     case ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL:
         return true;
@@ -182,7 +188,7 @@ const attachCommentToIssueModalVisible = (state = false, action) => {
     }
 };
 
-const createIssueModal = (state = '', action) => {
+const createIssueModal = (state = {} as CreateIssueModalData, action: {type: string, data: CreateIssueModalData}) => {
     switch (action.type) {
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL:
     case ActionTypes.OPEN_CREATE_ISSUE_MODAL_WITHOUT_POST:
@@ -199,7 +205,7 @@ const createIssueModal = (state = '', action) => {
     }
 };
 
-const attachCommentToIssueModalForPostId = (state = '', action) => {
+const attachCommentToIssueModalForPostId = (state = '', action: {type: string, data: AttachCommentToIssueModalForPostIdData}) => {
     switch (action.type) {
     case ActionTypes.OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL:
         return action.data.postId;
@@ -210,10 +216,30 @@ const attachCommentToIssueModalForPostId = (state = '', action) => {
     }
 };
 
+const yourOrgs = (state: Organization[] = [], action:{type:string, data: Organization[]}) => {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_ORGANIZATIONS:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
+const yourReposByOrg = (state: RepositoriesByOrg[] = [], action:{type: string, data: RepositoriesByOrg[]}) => {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_REPOSITORIES_BY_ORGANIZATION:
+        return action.data;
+    default:
+        return state;
+    }
+};
+
 export default combineReducers({
+    yourOrgs,
+    yourReposByOrg,
     connected,
     enterpriseURL,
-    organization,
+    organizations,
     username,
     userSettings,
     configuration,

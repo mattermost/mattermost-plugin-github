@@ -1,10 +1,14 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import './tooltip.css';
 import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon} from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 
-import Client from 'client';
+import Client from '@/client';
+
 import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 import {isUrlCanPreview} from '../../utils/github_utils';
 
@@ -125,6 +129,12 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                 <h5 className='mr-1'>{data.title}</h5>
                                 <span>{'#' + data.number}</span>
                             </a>
+                            {data?.user?.login && (
+                                <p className='opened-by'>
+                                    {'Opened by '}
+                                    <a href={`https://github.com/${data.user.login}`}>{data.user.login}</a>
+                                </p>
+                            )}
                             <div className='markdown-text mt-1 mb-1'>
                                 <ReactMarkdown linkTarget='_blank'>{description}</ReactMarkdown>
                             </div>

@@ -1,17 +1,19 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import {getConfig} from 'mattermost-redux/selectors/entities/general';
 
 import {createSelector} from 'reselect';
 
-import manifest from './manifest';
+import {GlobalState, PluginState} from './types/store';
+import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData} from './types/github_types';
 
-const emptyArray = [];
+const emptyArray: GithubIssueData[] | UnreadsData[] = [];
 
-const getPluginState = (state) => state['plugins-' + manifest.id] || {};
+export const getPluginState = (state: GlobalState): PluginState => state['plugins-github'];
 
-export const isEnabled = (state) => getPluginState(state).enabled;
-
-export const getServerRoute = (state) => {
-    const config = getConfig(state);
+export const getServerRoute = (state: GlobalState) => {
+    const config = getConfig(state as any);
     let basePath = '';
     if (config && config.SiteURL) {
         basePath = new URL(config.SiteURL).pathname;
@@ -23,15 +25,15 @@ export const getServerRoute = (state) => {
     return basePath;
 };
 
-function mapPrsToDetails(prs, details) {
+function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
     if (!prs) {
         return [];
     }
 
-    return prs.map((pr) => {
+    return prs.map((pr: GithubIssueData) => {
         let foundDetails;
         if (details) {
-            foundDetails = details.find((prDetails) => {
+            foundDetails = details.find((prDetails: PrsDetailsData) => {
                 return (pr.repository_url === prDetails.url) && (pr.number === prDetails.number);
             });
         }
@@ -51,18 +53,18 @@ function mapPrsToDetails(prs, details) {
 
 export const getSidebarData = createSelector(
     getPluginState,
-    (pluginState) => {
-        const {username, sidebarContent, reviewDetails, yourPrDetails, organization, rhsState} = pluginState;
+    (pluginState): SidebarData => {
+        const {username, sidebarContent, reviewDetails, yourPrDetails, organizations, rhsState} = pluginState;
         return {
             username,
             reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
             yourPrs: mapPrsToDetails(sidebarContent.prs || emptyArray, yourPrDetails),
             yourAssignments: sidebarContent.assignments || emptyArray,
             unreads: sidebarContent.unreads || emptyArray,
-            org: organization,
+            orgs: organizations,
             rhsState,
         };
     },
 );
 
-export const configuration = (state) => getPluginState(state).configuration;
+export const configuration = (state: GlobalState) => getPluginState(state).configuration;

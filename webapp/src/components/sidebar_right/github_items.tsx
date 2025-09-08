@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import * as React from 'react';
@@ -6,9 +6,10 @@ import * as React from 'react';
 import * as CSS from 'csstype';
 
 import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
-import {Theme} from 'mattermost-redux/types/preferences';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
-import {GitPullRequestIcon, IssueOpenedIcon, IconProps} from '@primer/octicons-react';
+import {GitPullRequestIcon, IssueOpenedIcon, IconProps, CalendarIcon, PersonIcon, FileDiffIcon} from '@primer/octicons-react';
+
+import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -18,6 +19,7 @@ import TickIcon from '../../images/icons/tick';
 import SignIcon from '../../images/icons/sign';
 import ChangesRequestedIcon from '../../images/icons/changes_requested';
 import {getLabelFontColor} from '../../utils/styles';
+import {ReviewState} from '../../constants';
 
 const notificationReasons = {
     assign:	'You were assigned to the issue',
@@ -32,62 +34,6 @@ const notificationReasons = {
     subscribed:	'You are watching the repository.',
     team_mention:	'You were on a team that was mentioned.',
 };
-
-interface Label {
-    id: number;
-    name: string;
-    color: CSS.Properties;
-}
-
-interface User {
-    login: string;
-}
-
-interface Review {
-    state: string;
-    user: User;
-}
-
-interface Item {
-    url: string;
-    number: number;
-
-    id: number;
-    title: string;
-    created_at: string;
-    updated_at: string;
-    html_url: string;
-    repository_url?: string;
-    user: User;
-    owner?: User;
-    milestone?: {
-        title: string;
-    }
-    repository?: {
-        full_name: string;
-    }
-    labels?: Label[];
-
-    // PRs
-    status?: string;
-    mergeable?: boolean;
-    requestedReviewers?: string[];
-    reviews?: Review[];
-
-    // Assignments
-    pullRequest?: unknown;
-
-    // Notifications
-    subject?: {
-        title: string;
-    }
-    reason?: keyof typeof notificationReasons;
-}
-
-interface GithubItemsProps {
-    items: Item[];
-    theme: Theme;
-}
 
 function GithubItems(props: GithubItemsProps) {
     const style = getStyle(props.theme);
@@ -281,6 +227,37 @@ function GithubItems(props: GithubItemsProps) {
             labels = getGithubLabels(item.labels);
         }
 
+        let pullRequestDetails: JSX.Element | null = null;
+        if (item.additions || item.deletions) {
+            const additions = item?.additions;
+            const deletions = item?.deletions;
+            const changedFiles = item?.changed_files;
+
+            pullRequestDetails = (
+                <div
+                    className='light'
+                    style={style.pullRequestDetails}
+                >
+                    <FileDiffIcon size={16}/>
+                    {changedFiles && (
+                        <span>
+                            {' '}{changedFiles} {changedFiles === 1 ? 'File' : 'Files'} {' Changed'}
+                        </span>
+                    )}
+                    {additions != null && (
+                        <span style={style.additionNumber}>
+                            {'  +'}{additions}
+                        </span>
+                    )}
+                    {deletions != null && (
+                        <span style={style.deletionNumber}>
+                            {'  -'}{deletions}
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
         return (
             <div
                 key={item.id}
@@ -299,17 +276,33 @@ function GithubItems(props: GithubItemsProps) {
                     className='light'
                     style={style.subtitle}
                 >
-                    {item.created_at && ('Opened ' + formatTimeSince(item.created_at) + ' ago')}
-                    {userName && ' by ' + userName}
+                    {item.created_at && (
+                        <>
+                            <CalendarIcon size={16}/> {'Opened '} {formatTimeSince(item.created_at)} {' ago'}
+                        </>
+                    )}
+                    {userName && (
+                        <>
+                            {' by '}
+                            <a
+                                href={`https://github.com/${userName}`}
+                                target='_blank'
+                                rel='noopener noreferrer'
+                            >
+                                {userName}
+                            </a>
+                        </>
+                    )}
                     {(item.created_at || userName) && '.'}
                     {milestone}
                     {item.reason ? (<>
                         {(item.created_at || userName || milestone) && (<br/>)}
                         {item.updated_at && (formatTimeSince(item.updated_at) + ' ago')}{<br/>}
-                        {notificationReasons[item.reason]}
+                        {notificationReasons[item.reason as keyof typeof notificationReasons]}
                     </>) : null }
                 </div>
                 {reviews}
+                {pullRequestDetails}
             </div>
         );
     }) : <div style={style.container}>{'You have no active items'}</div>;
@@ -365,10 +358,24 @@ const getStyle = makeStyleFromTheme((theme) => {
             alignItems: 'center',
             color: theme.centerChannelColor,
         },
+        additionNumber: {
+            color: 'green',
+        },
+        deletionNumber: {
+            color: 'red',
+        },
+        pullRequestDetails: {
+            margin: '5px 0 0 0',
+            fontSize: '13px',
+            fontWeight: 'normal',
+        },
+        prOpenSince: {
+            margin: '5px 0 0 0',
+        },
     };
 });
 
-function getGithubLabels(labels: Label[]) {
+function getGithubLabels(labels: GithubLabel[]) {
     return labels.map((label) => {
         return (
             <Badge
@@ -381,7 +388,7 @@ function getGithubLabels(labels: Label[]) {
     });
 }
 
-function getReviewText(item: Item, style: any, secondLine: boolean) {
+function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
     if (!item.reviews || !item.requestedReviewers) {
         return null;
     }
@@ -405,7 +412,7 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
             return false;
         }
 
-        if (v.state === 'COMMENTED' || v.state === 'DISMISSED') {
+        if (v.state === ReviewState.Commented || v.state === ReviewState.Dismissed) {
             return false;
         }
 
@@ -418,14 +425,14 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
     });
 
     const approved = lastReviews.reduce((accum: number, cur: Review) => {
-        if (cur.state === 'APPROVED') {
+        if (cur.state === ReviewState.Approved) {
             return accum + 1;
         }
         return accum;
     }, 0);
 
     const changesRequested = lastReviews.reduce((accum: number, cur: Review) => {
-        if (cur.state === 'CHANGES_REQUESTED') {
+        if (cur.state === ReviewState.ChangesRequested) {
             return accum + 1;
         }
         return accum;
@@ -439,7 +446,14 @@ function getReviewText(item: Item, style: any, secondLine: boolean) {
         } else {
             reviewName = 'reviews';
         }
-        reviews = (<span className='light'>{approved + ' out of ' + totalReviewers + ' ' + reviewName + ' complete.'}</span>);
+        reviews = (
+            <div
+                className='light'
+                style={style.prOpenSince}
+            >
+                <PersonIcon size={16}/> {(totalReviewers - approved) + ' pending reviewer'}
+            </div>
+        );
     }
 
     if (changesRequested > 0) {

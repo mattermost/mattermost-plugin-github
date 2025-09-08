@@ -1,8 +1,10 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 package plugin
 
 import (
 	"context"
-	"encoding/hex"
 	"path"
 	"strings"
 	"time"
@@ -94,11 +96,6 @@ func (p *Plugin) makeReplacements(msg string, replacements []replacement, ghClie
 	// iterating the slice in reverse to preserve the replacement indices.
 	for i := len(replacements) - 1; i >= 0; i-- {
 		r := replacements[i]
-		// quick bailout if the commit hash is not proper.
-		if _, err := hex.DecodeString(r.permalinkInfo.commit); err != nil {
-			p.client.Log.Warn("Bad git commit hash in permalink", "error", err.Error(), "hash", r.permalinkInfo.commit)
-			continue
-		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), permalinkReqTimeout)
 		defer cancel()

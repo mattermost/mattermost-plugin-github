@@ -39,25 +39,28 @@
                 "key": "GitHubOAuthClientSecret",
                 "display_name": "GitHub OAuth Client Secret:",
                 "type": "text",
-                "help_text": "The client secret for the OAuth app registered with GitHub."
+                "help_text": "The client secret for the OAuth app registered with GitHub.",
+                "secret": true
             },
             {
                 "key": "WebhookSecret",
                 "display_name": "Webhook Secret:",
                 "type": "generated",
-                "help_text": "The webhook secret set in GitHub."
+                "help_text": "The webhook secret set in GitHub.",
+                "secret": true
             },
             {
                 "key": "EncryptionKey",
                 "display_name": "At Rest Encryption Key:",
                 "type": "generated",
-                "help_text": "The AES encryption key used to encrypt stored access tokens."
+                "help_text": "The AES encryption key used to encrypt stored access tokens.",
+                "secret": true
             },
             {
                 "key": "GithubOrg",
-                "display_name": "GitHub Organization:",
+                "display_name": "GitHub Organizations:",
                 "type": "text",
-                "help_text": "(Optional) Set to lock the plugin to a single GitHub organization."
+                "help_text": "(Optional) Set to lock the plugin to one or more GitHub organizations. Provide multiple orgs using a comma-separated list."
             },
             {
                 "key": "EnterpriseBaseURL",
@@ -123,6 +126,13 @@
                 "display_name": "Show Author in commit notification:",
                 "type": "bool",
                 "help_text": "In 'Pushes' event notification, show commit author instead of commit committer.",
+                "default": false
+            },
+            {
+                "key": "GetNotificationForDraftPRs",
+                "display_name": "Get notifications for draft pull requests:",
+                "type": "bool",
+                "help_text": "When set to 'true' you will get a notification with less details when a draft pull request is created and a notification with complete details when they are marked as ready for review. When set to 'false' no notifications are delivered for draft pull requests.",
                 "default": false
             }
         ],
