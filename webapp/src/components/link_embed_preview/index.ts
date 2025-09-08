@@ -3,12 +3,12 @@
 
 import {connect} from 'react-redux';
 
-import manifest from 'manifest';
-
 import {LinkEmbedPreview} from './link_embed_preview';
+import { GlobalState } from '@/types/store';
+import { getPluginState } from '@/selectors';
 
-const mapStateToProps = (state) => {
-    return {connected: state[`plugins-${manifest.id}`].connected};
+const mapStateToProps = (state: GlobalState) => {
+    return {connected: getPluginState(state).connected};
 };
 
 export default connect(mapStateToProps, null)(LinkEmbedPreview);

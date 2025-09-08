@@ -1,37 +1,87 @@
-import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon, SkipIcon} from '@primer/octicons-react';
+import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon, SkipIcon, IconProps} from '@primer/octicons-react';
 import PropTypes from 'prop-types';
 import React, {useEffect, useState} from 'react';
 import ReactMarkdown from 'react-markdown';
 import './embed_preview.scss';
 
-import Client from 'client';
 import {getLabelFontColor} from '../../utils/styles';
 import {isUrlCanPreview} from '../../utils/github_utils';
+import Client from '@/client';
 
 const maxTicketDescriptionLength = 160;
 
-export const LinkEmbedPreview = ({embed: {url}, connected}) => {
-    const [data, setData] = useState(null);
+interface Label {
+    name: string;
+    color: string;
+    description?: string;
+}
+
+interface RepoRef {
+    ref: string;
+}
+
+interface GitHubData {
+    owner: string;
+    repo: string;
+    type: 'issues' | 'pull';
+    state: string;
+    merged?: boolean;
+    state_reason?: string;
+    created_at: string;
+    title: string;
+    body?: string;
+    number: number;
+    labels?: Label[];
+    base?: RepoRef;
+    head?: RepoRef;
+}
+
+type LinkEmbedProps = {
+    embed: {
+        url: string;
+    };
+    connected: boolean;
+};
+
+export const LinkEmbedPreview = ({embed: {url}, connected}: LinkEmbedProps) => {
+    const [data, setData] = useState<GitHubData | null>(null);
     useEffect(() => {
         const initData = async () => {
             if (isUrlCanPreview(url)) {
                 const [owner, repo, type, number] = url.split('github.com/')[1].split('/');
 
-                let res;
-                switch (type) {
-                case 'issues':
-                    res = await Client.getIssue(owner, repo, number);
-                    break;
-                case 'pull':
-                    res = await Client.getPullRequest(owner, repo, number);
-                    break;
+                try {
+                    let issueOrPR: any;
+
+                    if (type === 'issues') {
+                        issueOrPR = await Client.getIssue(owner, repo, Number(number));
+                    } else if (type === 'pull') {
+                        issueOrPR = await Client.getPullRequest(owner, repo, Number(number));
+                    } else {
+                        return;
+                    }
+
+                    if (issueOrPR && !('error' in issueOrPR)) {
+                        const githubData: GitHubData = {
+                            owner,
+                            repo,
+                            type: type as 'issues' | 'pull',
+                            state: issueOrPR.state || '',
+                            created_at: issueOrPR.created_at || '',
+                            title: issueOrPR.title || '',
+                            number: issueOrPR.number || 0,
+                            merged: type === 'pull' ? issueOrPR.merged : undefined,
+                            state_reason: issueOrPR.state_reason,
+                            body: issueOrPR.body,
+                            labels: Array.isArray(issueOrPR.labels) ? issueOrPR.labels : [],
+                            base: type === 'pull' && issueOrPR.base ? issueOrPR.base : undefined,
+                            head: type === 'pull' && issueOrPR.head ? issueOrPR.head : undefined,
+                        };
+                        setData(githubData);
+                    }
+                } catch (error) {
+                    console.error('Error fetching GitHub data:', error);
                 }
-                if (res) {
-                    res.owner = owner;
-                    res.repo = repo;
-                    res.type = type;
-                }
-                setData(res);
             }
         };
 
@@ -43,9 +93,11 @@ export const LinkEmbedPreview = ({embed: {url}, connected}) => {
     }, [connected, data, url]);
 
     const getIconElement = () => {
+        if (!data) return null;
+        
         const iconProps = {
-            size: 'small',
-            verticalAlign: 'text-bottom',
+            size: 16, // Use a number instead of 'small'
+            verticalAlign: 'text-bottom' as const,
         };
 
         let icon;
@@ -88,8 +140,8 @@ export const LinkEmbedPreview = ({embed: {url}, connected}) => {
     if (!data) {
         return null;
     }
-    let date = new Date(data.created_at);
-    date = date.toDateString();
+    const dateObj = new Date(data.created_at);
+    const dateStr = dateObj.toDateString();
 
     let description = '';
     if (data.body) {
@@ -106,7 +158,7 @@ export const LinkEmbedPreview = ({embed: {url}, connected}) => {
                     {data.repo}
                 </span>
                 {' on '}
-                <span>{date}</span>
+                <span>{dateStr}</span>
             </div>
 
             <div className='body d-flex'>
@@ -130,7 +182,7 @@ export const LinkEmbedPreview = ({embed: {url}, connected}) => {
 
                     <div className='sub-info mt-1'>
                         {/* base <- head */}
-                        {data.type === 'pull' && (
+                        {data.type === 'pull' && data.base && data.head && (
                             <div className='sub-info-block'>
                                 <h6 className='mt-0 mb-1'>{'Base ← Head'}</h6>
                                 <div className='base-head'>
