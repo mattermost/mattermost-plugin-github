@@ -854,7 +854,7 @@ func (fm *FlowManager) stepAnnouncementQuestion() flow.Step {
 						Name:        "message",
 						Type:        "textarea",
 						Default:     defaultMessage,
-						HelpText:    "You can edit this message before sending it.",
+						HelpText:    "You can edit this message before sending it. Max Characters: 3000",
 					},
 				},
 			},

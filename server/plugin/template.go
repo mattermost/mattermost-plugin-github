@@ -428,6 +428,7 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 		"{{end}}{{end}}" +
 		"* `/github disconnect` - Disconnect your Mattermost account from your GitHub account\n" +
 		"* `/github help` - Display Slash Command help text\n" +
+		"* `/github about` - Display build details of the plugin\n" +
 		"* `/github todo` - Get a list of unread messages and pull requests awaiting your review\n" +
 		"* `/github subscriptions list` - Will list the current channel subscriptions\n" +
 		"* `/github subscriptions add owner[/repo] [flags]` - Subscribe the current channel to receive notifications about opened pull requests and issues for an organization or repository\n" +
@@ -458,6 +459,7 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 		"* `/github settings [setting] [value]` - Update your user settings\n" +
 		"  * `setting` can be `notifications` or `reminders`\n" +
 		"  * `value` can be `on` or `off`\n" +
+		"* `/github setup` - Setup your Github plugin\n" +
 		"* `/github mute` - Managed muted GitHub users. You'll not receive notifications for comments in your PRs and issues from those users.\n" +
 		"  * `/github mute list` - list your muted GitHub users\n" +
 		"  * `/github mute add [username]` - add a GitHub user to your muted list\n" +

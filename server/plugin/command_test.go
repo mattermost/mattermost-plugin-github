@@ -846,7 +846,7 @@ func TestArrayDifference(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result := arrayDifference(tc.arr1, tc.arr2)
+			result, _ := arrayDifference(tc.arr1, tc.arr2)
 			assert.ElementsMatch(t, tc.expected, result)
 		})
 	}
