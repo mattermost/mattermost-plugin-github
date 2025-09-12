@@ -1084,6 +1084,9 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 		about := command.BuildInfoAutocomplete("about")
 		github.AddCommand(about)
 
+		help := model.NewAutocompleteData("help", "", "Display Slash Command help text")
+		github.AddCommand(help)
+
 		return github
 	}
 

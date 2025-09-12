@@ -62,8 +62,11 @@ function GithubItems(props: GithubItemsProps) {
 
             let icon;
             let title;
-            if (item.pullRequest) {
-                // item is a pull request
+            const url = new URL(item.html_url);
+            const segments = url.pathname.split('/').filter(Boolean);
+            const typeSegment = segments[2];
+
+            if (typeSegment === 'pull') {
                 icon = <GitPullRequestIcon {...iconProps}/>;
                 title = 'Pull Request';
             } else {
