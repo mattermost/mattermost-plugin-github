@@ -57,7 +57,6 @@ func (c *Client) fetchLHSData(
 	org string,
 	username string,
 ) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
-
 	baseOpenPR := fmt.Sprintf("author:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
 	baseReviewPR := fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
 	baseAssignee := fmt.Sprintf("assignee:%s is:%s archived:false", username, githubv4.PullRequestStateOpen)

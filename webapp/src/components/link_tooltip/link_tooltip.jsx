@@ -139,7 +139,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                         target='_blank'
                                         rel='noopener noreferrer'
                                     >
-                                            {data.user.login}
+                                        {data.user.login}
                                     </a>
                                 </p>
                             )}
