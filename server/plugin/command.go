@@ -842,8 +842,8 @@ func (p *Plugin) handleSetDefaultRepo(args *model.CommandArgs, parameters []stri
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 
-	if config.GitHubOrg != "" && strings.ToLower(config.GitHubOrg) != owner {
-		return fmt.Sprintf("Repository is not part of the locked Github organization. Locked Github organization: %s", config.GitHubOrg)
+	if config.GitHubOrg != "" && !p.isRepoInLockedOrgs(config.GitHubOrg, owner) {
+		return fmt.Sprintf("Repository is not part of the locked Github organization. Locked Github organizations: %s", config.GitHubOrg)
 	}
 
 	ctx := context.Background()
@@ -908,6 +908,20 @@ func (p *Plugin) handleUnSetDefaultRepo(args *model.CommandArgs, userInfo *GitHu
 	}
 
 	return "The default repository has been unset successfully"
+}
+
+func (p *Plugin) isRepoInLockedOrgs(configuredOrgs, owner string) bool {
+	if configuredOrgs == "" {
+		return true
+	}
+
+	orgs := strings.Split(configuredOrgs, ",")
+	for _, org := range orgs {
+		if strings.ToLower(strings.TrimSpace(org)) == strings.ToLower(owner) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {

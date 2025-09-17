@@ -1441,44 +1441,54 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	opt := github.ListOptions{PerPage: 50}
 
-	org := r.URL.Query().Get("organization")
+	orgString := r.URL.Query().Get("organization")
 
-	if org == "" {
+	if orgString == "" {
 		c.Log.Warnf("Organization query param is empty")
 		p.writeAPIError(w, &APIErrorResponse{Message: "Organization query is empty, must include organization name ", StatusCode: http.StatusBadRequest})
 		return
 	}
 
+	orgList := strings.Split(orgString, ",")
 	var allRepos []*github.Repository
-	var err error
-	var statusCode int
 
-	// If an organization is the username of an authenticated user then return repos where the authenticated user is the owner
-	if org == c.GHInfo.GitHubUsername {
-		allRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, "", githubClient, opt)
-		if err != nil {
-			c.Log.WithError(err).Errorf("Failed to list repositories")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-			return
+	for _, org := range orgList {
+		org = strings.TrimSpace(org)
+		if org == "" {
+			continue
 		}
-	} else {
-		allRepos, statusCode, err = p.getRepositoryListByOrg(c.Ctx, c.GHInfo, org, githubClient, opt)
-		if err != nil {
-			if statusCode == http.StatusNotFound {
-				allRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, org, githubClient, opt)
-				if err != nil {
-					c.Log.WithError(err).Errorf("Failed to list repositories")
-					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-					return
+
+		var repos []*github.Repository
+		var err error
+		var statusCode int
+
+		// If an organization is the username of an authenticated user then return repos where the authenticated user is the owner
+		if org == c.GHInfo.GitHubUsername {
+			repos, err = p.getRepositoryList(c.Ctx, c.GHInfo, "", githubClient, opt)
+			if err != nil {
+				c.Log.WithError(err).Errorf("Failed to list repositories for user %s", org)
+				continue
+			}
+		} else {
+			repos, statusCode, err = p.getRepositoryListByOrg(c.Ctx, c.GHInfo, org, githubClient, opt)
+			if err != nil {
+				if statusCode == http.StatusNotFound {
+					repos, err = p.getRepositoryList(c.Ctx, c.GHInfo, org, githubClient, opt)
+					if err != nil {
+						c.Log.WithError(err).Errorf("Failed to list repositories for org/user %s", org)
+						continue
+					}
+				} else {
+					c.Log.WithError(err).Warnf("Failed to list repositories for org %s", org)
+					continue
 				}
-			} else {
-				c.Log.WithError(err).Warnf("Failed to list repositories")
-				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: statusCode})
-				return
 			}
 		}
+
+		allRepos = append(allRepos, repos...)
 	}
-	// Only send repositories which are part of the requested organization
+
+	// Only send repositories which are part of the requested organization(s)
 	type RepositoryResponse struct {
 		Name        string          `json:"name,omitempty"`
 		FullName    string          `json:"full_name,omitempty"`
