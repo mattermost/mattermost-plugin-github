@@ -57,6 +57,7 @@ export const getSidebarData = createSelector(
         const {username, sidebarContent, reviewDetails, yourPrDetails, organizations, rhsState} = pluginState;
         return {
             username,
+            mentions: sidebarContent.mentions || emptyArray,
             reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
             yourPrs: mapPrsToDetails(sidebarContent.prs || emptyArray, yourPrDetails),
             yourAssignments: sidebarContent.assignments || emptyArray,
