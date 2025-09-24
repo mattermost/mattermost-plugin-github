@@ -35,6 +35,8 @@ const (
 	featureWorkflowSuccess    = "workflow_success"
 	featureDiscussions        = "discussions"
 	featureDiscussionComments = "discussion_comments"
+
+	NotFound = "Not Found"
 )
 
 const (
@@ -192,13 +194,17 @@ func (p *Plugin) isValidGitHubUsername(username string, userInfo *GitHubUserInfo
 
 	if cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
 		ghUser, _, err := githubClient.Users.Get(context.Background(), username)
-		if err != nil || ghUser == nil {
+		if err != nil {
 			return err
+		}
+
+		if ghUser == nil {
+			return errors.New(NotFound)
 		}
 
 		return nil
 	}); cErr != nil {
-		if strings.Contains(cErr.Error(), "Not Found") {
+		if strings.Contains(cErr.Error(), NotFound) {
 			return false, nil
 		}
 
