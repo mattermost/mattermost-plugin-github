@@ -35,13 +35,13 @@ const (
 	featureWorkflowSuccess    = "workflow_success"
 	featureDiscussions        = "discussions"
 	featureDiscussionComments = "discussion_comments"
-
-	NotFound = "Not Found"
 )
 
 const (
 	PerPageValue = 50
 )
+
+var ErrNotFound = errors.New("github user not found")
 
 const DefaultRepoKey string = "%s_%s-default-repo"
 
@@ -199,12 +199,12 @@ func (p *Plugin) isValidGitHubUsername(username string, userInfo *GitHubUserInfo
 		}
 
 		if ghUser == nil {
-			return errors.New(NotFound)
+			return fmt.Errorf("%w", ErrNotFound)
 		}
 
 		return nil
 	}); cErr != nil {
-		if strings.Contains(cErr.Error(), NotFound) {
+		if errors.Is(cErr, ErrNotFound) {
 			return false, nil
 		}
 
