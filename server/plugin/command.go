@@ -41,6 +41,8 @@ const (
 	PerPageValue = 50
 )
 
+var ErrNotFound = errors.New("github user not found")
+
 const DefaultRepoKey string = "%s_%s-default-repo"
 
 var validFeatures = map[string]bool{
@@ -187,6 +189,32 @@ func contains(s []string, e string) bool {
 	return false
 }
 
+func (p *Plugin) isValidGitHubUsername(username string, userInfo *GitHubUserInfo) (bool, error) {
+	githubClient := p.githubConnectUser(context.Background(), userInfo)
+
+	if cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
+		ghUser, _, err := githubClient.Users.Get(context.Background(), username)
+		if err != nil {
+			return err
+		}
+
+		if ghUser == nil {
+			return fmt.Errorf("%w", ErrNotFound)
+		}
+
+		return nil
+	}); cErr != nil {
+		if errors.Is(cErr, ErrNotFound) {
+			return false, nil
+		}
+
+		p.client.Log.Warn("Failed to fetch user", "error", cErr.Error())
+		return false, errors.New("Failed to fetch user")
+	}
+
+	return true, nil
+}
+
 func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *GitHubUserInfo) string {
 	mutedUsernames, err := p.getMutedUsernames(userInfo)
 	if err != nil {
@@ -198,7 +226,12 @@ func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *
 		return username + " is already muted"
 	}
 
-	if strings.Contains(username, ",") {
+	isValidUsername, err := p.isValidGitHubUsername(username, userInfo)
+	if err != nil {
+		return "Error occurred validating username"
+	}
+
+	if strings.Contains(username, ",") || !isValidUsername {
 		return "Invalid username provided"
 	}
 
@@ -226,7 +259,10 @@ func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *G
 	}
 
 	userToMute := []string{username}
-	newMutedList := arrayDifference(mutedUsernames, userToMute)
+	newMutedList, removed := arrayDifference(mutedUsernames, userToMute)
+	if !removed {
+		return username + " is not muted"
+	}
 
 	_, err = p.store.Set(userInfo.UserID+"-muted-users", []byte(strings.Join(newMutedList, ",")))
 	if err != nil {
@@ -237,7 +273,17 @@ func (p *Plugin) handleUnmute(_ *model.CommandArgs, username string, userInfo *G
 }
 
 func (p *Plugin) handleUnmuteAll(_ *model.CommandArgs, userInfo *GitHubUserInfo) string {
-	_, err := p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
+	mutedUsernames, err := p.getMutedUsernames(userInfo)
+	if err != nil {
+		p.client.Log.Error("error occurred getting muted users.", "UserID", userInfo.UserID, "Error", err)
+		return "An error occurred getting muted users. Please try again later"
+	}
+
+	if len(mutedUsernames) == 0 {
+		return "You have no muted users"
+	}
+
+	_, err = p.store.Set(userInfo.UserID+"-muted-users", []byte(""))
 	if err != nil {
 		return "Error occurred unmuting users"
 	}
@@ -273,18 +319,22 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 }
 
 // Returns the elements in a, that are not in b
-func arrayDifference(a, b []string) []string {
+func arrayDifference(a, b []string) ([]string, bool) {
 	mb := make(map[string]struct{}, len(b))
 	for _, x := range b {
 		mb[x] = struct{}{}
 	}
+
 	var diff []string
+	removed := false
 	for _, x := range a {
 		if _, found := mb[x]; !found {
 			diff = append(diff, x)
+		} else {
+			removed = true
 		}
 	}
-	return diff
+	return diff, removed
 }
 
 func (p *Plugin) handleSubscribe(c *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
@@ -802,8 +852,8 @@ func (p *Plugin) handleSetDefaultRepo(args *model.CommandArgs, parameters []stri
 	owner = strings.ToLower(owner)
 	repo = strings.ToLower(repo)
 
-	if config.GitHubOrg != "" && strings.ToLower(config.GitHubOrg) != owner {
-		return fmt.Sprintf("Repository is not part of the locked Github organization. Locked Github organization: %s", config.GitHubOrg)
+	if config.GitHubOrg != "" && !p.isOrgInLockedOrgs(config.GitHubOrg, owner) {
+		return fmt.Sprintf("Repository is not part of the locked Github organization. Locked Github organizations: %s", config.GitHubOrg)
 	}
 
 	ctx := context.Background()
@@ -868,6 +918,21 @@ func (p *Plugin) handleUnSetDefaultRepo(args *model.CommandArgs, userInfo *GitHu
 	}
 
 	return "The default repository has been unset successfully"
+}
+
+func (p *Plugin) isOrgInLockedOrgs(configuredOrgs, owner string) bool {
+	if configuredOrgs == "" {
+		return true
+	}
+
+	orgs := strings.Split(configuredOrgs, ",")
+	for _, org := range orgs {
+		if strings.EqualFold(strings.TrimSpace(org), strings.TrimSpace(owner)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, parameters []string) string {
@@ -942,6 +1007,14 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 	if action == "setup" {
 		message := p.handleSetup(c, args, parameters)
+		if message != "" {
+			p.postCommandResponse(args, message)
+		}
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "help" {
+		message := p.handleHelp(c, args, parameters, nil)
 		if message != "" {
 			p.postCommandResponse(args, message)
 		}
@@ -1035,6 +1108,9 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 
 		about := command.BuildInfoAutocomplete("about")
 		github.AddCommand(about)
+
+		help := model.NewAutocompleteData("help", "", "Display Slash Command help text")
+		github.AddCommand(help)
 
 		return github
 	}

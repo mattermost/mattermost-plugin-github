@@ -34,35 +34,46 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.
 	var resultAssignee []*github.Issue
 	var resultReview, resultOpenPR []*GithubPRDetails
 
-	params := map[string]interface{}{
-		queryParamOpenPRQueryArg:    githubv4.String(fmt.Sprintf("author:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
-		queryParamReviewPRQueryArg:  githubv4.String(fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
-		queryParamAssigneeQueryArg:  githubv4.String(fmt.Sprintf("assignee:%s is:%s archived:false", c.username, githubv4.PullRequestStateOpen)),
-		queryParamReviewsCursor:     (*githubv4.String)(nil),
-		queryParamAssignmentsCursor: (*githubv4.String)(nil),
-		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
-	}
-
 	var err error
 	for _, org := range orgsList {
-		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, params)
+		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, c.username)
 		if err != nil {
-			return nil, nil, nil, err
+			c.logger.Error("Error fetching LHS data for org", "org", org, "error", err.Error())
 		}
 	}
 
 	if len(orgsList) == 0 {
-		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", params)
+		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", c.username)
 	}
 
 	return resultReview, resultAssignee, resultOpenPR, nil
 }
 
-func (c *Client) fetchLHSData(ctx context.Context, resultReview []*GithubPRDetails, resultAssignee []*github.Issue, resultOpenPR []*GithubPRDetails, org string, params map[string]interface{}) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
+func (c *Client) fetchLHSData(
+	ctx context.Context,
+	resultReview []*GithubPRDetails,
+	resultAssignee []*github.Issue,
+	resultOpenPR []*GithubPRDetails,
+	org string,
+	username string,
+) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
+	baseOpenPR := fmt.Sprintf("author:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
+	baseReviewPR := fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
+	baseAssignee := fmt.Sprintf("assignee:%s is:%s archived:false", username, githubv4.PullRequestStateOpen)
+
 	if org != "" {
-		params[queryParamOpenPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamOpenPRQueryArg]))
-		params[queryParamReviewPRQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamReviewPRQueryArg]))
-		params[queryParamAssigneeQueryArg] = githubv4.String(fmt.Sprintf("org:%s %s", org, params[queryParamAssigneeQueryArg]))
+		baseOpenPR = fmt.Sprintf("org:%s %s", org, baseOpenPR)
+		baseReviewPR = fmt.Sprintf("org:%s %s", org, baseReviewPR)
+		baseAssignee = fmt.Sprintf("org:%s %s", org, baseAssignee)
+	}
+
+	params := map[string]interface{}{
+		queryParamOpenPRQueryArg:    githubv4.String(baseOpenPR),
+		queryParamReviewPRQueryArg:  githubv4.String(baseReviewPR),
+		queryParamAssigneeQueryArg:  githubv4.String(baseAssignee),
+		queryParamReviewsCursor:     (*githubv4.String)(nil),
+		queryParamAssignmentsCursor: (*githubv4.String)(nil),
+		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
 	}
 
 	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched := false, false, false
@@ -73,7 +84,7 @@ func (c *Client) fetchLHSData(ctx context.Context, resultReview []*GithubPRDetai
 		}
 
 		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Not able to excute the query")
+			return nil, nil, nil, errors.Wrap(err, "Not able to execute the query")
 		}
 
 		if !allReviewRequestsFetched {

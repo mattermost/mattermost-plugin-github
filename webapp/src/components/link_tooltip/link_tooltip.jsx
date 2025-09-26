@@ -134,7 +134,13 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                             {data?.user?.login && (
                                 <p className='opened-by'>
                                     {'Opened by '}
-                                    <a href={`https://github.com/${data.user.login}`}>{data.user.login}</a>
+                                    <a
+                                        href={`https://github.com/${data.user.login}`}
+                                        target='_blank'
+                                        rel='noopener noreferrer'
+                                    >
+                                        {data.user.login}
+                                    </a>
                                 </p>
                             )}
                             <div className='markdown-text mt-1 mb-1'>
