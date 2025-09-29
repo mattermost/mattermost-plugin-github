@@ -37,8 +37,8 @@ export default class Client {
         return this.doGet<ChannelRepositoriesData>(`${this.url}/repositories?channelId=${channelId}`);
     }
 
-    getRepositoriesByOrganization = async (organization: string): Promise<RepositoryData[] | ApiError> => {
-        return this.doGet<RepositoryData[]>(`${this.url}/repos_by_org?organization=${organization}`);
+    getRepositoriesByOrganization = async (organization: string, channelId: string): Promise<YourReposData[] | ApiError> => {
+        return this.doGet<YourReposData[]>(`${this.url}/repos_by_org?organization=${organization}&channelId=${channelId}`);
     }
 
     getPrsDetails = async (prList: {url: string, number: number}[]) => {

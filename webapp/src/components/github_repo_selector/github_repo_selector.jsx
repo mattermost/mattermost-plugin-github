@@ -6,16 +6,10 @@ import PropTypes from 'prop-types';
 
 import ReactSelectSetting from '@/components/react_select_setting';
 
-const initialState = {
-    invalid: false,
-    error: null,
-    org: '',
-};
-
 export default class GithubRepoSelector extends PureComponent {
     static propTypes = {
         yourOrgs: PropTypes.array.isRequired,
-        yourReposByOrg: PropTypes.array,
+        yourReposByOrg: PropTypes.object,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         value: PropTypes.string,
@@ -28,39 +22,75 @@ export default class GithubRepoSelector extends PureComponent {
         }).isRequired,
     };
 
+    static defaultProps = {
+        yourReposByOrg: {repos: []},
+    };
+
     constructor(props) {
         super(props);
-        this.state = initialState;
+        this.state = {org: ''};
     }
 
     componentDidMount() {
         this.props.actions.getOrgs();
     }
 
+    getReposArray = () => {
+        const {yourReposByOrg} = this.props;
+
+        if (yourReposByOrg?.repos?.length > 0) {
+            return yourReposByOrg.repos;
+        }
+
+        if (yourReposByOrg?.defaultRepo) {
+            return [yourReposByOrg.defaultRepo];
+        }
+
+        return [];
+    }
+
     componentDidUpdate(prevProps) {
-        if (prevProps.yourOrgs !== this.props.yourOrgs) {
-            if (this.props.yourOrgs.length) {
-                this.onChangeForOrg(0, this.props.yourOrgs[0].login);
+        const repos = this.getReposArray();
+        const defaultRepo = this.props.yourReposByOrg?.defaultRepo;
+        const prevDefaultRepo = prevProps.yourReposByOrg?.defaultRepo;
+
+        if ((!this.props.value || (defaultRepo && defaultRepo.full_name !== prevDefaultRepo?.full_name)) && defaultRepo) {
+            this.onChangeForRepo(defaultRepo.name, defaultRepo.full_name);
+        } else if (!defaultRepo && !this.props.value && repos.length > 0) {
+            this.onChangeForRepo(repos[0].name, repos[0].full_name);
+        }
+
+        if (prevProps.yourOrgs !== this.props.yourOrgs && this.props.yourOrgs.length > 0) {
+            const newOrg = this.props.yourOrgs[0].login;
+            if (this.state.org !== newOrg) {
+                this.setState({org: newOrg});
+                this.onChangeForOrg(newOrg);
             }
         }
     }
 
-    onChangeForOrg = (_, org) => {
+    onChangeForOrg = (org) => {
         if (this.state.org !== org) {
             this.setState({org});
-            this.props.actions.getReposByOrg(org);
+            this.props.actions.getReposByOrg(org, this.props.currentChannelId);
             this.props.onChange(null);
         }
     }
 
     onChangeForRepo = (_, name) => {
-        const repo = this.props.yourReposByOrg.find((r) => r.full_name === name);
-        this.props.onChange({name, permissions: repo.permissions});
+        const repos = this.getReposArray();
+
+        const repo = repos.find((r) => r.full_name === name);
+        if (repo) {
+            this.props.onChange({name, permissions: repo.permissions});
+        }
     }
 
     render() {
-        const orgOptions = this.props.yourOrgs.map((item) => ({value: item.login, label: item.login}));
-        const repoOptions = this.props.yourReposByOrg.map((item) => ({value: item.full_name, label: item.name}));
+        const orgOptions = this.props.yourOrgs.map((org) => ({value: org.login, label: org.login}));
+
+        const repos = this.getReposArray();
+        const repoOptions = repos.map((repo) => ({value: repo.full_name, label: repo.name}));
 
         let orgSelector = null;
         let helperTextForRepoSelector = 'Returns GitHub repositories connected to the user account';
