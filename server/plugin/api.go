@@ -1453,7 +1453,7 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 	channelIDString := r.URL.Query().Get(channelIDParam)
 	if channelIDString == "" {
 		c.Log.Warnf("Channel ID query param is empty")
-		p.writeAPIError(w, &APIErrorResponse{Message: "Channel ID query parameter is empty, must include Channel ID ", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{Message: "ChannelId query parameter is empty, must include Channel ID ", StatusCode: http.StatusBadRequest})
 		return
 	}
 
