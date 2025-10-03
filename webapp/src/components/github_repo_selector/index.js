@@ -4,6 +4,8 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
+import {getCurrentChannelId} from 'mattermost-redux/selectors/entities/channels';
+
 import manifest from '@/manifest';
 
 import {getReposByOrg, getOrgs} from '../../actions';
@@ -14,6 +16,7 @@ function mapStateToProps(state) {
     return {
         yourOrgs: state[`plugins-${manifest.id}`].yourOrgs,
         yourReposByOrg: state[`plugins-${manifest.id}`].yourReposByOrg,
+        currentChannelId: getCurrentChannelId(state),
     };
 }
 

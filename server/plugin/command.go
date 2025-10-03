@@ -6,6 +6,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"unicode"
 
@@ -195,11 +196,15 @@ func (p *Plugin) isValidGitHubUsername(username string, userInfo *GitHubUserInfo
 	if cErr := p.useGitHubClient(userInfo, func(userInfo *GitHubUserInfo, token *oauth2.Token) error {
 		ghUser, _, err := githubClient.Users.Get(context.Background(), username)
 		if err != nil {
+			if gErr, ok := err.(*github.ErrorResponse); ok && gErr.Response.StatusCode == http.StatusNotFound {
+				return ErrNotFound
+			}
+
 			return err
 		}
 
 		if ghUser == nil {
-			return fmt.Errorf("%w", ErrNotFound)
+			return ErrNotFound
 		}
 
 		return nil

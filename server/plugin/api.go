@@ -37,7 +37,8 @@ const (
 	requestTimeout       = 30 * time.Second
 	oauthCompleteTimeout = 2 * time.Minute
 
-	channelIDParam = "channelId"
+	channelIDParam    = "channelId"
+	organisationParam = "organization"
 )
 
 type OAuthState struct {
@@ -1441,11 +1442,18 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	opt := github.ListOptions{PerPage: 50}
 
-	orgString := r.URL.Query().Get("organization")
+	orgString := r.URL.Query().Get(organisationParam)
 
 	if orgString == "" {
 		c.Log.Warnf("Organization query param is empty")
-		p.writeAPIError(w, &APIErrorResponse{Message: "Organization query is empty, must include organization name ", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{Message: "Organization query parameter is empty, must include organization name ", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	channelIDString := r.URL.Query().Get(channelIDParam)
+	if channelIDString == "" {
+		c.Log.Warnf("Channel ID query param is empty")
+		p.writeAPIError(w, &APIErrorResponse{Message: "ChannelId query parameter is empty, must include Channel ID ", StatusCode: http.StatusBadRequest})
 		return
 	}
 
@@ -1489,18 +1497,41 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 	}
 
 	// Only send repositories which are part of the requested organization(s)
-	type RepositoryResponse struct {
-		Name        string          `json:"name,omitempty"`
-		FullName    string          `json:"full_name,omitempty"`
-		Permissions map[string]bool `json:"permissions,omitempty"`
-	}
 
-	resp := make([]*RepositoryResponse, len(allRepos))
+	repoResp := make([]RepoResponse, len(allRepos))
 	for i, r := range allRepos {
-		resp[i] = &RepositoryResponse{
+		repoResp[i] = RepoResponse{
 			Name:        r.GetName(),
 			FullName:    r.GetFullName(),
 			Permissions: r.GetPermissions(),
+		}
+	}
+
+	resp := RepositoryResponse{
+		Repos: repoResp,
+	}
+
+	// Add default repo if available
+	defaultRepo, dErr := p.GetDefaultRepo(c.GHInfo.UserID, channelIDString)
+	if dErr != nil {
+		c.Log.WithError(dErr).Warnf("Failed to get the default repo for the channel. UserID: %s. ChannelID: %s", c.GHInfo.UserID, channelIDString)
+	}
+
+	if defaultRepo != "" {
+		config := p.getConfiguration()
+		baseURL := config.getBaseURL()
+		owner, repo := parseOwnerAndRepo(defaultRepo, baseURL)
+		defaultRepository, err := getRepository(c.Ctx, owner, repo, githubClient)
+		if err != nil {
+			c.Log.WithError(err).Warnf("Failed to get the default repo %s/%s", owner, repo)
+		}
+
+		if defaultRepository != nil {
+			resp.DefaultRepo = RepoResponse{
+				Name:        defaultRepository.GetName(),
+				FullName:    defaultRepository.GetFullName(),
+				Permissions: defaultRepository.Permissions,
+			}
 		}
 	}
 
