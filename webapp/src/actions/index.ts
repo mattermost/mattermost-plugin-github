@@ -100,11 +100,11 @@ export function getOrgs() {
     };
 }
 
-export function getReposByOrg(organization: string) {
+export function getReposByOrg(organization: string, channelId: string) {
     return async (dispatch: DispatchFunc) => {
         let data;
         try {
-            data = await Client.getRepositoriesByOrganization(organization);
+            data = await Client.getRepositoriesByOrganization(organization, channelId);
         } catch (error) {
             return {error: data};
         }
