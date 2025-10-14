@@ -73,10 +73,10 @@ func (c *Client) fetchLHSData(
 	}
 
 	params := map[string]interface{}{
-		queryParamOpenPRQueryArg:    githubv4.String(baseOpenPR),
-		queryParamReviewPRQueryArg:  githubv4.String(baseReviewPR),
-		queryParamAssigneeQueryArg:  githubv4.String(baseAssignee),
-		queryParamMentionsQueryArg:  githubv4.String(baseMentions),
+		queryParamOpenPRQueryArg:   githubv4.String(baseOpenPR),
+		queryParamReviewPRQueryArg: githubv4.String(baseReviewPR),
+		queryParamAssigneeQueryArg: githubv4.String(baseAssignee),
+		queryParamMentionsQueryArg: githubv4.String(baseMentions),
 
 		queryParamReviewsCursor:     (*githubv4.String)(nil),
 		queryParamAssignmentsCursor: (*githubv4.String)(nil),
