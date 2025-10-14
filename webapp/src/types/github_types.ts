@@ -3,7 +3,7 @@
 
 import * as CSS from 'csstype';
 
-import {Theme} from 'mattermost-redux/types/preferences';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 
 export type GithubLabel = {
     id: number;
@@ -102,6 +102,7 @@ export type YourReposData = {
 export type ReposData = {
     name: string;
     full_name: string;
+    permissions: Record<string, boolean>;
 }
 
 export type UnreadsData = {
@@ -121,8 +122,21 @@ export type MentionsData = {
 }
 
 export type GithubUsersData = {
-    username: string;
+    username?: string;
     last_try: number;
+}
+
+export type GitHubPullRequestData = {
+    id: number;
+}
+
+export type MilestoneData = {
+    number: number;
+    title: string;
+}
+
+export type GitHubIssueCommentData = {
+    id: number;
 }
 
 export type ShowRhsPluginActionData = {
@@ -165,3 +179,14 @@ export type RepositoriesByOrg = {
     name: string;
     fullName: string;
 }
+
+export type RepositoryData = {
+    name: string;
+    full_name: string;
+    permissions: Record<string, boolean>;
+};
+
+export type ChannelRepositoriesData = {
+    channel_id: string;
+    repositories: RepositoryData[];
+};

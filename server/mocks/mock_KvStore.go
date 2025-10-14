@@ -109,3 +109,14 @@ func (m *MockKvStore) SetAtomicWithRetries(key string, valueFunc func(oldValue [
 	ret0, _ := ret[0].(error)
 	return ret0
 }
+
+// SetAtomicWithRetries indicates an expected call of SetAtomicWithRetries.
+func (mr *MockKvStoreMockRecorder) SetAtomicWithRetries(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(
+		mr.mock,
+		"SetAtomicWithRetries",
+		reflect.TypeOf((*MockKvStore)(nil).SetAtomicWithRetries),
+		arg0, arg1,
+	)
+}

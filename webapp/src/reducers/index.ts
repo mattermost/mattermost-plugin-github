@@ -136,7 +136,7 @@ function mentions(state: MentionsData[] = [], action: {type: string, data: Menti
     }
 }
 
-function githubUsers(state: Record<string, GithubUsersData> = {}, action: {type: string, data: GithubUsersData, userID: string}) {
+function githubUsers(state: Record<string, GithubUsersData | undefined> = {}, action: {type: string, data: GithubUsersData, userID: string}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_GITHUB_USER: {
         const nextState = {...state};

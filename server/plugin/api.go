@@ -37,7 +37,8 @@ const (
 	requestTimeout       = 30 * time.Second
 	oauthCompleteTimeout = 2 * time.Minute
 
-	channelIDParam = "channelId"
+	channelIDParam    = "channelId"
+	organisationParam = "organization"
 )
 
 type OAuthState struct {
@@ -1443,56 +1444,96 @@ func (p *Plugin) getReposByOrg(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	opt := github.ListOptions{PerPage: 50}
 
-	org := r.URL.Query().Get("organization")
+	orgString := r.URL.Query().Get(organisationParam)
 
-	if org == "" {
+	if orgString == "" {
 		c.Log.Warnf("Organization query param is empty")
-		p.writeAPIError(w, &APIErrorResponse{Message: "Organization query is empty, must include organization name ", StatusCode: http.StatusBadRequest})
+		p.writeAPIError(w, &APIErrorResponse{Message: "Organization query parameter is empty, must include organization name ", StatusCode: http.StatusBadRequest})
 		return
 	}
 
-	var allRepos []*github.Repository
-	var err error
-	var statusCode int
+	channelIDString := r.URL.Query().Get(channelIDParam)
+	if channelIDString == "" {
+		c.Log.Warnf("Channel ID query param is empty")
+		p.writeAPIError(w, &APIErrorResponse{Message: "ChannelId query parameter is empty, must include Channel ID ", StatusCode: http.StatusBadRequest})
+		return
+	}
 
-	// If an organization is the username of an authenticated user then return repos where the authenticated user is the owner
-	if org == c.GHInfo.GitHubUsername {
-		allRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, "", githubClient, opt)
-		if err != nil {
-			c.Log.WithError(err).Errorf("Failed to list repositories")
-			p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-			return
+	orgList := strings.Split(orgString, ",")
+	var allRepos []*github.Repository
+
+	for _, org := range orgList {
+		org = strings.TrimSpace(org)
+		if org == "" {
+			continue
 		}
-	} else {
-		allRepos, statusCode, err = p.getRepositoryListByOrg(c.Ctx, c.GHInfo, org, githubClient, opt)
-		if err != nil {
-			if statusCode == http.StatusNotFound {
-				allRepos, err = p.getRepositoryList(c.Ctx, c.GHInfo, org, githubClient, opt)
-				if err != nil {
-					c.Log.WithError(err).Errorf("Failed to list repositories")
-					p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: http.StatusInternalServerError})
-					return
+
+		var repos []*github.Repository
+		var err error
+		var statusCode int
+
+		// If an organization is the username of an authenticated user then return repos where the authenticated user is the owner
+		if org == c.GHInfo.GitHubUsername {
+			repos, err = p.getRepositoryList(c.Ctx, c.GHInfo, "", githubClient, opt)
+			if err != nil {
+				c.Log.WithError(err).Errorf("Failed to list repositories for user %s", org)
+				continue
+			}
+		} else {
+			repos, statusCode, err = p.getRepositoryListByOrg(c.Ctx, c.GHInfo, org, githubClient, opt)
+			if err != nil {
+				if statusCode == http.StatusNotFound {
+					repos, err = p.getRepositoryList(c.Ctx, c.GHInfo, org, githubClient, opt)
+					if err != nil {
+						c.Log.WithError(err).Errorf("Failed to list repositories for org/user %s", org)
+						continue
+					}
+				} else {
+					c.Log.WithError(err).Warnf("Failed to list repositories for org %s", org)
+					continue
 				}
-			} else {
-				c.Log.WithError(err).Warnf("Failed to list repositories")
-				p.writeAPIError(w, &APIErrorResponse{Message: "Failed to fetch repositories", StatusCode: statusCode})
-				return
 			}
 		}
-	}
-	// Only send repositories which are part of the requested organization
-	type RepositoryResponse struct {
-		Name        string          `json:"name,omitempty"`
-		FullName    string          `json:"full_name,omitempty"`
-		Permissions map[string]bool `json:"permissions,omitempty"`
+
+		allRepos = append(allRepos, repos...)
 	}
 
-	resp := make([]*RepositoryResponse, len(allRepos))
+	// Only send repositories which are part of the requested organization(s)
+
+	repoResp := make([]RepoResponse, len(allRepos))
 	for i, r := range allRepos {
-		resp[i] = &RepositoryResponse{
+		repoResp[i] = RepoResponse{
 			Name:        r.GetName(),
 			FullName:    r.GetFullName(),
 			Permissions: r.GetPermissions(),
+		}
+	}
+
+	resp := RepositoryResponse{
+		Repos: repoResp,
+	}
+
+	// Add default repo if available
+	defaultRepo, dErr := p.GetDefaultRepo(c.GHInfo.UserID, channelIDString)
+	if dErr != nil {
+		c.Log.WithError(dErr).Warnf("Failed to get the default repo for the channel. UserID: %s. ChannelID: %s", c.GHInfo.UserID, channelIDString)
+	}
+
+	if defaultRepo != "" {
+		config := p.getConfiguration()
+		baseURL := config.getBaseURL()
+		owner, repo := parseOwnerAndRepo(defaultRepo, baseURL)
+		defaultRepository, err := getRepository(c.Ctx, owner, repo, githubClient)
+		if err != nil {
+			c.Log.WithError(err).Warnf("Failed to get the default repo %s/%s", owner, repo)
+		}
+
+		if defaultRepository != nil {
+			resp.DefaultRepo = RepoResponse{
+				Name:        defaultRepository.GetName(),
+				FullName:    defaultRepository.GetFullName(),
+				Permissions: defaultRepository.Permissions,
+			}
 		}
 	}
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import {GlobalState as ReduxGlobalState} from 'mattermost-redux/types/store';
+import {GlobalState as ReduxGlobalState} from '@mattermost/types/store';
 
 import reducers from '../reducers';
 

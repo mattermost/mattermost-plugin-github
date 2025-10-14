@@ -3,7 +3,7 @@
 
 import React, {PureComponent} from 'react';
 
-import {Theme} from 'mattermost-redux/types/preferences';
+import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 
 import IssueAttributeSelector, {IssueAttributeSelectorSelection} from '../issue_attribute_selector';
 
