@@ -627,6 +627,12 @@ type UserSettings struct {
 	Notifications         bool   `json:"notifications"`
 }
 
+type GithubStatus struct {
+	Message string `json:"message"`
+	Emoji   string `json:"emoji"`
+	Busy    bool   `json:"busy"`
+}
+
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
 	config := p.getConfiguration()
 
@@ -1191,4 +1197,60 @@ func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUs
 func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
 	p.disconnectGitHubAccount(info.UserID)
 	p.CreateBotDMPost(info.UserID, "Your Github account was disconnected due to an invalid or revoked authorization token. Reconnect your account using the `/github connect` command.", "custom_git_revoked_token")
+}
+
+func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Status) {
+	userInfo, apiErr := p.getGitHubUserInfo(userStatus.UserId)
+	if apiErr != nil {
+		return
+	}
+
+	if userStatus.Status == "ooo" {
+		graphQLClient := p.graphQLConnect(userInfo)
+		message, emoji, busy, err := graphQLClient.GetUserStatus(context.Background(), userInfo.GitHubUsername)
+		if err != nil {
+			p.client.Log.Error("failed to get user status", "error", err)
+			return
+		}
+
+		githubStatus := &GithubStatus{
+			Message: message,
+			Emoji:   emoji,
+			Busy:    busy,
+		}
+
+		githubStatusJSON, err := json.Marshal(githubStatus)
+		if err != nil {
+			p.client.Log.Error("failed to marshal github status", "error", err)
+			return
+		}
+
+		p.store.Set(userInfo.UserID+"_github_status", githubStatusJSON)
+
+		_, err = graphQLClient.UpdateUserStatus(context.Background(), ":house_with_garden:", "Out of office", true)
+		if err != nil {
+			p.client.Log.Error("failed to update user status", "error", err)
+			return
+		}
+
+		p.CreateBotDMPost(userInfo.UserID, "Your GitHub status has been updated to Out of office.", "custom_git_ooo_ephemeral")
+	} else {
+		var oldStatus []byte
+		if err := p.store.Get(userInfo.UserID+"_github_status", &oldStatus); err == nil && len(oldStatus) > 0 {
+			var githubStatus GithubStatus
+			if err := json.Unmarshal(oldStatus, &githubStatus); err != nil {
+				p.client.Log.Error("failed to unmarshal github status", "error", err)
+				return
+			}
+
+			graphQLClient := p.graphQLConnect(userInfo)
+			_, err := graphQLClient.UpdateUserStatus(context.Background(), githubStatus.Emoji, githubStatus.Message, githubStatus.Busy)
+			if err != nil {
+				p.client.Log.Error("failed to update user status", "error", err)
+				return
+			}
+			p.store.Delete(userInfo.UserID + "_github_status")
+			p.CreateBotDMPost(userInfo.UserID, "Your GitHub status has been restored.", "custom_git_ooo_ephemeral")
+		}
+	}
 }
