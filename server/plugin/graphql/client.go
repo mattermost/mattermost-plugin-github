@@ -77,14 +77,14 @@ type changeUserStatusMutation struct {
 func (c *Client) UpdateUserStatus(ctx context.Context, emoji, message string, busy bool) (string, error) {
 	var mutation changeUserStatusMutation
 	input := githubv4.ChangeUserStatusInput{
-		Emoji:   githubv4.NewString(githubv4.String(emoji)),
-		Message: githubv4.NewString(githubv4.String(message)),
+		Emoji:               githubv4.NewString(githubv4.String(emoji)),
+		Message:             githubv4.NewString(githubv4.String(message)),
 		LimitedAvailability: githubv4.NewBoolean(githubv4.Boolean(busy)),
 	}
 
 	err := c.client.Mutate(ctx, &mutation, input, nil)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "UpdateUserStatus mutate failed")
 	}
 
 	return string(mutation.ChangeUserStatus.Status.Message), nil
@@ -108,7 +108,7 @@ func (c *Client) GetUserStatus(ctx context.Context, login string) (string, strin
 
 	err := c.client.Query(ctx, &query, variables)
 	if err != nil {
-		return "", "", false, err
+		return "", "", false, errors.Wrap(err, "GetUserStatus query failed")
 	}
 
 	return string(query.User.Status.Message), string(query.User.Status.Emoji), bool(query.User.Status.LimitedAvailability), nil

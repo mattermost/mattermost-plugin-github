@@ -717,6 +717,10 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
 	}
 
+	if err := p.store.Delete(userID + "_github_status"); err != nil {
+		p.client.Log.Warn("Failed to delete github status from KV store", "userID", userID, "error", err.Error())
+	}
+
 	user, err := p.client.User.Get(userID)
 	if err != nil {
 		p.client.Log.Warn("Failed to get user props", "userID", userID, "error", err.Error())
@@ -1200,6 +1204,12 @@ func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
 }
 
 func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Status) {
+	// Check if status sync is enabled in configuration
+	config := p.getConfiguration()
+	if !config.EnableStatusSync {
+		return
+	}
+
 	userInfo, apiErr := p.getGitHubUserInfo(userStatus.UserId)
 	if apiErr != nil {
 		return
@@ -1210,6 +1220,12 @@ func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Statu
 		message, emoji, busy, err := graphQLClient.GetUserStatus(context.Background(), userInfo.GitHubUsername)
 		if err != nil {
 			p.client.Log.Error("failed to get user status", "error", err)
+			return
+		}
+
+		// Don't overwrite if GitHub status is already set to "out of office" (busy)
+		if busy {
+			p.client.Log.Debug("GitHub status is already set to busy/OOO, skipping update")
 			return
 		}
 
@@ -1233,7 +1249,7 @@ func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Statu
 			return
 		}
 
-		p.CreateBotDMPost(userInfo.UserID, "Your GitHub status has been updated to Out of office.", "custom_git_ooo_ephemeral")
+		p.CreateBotDMPost(userInfo.UserID, "Your GitHub status has been updated to Out of office.", "custom_git_status_sync")
 	} else {
 		var oldStatus []byte
 		if err := p.store.Get(userInfo.UserID+"_github_status", &oldStatus); err == nil && len(oldStatus) > 0 {
@@ -1250,7 +1266,7 @@ func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Statu
 				return
 			}
 			p.store.Delete(userInfo.UserID + "_github_status")
-			p.CreateBotDMPost(userInfo.UserID, "Your GitHub status has been restored.", "custom_git_ooo_ephemeral")
+			p.CreateBotDMPost(userInfo.UserID, "Your GitHub status has been restored.", "custom_git_status_sync")
 		}
 	}
 }
