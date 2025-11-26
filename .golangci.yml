@@ -1,3 +1,5 @@
+version: 2
+
 run:
   timeout: 5m
   modules-download-mode: readonly
@@ -16,29 +18,92 @@ linters-settings:
       - fieldalignment
   misspell:
     locale: US
+  revive:
 
 linters:
   disable-all: true
   enable:
     - bodyclose
-    # - errcheck
-    # - goconst
+    - errcheck
     - gocritic
-    - gofmt
-    - goimports
-    # - gosec
-    - gosimple
+    - gosec
     - govet
     - ineffassign
-    # - misspell
+    - misspell
     - nakedret
     - revive
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unused
     - whitespace
+  exclusions:
+    rules:
+      - linters:
+          - revive
+        text: var-naming|error-naming|exported|increment-decrement|error-strings|if-return|unused-parameter|blank-imports|empty-block|package-comments
+      - linters:
+          - errcheck
+        text: Error return value
+      - linters:
+          - staticcheck
+        text: SA1019
+      - linters:
+          - staticcheck
+        text: ST1023
+      - linters:
+          - staticcheck
+        text: ST1012
+      - linters:
+          - staticcheck
+        text: ST1005
+      - linters:
+          - staticcheck
+        text: QF1011
+      - linters:
+          - staticcheck
+        text: QF1001
+      - linters:
+          - staticcheck
+        text: QF1003
+      - linters:
+          - staticcheck
+        text: QF1012
+      - linters:
+          - staticcheck
+        text: QT1019
+      - linters:
+          - staticcheck
+        text: QF1008
+      - linters:
+          - staticcheck
+        text: QF1004
+      - linters:
+          - staticcheck
+        text: ST1019
+      - linters:
+          - staticcheck
+        text: QF1006
+      - linters:
+          - staticcheck
+        text: QF1002
+      - linters:
+          - staticcheck
+        text: QF1007
+      - linters:
+          - gosec
+        text: G104
+      - linters:
+          - gosec
+        text: G304
+      - linters:
+          - gosec
+        text: G301
+
+formatters:
+  disable-all: true
+  enable:
+    - gofmt
+    - goimports
 
 issues:
   exclude-rules:
