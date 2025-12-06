@@ -134,6 +134,13 @@
                 "type": "bool",
                 "help_text": "When set to 'true' you will get a notification with less details when a draft pull request is created and a notification with complete details when they are marked as ready for review. When set to 'false' no notifications are delivered for draft pull requests.",
                 "default": false
+            },
+            {
+                "key": "EnableStatusSync",
+                "display_name": "Enable Status Synchronization:",
+                "type": "bool",
+                "help_text": "(Optional) When enabled, users can opt-in to automatically sync their Mattermost 'Out of Office' status to GitHub. When a user sets their status to OOO in Mattermost, their GitHub status will be updated to 'Out of office' with busy indicator. The status is restored when they return. The feature respects manually set GitHub statuses and will not overwrite them.",
+                "default": false
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
