@@ -307,7 +307,7 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 `))
 
 	template.Must(masterTemplate.New("issueLabelled").Funcs(funcMap).Parse(`
-{{- if eq .Config.style "collapsed" -}}
+{{- if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} issue {{template "issue" .Event.GetIssue}} labeled ` + "`{{.Event.GetLabel.GetName}}`" + `  by {{template "user" .Event.GetSender}}.
 {{- else -}}
 #### {{.Event.GetIssue.GetTitle}}
