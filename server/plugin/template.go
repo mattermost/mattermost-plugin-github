@@ -310,9 +310,11 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 {{- if eq .Config.Style "collapsed" -}}
 {{template "repo" .Event.GetRepo}} issue {{template "issue" .Event.GetIssue}} labeled ` + "`{{.Event.GetLabel.GetName}}`" + `  by {{template "user" .Event.GetSender}}.
 {{- else -}}
+
 #### {{.Event.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .Event}}
 #issue-labeled ` + "`{{.Event.GetLabel.GetName}}`" + ` by {{template "user" .Event.GetSender}}.
+
 {{- end -}}
 `))
 
