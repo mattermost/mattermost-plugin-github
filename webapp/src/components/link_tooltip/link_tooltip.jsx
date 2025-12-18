@@ -13,32 +13,43 @@ import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 
 const maxTicketDescriptionLength = 160;
 
-export const LinkTooltip = ({href, connected, show, theme}) => {
+export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         const initData = async () => {
-            if (href.includes('github.com/')) {
-                const [owner, repo, type, number] = href.split('github.com/')[1].split('/');
-                if (!owner | !repo | !type | !number) {
-                    return;
-                }
+            let owner;
+            let repo;
+            let type;
+            let number;
 
-                let res;
-                switch (type) {
-                case 'issues':
-                    res = await Client.getIssue(owner, repo, number);
-                    break;
-                case 'pull':
-                    res = await Client.getPullRequest(owner, repo, number);
-                    break;
+            if (enterpriseURL) {
+                const entURL = enterpriseURL.endsWith('/') ? enterpriseURL : enterpriseURL + '/';
+                if (href.startsWith(entURL)) {
+                    [owner, repo, type, number] = href.substring(entURL.length).split('/');
                 }
-                if (res) {
-                    res.owner = owner;
-                    res.repo = repo;
-                    res.type = type;
-                }
-                setData(res);
+            } else if (href.includes('github.com/')) {
+                [owner, repo, type, number] = href.split('github.com/')[1].split('/');
             }
+
+            if (!owner || !repo || !type || !number) {
+                return;
+            }
+
+            let res;
+            switch (type) {
+            case 'issues':
+                res = await Client.getIssue(owner, repo, number);
+                break;
+            case 'pull':
+                res = await Client.getPullRequest(owner, repo, number);
+                break;
+            }
+            if (res) {
+                res.owner = owner;
+                res.repo = repo;
+                res.type = type;
+            }
+            setData(res);
         };
 
         // show is not provided for Mattermost Server < 5.28
@@ -47,7 +58,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
         }
 
         initData();
-    }, [connected, data, href, show]);
+    }, [connected, data, href, show, enterpriseURL]);
 
     const getIconElement = () => {
         const iconProps = {
@@ -117,7 +128,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
 
                     <div className='body d-flex mt-2'>
                         <span className='pt-1 pb-1 pr-2'>
-                            { getIconElement() }
+                            {getIconElement()}
                         </span>
 
                         {/* info */}
@@ -135,7 +146,7 @@ export const LinkTooltip = ({href, connected, show, theme}) => {
                                 <p className='opened-by'>
                                     {'Opened by '}
                                     <a
-                                        href={`https://github.com/${data.user.login}`}
+                                        href={`${enterpriseURL && enterpriseURL !== '' ? enterpriseURL : 'https://github.com'}/${data.user.login}`}
                                         target='_blank'
                                         rel='noopener noreferrer'
                                     >
@@ -193,4 +204,5 @@ LinkTooltip.propTypes = {
     connected: PropTypes.bool.isRequired,
     theme: PropTypes.object.isRequired,
     show: PropTypes.bool,
+    enterpriseURL: PropTypes.string,
 };
