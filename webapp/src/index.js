@@ -7,7 +7,7 @@ import {isSystemMessage} from 'mattermost-redux/utils/post_utils';
 import AttachCommentToIssuePostMenuAction from '@/components/post_menu_actions/attach_comment_to_issue';
 import AttachCommentToIssueModal from '@/components/modals/attach_comment_to_issue';
 
-import {getConnected, openAttachCommentToIssueModal, openCreateIssueModal, setShowRHSAction} from '@/actions';
+import {getConnected, openAttachCommentToIssueModal, openCreateIssueModal, setShowRHSAction, getSidebarContent, updateRhsState} from '@/actions';
 
 import CreateIssueModal from './components/modals/create_issue';
 import CreateIssuePostMenuAction from './components/post_menu_action/create_issue';
@@ -70,6 +70,23 @@ class PluginClass {
 
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
+
+        registry.registerRHSPluginPopoutListener(pluginId, (teamName, channelName, listeners) => {
+            listeners.onMessageFromPopout((channel) => {
+                if (channel === 'GET_RHS_STATE') {
+                    listeners.sendToPopout('SEND_RHS_STATE', store.getState()[`plugins-${manifest.id}`].rhsState);
+                }
+            });
+        });
+        if (window.WebappUtils.popouts.isPopoutWindow()) {
+            store.dispatch(getSidebarContent());
+            window.WebappUtils.popouts.onMessageFromParent((channel, state) => {
+                if (channel === 'SEND_RHS_STATE') {
+                    store.dispatch(updateRhsState(state));
+                }
+            });
+            window.WebappUtils.popouts.sendToParent('GET_RHS_STATE');
+        }
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));
         registry.registerWebSocketEventHandler(`custom_${pluginId}_disconnect`, handleDisconnect(store));
