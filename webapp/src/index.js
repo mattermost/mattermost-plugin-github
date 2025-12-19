@@ -78,7 +78,7 @@ class PluginClass {
                 }
             });
         });
-        if (window.WebappUtils.popouts.isPopoutWindow()) {
+        if (window.WebappUtils.popouts && window.WebappUtils.popouts.isPopoutWindow()) {
             store.dispatch(getSidebarContent());
             window.WebappUtils.popouts.onMessageFromParent((channel, state) => {
                 if (channel === 'SEND_RHS_STATE') {
