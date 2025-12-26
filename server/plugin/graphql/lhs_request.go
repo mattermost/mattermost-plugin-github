@@ -81,6 +81,7 @@ func (c *Client) fetchLHSData(
 		queryParamReviewsCursor:     (*githubv4.String)(nil),
 		queryParamAssignmentsCursor: (*githubv4.String)(nil),
 		queryParamOpenPRsCursor:     (*githubv4.String)(nil),
+		queryParamMentionsCursor:    (*githubv4.String)(nil),
 	}
 
 	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched, allMentionsFetched := false, false, false, false
