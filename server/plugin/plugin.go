@@ -1112,7 +1112,9 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	info, apiErr := p.getGitHubUserInfo(context.UserID)
 	if apiErr != nil {
-		p.client.Log.Warn("Failed to get github user info", "error", apiErr.Error())
+		if apiErr.ID != apiErrorIDNotConnected {
+			p.client.Log.Debug("Failed to get github user info", "error", apiErr.Error())
+		}
 		return
 	}
 
