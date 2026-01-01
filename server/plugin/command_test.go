@@ -1454,6 +1454,43 @@ func TestHandleSettings(t *testing.T) {
 			expectedResult: "Unknown setting unknownSetting",
 		},
 		{
+			name: "Successfully set status to on",
+			parameters: []string{
+				"status", settingOn,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Successfully set status to off",
+			parameters: []string{
+				"status", settingOff,
+			},
+			setup: func() {
+				mockKvStore.EXPECT().Set(userInfo.UserID+githubTokenKey, gomock.Any()).Return(true, nil).Times(1)
+			},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Settings updated.")
+			},
+			expectedResult: "Settings updated.",
+		},
+		{
+			name: "Invalid setting value for status",
+			parameters: []string{
+				"status", "invalid",
+			},
+			setup: func() {},
+			assertions: func(result string) {
+				assert.Equal(t, result, "Invalid value. Accepted values are: \"on\" or \"off\".")
+			},
+			expectedResult: "Invalid value. Accepted values are: \"on\" or \"off\".",
+		},
+		{
 			name: "Error while storing settings",
 			parameters: []string{
 				settingReminders, settingOnChange,

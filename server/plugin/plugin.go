@@ -625,6 +625,7 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
+	StatusSync            bool   `json:"status_sync"`
 }
 
 type GithubStatus struct {
@@ -1212,6 +1213,10 @@ func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Statu
 
 	userInfo, apiErr := p.getGitHubUserInfo(userStatus.UserId)
 	if apiErr != nil {
+		return
+	}
+
+	if !userInfo.Settings.StatusSync {
 		return
 	}
 
