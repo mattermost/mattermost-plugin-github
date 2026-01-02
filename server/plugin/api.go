@@ -608,7 +608,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 	}
 
 	info, err := p.getGitHubUserInfo(c.UserID)
-	if err != nil {
+	if err != nil && err.ID != apiErrorIDNotConnected {
 		c.Log.WithError(err).Errorf("failed to get GitHub user info")
 		p.writeAPIError(w, &APIErrorResponse{Message: fmt.Sprintf("failed to get GitHub user info. %s", err.Message), StatusCode: err.StatusCode})
 		return
