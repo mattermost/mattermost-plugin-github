@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/mattermost/mattermost/server/public/model"
-	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 )
 
 // configuration captures the plugin's external configuration as exposed in the Mattermost server
@@ -220,10 +219,6 @@ func (p *Plugin) OnConfigurationChange() error {
 	err = p.client.SlashCommand.Register(command)
 	if err != nil {
 		return errors.Wrap(err, "failed to register command")
-	}
-	// Some config changes require reloading tracking config
-	if p.tracker != nil {
-		p.tracker.ReloadConfig(telemetry.NewTrackerConfig(p.client.Configuration.GetConfig()))
 	}
 
 	return nil
