@@ -24,7 +24,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
-	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/telemetry"
 
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
@@ -92,9 +91,6 @@ type Plugin struct {
 	chimeraURL string
 
 	router *mux.Router
-
-	telemetryClient telemetry.Client
-	tracker         telemetry.Tracker
 
 	BotUserID   string
 	poster      poster.Poster
@@ -271,7 +267,6 @@ func (p *Plugin) OnActivate() error {
 	}
 
 	p.initializeAPI()
-	p.initializeTelemetry()
 
 	p.webhookBroker = NewWebhookBroker(p.sendGitHubPingEvent)
 	p.oauthBroker = NewOAuthBroker(p.sendOAuthCompleteEvent)
@@ -308,9 +303,6 @@ func (p *Plugin) OnActivate() error {
 func (p *Plugin) OnDeactivate() error {
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
-	if err := p.telemetryClient.Close(); err != nil {
-		p.client.Log.Warn("Telemetry client failed to close", "error", err.Error())
-	}
 	return nil
 }
 
@@ -483,10 +475,6 @@ func (p *Plugin) OnInstall(c *plugin.Context, event model.OnInstallEvent) error 
 	}
 
 	return p.flowManager.StartSetupWizard(event.UserId, "")
-}
-
-func (p *Plugin) OnSendDailyTelemetry() {
-	p.SendDailyTelemetry()
 }
 
 func (p *Plugin) OnPluginClusterEvent(c *plugin.Context, ev model.PluginClusterEvent) {
