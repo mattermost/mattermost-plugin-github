@@ -307,9 +307,15 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 `))
 
 	template.Must(masterTemplate.New("issueLabelled").Funcs(funcMap).Parse(`
-#### {{.Event.GetIssue.GetTitle}}
+{{- if eq .Config.Style "collapsed" -}}
+{{template "repo" .Event.GetRepo}} issue {{template "issue" .Event.GetIssue}} labeled ` + "`{{.Event.GetLabel.GetName}}`" + `  by {{template "user" .Event.GetSender}}.
+{{- else -}}
+
+\n#### {{.Event.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .Event}}
-#issue-labeled ` + "`{{.Event.GetLabel.GetName}}`" + ` by {{template "user" .Event.GetSender}}.
+#issue-labeled ` + "`{{.Event.GetLabel.GetName}}`" + ` by {{template "user" .Event.GetSender}}.\n
+
+{{- end -}}
 `))
 
 	template.Must(masterTemplate.New("reopenedIssue").Funcs(funcMap).Parse(`
