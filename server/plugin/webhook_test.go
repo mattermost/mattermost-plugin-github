@@ -509,7 +509,6 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				mockAPI.On("LogWarn", "Error creating mention post", "error", "error creating post").Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
@@ -526,7 +525,6 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
 			},
 		},
 	}
@@ -609,7 +607,6 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
@@ -628,7 +625,6 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
@@ -774,7 +770,6 @@ func TestHandlePullRequestNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
@@ -806,7 +801,6 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
@@ -823,7 +817,6 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.").Times(1)
 			},
 		},
 		{
@@ -990,7 +983,6 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
-				mockAPI.On("LogWarn", "Failed to get github user info", "error", "Must connect user account to GitHub first.")
 			},
 		},
 	}
