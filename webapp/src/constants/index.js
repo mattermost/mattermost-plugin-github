@@ -10,6 +10,7 @@ export const RHSStates = {
     REVIEWS: 'reviews',
     UNREADS: 'unreads',
     ASSIGNMENTS: 'assignments',
+    MENTIONS: 'mentions',
 };
 
 export const ReviewState = {
