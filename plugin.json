@@ -7,13 +7,13 @@
     "icon_path": "assets/icon.svg",
     "min_server_version": "7.1.0",
     "server": {
-      "executables": {
-          "linux-amd64": "server/dist/plugin-linux-amd64",
-          "linux-arm64": "server/dist/plugin-linux-arm64",
-          "darwin-amd64": "server/dist/plugin-darwin-amd64",
-          "darwin-arm64": "server/dist/plugin-darwin-arm64",
-          "windows-amd64": "server/dist/plugin-windows-amd64.exe"
-      }
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "linux-arm64": "server/dist/plugin-linux-arm64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "darwin-arm64": "server/dist/plugin-darwin-arm64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
     },
     "webapp": {
         "bundle_path": "webapp/dist/main.js"
@@ -133,13 +133,6 @@
                 "display_name": "Get notifications for draft pull requests:",
                 "type": "bool",
                 "help_text": "When set to 'true' you will get a notification with less details when a draft pull request is created and a notification with complete details when they are marked as ready for review. When set to 'false' no notifications are delivered for draft pull requests.",
-                "default": false
-            },
-            {
-                "key": "EnableStatusSync",
-                "display_name": "Enable Status Synchronization:",
-                "type": "bool",
-                "help_text": "(Optional) When enabled, users can opt-in to automatically sync their Mattermost 'Out of Office' status to GitHub. When a user sets their status to OOO in Mattermost, their GitHub status will be updated to 'Out of office' with busy indicator. The status is restored when they return. The feature respects manually set GitHub statuses and will not overwrite them.",
                 "default": false
             }
         ],

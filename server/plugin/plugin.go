@@ -1206,10 +1206,6 @@ func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
 
 func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Status) {
 	// Check if status sync is enabled in configuration
-	config := p.getConfiguration()
-	if !config.EnableStatusSync {
-		return
-	}
 
 	userInfo, apiErr := p.getGitHubUserInfo(userStatus.UserId)
 	if apiErr != nil {
@@ -1220,7 +1216,7 @@ func (p *Plugin) UserStatusHasChanged(c *plugin.Context, userStatus *model.Statu
 		return
 	}
 
-	if userStatus.Status == "ooo" {
+	if userStatus.Status == model.StatusOutOfOffice {
 		graphQLClient := p.graphQLConnect(userInfo)
 		message, emoji, busy, err := graphQLClient.GetUserStatus(context.Background(), userInfo.GitHubUsername)
 		if err != nil {

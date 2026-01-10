@@ -43,7 +43,6 @@ type Configuration struct {
 	UsePreregisteredApplication    bool   `json:"usepreregisteredapplication"`
 	ShowAuthorInCommitNotification bool   `json:"showauthorincommitnotification"`
 	GetNotificationForDraftPRs     bool   `json:"getnotificationfordraftprs"`
-	EnableStatusSync               bool   `json:"enablestatussync"`
 }
 
 func (c *Configuration) ToMap() (map[string]interface{}, error) {
