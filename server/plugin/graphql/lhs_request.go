@@ -63,7 +63,7 @@ func (c *Client) fetchLHSData(
 	baseOpenPR := fmt.Sprintf("author:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
 	baseReviewPR := fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
 	baseAssignee := fmt.Sprintf("assignee:%s is:%s archived:false", username, githubv4.PullRequestStateOpen)
-	baseMentions := fmt.Sprintf("mentions:%s is:%s is:pr archived:false", c.username, githubv4.PullRequestStateOpen)
+	baseMentions := fmt.Sprintf("mentions:%s is:%s is:pr archived:false", username, githubv4.PullRequestStateOpen)
 
 	if org != "" {
 		baseOpenPR = fmt.Sprintf("org:%s %s", org, baseOpenPR)
