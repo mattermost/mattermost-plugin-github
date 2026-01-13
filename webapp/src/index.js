@@ -71,21 +71,23 @@ class PluginClass {
         const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
-        registry.registerRHSPluginPopoutListener(pluginId, (teamName, channelName, listeners) => {
-            listeners.onMessageFromPopout((channel) => {
-                if (channel === 'GET_RHS_STATE') {
-                    listeners.sendToPopout('SEND_RHS_STATE', store.getState()[`plugins-${manifest.id}`].rhsState);
-                }
+        if (registry.registerRHSPluginPopoutListener) {
+            registry.registerRHSPluginPopoutListener(pluginId, (teamName, channelName, listeners) => {
+                listeners.onMessageFromPopout((channel) => {
+                    if (channel === 'GET_RHS_STATE') {
+                        listeners.sendToPopout('SEND_RHS_STATE', store.getState()[`plugins-${manifest.id}`].rhsState);
+                    }
+                });
             });
-        });
-        if (window.WebappUtils.popouts && window.WebappUtils.popouts.isPopoutWindow()) {
-            store.dispatch(getSidebarContent());
-            window.WebappUtils.popouts.onMessageFromParent((channel, state) => {
-                if (channel === 'SEND_RHS_STATE') {
-                    store.dispatch(updateRhsState(state));
-                }
-            });
-            window.WebappUtils.popouts.sendToParent('GET_RHS_STATE');
+            if (window.WebappUtils.popouts && window.WebappUtils.popouts.isPopoutWindow()) {
+                store.dispatch(getSidebarContent());
+                window.WebappUtils.popouts.onMessageFromParent((channel, state) => {
+                    if (channel === 'SEND_RHS_STATE') {
+                        store.dispatch(updateRhsState(state));
+                    }
+                });
+                window.WebappUtils.popouts.sendToParent('GET_RHS_STATE');
+            }
         }
 
         registry.registerWebSocketEventHandler(`custom_${pluginId}_connect`, handleConnect(store));
