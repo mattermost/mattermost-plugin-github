@@ -86,6 +86,7 @@
 
 /* Labels */
 .github-tooltip .labels {
+    display: flex;
     justify-content: flex-start;
     align-items: center;
 }
