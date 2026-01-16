@@ -1,19 +1,19 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import PropTypes from 'prop-types';
 import './tooltip.css';
-import { GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon } from '@primer/octicons-react';
+import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon} from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 
 import Client from '@/client';
 
-import { getLabelFontColor, hexToRGB } from '../../utils/styles';
+import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 
 const maxTicketDescriptionLength = 160;
 
-export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => {
+export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
     const [data, setData] = useState(null);
     useEffect(() => {
         const initData = async () => {
@@ -37,12 +37,12 @@ export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => 
 
             let res;
             switch (type) {
-                case 'issues':
-                    res = await Client.getIssue(owner, repo, number);
-                    break;
-                case 'pull':
-                    res = await Client.getPullRequest(owner, repo, number);
-                    break;
+            case 'issues':
+                res = await Client.getIssue(owner, repo, number);
+                break;
+            case 'pull':
+                res = await Client.getPullRequest(owner, repo, number);
+                break;
             }
             if (res) {
                 res.owner = owner;
@@ -64,6 +64,7 @@ export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => 
         if (!data?.user?.login) {
             return null;
         }
+
         // Immediately map the html_url value when present (which should work for both Enterprise and Cloud)
         if (data.user.html_url) {
             return data.user.html_url;
@@ -88,32 +89,32 @@ export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => 
         let icon;
         let color;
         switch (data.type) {
-            case 'pull':
-                icon = <GitPullRequestIcon {...iconProps} />;
+        case 'pull':
+            icon = <GitPullRequestIcon {...iconProps}/>;
 
-                color = '#28a745';
-                if (data.state === 'closed') {
-                    if (data.merged) {
-                        color = '#6f42c1';
-                        icon = <GitMergeIcon {...iconProps} />;
-                    } else {
-                        color = '#cb2431';
-                    }
-                }
-
-                break;
-            case 'issues':
-                color = data.state === 'open' ? '#28a745' : '#cb2431';
-
-                if (data.state === 'open') {
-                    icon = <IssueOpenedIcon {...iconProps} />;
+            color = '#28a745';
+            if (data.state === 'closed') {
+                if (data.merged) {
+                    color = '#6f42c1';
+                    icon = <GitMergeIcon {...iconProps}/>;
                 } else {
-                    icon = <IssueClosedIcon {...iconProps} />;
+                    color = '#cb2431';
                 }
-                break;
+            }
+
+            break;
+        case 'issues':
+            color = data.state === 'open' ? '#28a745' : '#cb2431';
+
+            if (data.state === 'open') {
+                icon = <IssueOpenedIcon {...iconProps}/>;
+            } else {
+                icon = <IssueClosedIcon {...iconProps}/>;
+            }
+            break;
         }
         return (
-            <span style={{ color }}>
+            <span style={{color}}>
                 {icon}
             </span>
         );
@@ -135,10 +136,10 @@ export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => 
             <div className='github-tooltip'>
                 <div
                     className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'
-                    style={{ backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}` }}
+                    style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
                 >
                     <div className='header mb-1'>
-                        <span style={{ color: theme.centerChannelColor }}>
+                        <span style={{color: theme.centerChannelColor}}>
                             {data.repo}
                         </span>
                         {' on '}
@@ -156,7 +157,7 @@ export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => 
                                 href={href}
                                 target='_blank'
                                 rel='noopener noreferrer'
-                                style={{ color: theme.centerChannelColor }}
+                                style={{color: theme.centerChannelColor}}
                             >
                                 <h5 className='mr-1'>{data.title}</h5>
                                 <span>{'#' + data.number}</span>
@@ -202,7 +203,7 @@ export const LinkTooltip = ({ href, connected, show, theme, enterpriseURL }) => 
                                             key={idx}
                                             className='label mr-1'
                                             title={label.description}
-                                            style={{ backgroundColor: '#' + label.color, color: getLabelFontColor(label.color) }}
+                                            style={{backgroundColor: '#' + label.color, color: getLabelFontColor(label.color)}}
                                         >
                                             <span>{label.name}</span>
                                         </span>

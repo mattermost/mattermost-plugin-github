@@ -1,16 +1,16 @@
 import React from 'react';
-import { mount } from 'enzyme';
+import {mount} from 'enzyme';
 
 import Client from '@/client';
 
-import { LinkTooltip } from './link_tooltip';
+import {LinkTooltip} from './link_tooltip';
 
 jest.mock('@/client', () => ({
     getIssue: jest.fn(),
     getPullRequest: jest.fn(),
 }));
 
-jest.mock('react-markdown', () => () => <div />);
+jest.mock('react-markdown', () => () => <div/>);
 
 describe('LinkTooltip', () => {
     const baseProps = {
@@ -37,7 +37,7 @@ describe('LinkTooltip', () => {
     });
 
     test('should fetch issue for github.com link', () => {
-        wrapper = mount(<LinkTooltip {...baseProps} />);
+        wrapper = mount(<LinkTooltip {...baseProps}/>);
         expect(Client.getIssue).toHaveBeenCalledWith('mattermost', 'mattermost-plugin-github', '1');
     });
 
@@ -46,7 +46,7 @@ describe('LinkTooltip', () => {
             ...baseProps,
             href: 'https://github.com/mattermost/mattermost-plugin-github/pull/2',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
         expect(Client.getPullRequest).toHaveBeenCalledWith('mattermost', 'mattermost-plugin-github', '2');
     });
 
@@ -56,7 +56,7 @@ describe('LinkTooltip', () => {
             href: 'https://github.example.com/mattermost/mattermost-plugin-github/issues/3',
             enterpriseURL: 'https://github.example.com',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
         expect(Client.getIssue).toHaveBeenCalledWith('mattermost', 'mattermost-plugin-github', '3');
     });
 
@@ -66,7 +66,7 @@ describe('LinkTooltip', () => {
             href: 'https://github.example.com/mattermost/mattermost-plugin-github/pull/4',
             enterpriseURL: 'https://github.example.com',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
         expect(Client.getPullRequest).toHaveBeenCalledWith('mattermost', 'mattermost-plugin-github', '4');
     });
 
@@ -76,7 +76,7 @@ describe('LinkTooltip', () => {
             href: 'https://github.example.com/mattermost/mattermost-plugin-github/issues/5',
             enterpriseURL: 'https://github.example.com/',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
         expect(Client.getIssue).toHaveBeenCalledWith('mattermost', 'mattermost-plugin-github', '5');
     });
 
@@ -86,7 +86,7 @@ describe('LinkTooltip', () => {
             href: 'https://other-github.com/mattermost/mattermost-plugin-github/issues/6',
             enterpriseURL: 'https://github.example.com',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
         expect(Client.getIssue).not.toHaveBeenCalled();
     });
 
@@ -104,7 +104,7 @@ describe('LinkTooltip', () => {
             created_at: '2023-01-01T00:00:00Z',
         });
 
-        wrapper = mount(<LinkTooltip {...baseProps} />);
+        wrapper = mount(<LinkTooltip {...baseProps}/>);
 
         await new Promise((resolve) => setTimeout(resolve, 0));
         wrapper.update();
@@ -132,7 +132,7 @@ describe('LinkTooltip', () => {
             href: 'https://github.example.com/mattermost/mattermost-plugin-github/issues/3',
             enterpriseURL: 'https://github.example.com',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
 
         await new Promise((resolve) => setTimeout(resolve, 0));
         wrapper.update();
@@ -160,7 +160,7 @@ describe('LinkTooltip', () => {
             href: 'https://github.example.com/mattermost/mattermost-plugin-github/issues/3',
             enterpriseURL: 'https://github.example.com/',
         };
-        wrapper = mount(<LinkTooltip {...props} />);
+        wrapper = mount(<LinkTooltip {...props}/>);
 
         await new Promise((resolve) => setTimeout(resolve, 0));
         wrapper.update();
@@ -182,7 +182,7 @@ describe('LinkTooltip', () => {
             created_at: '2023-01-01T00:00:00Z',
         });
 
-        wrapper = mount(<LinkTooltip {...baseProps} />);
+        wrapper = mount(<LinkTooltip {...baseProps}/>);
 
         await new Promise((resolve) => setTimeout(resolve, 0));
         wrapper.update();
