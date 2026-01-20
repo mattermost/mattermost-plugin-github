@@ -24,7 +24,7 @@ func (p *Plugin) sendOAuthCompleteEvent(event OAuthCompleteEvent) {
 	p.sendMessageToCluster(oauthCompleteEventID, event)
 }
 
-func (p *Plugin) sendMessageToCluster(id string, v interface{}) {
+func (p *Plugin) sendMessageToCluster(id string, v any) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		p.client.Log.Warn("couldn't get JSON bytes from cluster message",

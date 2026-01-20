@@ -175,16 +175,21 @@ all: check-style test dist
 apply:
 	./build/bin/manifest apply
 
+## Ensures the plugin manifest is valid
+.PHONY: manifest-check
+manifest-check:
+	./build/bin/manifest check
+
 ## Install go tools
 install-go-tools:
 	@echo Installing go tools
-	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.0
-	$(GO) install gotest.tools/gotestsum@v1.7.0
+	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.8.0
+	$(GO) install gotest.tools/gotestsum@v1.13.0
 	$(GO) install github.com/mattermost/mattermost-govet/v2@7d8db289e508999dfcac47b97c9490a0fec12d66
 
 ## Runs eslint and golangci-lint
 .PHONY: check-style
-check-style: apply webapp/node_modules install-go-tools
+check-style: manifest-check apply webapp/node_modules install-go-tools
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -362,7 +367,7 @@ endif
 .PHONY: coverage
 coverage: apply webapp/node_modules
 ifneq ($(HAS_SERVER),)
-	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./...
+	$(GO) test $(GO_TEST_FLAGS) -coverprofile=server/coverage.txt ./server/...
 	$(GO) tool cover -html=server/coverage.txt
 endif
 

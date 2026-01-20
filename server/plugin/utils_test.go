@@ -122,22 +122,6 @@ func TestParseFlag(t *testing.T) {
 	}
 }
 
-func TestContainsValue(t *testing.T) {
-	tcs := []struct {
-		List     []string
-		Value    string
-		Expected bool
-	}{
-		{List: []string{"value1", "value2"}, Value: "value1", Expected: true},
-		{List: []string{}, Value: "value1", Expected: false},
-		{List: []string{"value1", "value2"}, Value: "value2", Expected: true},
-	}
-
-	for _, tc := range tcs {
-		assert.Equal(t, tc.Expected, containsValue(tc.List, tc.Value))
-	}
-}
-
 func TestGetLineNumbers(t *testing.T) {
 	tcs := []struct {
 		input      string

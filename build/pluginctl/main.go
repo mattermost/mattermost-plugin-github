@@ -128,11 +128,11 @@ func getUnixClient(socketPath string) (*model.Client4, bool) {
 // deploy attempts to upload and enable a plugin via the Client4 API.
 // It will fail if plugin uploads are disabled.
 func deploy(ctx context.Context, client *model.Client4, pluginID, bundlePath string) error {
-	pluginBundle, err := os.Open(bundlePath)
+	pluginBundle, err := os.Open(bundlePath) //nolint:gosec // bundlePath is validated input
 	if err != nil {
 		return fmt.Errorf("failed to open %s: %w", bundlePath, err)
 	}
-	defer pluginBundle.Close()
+	defer pluginBundle.Close() //nolint:errcheck
 
 	log.Print("Uploading plugin via API.")
 	_, _, err = client.UploadPluginForced(ctx, pluginBundle)

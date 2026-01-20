@@ -12,6 +12,7 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -59,7 +60,7 @@ type RenderConfig struct {
 // EventWithRenderConfig holds an event along with configuration options for
 // rendering.
 type EventWithRenderConfig struct {
-	Event  interface{}
+	Event  any
 	Config RenderConfig
 	Label  string
 }
@@ -98,7 +99,7 @@ func signBody(secret, body []byte) ([]byte, error) {
 
 // GetEventWithRenderConfig wraps any github Event into an EventWithRenderConfig
 // which also contains per-subscription configuration options.
-func GetEventWithRenderConfig(event interface{}, sub *Subscription) *EventWithRenderConfig {
+func GetEventWithRenderConfig(event any, sub *Subscription) *EventWithRenderConfig {
 	style := ""
 	subscriptionLabel := ""
 	if sub != nil {
@@ -550,7 +551,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 func (p *Plugin) sanitizeDescription(description string) string {
 	if strings.Contains(description, "<details>") {
-		var policy = bluemonday.StrictPolicy()
+		policy := bluemonday.StrictPolicy()
 		policy.SkipElementsContent("details")
 		description = html.UnescapeString(policy.Sanitize(description))
 	}
@@ -1194,14 +1195,8 @@ func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEve
 	mentionedUsernames := parseGitHubUsernamesFromText(event.GetComment().GetBody())
 
 	for _, assignee := range assignees {
-		usernameMentioned := false
 		template := templateName
-		for _, username := range mentionedUsernames {
-			if username == *assignee.Login {
-				usernameMentioned = true
-				break
-			}
-		}
+		usernameMentioned := slices.Contains(mentionedUsernames, *assignee.Login)
 
 		if usernameMentioned {
 			switch eventType {

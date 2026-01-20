@@ -31,7 +31,7 @@ func TestRoundTripper(t *testing.T) {
 
 		resp, err := roundTripper.RoundTrip(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer resp.Body.Close() //nolint:errcheck
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
@@ -46,7 +46,7 @@ func TestRoundTripper(t *testing.T) {
 
 		resp, err := roundTripper.RoundTrip(req)
 		if resp != nil && resp.Body != nil {
-			defer resp.Body.Close()
+			defer resp.Body.Close() //nolint:errcheck
 		}
 		require.Nil(t, resp)
 		require.Error(t, err)
