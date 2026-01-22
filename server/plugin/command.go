@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -111,13 +112,13 @@ func validateFeatures(features []string) (bool, []string) {
 // checkFeatureConflict returns false when given features
 // cannot be added together along with a list of the conflicting features.
 func checkFeatureConflict(fs []string) (bool, []string) {
-	if SliceContainsString(fs, featureIssues) && SliceContainsString(fs, featureIssueCreation) {
+	if slices.Contains(fs, featureIssues) && slices.Contains(fs, featureIssueCreation) {
 		return false, []string{featureIssues, featureIssueCreation}
 	}
-	if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsMerged) {
+	if slices.Contains(fs, featurePulls) && slices.Contains(fs, featurePullsMerged) {
 		return false, []string{featurePulls, featurePullsMerged}
 	}
-	if SliceContainsString(fs, featurePulls) && SliceContainsString(fs, featurePullsCreated) {
+	if slices.Contains(fs, featurePulls) && slices.Contains(fs, featurePullsCreated) {
 		return false, []string{featurePulls, featurePullsCreated}
 	}
 	return true, nil
@@ -181,15 +182,6 @@ func (p *Plugin) handleMuteList(_ *model.CommandArgs, userInfo *GitHubUserInfo) 
 	return "Your muted users:\n" + mutedUsers
 }
 
-func contains(s []string, e string) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
-}
-
 func (p *Plugin) isValidGitHubUsername(username string, userInfo *GitHubUserInfo) (bool, error) {
 	githubClient := p.githubConnectUser(context.Background(), userInfo)
 
@@ -227,7 +219,7 @@ func (p *Plugin) handleMuteAdd(_ *model.CommandArgs, username string, userInfo *
 		return "An error occurred getting muted users. Please try again later"
 	}
 
-	if contains(mutedUsernames, username) {
+	if slices.Contains(mutedUsernames, username) {
 		return username + " is already muted"
 	}
 
@@ -303,20 +295,20 @@ func (p *Plugin) handleMuteCommand(_ *plugin.Context, args *model.CommandArgs, p
 
 	command := parameters[0]
 
-	switch {
-	case command == "list":
+	switch command {
+	case "list":
 		return p.handleMuteList(args, userInfo)
-	case command == "add":
+	case "add":
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleMuteAdd(args, parameters[1], userInfo)
-	case command == "delete":
+	case "delete":
 		if len(parameters) != 2 {
 			return "Invalid number of parameters supplied to " + command
 		}
 		return p.handleUnmute(args, parameters[1], userInfo)
-	case command == "delete-all":
+	case "delete-all":
 		return p.handleUnmuteAll(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -361,12 +353,12 @@ func (p *Plugin) handleSubscriptions(c *plugin.Context, args *model.CommandArgs,
 	command := parameters[0]
 	parameters = parameters[1:]
 
-	switch {
-	case command == "list":
+	switch command {
+	case "list":
 		return p.handleSubscriptionsList(c, args, parameters, userInfo)
-	case command == "add":
+	case "add":
 		return p.handleSubscribesAdd(c, args, parameters, userInfo)
-	case command == "delete":
+	case "delete":
 		return p.handleUnsubscribe(c, args, parameters, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -812,8 +804,8 @@ func (p *Plugin) handleIssue(_ *plugin.Context, args *model.CommandArgs, paramet
 	command := parameters[0]
 	parameters = parameters[1:]
 
-	switch {
-	case command == "create":
+	switch command {
+	case "create":
 		p.openIssueCreateModal(args.UserId, args.ChannelId, strings.Join(parameters, " "))
 		return ""
 	default:
@@ -829,12 +821,12 @@ func (p *Plugin) handleDefaultRepo(c *plugin.Context, args *model.CommandArgs, p
 	command := parameters[0]
 	parameters = parameters[1:]
 
-	switch {
-	case command == "set":
+	switch command {
+	case "set":
 		return p.handleSetDefaultRepo(args, parameters, userInfo)
-	case command == "get":
+	case "get":
 		return p.handleGetDefaultRepo(args, userInfo)
-	case command == "unset":
+	case "unset":
 		return p.handleUnSetDefaultRepo(args, userInfo)
 	default:
 		return fmt.Sprintf("Unknown subcommand %v", command)
@@ -872,7 +864,7 @@ func (p *Plugin) handleSetDefaultRepo(args *model.CommandArgs, parameters []stri
 		return fmt.Sprintf("Unknown repository %s", fullNameFromOwnerAndRepo(owner, repo))
 	}
 
-	if _, err := p.store.Set(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID), []byte(fmt.Sprintf("%s/%s", owner, repo))); err != nil {
+	if _, err := p.store.Set(fmt.Sprintf(DefaultRepoKey, args.ChannelId, userInfo.UserID), fmt.Appendf(nil, "%s/%s", owner, repo)); err != nil {
 		return "Error occurred saving the default repo"
 	}
 
@@ -930,8 +922,7 @@ func (p *Plugin) isOrgInLockedOrgs(configuredOrgs, owner string) bool {
 		return true
 	}
 
-	orgs := strings.Split(configuredOrgs, ",")
-	for _, org := range orgs {
+	for org := range strings.SplitSeq(configuredOrgs, ",") {
 		if strings.EqualFold(strings.TrimSpace(org), strings.TrimSpace(owner)) {
 			return true
 		}
@@ -958,12 +949,12 @@ func (p *Plugin) handleSetup(_ *plugin.Context, args *model.CommandArgs, paramet
 	} else {
 		command := parameters[0]
 
-		switch {
-		case command == "oauth":
+		switch command {
+		case "oauth":
 			err = p.flowManager.StartOauthWizard(userID)
-		case command == "webhook":
+		case "webhook":
 			err = p.flowManager.StartWebhookWizard(userID)
-		case command == "announcement":
+		case "announcement":
 			err = p.flowManager.StartAnnouncementWizard(userID)
 		default:
 			return fmt.Sprintf("Unknown subcommand %v", command)
@@ -1332,13 +1323,4 @@ func parseCommand(input string) (command, action string, parameters []string) {
 	}
 
 	return command, action, parameters
-}
-
-func SliceContainsString(a []string, x string) bool {
-	for _, n := range a {
-		if x == n {
-			return true
-		}
-	}
-	return false
 }

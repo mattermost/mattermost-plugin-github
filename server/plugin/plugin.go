@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -61,18 +62,16 @@ const (
 	invalidTokenError = "401 Bad credentials" //#nosec G101 -- False positive
 )
 
-var (
-	// testOAuthServerURL is the URL for the oauthServer used for testing purposes
-	// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
-	testOAuthServerURL = ""
-)
+// testOAuthServerURL is the URL for the oauthServer used for testing purposes
+// It should be set through ldflags when compiling for E2E, and keep it blank otherwise
+var testOAuthServerURL = ""
 
 type KvStore interface {
 	Set(key string, value any, options ...pluginapi.KVSetOption) (bool, error)
 	ListKeys(page int, count int, options ...pluginapi.ListKeysOption) ([]string, error)
 	Get(key string, o any) error
 	Delete(key string) error
-	SetAtomicWithRetries(key string, valueFunc func(oldValue []byte) (newValue interface{}, err error)) error
+	SetAtomicWithRetries(key string, valueFunc func(oldValue []byte) (newValue any, err error)) error
 }
 
 type Plugin struct {
@@ -723,7 +722,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventCreateIssue,
-		map[string]interface{}{
+		map[string]any{
 			"title":      title,
 			"channel_id": channelID,
 		},
@@ -862,10 +861,11 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		return "", errors.Wrap(cErr, "error occurred while searching for assignments")
 	}
 
-	text := "##### Unread Messages\n"
+	var text strings.Builder
+	text.WriteString("##### Unread Messages\n")
 
 	notificationCount := 0
-	notificationContent := ""
+	var notificationContent strings.Builder
 	for _, n := range notifications {
 		if n.GetReason() == notificationReasonSubscribed {
 			continue
@@ -885,7 +885,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		switch notificationType {
 		case "RepositoryVulnerabilityAlert":
 			message := fmt.Sprintf("[Vulnerability Alert for %v](%v)", n.GetRepository().GetFullName(), fixGithubNotificationSubjectURL(n.GetSubject().GetURL(), ""))
-			notificationContent += fmt.Sprintf("* %v\n", message)
+			fmt.Fprintf(&notificationContent, "* %v\n", message)
 		default:
 			issueURL := n.GetSubject().GetURL()
 			issueNumIndex := strings.LastIndex(issueURL, "/")
@@ -897,56 +897,56 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 
 			notificationTitle := notificationSubject.GetTitle()
 			notificationURL := fixGithubNotificationSubjectURL(subjectURL, issueNum)
-			notificationContent += getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType, n.GetRepository())
+			notificationContent.WriteString(getToDoDisplayText(baseURL, notificationTitle, notificationURL, notificationType, n.GetRepository()))
 		}
 
 		notificationCount++
 	}
 
 	if notificationCount == 0 {
-		text += "You don't have any unread messages.\n"
+		text.WriteString("You don't have any unread messages.\n")
 	} else {
-		text += fmt.Sprintf("You have %v unread messages:\n", notificationCount)
-		text += notificationContent
+		fmt.Fprintf(&text, "You have %v unread messages:\n", notificationCount)
+		text.WriteString(notificationContent.String())
 	}
 
-	text += "##### Review Requests\n"
+	text.WriteString("##### Review Requests\n")
 
 	if issueResults.GetTotal() == 0 {
-		text += "You don't have any pull requests awaiting your review.\n"
+		text.WriteString("You don't have any pull requests awaiting your review.\n")
 	} else {
-		text += fmt.Sprintf("You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
+		fmt.Fprintf(&text, "You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil)
+			text.WriteString(getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil))
 		}
 	}
 
-	text += "##### Your Open Pull Requests\n"
+	text.WriteString("##### Your Open Pull Requests\n")
 
 	if yourPrs.GetTotal() == 0 {
-		text += "You don't have any open pull requests.\n"
+		text.WriteString("You don't have any open pull requests.\n")
 	} else {
-		text += fmt.Sprintf("You have %v open pull requests:\n", yourPrs.GetTotal())
+		fmt.Fprintf(&text, "You have %v open pull requests:\n", yourPrs.GetTotal())
 
 		for _, pr := range yourPrs.Issues {
-			text += getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil)
+			text.WriteString(getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil))
 		}
 	}
 
-	text += "##### Your Assignments\n"
+	text.WriteString("##### Your Assignments\n")
 
 	if yourAssignments.GetTotal() == 0 {
-		text += "You don't have any assignments.\n"
+		text.WriteString("You don't have any assignments.\n")
 	} else {
-		text += fmt.Sprintf("You have %v assignments:\n", yourAssignments.GetTotal())
+		fmt.Fprintf(&text, "You have %v assignments:\n", yourAssignments.GetTotal())
 
 		for _, assign := range yourAssignments.Issues {
-			text += getToDoDisplayText(baseURL, assign.GetTitle(), assign.GetHTMLURL(), "", nil)
+			text.WriteString(getToDoDisplayText(baseURL, assign.GetTitle(), assign.GetHTMLURL(), "", nil))
 		}
 	}
 
-	return text, nil
+	return text.String(), nil
 }
 
 func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {
@@ -1045,10 +1045,8 @@ func (p *Plugin) checkOrg(org string) error {
 		return nil
 	}
 
-	for _, configOrg := range orgList {
-		if configOrg == strings.ToLower(org) {
-			return nil
-		}
+	if slices.Contains(orgList, strings.ToLower(org)) {
+		return nil
 	}
 
 	return errors.Errorf("only repositories in the %v organization(s) are supported", config.GitHubOrg)
@@ -1130,8 +1128,8 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 	)
 }
 
-func (s *SidebarContent) toMap() (map[string]interface{}, error) {
-	var m map[string]interface{}
+func (s *SidebarContent) toMap() (map[string]any, error) {
+	var m map[string]any
 	bytes, err := json.Marshal(&s)
 	if err != nil {
 		return nil, err

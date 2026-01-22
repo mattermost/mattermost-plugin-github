@@ -44,8 +44,8 @@ type Configuration struct {
 	GetNotificationForDraftPRs     bool   `json:"getnotificationfordraftprs"`
 }
 
-func (c *Configuration) ToMap() (map[string]interface{}, error) {
-	var out map[string]interface{}
+func (c *Configuration) ToMap() (map[string]any, error) {
+	var out map[string]any
 	data, err := json.Marshal(c)
 	if err != nil {
 		return nil, err
@@ -117,8 +117,8 @@ func (c *Configuration) IsSASS() bool {
 	return c.EnterpriseBaseURL == "" && c.EnterpriseUploadURL == ""
 }
 
-func (c *Configuration) ClientConfiguration() map[string]interface{} {
-	return map[string]interface{}{
+func (c *Configuration) ClientConfiguration() map[string]any {
+	return map[string]any{
 		"left_sidebar_enabled": c.EnableLeftSidebar,
 	}
 }
@@ -126,7 +126,7 @@ func (c *Configuration) ClientConfiguration() map[string]interface{} {
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
 // your configuration has reference types.
 func (c *Configuration) Clone() *Configuration {
-	var clone = *c
+	clone := *c
 	return &clone
 }
 
@@ -197,7 +197,7 @@ func (p *Plugin) setConfiguration(configuration *Configuration) {
 func (p *Plugin) OnConfigurationChange() error {
 	p.ensurePluginAPIClient()
 
-	var configuration = new(Configuration)
+	configuration := new(Configuration)
 
 	// Load the public configuration fields from the Mattermost server configuration.
 	err := p.client.Configuration.LoadPluginConfiguration(configuration)

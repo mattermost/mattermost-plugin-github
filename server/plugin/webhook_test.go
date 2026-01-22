@@ -40,7 +40,7 @@ func TestPostPushEvent(t *testing.T) {
 			name:      "No subscription found",
 			pushEvent: GetMockPushEvent(),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -96,7 +96,7 @@ func TestPostCreateEvent(t *testing.T) {
 			name:        "No subscription found",
 			createEvent: GetMockCreateEvent(),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -152,7 +152,7 @@ func TestPostDeleteEvent(t *testing.T) {
 			name:        "No subscription found",
 			deleteEvent: GetMockDeleteEvent(),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -209,7 +209,7 @@ func TestPostIssueCommentEvent(t *testing.T) {
 			name:  "No subscriptions found",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -276,10 +276,10 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			userID: "user1",
 			sender: "sender1",
 			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
-				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
-				})).Return(nil).Do(func(key string, value interface{}) {
+				})).Return(nil).Do(func(key string, value any) {
 					*value.(*[]byte) = []byte("sender1,sender2")
 				}).Times(1)
 			},
@@ -292,10 +292,10 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			userID: "user1",
 			sender: "sender3",
 			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
-				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
-				})).Return(nil).Do(func(key string, value interface{}) {
+				})).Return(nil).Do(func(key string, value any) {
 					*value.(*[]byte) = []byte("sender1,sender2")
 				}).Times(1)
 			},
@@ -308,7 +308,7 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			userID: "user1",
 			sender: "sender1",
 			setup: func(mockKVStore *mocks.MockKvStore, mockAPI *plugintest.API) {
-				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(errors.New("store error")).Times(1)
@@ -345,7 +345,7 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 			name:  "No subscriptions found",
 			event: GetMockPullRequestReviewEvent("submitted", "approved", MockRepo, false, "authorUser", "reviewerUser"),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -409,7 +409,7 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 			name:  "No subscriptions found",
 			event: GetMockPullRequestReviewCommentEvent(),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -473,7 +473,7 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 			name:  "Error getting channel details",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -483,11 +483,11 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 			name:  "Error getting channel details",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
-				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -498,11 +498,11 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 			name:  "Error creating post",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
-				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -515,11 +515,11 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 			name:  "Successful mention notification",
 			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
-				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -562,7 +562,7 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			name:  "Author not mapped to user ID",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -572,7 +572,7 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			name:  "Author has no permission to repo",
 			event: GetMockIssueCommentEvent(actionCreated, "mockBody", "mockUser"),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
@@ -582,7 +582,7 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			name:  "Unhandled issue type",
 			event: GetMockIssueCommentEventWithURL(actionCreated, "mockBody", "mockUser", "https://mockurl.com/unhandledType/123"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
@@ -593,15 +593,15 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			name:  "Error creating post",
 			event: GetMockIssueCommentEventWithURL(actionCreated, "mockBody", "mockUser", "https://mockurl.com/issues/123"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
-				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
-				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -613,15 +613,15 @@ func TestHandleCommentAuthorNotification(t *testing.T) {
 			name:  "Successful notification",
 			event: GetMockIssueCommentEventWithURL(actionCreated, "mockBody", "mockUser", "https://mockurl.com/issues/123"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
-				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
-				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -661,7 +661,7 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 			name:  "Assignee is the author",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "assigneeUser", []string{"assigneeUser"}),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -671,7 +671,7 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 			name:  "Issue author is assignee",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "assigneeUser", []string{"issueAuthor"}),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("issueAuthor")).Times(1)
@@ -681,7 +681,7 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 			name:  "Assignee is the sender",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "mockUser", []string{"mockUser"}),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("mockUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("mockUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -691,11 +691,11 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 			name:  "Comment mentions assignee (self-mention)",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mention @assigneeUser", "mockUser", []string{"assigneeUser"}),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
-				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -705,11 +705,11 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 			name:  "No permission to the repo",
 			event: GetMockIssueCommentEventWithAssignees("issues", actionCreated, "mockBody", "mockUser", []string{"assigneeUser"}),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
-				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -745,7 +745,7 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			name:  "Review requested with no repo permission",
 			event: GetMockPullRequestEvent("review_requested", "mockRepo", true, "senderUser", "requestedReviewer", ""),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -760,11 +760,11 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			name:  "Pull request closed successfully",
 			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "authorUser", "senderUser", ""),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("senderUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("senderUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
-				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -776,7 +776,7 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			name:  "Pull request reopened with no repo permission",
 			event: GetMockPullRequestEvent(actionReopened, "mockRepo", true, "authorUser", "senderUser", ""),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("senderUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("senderUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -791,13 +791,13 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			name:  "Pull request assigned successfully",
 			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "senderUser", "assigneeUser", "assigneeUser"),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
 				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -807,13 +807,13 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			name:  "Review requested with valid user ID",
 			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "requestedReviewer", ""),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
-				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("requestedUserID")).Times(1)
 				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
-				mockKVStore.EXPECT().Get("requestedUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKVStore.EXPECT().Get("requestedUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -861,11 +861,11 @@ func TestHandleIssueNotification(t *testing.T) {
 			name:  "issue closed successfully",
 			event: GetMockIssuesEvent(actionClosed, MockRepo, true, "authorUser", "senderUser", ""),
 			setup: func() {
-				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -875,7 +875,7 @@ func TestHandleIssueNotification(t *testing.T) {
 			name:  "issue reopened with no repo permission",
 			event: GetMockIssuesEvent(actionReopened, MockRepo, true, "authorUser", "senderUser", ""),
 			setup: func() {
-				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -890,7 +890,7 @@ func TestHandleIssueNotification(t *testing.T) {
 			name:  "issue assigned successfully",
 			event: GetMockIssuesEvent(actionAssigned, MockRepo, false, "senderUser", "assigneeUser", "assigneeUser"),
 			setup: func() {
-				mockKvStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
@@ -900,7 +900,7 @@ func TestHandleIssueNotification(t *testing.T) {
 			name:  "issue assigned with no repo permission for assignee",
 			event: GetMockIssuesEvent(actionAssigned, MockRepo, true, "senderUser", "demoassigneeUser", "assigneeUser"),
 			setup: func() {
-				mockKvStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
@@ -949,7 +949,7 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 			name:  "review with author not mapped to user ID",
 			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "unknownAuthor", "reviewerUser"),
 			setup: func() {
-				mockKvStore.EXPECT().Get("reviewerUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("reviewerUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
@@ -959,11 +959,11 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 			name:  "private repo, no permission for author",
 			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, true, "authorUser", "reviewerUser"),
 			setup: func() {
-				mockKvStore.EXPECT().Get("reviewerUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("reviewerUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
-				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
@@ -973,13 +973,13 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 			name:  "successful review notification",
 			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "authorUser", "reviewerUser"),
 			setup: func() {
-				mockKvStore.EXPECT().Get("reviewerUser_githubusername", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("reviewerUser_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
 				mockAPI.On("LogWarn", "Couldn't get bot's DM channel", "userID", "authorUserID", "error", "error getting channel")
-				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
@@ -1011,7 +1011,7 @@ func TestPostStarEvent(t *testing.T) {
 			name:  "no subscribed channels for repository",
 			event: GetMockStarEvent(MockRepo, MockOrg, false, MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -1021,7 +1021,7 @@ func TestPostStarEvent(t *testing.T) {
 			name:  "error creating post",
 			event: GetMockStarEvent(MockRepo, MockOrg, false, MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1038,7 +1038,7 @@ func TestPostStarEvent(t *testing.T) {
 			name:  "successful star event notification",
 			event: GetMockStarEvent(MockRepo, MockOrg, false, MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1076,7 +1076,7 @@ func TestPostReleaseEvent(t *testing.T) {
 			name:  "no subscribed channels for repository",
 			event: GetMockReleaseEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -1091,7 +1091,7 @@ func TestPostReleaseEvent(t *testing.T) {
 			name:  "error creating post",
 			event: GetMockReleaseEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1108,7 +1108,7 @@ func TestPostReleaseEvent(t *testing.T) {
 			name:  "successful release event notification",
 			event: GetMockReleaseEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1146,7 +1146,7 @@ func TestPostDiscussionEvent(t *testing.T) {
 			name:  "no subscribed channels for repository",
 			event: GetMockDiscussionEvent(MockRepo, MockOrg, MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -1156,7 +1156,7 @@ func TestPostDiscussionEvent(t *testing.T) {
 			name:  "error creating discussion post",
 			event: GetMockDiscussionEvent(MockRepo, MockOrg, MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1173,7 +1173,7 @@ func TestPostDiscussionEvent(t *testing.T) {
 			name:  "successful discussion notification",
 			event: GetMockDiscussionEvent(MockRepo, MockOrg, MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1210,7 +1210,7 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			name:  "no subscribed channels for repository",
 			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).Return(nil).Times(1)
@@ -1220,7 +1220,7 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			name:  "error creating discussion comment post",
 			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1237,7 +1237,7 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 			name:  "successful discussion comment notification",
 			event: GetMockDiscussionCommentEvent(MockRepo, MockOrg, "created", MockSender),
 			setup: func() {
-				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val interface{}) bool {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
@@ -1262,10 +1262,10 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 }
 
 func mockSubscription(mockKVStore *mocks.MockKvStore) {
-	mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val interface{}) bool {
+	mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 		_, ok := val.(**Subscriptions)
 		return ok
-	})).DoAndReturn(func(key string, value interface{}) error {
+	})).DoAndReturn(func(key string, value any) error {
 		if v, ok := value.(**Subscriptions); ok {
 			*v = GetMockSubscriptions()
 		}
@@ -1273,8 +1273,8 @@ func mockSubscription(mockKVStore *mocks.MockKvStore) {
 	}).Times(1)
 }
 
-func setupMockSubscriptions(subs map[string][]*Subscription) func(string, interface{}) error {
-	return func(_ string, value interface{}) error {
+func setupMockSubscriptions(subs map[string][]*Subscription) func(string, any) error {
+	return func(_ string, value any) error {
 		if v, ok := value.(**Subscriptions); ok {
 			*v = &Subscriptions{
 				Repositories: subs,
@@ -1284,8 +1284,8 @@ func setupMockSubscriptions(subs map[string][]*Subscription) func(string, interf
 	}
 }
 
-func setByteValue(data string) func(key string, value interface{}) error {
-	return func(key string, value interface{}) error {
+func setByteValue(data string) func(key string, value any) error {
+	return func(key string, value any) error {
 		if v, ok := value.(*[]byte); ok {
 			*v = []byte(data)
 		}
@@ -1335,9 +1335,10 @@ func mockGitHubServer(user string) *httptest.Server {
 			return
 		}
 
-		if user == orgMember {
+		switch user {
+		case orgMember:
 			w.WriteHeader(http.StatusNoContent)
-		} else if user == orgCollaborator {
+		case orgCollaborator:
 			w.WriteHeader(http.StatusFound)
 		}
 	}))

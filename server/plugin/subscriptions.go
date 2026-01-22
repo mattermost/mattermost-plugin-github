@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -184,12 +185,7 @@ func (s *Subscription) RenderStyle() string {
 }
 
 func (s *Subscription) excludedRepoForSub(repo *github.Repository) bool {
-	for _, repository := range s.Flags.ExcludeRepository {
-		if repository == repo.GetFullName() {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s.Flags.ExcludeRepository, repo.GetFullName())
 }
 
 func (p *Plugin) Subscribe(ctx context.Context, githubClient *github.Client, userID, owner, repo, channelID string, features Features, flags SubscriptionFlags) error {
@@ -350,7 +346,7 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 }
 
 func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
-	return p.store.SetAtomicWithRetries(SubscriptionsKey, func(_ []byte) (interface{}, error) {
+	return p.store.SetAtomicWithRetries(SubscriptionsKey, func(_ []byte) (any, error) {
 		modifiedBytes, err := json.Marshal(s)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not store subscriptions in KV store")

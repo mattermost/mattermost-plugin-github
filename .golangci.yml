@@ -1,122 +1,65 @@
-version: 2
+version: "2"
 
 run:
   timeout: 5m
   modules-download-mode: readonly
 
-linters-settings:
-  goconst:
-    min-len: 3
-    min-occurrences: 2
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/mattermost/mattermost-plugin-github
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-  misspell:
-    locale: US
-  revive:
-
 linters:
-  disable-all: true
+  default: none
   enable:
+    - bidichk
     - bodyclose
     - errcheck
     - gocritic
     - gosec
     - govet
     - ineffassign
+    - makezero
     - misspell
+    - modernize
     - nakedret
     - revive
     - staticcheck
     - unconvert
+    - unqueryvet
     - unused
     - whitespace
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: unused-parameter
+          disabled: true
+    unqueryvet:
+      check-sql-builders: true
   exclusions:
     rules:
-      - linters:
-          - revive
-        text: var-naming|error-naming|exported|increment-decrement|error-strings|if-return|unused-parameter|blank-imports|empty-block|package-comments
-      - linters:
-          - errcheck
-        text: Error return value
-      - linters:
-          - staticcheck
-        text: SA1019
-      - linters:
-          - staticcheck
-        text: ST1023
-      - linters:
-          - staticcheck
-        text: ST1012
-      - linters:
-          - staticcheck
-        text: ST1005
-      - linters:
-          - staticcheck
-        text: QF1011
-      - linters:
-          - staticcheck
-        text: QF1001
-      - linters:
-          - staticcheck
-        text: QF1003
-      - linters:
-          - staticcheck
-        text: QF1012
-      - linters:
-          - staticcheck
-        text: QT1019
-      - linters:
-          - staticcheck
-        text: QF1008
-      - linters:
-          - staticcheck
-        text: QF1004
-      - linters:
-          - staticcheck
-        text: ST1019
-      - linters:
-          - staticcheck
-        text: QF1006
-      - linters:
-          - staticcheck
-        text: QF1002
-      - linters:
-          - staticcheck
-        text: QF1007
-      - linters:
-          - gosec
-        text: G104
-      - linters:
-          - gosec
-        text: G304
-      - linters:
-          - gosec
-        text: G301
+      - path: server/plugin/manifest.go
+        linters:
+          - unused
+      - path: server/configuration.go
+        linters:
+          - unused
+      - path: _test\.go
+        linters:
+          - bodyclose
 
 formatters:
-  disable-all: true
   enable:
     - gofmt
+    - gofumpt
     - goimports
-
-issues:
-  exclude-rules:
-    - path: server/manifest.go
-      linters:
-        - deadcode
-        - unused
-        - varcheck
-    - path: server/configuration.go
-      linters:
-        - unused
-    - path: _test\.go
-      linters:
-        - bodyclose
-        - goconst
-        - scopelint # https://github.com/kyoh86/scopelint/issues/4
+  settings:
+    gofmt:
+      simplify: true
+      rewrite-rules:
+        - pattern: interface{}
+          replacement: any
+    goimports:
+      local-prefixes:
+        - github.com/mattermost/mattermost-plugin-github

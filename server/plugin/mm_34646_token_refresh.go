@@ -13,9 +13,11 @@ import (
 	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 )
 
-const pageSize = 100
-const delayBetweenUsers = 1 * time.Second
-const delayToStart = 1 * time.Minute
+const (
+	pageSize          = 100
+	delayBetweenUsers = 1 * time.Second
+	delayToStart      = 1 * time.Minute
+)
 
 func (p *Plugin) forceResetAllMM34646() error {
 	config := p.getConfiguration()

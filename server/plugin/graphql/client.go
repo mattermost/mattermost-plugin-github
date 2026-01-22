@@ -57,7 +57,7 @@ func NewClient(logger pluginapi.LogService, getOrganizations func() []string, to
 }
 
 // executeQuery takes a query struct and sends it to Github GraphQL API via helper package.
-func (c *Client) executeQuery(ctx context.Context, qry interface{}, params map[string]interface{}) error {
+func (c *Client) executeQuery(ctx context.Context, qry any, params map[string]any) error {
 	if err := c.client.Query(ctx, qry, params); err != nil {
 		return errors.Wrap(err, "error in executing query")
 	}
