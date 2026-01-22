@@ -59,6 +59,7 @@ export type UserSettingsData = {
     sidebar_buttons: string;
     daily_reminder: boolean;
     notifications: boolean;
+    status_sync?: boolean;
 }
 
 export type ConnectedData = {
