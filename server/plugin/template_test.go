@@ -620,9 +620,7 @@ func TestIssueLabelledTemplate(t *testing.T) {
 	})
 
 	t.Run("with collapsed render style", func(t *testing.T) {
-		expected := `
-[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) labeled ` + "`label-name`" + `  by [panda](https://github.com/panda).
-`
+		expected := `[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) labeled ` + "`label-name`" + `  by [panda](https://github.com/panda).`
 
 		actual, err := renderTemplate("issueLabelled", &EventWithRenderConfig{
 			Event: &github.IssuesEvent{
