@@ -597,25 +597,49 @@ func TestReopenedIssueTemplate(t *testing.T) {
 }
 
 func TestIssueLabelledTemplate(t *testing.T) {
-	expected := `
+	t.Run("without collapsed render style", func(t *testing.T) {
+		expected := `
 #### Implement git-get-head
 ##### [mattermost-plugin-github#1](https://github.com/mattermost/mattermost-plugin-github/issues/1)
 #issue-labeled ` + "`label-name`" + ` by [panda](https://github.com/panda).
 `
 
-	actual, err := renderTemplate("issueLabelled", GetEventWithRenderConfig(
-		&github.IssuesEvent{
-			Repo:  &repo,
-			Issue: &issue,
-			Label: &github.Label{
-				Name: sToP("label-name"),
+		actual, err := renderTemplate("issueLabelled", GetEventWithRenderConfig(
+			&github.IssuesEvent{
+				Repo:  &repo,
+				Issue: &issue,
+				Label: &github.Label{
+					Name: sToP("label-name"),
+				},
+				Sender: &user,
 			},
-			Sender: &user,
-		},
-		nil,
-	))
-	require.NoError(t, err)
-	require.Equal(t, expected, actual)
+			nil,
+		))
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("with collapsed render style", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) issue [#1 Implement git-get-head](https://github.com/mattermost/mattermost-plugin-github/issues/1) labeled ` + "`label-name`" + `  by [panda](https://github.com/panda).
+`
+
+		actual, err := renderTemplate("issueLabelled", &EventWithRenderConfig{
+			Event: &github.IssuesEvent{
+				Repo:  &repo,
+				Issue: &issue,
+				Label: &github.Label{
+					Name: sToP("label-name"),
+				},
+				Sender: &user,
+			},
+			Config: RenderConfig{
+				Style: "collapsed",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestPushedCommitsTemplate(t *testing.T) {
