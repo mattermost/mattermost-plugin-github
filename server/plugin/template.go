@@ -311,9 +311,9 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 {{template "repo" .Event.GetRepo}} issue {{template "issue" .Event.GetIssue}} labeled ` + "`{{.Event.GetLabel.GetName}}`" + `  by {{template "user" .Event.GetSender}}.
 {{- else -}}
 
-\n#### {{.Event.GetIssue.GetTitle}}
+#### {{.Event.GetIssue.GetTitle}}
 ##### {{template "eventRepoIssue" .Event}}
-#issue-labeled ` + "`{{.Event.GetLabel.GetName}}`" + ` by {{template "user" .Event.GetSender}}.\n
+#issue-labeled ` + "`{{.Event.GetLabel.GetName}}`" + ` by {{template "user" .Event.GetSender}}.
 
 {{- end -}}
 `))
