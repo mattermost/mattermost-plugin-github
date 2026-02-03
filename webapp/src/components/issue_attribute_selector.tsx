@@ -2,7 +2,7 @@
 // See LICENSE.txt for license information.
 
 import React, {PureComponent} from 'react';
-import ReactSelect, {ValueType, ActionMeta} from 'react-select';
+import ReactSelect, {ActionMeta, SingleValue, MultiValue} from 'react-select';
 
 import {Theme} from 'mattermost-redux/selectors/entities/preferences';
 
@@ -96,9 +96,9 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
         }
 
         this.props.onChange(null);
-    }
+    };
 
-    onChange = (selection: ValueType<ReactSelectOption, boolean>, actionMeta: ActionMeta<ReactSelectOption>) => {
+    onChange = (selection: SingleValue<ReactSelectOption> | MultiValue<ReactSelectOption>, actionMeta: ActionMeta<ReactSelectOption>) => {
         if (this.props.isMulti) {
             this.props.onChange((selection as ReactSelectOption[]) || []);
             return;

@@ -71,17 +71,17 @@ export default class SidebarButtons extends React.PureComponent {
         this.setState({refreshing: true});
         await this.props.actions.getSidebarContent();
         this.setState({refreshing: false});
-    }
+    };
 
     openConnectWindow = (e) => {
         e.preventDefault();
         window.open('/plugins/github/oauth/connect', 'Connect Mattermost to GitHub', 'height=570,width=520');
-    }
+    };
 
     openRHS = (rhsState) => {
         this.props.actions.updateRhsState(rhsState);
         this.props.showRHSPlugin();
-    }
+    };
 
     render() {
         const style = getStyle(this.props.theme);
