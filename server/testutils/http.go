@@ -34,24 +34,24 @@ type Request struct {
 	Method string
 	URL    string
 	Header http.Header
-	Body   interface{}
+	Body   any
 }
 
 // ExpectedResponse stores expected response basic data
 type ExpectedResponse struct {
 	StatusCode   int
 	ResponseType contentType
-	Body         interface{}
+	Body         any
 }
 
 // HTTPTest encapsulates data for testing needs
 type HTTPTest struct {
 	*testing.T
-	Encoder func(interface{}) ([]byte, error)
+	Encoder func(any) ([]byte, error)
 }
 
 // EncodeJSON encodes json data in bytes
-func EncodeJSON(data interface{}) ([]byte, error) {
+func EncodeJSON(data any) ([]byte, error) {
 	if data == nil {
 		return []byte{}, nil
 	}
@@ -64,7 +64,7 @@ func EncodeJSON(data interface{}) ([]byte, error) {
 }
 
 // EncodeJSON encodes json data in bytes
-func EncodeString(data interface{}) ([]byte, error) {
+func EncodeString(data any) ([]byte, error) {
 	if data == nil {
 		return []byte{}, nil
 	}

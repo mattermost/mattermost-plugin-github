@@ -440,46 +440,6 @@ func TestHandleMuteList(t *testing.T) {
 	}
 }
 
-func TestContains(t *testing.T) {
-	tests := []struct {
-		name       string
-		slice      []string
-		element    string
-		assertions func(t *testing.T, result bool)
-	}{
-		{
-			name:    "Element is present in slice",
-			slice:   []string{"expectedElement1", "expectedElement2", "expectedElement3"},
-			element: "expectedElement2",
-			assertions: func(t *testing.T, result bool) {
-				assert.True(t, result)
-			},
-		},
-		{
-			name:    "Element is not present in slice",
-			slice:   []string{"expectedElement1", "expectedElement2", "expectedElement3"},
-			element: "expectedElement4",
-			assertions: func(t *testing.T, result bool) {
-				assert.False(t, result)
-			},
-		},
-		{
-			name:    "Empty slice",
-			slice:   []string{},
-			element: "expectedElement1",
-			assertions: func(t *testing.T, result bool) {
-				assert.False(t, result)
-			},
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := contains(tc.slice, tc.element)
-			tc.assertions(t, result)
-		})
-	}
-}
-
 func TestHandleMuteAdd(t *testing.T) {
 	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKvStore)
@@ -1194,7 +1154,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			setup: func() {
 				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
 					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
+						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
+					}}
 					return nil
 				}).Times(1)
 				mockAPI.On("GetUser", MockUserID).Return(nil, &model.AppError{Message: "error getting user"}).Times(1)
@@ -1211,7 +1172,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			setup: func() {
 				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
 					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner"}}}}
+						"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner"}},
+					}}
 					return nil
 				}).Times(1)
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
@@ -1230,7 +1192,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			setup: func() {
 				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
 					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: ""}}}}
+						"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: ""}},
+					}}
 					return nil
 				}).Times(1)
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
@@ -1247,7 +1210,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			setup: func() {
 				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
 					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
+						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
+					}}
 					return nil
 				}).Times(1)
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
@@ -1266,7 +1230,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			setup: func() {
 				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
 					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}}}}
+						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
+					}}
 					return nil
 				}).Times(1)
 				mockAPI.ExpectedCalls = nil
@@ -1513,7 +1478,7 @@ func TestHandleIssue(t *testing.T) {
 			parameters: []string{"create", "Test issue title"},
 			setup: func() {
 				mockAPI.On("PublishWebSocketEvent", wsEventCreateIssue,
-					map[string]interface{}{
+					map[string]any{
 						"title":      "Test issue title",
 						"channel_id": "testChannelID",
 					},
@@ -1523,7 +1488,7 @@ func TestHandleIssue(t *testing.T) {
 			assertions: func(result string) {
 				assert.Equal(t, "", result)
 				mockAPI.AssertCalled(t, "PublishWebSocketEvent", wsEventCreateIssue,
-					map[string]interface{}{
+					map[string]any{
 						"title":      "Test issue title",
 						"channel_id": "testChannelID",
 					},
@@ -1635,7 +1600,6 @@ func TestHandleSubscribe(t *testing.T) {
 			name:       "default case, handleSubscribesAdd called",
 			parameters: []string{"invalid_parameter_1", "invalid_parameter_2", "invalid_parameter_3"},
 			setup: func() {
-
 			},
 			assertions: func(result string) {
 				assert.Equal(t, "Please use the correct format for flags: --<name> <value>", result)
@@ -1736,10 +1700,10 @@ func TestGetCommand(t *testing.T) {
 	// Creating a mock SVG file with dummy content.
 	tempDir := t.TempDir()
 	assetsDir := filepath.Join(tempDir, "assets")
-	err := os.Mkdir(assetsDir, 0755)
+	err := os.Mkdir(assetsDir, 0o750)
 	require.NoError(t, err)
 	tempFilePath := filepath.Join(assetsDir, "icon-bg.svg")
-	err = os.WriteFile(tempFilePath, []byte("<svg>icon data</svg>"), 0600)
+	err = os.WriteFile(tempFilePath, []byte("<svg>icon data</svg>"), 0o600)
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -1846,76 +1810,6 @@ func TestToSlice(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.features.ToSlice()
 			assert.Equal(t, tc.expectedSlice, result)
-		})
-	}
-}
-
-func TestSliceContainsString(t *testing.T) {
-	tests := []struct {
-		name           string
-		slice          []string
-		searchString   string
-		expectedResult bool
-	}{
-		{
-			name:           "Empty slice",
-			slice:          []string{},
-			searchString:   "testString1",
-			expectedResult: false,
-		},
-		{
-			name:           "String exists in slice",
-			slice:          []string{"testString1", "testString2", "testString3"},
-			searchString:   "testString2",
-			expectedResult: true,
-		},
-		{
-			name:           "String does not exist in slice",
-			slice:          []string{"testString1", "testString2", "testString3"},
-			searchString:   "testString4",
-			expectedResult: false,
-		},
-		{
-			name:           "String is the first element in the slice",
-			slice:          []string{"testString2", "testString1", "testString3"},
-			searchString:   "testString1",
-			expectedResult: true,
-		},
-		{
-			name:           "String is the last element in the slice",
-			slice:          []string{"testString1", "testString3", "testString2"},
-			searchString:   "testString2",
-			expectedResult: true,
-		},
-		{
-			name:           "String with different case",
-			slice:          []string{"testString1", "testString2", "TestString3"},
-			searchString:   "testString3",
-			expectedResult: false,
-		},
-		{
-			name:           "Search string is empty",
-			slice:          []string{"testString1", "testString2", "testString3"},
-			searchString:   "",
-			expectedResult: false,
-		},
-		{
-			name:           "Slice contains empty string",
-			slice:          []string{"testString1", "testString2", ""},
-			searchString:   "",
-			expectedResult: true,
-		},
-		{
-			name:           "Slice with multiple occurrences of the search string",
-			slice:          []string{"testString2", "testString1", "testString2", "testString3"},
-			searchString:   "testString2",
-			expectedResult: true,
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := SliceContainsString(tc.slice, tc.searchString)
-			assert.Equal(t, tc.expectedResult, result)
 		})
 	}
 }

@@ -67,7 +67,7 @@ func (c *Client) fetchLHSData(
 		baseAssignee = fmt.Sprintf("org:%s %s", org, baseAssignee)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		queryParamOpenPRQueryArg:    githubv4.String(baseOpenPR),
 		queryParamReviewPRQueryArg:  githubv4.String(baseReviewPR),
 		queryParamAssigneeQueryArg:  githubv4.String(baseAssignee),
@@ -78,11 +78,7 @@ func (c *Client) fetchLHSData(
 
 	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched := false, false, false
 
-	for {
-		if allReviewRequestsFetched && allAssignmentsFetched && allOpenPRsFetched {
-			break
-		}
-
+	for !allReviewRequestsFetched || !allAssignmentsFetched || !allOpenPRsFetched {
 		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
 			return nil, nil, nil, errors.Wrap(err, "Not able to execute the query")
 		}
