@@ -41,7 +41,7 @@
             ]
         },
         "react": {
-            "version": "16.13.1"
+            "version": "detect"
         }
     },
     "rules": {

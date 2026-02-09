@@ -23,71 +23,71 @@ export default class Client {
 
     getConnected = async (reminder = false) => {
         return this.doGet<ConnectedData>(`${this.url}/connected?reminder=${reminder}`);
-    }
+    };
 
     getSidebarContent = async () => {
         return this.doGet<SidebarContentData>(`${this.url}/lhs-content`);
-    }
+    };
 
     getOrganizations = async (): Promise<Organization[] | ApiError> => {
         return this.doGet<Organization[]>(`${this.url}/organizations?includeLoggedInUser=true`);
-    }
+    };
 
     getRepositoriesByChannelID = async (channelId: string): Promise<ChannelRepositoriesData | ApiError> => {
         return this.doGet<ChannelRepositoriesData>(`${this.url}/repositories?channelId=${channelId}`);
-    }
+    };
 
     getRepositoriesByOrganization = async (organization: string, channelId: string): Promise<YourReposData[] | ApiError> => {
         return this.doGet<YourReposData[]>(`${this.url}/repos_by_org?organization=${organization}&channelId=${channelId}`);
-    }
+    };
 
     getPrsDetails = async (prList: {url: string, number: number}[]) => {
         return this.doPost<PrsDetailsData[]>(`${this.url}/prsdetails`, prList);
-    }
+    };
 
     getMentions = async () => {
         return this.doGet<MentionsData[]>(`${this.url}/mentions`);
-    }
+    };
 
     getGitHubUser = async (userID: string) => {
         return this.doPost<GithubUsersData>(`${this.url}/user`, {user_id: userID});
-    }
+    };
 
     getRepositories = async () => {
         return this.doGet<YourReposData[]>(`${this.url}/repositories`);
-    }
+    };
 
     getLabels = async (repo: string) => {
         return this.doGet<GithubLabel[]>(`${this.url}/labels?repo=${repo}`);
-    }
+    };
 
     getAssignees = async (repo: string) => {
         return this.doGet<GithubUsersData[]>(`${this.url}/assignees?repo=${repo}`);
-    }
+    };
 
     getMilestones = async (repo: string) => {
         return this.doGet<MilestoneData[]>(`${this.url}/milestones?repo=${repo}`);
-    }
+    };
 
     createIssue = async (payload: CreateIssuePayload) => {
         return this.doPost<GithubIssueData>(`${this.url}/createissue`, payload);
-    }
+    };
 
     searchIssues = async (searchTerm: string) => {
         return this.doGet<GithubIssueData[]>(`${this.url}/searchissues?term=${searchTerm}`);
-    }
+    };
 
     attachCommentToIssue = async (payload: AttachCommentToIssuePayload) => {
         return this.doPost<GitHubIssueCommentData>(`${this.url}/createissuecomment`, payload);
-    }
+    };
 
     getIssue = async (owner: string, repo: string, issueNumber: number) => {
         return this.doGet<GithubIssueData>(`${this.url}/issue?owner=${owner}&repo=${repo}&number=${issueNumber}`);
-    }
+    };
 
     getPullRequest = async (owner: string, repo: string, prNumber: number) => {
         return this.doGet<GitHubPullRequestData>(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
-    }
+    };
 
     private doGet = async <Response>(url: string): Promise<Response | ApiError> => {
         const headers = {
@@ -119,7 +119,7 @@ export default class Client {
                 url,
             });
         }
-    }
+    };
 
     doPost = async <Response>(url: string, body: Object): Promise<Response | ApiError> => {
         const headers = {
@@ -152,7 +152,7 @@ export default class Client {
                 url,
             });
         }
-    }
+    };
 
     doDelete = async (url: string) => {
         const headers = {
@@ -184,7 +184,7 @@ export default class Client {
                 url,
             });
         }
-    }
+    };
 
     doPut = async <Response, Body>(url: string, body: Body): Promise<Response | ApiError> => {
         const headers = {
@@ -217,5 +217,5 @@ export default class Client {
                 url,
             });
         }
-    }
+    };
 }

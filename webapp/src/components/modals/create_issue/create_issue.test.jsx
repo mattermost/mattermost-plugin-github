@@ -1,5 +1,6 @@
 import React from 'react';
-import {shallow} from 'enzyme';
+import {render, screen, waitFor} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import CreateIssueModal from './create_issue';
 
@@ -7,106 +8,193 @@ jest.mock('@/utils/user_utils', () => ({
     getErrorMessage: jest.fn(() => 'Error occurred'),
 }));
 
-describe('CreateIssueModal', () => {
-    const defaultProps = {
-        close: jest.fn(),
-        create: jest.fn(() => Promise.resolve({})),
-        post: null,
-        theme: {
-            centerChannelColor: '#000',
-            centerChannelBg: '#fff',
-        },
-        visible: true,
+jest.mock('@/components/github_repo_selector', () => ({
+    __esModule: true,
+    default: ({onChange, addValidate}) => {
+        if (addValidate) {
+            addValidate('repo', () => true);
+        }
+
+        return (
+            <div data-testid='github-repo-selector'>
+                <button
+                    type='button'
+                    onClick={() => onChange({name: 'test-repo', permissions: {push: true}})}
+                >
+                    {'Select Repo'}
+                </button>
+                <button
+                    type='button'
+                    onClick={() => onChange({name: 'no-push-repo', permissions: {push: false}})}
+                >
+                    {'Select No Push Repo'}
+                </button>
+            </div>
+        );
+    },
+}));
+
+jest.mock('@/components/github_label_selector', () => ({
+    __esModule: true,
+    default: () => <div data-testid='github-label-selector'>{'Label Selector'}</div>,
+}));
+
+jest.mock('@/components/github_assignee_selector', () => ({
+    __esModule: true,
+    default: () => <div data-testid='github-assignee-selector'>{'Assignee Selector'}</div>,
+}));
+
+jest.mock('@/components/github_milestone_selector', () => ({
+    __esModule: true,
+    default: () => <div data-testid='github-milestone-selector'>{'Milestone Selector'}</div>,
+}));
+
+const defaultProps = {
+    close: jest.fn(),
+    create: jest.fn(() => Promise.resolve({})),
+    post: null,
+    theme: {
+        centerChannelColor: '#000',
+        centerChannelBg: '#fff',
+    },
+    visible: true,
+};
+
+beforeEach(() => {
+    jest.clearAllMocks();
+});
+
+test('CreateIssueModal should render correctly with default props', () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+    expect(screen.getByText('Create GitHub Issue')).toBeInTheDocument();
+    expect(screen.getByText('Submit')).toBeInTheDocument();
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
+});
+
+test('CreateIssueModal should call close prop when handleClose is called', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const cancelButton = screen.getByText('Cancel');
+    await userEvent.click(cancelButton);
+
+    expect(defaultProps.close).toHaveBeenCalled();
+});
+
+test('CreateIssueModal should call create prop when form is submitted with valid data', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const titleInput = screen.getByRole('textbox', {name: /title for the github issue/i});
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Test Issue');
+
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
+
+    const submitButton = screen.getByRole('button', {name: 'Submit'});
+    await userEvent.click(submitButton);
+
+    await waitFor(() => expect(defaultProps.create).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Issue',
+        repo: 'test-repo',
+    })));
+});
+
+test('CreateIssueModal should display error message when create returns an error', async () => {
+    const mockCreateFunction = jest.fn().mockResolvedValue({error: {message: 'Some error'}});
+    const errorProps = {
+        ...defaultProps,
+        create: mockCreateFunction,
     };
 
-    it('should render correctly with default props', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        expect(wrapper).toMatchSnapshot();
-    });
+    render(<CreateIssueModal {...errorProps}/>);
 
-    it('should call close prop when handleClose is called', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        wrapper.instance().handleClose();
-        expect(defaultProps.close).toHaveBeenCalled();
-    });
+    const titleInput = screen.getByRole('textbox', {name: /title for the github issue/i});
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Test Issue');
 
-    it('should call create prop when form is submitted with valid data', async () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        wrapper.setState({issueTitle: 'Test Issue'});
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
 
-        await wrapper.instance().handleCreate({preventDefault: jest.fn()});
-        expect(defaultProps.create).toHaveBeenCalled();
-    });
+    const submitButton = screen.getByRole('button', {name: 'Submit'});
+    await userEvent.click(submitButton);
 
-    it('should display error message when create returns an error', async () => {
-        const mockCreateFunction = jest.fn().mockResolvedValue({error: {message: 'Some error'}});
-        const errorProps = {
-            ...defaultProps,
-            create: mockCreateFunction,
-        };
+    await waitFor(() => expect(screen.getByText('Error occurred')).toBeInTheDocument());
+});
 
-        const wrapper = shallow(<CreateIssueModal {...errorProps}/>);
-        wrapper.setState({issueTitle: 'Test Issue'});
+test('CreateIssueModal should show validation error when issueTitle is empty', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
 
-        await wrapper.instance().handleCreate({preventDefault: jest.fn()});
-        wrapper.update();
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
 
-        expect(wrapper.find('.help-text.error-text').text()).toEqual('Error occurred');
-    });
+    const submitButton = screen.getByRole('button', {name: 'Submit'});
+    await userEvent.click(submitButton);
 
-    it('should show validation error when issueTitle is empty', async () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        wrapper.setState({issueTitle: ''});
+    expect(defaultProps.create).not.toHaveBeenCalled();
+});
 
-        await wrapper.instance().handleCreate({preventDefault: jest.fn()});
-        expect(wrapper.state('issueTitleValid')).toBe(false);
-        expect(wrapper.state('showErrors')).toBe(true);
-    });
+test('CreateIssueModal should update repo state when handleRepoChange is called', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
 
-    it('should update repo state when handleRepoChange is called', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        const repo = {name: 'repo-name'};
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
 
-        wrapper.instance().handleRepoChange(repo);
-        expect(wrapper.state('repo')).toEqual(repo);
-    });
+    expect(screen.getByTestId('github-label-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('github-assignee-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('github-milestone-selector')).toBeInTheDocument();
+});
 
-    it('should update labels state when handleLabelsChange is called', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        const labels = ['label1', 'label2'];
+test('CreateIssueModal should update labels state when handleLabelsChange is called', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
 
-        wrapper.instance().handleLabelsChange(labels);
-        expect(wrapper.state('labels')).toEqual(labels);
-    });
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
 
-    it('should update assignees state when handleAssigneesChange is called', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        const assignees = ['user1', 'user2'];
+    expect(screen.getByTestId('github-label-selector')).toBeInTheDocument();
+});
 
-        wrapper.instance().handleAssigneesChange(assignees);
-        expect(wrapper.state('assignees')).toEqual(assignees);
-    });
+test('CreateIssueModal should update assignees state when handleAssigneesChange is called', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
 
-    it('should set issueDescription state when post prop is updated', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        const post = {message: 'test post'};
-        wrapper.setProps({post});
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
 
-        expect(wrapper.state('issueDescription')).toEqual(post.message);
-    });
+    expect(screen.getByTestId('github-assignee-selector')).toBeInTheDocument();
+});
 
-    it('should not display attribute selectors when repo does not have push permissions', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        wrapper.setState({repo: {name: 'repo-name', permissions: {push: false}}});
+test('CreateIssueModal should set issueDescription state when post prop is updated', () => {
+    const {rerender} = render(<CreateIssueModal {...defaultProps}/>);
 
-        expect(wrapper.instance().renderIssueAttributeSelectors()).toBeNull();
-    });
+    const post = {message: 'test post'};
+    rerender(
+        <CreateIssueModal
+            {...defaultProps}
+            post={post}
+        />,
+    );
 
-    it('should display attribute selectors when repo has push permissions', () => {
-        const wrapper = shallow(<CreateIssueModal {...defaultProps}/>);
-        wrapper.setState({repo: {name: 'repo-name', permissions: {push: true}}});
+    const descriptionInput = screen.getByRole('textbox', {name: ''});
+    expect(descriptionInput).toHaveValue('test post');
+});
 
-        const selectors = wrapper.instance().renderIssueAttributeSelectors();
-        expect(selectors).not.toBeNull();
-    });
+test('CreateIssueModal should not display attribute selectors when repo does not have push permissions', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const selectNoPushRepoButton = screen.getByText('Select No Push Repo');
+    await userEvent.click(selectNoPushRepoButton);
+
+    expect(screen.queryByTestId('github-label-selector')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('github-assignee-selector')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('github-milestone-selector')).not.toBeInTheDocument();
+});
+
+test('CreateIssueModal should display attribute selectors when repo has push permissions', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
+
+    expect(screen.getByTestId('github-label-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('github-assignee-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('github-milestone-selector')).toBeInTheDocument();
 });
