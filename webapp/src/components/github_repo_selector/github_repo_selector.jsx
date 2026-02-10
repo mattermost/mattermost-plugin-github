@@ -47,7 +47,7 @@ export default class GithubRepoSelector extends PureComponent {
         }
 
         return [];
-    }
+    };
 
     componentDidUpdate(prevProps) {
         const repos = this.getReposArray();
@@ -74,7 +74,7 @@ export default class GithubRepoSelector extends PureComponent {
             this.props.actions.getReposByOrg(org, this.props.currentChannelId);
             this.props.onChange(null);
         }
-    }
+    };
 
     onChangeForRepo = (_, name) => {
         const repos = this.getReposArray();
@@ -83,7 +83,7 @@ export default class GithubRepoSelector extends PureComponent {
         if (repo) {
             this.props.onChange({name, permissions: repo.permissions});
         }
-    }
+    };
 
     render() {
         const orgOptions = this.props.yourOrgs.map((org) => ({value: org.login, label: org.login}));
