@@ -65,7 +65,7 @@ type RepoResponse struct {
 
 // Only send down fields to client that are needed
 type RepositoryResponse struct {
-	DefaultRepo RepoResponse   `json:"defaultRepo,omitempty"`
+	DefaultRepo RepoResponse   `json:"defaultRepo,omitzero"`
 	Repos       []RepoResponse `json:"repos,omitempty"`
 }
 
