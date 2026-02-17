@@ -25,8 +25,7 @@ import (
 	"github.com/mattermost/mattermost-plugin-github/server/testutils"
 )
 
-type panicHandler struct {
-}
+type panicHandler struct{}
 
 func (ph panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	panic("bad handler")
@@ -58,7 +57,7 @@ func TestWithRecovery(t *testing.T) {
 
 	resp := w.Result()
 	if resp.Body != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		_, err := io.Copy(io.Discard, resp.Body)
 		require.NoError(t, err)
 	}

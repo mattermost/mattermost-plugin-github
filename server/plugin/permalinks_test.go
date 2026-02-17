@@ -123,12 +123,14 @@ func TestGetReplacements(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			name:            "inside link",
 			input:           "should not expand [link](https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22) here",
 			numReplacements: 0,
 			replacements:    []replacement{},
-		}, {
+		},
+		{
 			name:            "one link, one expansion",
 			input:           "first should not expand [link](https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22) this should https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22 lorem ipsum",
 			numReplacements: 1,
@@ -153,7 +155,8 @@ func TestGetReplacements(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			name:            "one expansion, one link",
 			input:           "first should expand https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22 lorem ipsum , this should not [link](https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22)",
 			numReplacements: 1,
@@ -178,12 +181,14 @@ func TestGetReplacements(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			name:            "2 links",
 			input:           "both should not expand- [link](https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22) and [link](https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22)",
 			numReplacements: 0,
 			replacements:    []replacement{},
-		}, {
+		},
+		{
 			name:            "multiple expansions",
 			input:           "multiple - https://github.com/golang/go/blob/27fc32ff01cc699e160890546816bd99d6c57823/src/debug/macho/macho.go#L13-L16 second https://github.com/mattermost/mattermost-server/blob/cbb25838a61872b624ac512556d7bc932486a64c/app/authentication.go#L15-L22",
 			numReplacements: 2,
@@ -226,7 +231,8 @@ func TestGetReplacements(t *testing.T) {
 					},
 				},
 			},
-		}, {
+		},
+		{
 			name:            "single line",
 			input:           "this is a one line permalink https://github.com/mattermost/mattermost-server/blob/4225977966cf0855c8a5e55f8a0fef702b19dc18/api4/bot.go#L16",
 			numReplacements: 1,
@@ -457,7 +463,7 @@ func getClient() (*github.Client, func()) {
 	apiHandler.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
 		case "/api-v3/repos/mattermost/mattermost-server/contents/app/authentication.go":
-			fmt.Fprintln(w, `{
+			_, _ = fmt.Fprintln(w, `{
   "name": "authentication.go",
   "path": "app/authentication.go",
   "sha": "c5c4ebf9077d04306ce8eca1e451421e4df7ca3c",
@@ -476,7 +482,7 @@ func getClient() (*github.Client, func()) {
   }
 }`)
 		case "/api-v3/repos/badorg/badrepo/path/file.go":
-			fmt.Fprintln(w, `{
+			_, _ = fmt.Fprintln(w, `{
   "sha": "c5c4ebf9077d04306ce8eca1e451421e4df7ca3c",
   "size": 7950,
   "url": "https://api.github.com/repos/badorg/badrepo/path/file.g",

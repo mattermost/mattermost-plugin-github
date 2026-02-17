@@ -32,14 +32,16 @@ const mdCommentRegexPattern string = `(<!--[\S\s]+?-->)`
 // Note that the username, with the @ sign, is in the second capturing group.
 const gitHubUsernameRegexPattern string = `(^|[^_\x60[:alnum:]])(@[[:alnum:]](-?[[:alnum:]]+)*)`
 
-var mdCommentRegex = regexp.MustCompile(mdCommentRegexPattern)
-var gitHubUsernameRegex = regexp.MustCompile(gitHubUsernameRegexPattern)
-var masterTemplate *template.Template
-var gitHubToUsernameMappingCallback func(string) string
-var showAuthorInCommitNotification bool
+var (
+	mdCommentRegex                  = regexp.MustCompile(mdCommentRegexPattern)
+	gitHubUsernameRegex             = regexp.MustCompile(gitHubUsernameRegexPattern)
+	masterTemplate                  *template.Template
+	gitHubToUsernameMappingCallback func(string) string
+	showAuthorInCommitNotification  bool
+)
 
 func init() {
-	var funcMap = sprig.TxtFuncMap()
+	funcMap := sprig.TxtFuncMap()
 
 	// Try to parse out email footer junk
 	funcMap["trimBody"] = func(body string) string {
@@ -93,11 +95,11 @@ func init() {
 	funcMap["pathEscape"] = url.PathEscape
 
 	// Transform multiple variables to dictionary
-	funcMap["dict"] = func(values ...interface{}) (map[string]interface{}, error) {
+	funcMap["dict"] = func(values ...any) (map[string]any, error) {
 		if len(values)%2 != 0 {
 			return nil, errors.New("invalid dict call, exactly one value is required for every key")
 		}
-		dict := make(map[string]interface{}, len(values)/2)
+		dict := make(map[string]any, len(values)/2)
 		for i := 0; i < len(values); i += 2 {
 			key, ok := values[i].(string)
 			if !ok {
@@ -529,7 +531,7 @@ func setShowAuthorInCommitNotification(value bool) {
 	showAuthorInCommitNotification = value
 }
 
-func renderTemplate(name string, data interface{}) (string, error) {
+func renderTemplate(name string, data any) (string, error) {
 	var output bytes.Buffer
 	t := masterTemplate.Lookup(name)
 	if t == nil {
