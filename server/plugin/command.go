@@ -763,6 +763,15 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		default:
 			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
 		}
+	case "status":
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.StatusSync = true
+		case settingOff:
+			userInfo.Settings.StatusSync = false
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\"."
+		}
 	default:
 		return "Unknown setting " + setting
 	}

@@ -64,3 +64,52 @@ func (c *Client) executeQuery(ctx context.Context, qry any, params map[string]an
 
 	return nil
 }
+
+type changeUserStatusMutation struct {
+	ChangeUserStatus struct {
+		Status struct {
+			Message githubv4.String
+			Emoji   githubv4.String
+		}
+	} `graphql:"changeUserStatus(input: $input)"`
+}
+
+func (c *Client) UpdateUserStatus(ctx context.Context, emoji, message string, busy bool) (string, error) {
+	var mutation changeUserStatusMutation
+	input := githubv4.ChangeUserStatusInput{
+		Emoji:               githubv4.NewString(githubv4.String(emoji)),
+		Message:             githubv4.NewString(githubv4.String(message)),
+		LimitedAvailability: githubv4.NewBoolean(githubv4.Boolean(busy)),
+	}
+
+	err := c.client.Mutate(ctx, &mutation, input, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "UpdateUserStatus mutate failed")
+	}
+
+	return string(mutation.ChangeUserStatus.Status.Message), nil
+}
+
+type getUserStatusQuery struct {
+	User struct {
+		Status struct {
+			Message             githubv4.String
+			Emoji               githubv4.String
+			LimitedAvailability githubv4.Boolean
+		}
+	} `graphql:"user(login: $login)"`
+}
+
+func (c *Client) GetUserStatus(ctx context.Context, login string) (string, string, bool, error) {
+	var query getUserStatusQuery
+	variables := map[string]interface{}{
+		"login": githubv4.String(login),
+	}
+
+	err := c.client.Query(ctx, &query, variables)
+	if err != nil {
+		return "", "", false, errors.Wrap(err, "GetUserStatus query failed")
+	}
+
+	return string(query.User.Status.Message), string(query.User.Status.Emoji), bool(query.User.Status.LimitedAvailability), nil
+}
