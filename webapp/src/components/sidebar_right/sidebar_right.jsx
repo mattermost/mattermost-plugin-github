@@ -8,6 +8,7 @@ import Scrollbars from 'react-custom-scrollbars-2';
 import {RHSStates} from '../../constants';
 
 import GithubItems from './github_items';
+import PRReviewDetail from './pr_review_detail';
 
 export function renderView(props) {
     return (
@@ -74,9 +75,11 @@ export default class SidebarRight extends React.PureComponent {
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         rhsState: PropTypes.string,
         theme: PropTypes.object.isRequired,
+        selectedPR: PropTypes.object,
         actions: PropTypes.shape({
             getYourPrsDetails: PropTypes.func.isRequired,
             getReviewsDetails: PropTypes.func.isRequired,
+            selectPR: PropTypes.func.isRequired,
         }).isRequired,
     };
 
@@ -101,6 +104,14 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     render() {
+        if (this.props.selectedPR) {
+            return (
+                <PRReviewDetail
+                    theme={this.props.theme}
+                />
+            );
+        }
+
         const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
         let orgQuery = '';
         this.props.orgs.map((org) => {
@@ -167,6 +178,7 @@ export default class SidebarRight extends React.PureComponent {
                         <GithubItems
                             items={githubItems}
                             theme={this.props.theme}
+                            onSelectPR={this.props.actions.selectPR}
                         />
                     </div>
                 </Scrollbars>

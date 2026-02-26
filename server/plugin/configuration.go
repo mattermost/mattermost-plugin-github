@@ -26,6 +26,13 @@ import (
 //
 // If you add non-reference types to your configuration struct, be sure to rewrite Clone as a deep
 // copy appropriate for your types.
+// AIAgent represents a configured AI agent with its name and mention handle.
+type AIAgent struct {
+	Name      string
+	Mention   string
+	IsDefault bool
+}
+
 type Configuration struct {
 	GitHubOrg                      string `json:"githuborg"`
 	GitHubOAuthClientID            string `json:"githuboauthclientid"`
@@ -42,6 +49,7 @@ type Configuration struct {
 	UsePreregisteredApplication    bool   `json:"usepreregisteredapplication"`
 	ShowAuthorInCommitNotification bool   `json:"showauthorincommitnotification"`
 	GetNotificationForDraftPRs     bool   `json:"getnotificationfordraftprs"`
+	AIAgents                       string `json:"aiagents"`
 }
 
 func (c *Configuration) ToMap() (map[string]any, error) {
@@ -265,4 +273,47 @@ func (c *Configuration) getOrganizations() []string {
 	}
 
 	return allOrgs
+}
+
+// ParseAIAgents parses the AIAgents configuration string and returns a list of
+// AI agents including hardcoded defaults (Claude and Cursor). The AIAgents field
+// is expected to be a comma-separated list of Name:@mention pairs.
+func (c *Configuration) ParseAIAgents() []AIAgent {
+	defaults := []AIAgent{
+		{Name: "Claude", Mention: "@claude", IsDefault: true},
+		{Name: "Cursor", Mention: "@cursor", IsDefault: true},
+	}
+
+	if strings.TrimSpace(c.AIAgents) == "" {
+		return defaults
+	}
+
+	agents := make([]AIAgent, 0, len(defaults))
+	agents = append(agents, defaults...)
+
+	for pair := range strings.SplitSeq(c.AIAgents, ",") {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+
+		parts := strings.SplitN(pair, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		name := strings.TrimSpace(parts[0])
+		mention := strings.TrimSpace(parts[1])
+		if name == "" || mention == "" {
+			continue
+		}
+
+		agents = append(agents, AIAgent{
+			Name:      name,
+			Mention:   mention,
+			IsDefault: false,
+		})
+	}
+
+	return agents
 }

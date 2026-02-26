@@ -4,7 +4,7 @@
 import {Client4} from 'mattermost-redux/client';
 import {ClientError} from '@mattermost/client';
 
-import {ConnectedData, GithubIssueData, GithubLabel, GithubUsersData, GitHubIssueCommentData, MentionsData, MilestoneData, PrsDetailsData, SidebarContentData, YourReposData, GitHubPullRequestData, ChannelRepositoriesData, RepositoryData, Organization} from '../types/github_types';
+import {ConnectedData, GithubIssueData, GithubLabel, GithubUsersData, GitHubIssueCommentData, MentionsData, MilestoneData, PrsDetailsData, SidebarContentData, YourReposData, GitHubPullRequestData, ChannelRepositoriesData, RepositoryData, Organization, PRReviewThreadsData, ResolveThreadResponse, ReactionToggleResponse, AIAgentsData} from '../types/github_types';
 
 import manifest from '../manifest';
 
@@ -87,6 +87,30 @@ export default class Client {
 
     getPullRequest = async (owner: string, repo: string, prNumber: number) => {
         return this.doGet<GitHubPullRequestData>(`${this.url}/pr?owner=${owner}&repo=${repo}&number=${prNumber}`);
+    };
+
+    getPRReviewThreads = async (owner: string, repo: string, number: number) => {
+        return this.doGet<PRReviewThreadsData>(`${this.url}/pr-review-threads?owner=${owner}&repo=${repo}&number=${number}`);
+    };
+
+    replyToReviewComment = async (owner: string, repo: string, number: number, commentId: number, body: string) => {
+        return this.doPost<{}>(`${this.url}/pr-review-comment-reply`, {owner, repo, number, comment_id: commentId, body});
+    };
+
+    toggleReaction = async (owner: string, repo: string, commentId: number, reaction: string) => {
+        return this.doPost<ReactionToggleResponse>(`${this.url}/pr-review-comment-reaction`, {owner, repo, comment_id: commentId, reaction});
+    };
+
+    resolveThread = async (threadId: string, action: string) => {
+        return this.doPost<ResolveThreadResponse>(`${this.url}/pr-resolve-thread`, {thread_id: threadId, action});
+    };
+
+    createPRComment = async (owner: string, repo: string, number: number, body: string) => {
+        return this.doPost<{}>(`${this.url}/pr-create-comment`, {owner, repo, number, body});
+    };
+
+    getAIAgents = async () => {
+        return this.doGet<AIAgentsData>(`${this.url}/plugin-settings/ai-agents`);
     };
 
     private doGet = async <Response>(url: string): Promise<Response | ApiError> => {

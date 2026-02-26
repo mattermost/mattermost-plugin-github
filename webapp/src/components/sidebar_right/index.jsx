@@ -4,9 +4,9 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getReviewsDetails, getYourPrsDetails} from '../../actions';
+import {getReviewsDetails, getYourPrsDetails, selectPR, clearSelectedPR, getPRReviewThreads, getAIAgents} from '../../actions';
 
-import {getSidebarData} from 'src/selectors';
+import {getSidebarData, getSelectedPR} from 'src/selectors';
 
 import SidebarRight from './sidebar_right.jsx';
 
@@ -21,6 +21,7 @@ function mapStateToProps(state) {
         enterpriseURL,
         orgs,
         rhsState,
+        selectedPR: getSelectedPR(state),
     };
 }
 
@@ -29,6 +30,10 @@ function mapDispatchToProps(dispatch) {
         actions: bindActionCreators({
             getYourPrsDetails,
             getReviewsDetails,
+            selectPR,
+            clearSelectedPR,
+            getPRReviewThreads,
+            getAIAgents,
         }, dispatch),
     };
 }

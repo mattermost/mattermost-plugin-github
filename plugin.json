@@ -115,6 +115,13 @@
                 ]
             },
             {
+                "key": "AIAgents",
+                "display_name": "AI Agents:",
+                "type": "text",
+                "help_text": "Comma-separated list of AI agents in Name:@mention format (e.g., 'MyBot:@mybot'). Claude (@claude) and Cursor (@cursor) are included by default.",
+                "default": ""
+            },
+            {
                 "key": "EnableWebhookEventLogging",
                 "display_name": "Enable Webhook Event Logging:",
                 "type": "bool",
