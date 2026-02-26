@@ -18,3 +18,5 @@ export const ReviewState = {
     Approved: 'approved',
     ChangesRequested: 'changes_requested',
 };
+
+export const REACTIONS = ['+1', '-1', 'laugh', 'confused', 'heart', 'hooray'];

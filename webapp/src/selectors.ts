@@ -6,7 +6,7 @@ import {getConfig} from 'mattermost-redux/selectors/entities/general';
 import {createSelector} from 'reselect';
 
 import {GlobalState, PluginState} from './types/store';
-import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData} from './types/github_types';
+import {GithubIssueData, SidebarData, PrsDetailsData, UnreadsData, ReviewThreadData} from './types/github_types';
 
 const emptyArray: GithubIssueData[] | UnreadsData[] = [];
 
@@ -68,3 +68,30 @@ export const getSidebarData = createSelector(
 );
 
 export const configuration = (state: GlobalState) => getPluginState(state).configuration;
+
+export const getSelectedPR = (state: GlobalState) => getPluginState(state).selectedPR;
+
+export const getPRReviewThreads = (state: GlobalState) => getPluginState(state).prReviewThreads;
+
+export const getPRReviewThreadsLoading = (state: GlobalState) => getPluginState(state).prReviewThreadsLoading;
+
+export const getAIAgents = (state: GlobalState) => getPluginState(state).aiAgents;
+
+export const getThreadsGroupedByFile = createSelector(
+    getPRReviewThreads,
+    (prReviewThreads): Record<string, ReviewThreadData[]> => {
+        if (!prReviewThreads || !prReviewThreads.threads) {
+            return {};
+        }
+
+        const grouped: Record<string, ReviewThreadData[]> = {};
+        prReviewThreads.threads.forEach((thread: ReviewThreadData) => {
+            if (!grouped[thread.path]) {
+                grouped[thread.path] = [];
+            }
+            grouped[thread.path].push(thread);
+        });
+
+        return grouped;
+    },
+);

@@ -53,6 +53,7 @@ export type GithubItem = PrsDetailsData & {
 export type GithubItemsProps = {
     items: GithubItem[];
     theme: Theme;
+    onSelectPR?: (prData: SelectedPRData) => void;
 }
 
 export type UserSettingsData = {
@@ -188,3 +189,79 @@ export type ChannelRepositoriesData = {
     channel_id: string;
     repositories: RepositoryData[];
 };
+
+export interface ReviewCommentReaction {
+    id: number;
+    content: string;
+    user: {login: string};
+}
+
+export interface ReviewCommentData {
+    id: string;
+    database_id: number;
+    body: string;
+    author: {login: string; avatar_url: string};
+    created_at: string;
+    updated_at: string;
+    url: string;
+    diff_hunk: string;
+    path: string;
+    line: number;
+    start_line: number;
+    reactions: {content: string; count: number; reacted: boolean}[];
+}
+
+export interface ReviewThreadData {
+    id: string;
+    is_resolved: boolean;
+    resolved_by: {login: string} | null;
+    path: string;
+    line: number;
+    start_line: number;
+    diff_hunk: string;
+    comments: ReviewCommentData[];
+}
+
+export interface PRReviewSummary {
+    approved: number;
+    changes_requested: number;
+    unresolved_threads: number;
+    total_threads: number;
+}
+
+export interface PRReviewThreadsData {
+    pr_title: string;
+    pr_number: number;
+    pr_url: string;
+    summary: PRReviewSummary;
+    threads: ReviewThreadData[];
+}
+
+export interface SelectedPRData {
+    owner: string;
+    repo: string;
+    number: number;
+    title: string;
+    url: string;
+}
+
+export interface AIAgent {
+    name: string;
+    mention: string;
+    is_default: boolean;
+}
+
+export interface AIAgentsData {
+    agents: AIAgent[];
+}
+
+export interface ResolveThreadResponse {
+    status: string;
+    is_resolved: boolean;
+}
+
+export interface ReactionToggleResponse {
+    id: number;
+    content: string;
+    toggled: boolean;
+}

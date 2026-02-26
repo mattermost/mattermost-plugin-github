@@ -24,4 +24,10 @@ export default {
     CLOSE_ATTACH_COMMENT_TO_ISSUE_MODAL: pluginId + '_close_attach_modal',
     OPEN_ATTACH_COMMENT_TO_ISSUE_MODAL: pluginId + '_open_attach_modal',
     RECEIVED_ATTACH_COMMENT_RESULT: pluginId + '_received_attach_comment',
+    RECEIVED_PR_REVIEW_THREADS: pluginId + '_received_pr_review_threads',
+    SET_SELECTED_PR: pluginId + '_set_selected_pr',
+    CLEAR_SELECTED_PR: pluginId + '_clear_selected_pr',
+    PR_REVIEW_THREADS_LOADING: pluginId + '_pr_review_threads_loading',
+    PR_REVIEW_THREADS_ERROR: pluginId + '_pr_review_threads_error',
+    RECEIVED_AI_AGENTS: pluginId + '_received_ai_agents',
 };

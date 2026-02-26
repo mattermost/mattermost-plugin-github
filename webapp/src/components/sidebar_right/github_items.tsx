@@ -9,7 +9,7 @@ import {Badge, Tooltip, OverlayTrigger} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 import {GitPullRequestIcon, IssueOpenedIcon, IconProps, CalendarIcon, PersonIcon, FileDiffIcon} from '@primer/octicons-react';
 
-import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
+import {GithubItemsProps, GithubLabel, GithubItem, Review, SelectedPRData} from '../../types/github_types';
 
 import {formatTimeSince} from '../../utils/date_utils';
 
@@ -45,6 +45,24 @@ function GithubItems(props: GithubItemsProps) {
         } else if (item.repository?.full_name) {
             repoName = item.repository?.full_name;
         }
+
+        // Determine if this is a PR item for drill-down
+        const isPR = item.html_url && item.html_url.includes('/pull/');
+        const handlePRClick = () => {
+            if (isPR && props.onSelectPR && repoName) {
+                const parts = repoName.split('/');
+                if (parts.length === 2) {
+                    const titleText = item.title || item.subject?.title || '';
+                    props.onSelectPR({
+                        owner: parts[0],
+                        repo: parts[1],
+                        number: item.number,
+                        title: titleText,
+                        url: item.html_url,
+                    });
+                }
+            }
+        };
 
         let userName = '';
         if (item.user) {
@@ -264,7 +282,8 @@ function GithubItems(props: GithubItemsProps) {
         return (
             <div
                 key={item.id}
-                style={style.container}
+                style={{...style.container, ...(isPR && props.onSelectPR ? {cursor: 'pointer'} : {})}}
+                {...(isPR && props.onSelectPR ? {onClick: handlePRClick} : {})}
             >
                 <div>
                     <strong>

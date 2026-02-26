@@ -183,6 +183,13 @@ func (p *Plugin) initializeAPI() {
 	apiRouter.HandleFunc("/pr", p.checkAuth(p.attachUserContext(p.getPrByNumber), ResponseTypePlain)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/lhs-content", p.checkAuth(p.attachUserContext(p.getSidebarContent), ResponseTypePlain)).Methods(http.MethodGet)
 
+	apiRouter.HandleFunc("/pr-review-threads", p.checkAuth(p.attachUserContext(p.getPRReviewThreads), ResponseTypePlain)).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/pr-review-comment-reply", p.checkAuth(p.attachUserContext(p.replyToReviewComment), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/pr-review-comment-reaction", p.checkAuth(p.attachUserContext(p.toggleReviewCommentReaction), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/pr-resolve-thread", p.checkAuth(p.attachUserContext(p.resolveReviewThread), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/pr-create-comment", p.checkAuth(p.attachUserContext(p.createPRComment), ResponseTypePlain)).Methods(http.MethodPost)
+	apiRouter.HandleFunc("/plugin-settings/ai-agents", p.checkAuth(p.attachUserContext(p.getAIAgents), ResponseTypePlain)).Methods(http.MethodGet)
+
 	apiRouter.HandleFunc("/config", checkPluginRequest(p.getConfig)).Methods(http.MethodGet)
 	apiRouter.HandleFunc("/token", checkPluginRequest(p.getToken)).Methods(http.MethodGet)
 }
@@ -757,10 +764,12 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 	prDetails := make([]*PRDetails, len(prList))
 	var wg sync.WaitGroup
 	for i, pr := range prList {
-		wg.Go(func() {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			prDetail := p.fetchPRDetails(c, githubClient, pr.URL, pr.Number)
 			prDetails[i] = prDetail
-		})
+		}()
 	}
 
 	wg.Wait()
@@ -780,17 +789,21 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	var wg sync.WaitGroup
 
 	// Fetch reviews
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		fetchedReviews, err := fetchReviews(c, client, repoOwner, repoName, prNumber)
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to fetch reviews for PR details")
 			return
 		}
 		reviewsList = fetchedReviews
-	})
+	}()
 
 	// Fetch reviewers and status
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		prInfo, _, err := client.PullRequests.Get(c.Ctx, repoOwner, repoName, prNumber)
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to fetch PR for PR details")
@@ -808,7 +821,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 			return
 		}
 		status = *statuses.State
-	})
+	}()
 
 	wg.Wait()
 	return &PRDetails{
@@ -1813,4 +1826,407 @@ func parseRepo(repoParam string) (owner, repo string, err error) {
 	}
 
 	return splitted[0], splitted[1], nil
+}
+
+func (p *Plugin) getPRReviewThreads(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	owner := r.FormValue("owner")
+	repo := r.FormValue("repo")
+	numberStr := r.FormValue("number")
+
+	if owner == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid or missing param 'owner'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if repo == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid or missing param 'repo'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	number, err := strconv.Atoi(numberStr)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Invalid param 'number'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	graphQLClient := p.graphQLConnect(c.GHInfo)
+	result, err := graphQLClient.GetReviewThreads(c.Ctx, owner, repo, number)
+	if err != nil {
+		c.Log.WithError(err).Errorf("Failed to get review threads")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get review threads", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	config := p.getConfiguration()
+	baseURL := config.getBaseURL()
+	prURL := fmt.Sprintf("%s%s/%s/pull/%d", baseURL, owner, repo, number)
+
+	approved := 0
+	changesRequested := 0
+	for _, rs := range result.ReviewSummaries {
+		switch rs.State {
+		case "APPROVED":
+			approved++
+		case "CHANGES_REQUESTED":
+			changesRequested++
+		}
+	}
+
+	type ReviewCommentResponse struct {
+		ID             string                    `json:"id"`
+		DatabaseID     int                       `json:"database_id"`
+		Body           string                    `json:"body"`
+		AuthorLogin    string                    `json:"author_login"`
+		CreatedAt      string                    `json:"created_at"`
+		UpdatedAt      string                    `json:"updated_at"`
+		URL            string                    `json:"url"`
+		DiffHunk       string                    `json:"diff_hunk"`
+		Path           string                    `json:"path"`
+		Line           int                       `json:"line"`
+		StartLine      int                       `json:"start_line"`
+		ReactionGroups []graphql.ReactionInfo    `json:"reaction_groups,omitempty"`
+	}
+
+	type ReviewThreadResponse struct {
+		ID         string                  `json:"id"`
+		IsResolved bool                    `json:"is_resolved"`
+		ResolvedBy string                  `json:"resolved_by,omitempty"`
+		Path       string                  `json:"path"`
+		Line       int                     `json:"line"`
+		StartLine  int                     `json:"start_line"`
+		DiffHunk   string                  `json:"diff_hunk"`
+		Comments   []ReviewCommentResponse `json:"comments"`
+	}
+
+	type SummaryResponse struct {
+		Approved          int `json:"approved"`
+		ChangesRequested  int `json:"changes_requested"`
+		UnresolvedThreads int `json:"unresolved_threads"`
+		TotalThreads      int `json:"total_threads"`
+	}
+
+	type PRReviewThreadsResponse struct {
+		PRTitle  string                 `json:"pr_title"`
+		PRNumber int                    `json:"pr_number"`
+		PRURL    string                 `json:"pr_url"`
+		Summary  SummaryResponse        `json:"summary"`
+		Threads  []ReviewThreadResponse `json:"threads"`
+	}
+
+	threads := make([]ReviewThreadResponse, 0, len(result.Threads))
+	for _, t := range result.Threads {
+		threadPath := ""
+		threadLine := 0
+		threadStartLine := 0
+		threadDiffHunk := ""
+
+		comments := make([]ReviewCommentResponse, 0, len(t.Comments))
+		for i, cm := range t.Comments {
+			if i == 0 {
+				threadPath = cm.Path
+				threadLine = cm.Line
+				threadStartLine = cm.StartLine
+				threadDiffHunk = cm.DiffHunk
+			}
+			comments = append(comments, ReviewCommentResponse{
+				ID:             cm.ID,
+				DatabaseID:     cm.DatabaseID,
+				Body:           cm.Body,
+				AuthorLogin:    cm.AuthorLogin,
+				CreatedAt:      cm.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:      cm.UpdatedAt.Format(time.RFC3339),
+				URL:            cm.URL,
+				DiffHunk:       cm.DiffHunk,
+				Path:           cm.Path,
+				Line:           cm.Line,
+				StartLine:      cm.StartLine,
+				ReactionGroups: cm.ReactionGroups,
+			})
+		}
+
+		threads = append(threads, ReviewThreadResponse{
+			ID:         t.ID,
+			IsResolved: t.IsResolved,
+			ResolvedBy: t.ResolvedByLogin,
+			Path:       threadPath,
+			Line:       threadLine,
+			StartLine:  threadStartLine,
+			DiffHunk:   threadDiffHunk,
+			Comments:   comments,
+		})
+	}
+
+	resp := PRReviewThreadsResponse{
+		PRTitle:  fmt.Sprintf("%s/%s#%d", owner, repo, number),
+		PRNumber: number,
+		PRURL:    prURL,
+		Summary: SummaryResponse{
+			Approved:          approved,
+			ChangesRequested:  changesRequested,
+			UnresolvedThreads: result.UnresolvedCount,
+			TotalThreads:      result.TotalThreadCount,
+		},
+		Threads: threads,
+	}
+
+	p.writeJSON(w, resp)
+}
+
+func (p *Plugin) replyToReviewComment(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	type ReplyToReviewCommentRequest struct {
+		Owner     string `json:"owner"`
+		Repo      string `json:"repo"`
+		Number    int    `json:"number"`
+		CommentID int64  `json:"comment_id"`
+		Body      string `json:"body"`
+	}
+
+	req := &ReplyToReviewCommentRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding ReplyToReviewCommentRequest JSON body")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Owner == "" || req.Repo == "" || req.Number == 0 || req.CommentID == 0 || req.Body == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide valid owner, repo, number, comment_id, and body.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnectUser(c.Ctx, c.GHInfo)
+
+	var result *github.PullRequestComment
+	var err error
+	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		result, _, err = githubClient.PullRequests.CreateCommentInReplyTo(c.Ctx, req.Owner, req.Repo, req.Number, req.Body, req.CommentID)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); cErr != nil {
+		c.Log.WithError(cErr).Errorf("Failed to reply to review comment")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to reply to review comment", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
+}
+
+func (p *Plugin) toggleReviewCommentReaction(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	type ToggleReactionRequest struct {
+		Owner     string `json:"owner"`
+		Repo      string `json:"repo"`
+		CommentID int64  `json:"comment_id"`
+		Reaction  string `json:"reaction"`
+	}
+
+	req := &ToggleReactionRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding ToggleReactionRequest JSON body")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Owner == "" || req.Repo == "" || req.CommentID == 0 || req.Reaction == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide valid owner, repo, comment_id, and reaction.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnectUser(c.Ctx, c.GHInfo)
+	currentUserLogin := c.GHInfo.GitHubUsername
+
+	// List existing reactions to check if current user already reacted
+	var allReactions []*github.Reaction
+	opt := &github.ListOptions{PerPage: 100}
+	for {
+		var reactions []*github.Reaction
+		var resp *github.Response
+		var err error
+		if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			reactions, resp, err = githubClient.Reactions.ListPullRequestCommentReactions(c.Ctx, req.Owner, req.Repo, req.CommentID, opt)
+			if err != nil {
+				return err
+			}
+			return nil
+		}); cErr != nil {
+			c.Log.WithError(cErr).Errorf("Failed to list reactions")
+			p.writeAPIError(w, &APIErrorResponse{Message: "failed to list reactions", StatusCode: http.StatusInternalServerError})
+			return
+		}
+		allReactions = append(allReactions, reactions...)
+		if resp.NextPage == 0 {
+			break
+		}
+		opt.Page = resp.NextPage
+	}
+
+	// Check if current user already reacted with this content
+	var existingReactionID int64
+	for _, reaction := range allReactions {
+		if reaction.GetUser().GetLogin() == currentUserLogin && reaction.GetContent() == req.Reaction {
+			existingReactionID = reaction.GetID()
+			break
+		}
+	}
+
+	type ToggleReactionResponse struct {
+		ID      int64  `json:"id"`
+		Content string `json:"content"`
+		Toggled bool   `json:"toggled"`
+	}
+
+	if existingReactionID != 0 {
+		// Remove the reaction (toggle off)
+		var err error
+		if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			_, err = githubClient.Reactions.DeletePullRequestCommentReaction(c.Ctx, req.Owner, req.Repo, req.CommentID, existingReactionID)
+			if err != nil {
+				return err
+			}
+			return nil
+		}); cErr != nil {
+			c.Log.WithError(cErr).Errorf("Failed to delete reaction")
+			p.writeAPIError(w, &APIErrorResponse{Message: "failed to delete reaction", StatusCode: http.StatusInternalServerError})
+			return
+		}
+
+		p.writeJSON(w, ToggleReactionResponse{
+			ID:      existingReactionID,
+			Content: req.Reaction,
+			Toggled: false,
+		})
+		return
+	}
+
+	// Add the reaction (toggle on)
+	var newReaction *github.Reaction
+	var err error
+	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		newReaction, _, err = githubClient.Reactions.CreatePullRequestCommentReaction(c.Ctx, req.Owner, req.Repo, req.CommentID, req.Reaction)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); cErr != nil {
+		c.Log.WithError(cErr).Errorf("Failed to create reaction")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to create reaction", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, ToggleReactionResponse{
+		ID:      newReaction.GetID(),
+		Content: newReaction.GetContent(),
+		Toggled: true,
+	})
+}
+
+func (p *Plugin) resolveReviewThread(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	type ResolveThreadRequest struct {
+		ThreadID string `json:"thread_id"`
+		Action   string `json:"action"`
+	}
+
+	req := &ResolveThreadRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding ResolveThreadRequest JSON body")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.ThreadID == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide a valid thread_id.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Action != "resolve" && req.Action != "unresolve" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Action must be 'resolve' or 'unresolve'.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	graphQLClient := p.graphQLConnect(c.GHInfo)
+	isResolved, err := graphQLClient.ResolveReviewThread(c.Ctx, req.ThreadID, req.Action == "resolve")
+	if err != nil {
+		c.Log.WithError(err).Errorf("Failed to resolve/unresolve review thread")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to resolve/unresolve review thread", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	type ResolveThreadResponse struct {
+		Status     string `json:"status"`
+		IsResolved bool   `json:"is_resolved"`
+	}
+
+	p.writeJSON(w, ResolveThreadResponse{
+		Status:     "ok",
+		IsResolved: isResolved,
+	})
+}
+
+func (p *Plugin) createPRComment(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	type CreatePRCommentRequest struct {
+		Owner  string `json:"owner"`
+		Repo   string `json:"repo"`
+		Number int    `json:"number"`
+		Body   string `json:"body"`
+	}
+
+	req := &CreatePRCommentRequest{}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		c.Log.WithError(err).Warnf("Error decoding CreatePRCommentRequest JSON body")
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide a JSON object.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	if req.Owner == "" || req.Repo == "" || req.Number == 0 || req.Body == "" {
+		p.writeAPIError(w, &APIErrorResponse{Message: "Please provide valid owner, repo, number, and body.", StatusCode: http.StatusBadRequest})
+		return
+	}
+
+	githubClient := p.githubConnectUser(c.Ctx, c.GHInfo)
+	comment := &github.IssueComment{
+		Body: &req.Body,
+	}
+
+	var result *github.IssueComment
+	var err error
+	if cErr := p.useGitHubClient(c.GHInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+		result, _, err = githubClient.Issues.CreateComment(c.Ctx, req.Owner, req.Repo, req.Number, comment)
+		if err != nil {
+			return err
+		}
+		return nil
+	}); cErr != nil {
+		c.Log.WithError(cErr).Errorf("Failed to create PR comment")
+		p.writeAPIError(w, &APIErrorResponse{Message: "failed to create PR comment", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	p.writeJSON(w, result)
+}
+
+func (p *Plugin) getAIAgents(c *UserContext, w http.ResponseWriter, r *http.Request) {
+	agents := p.getConfiguration().ParseAIAgents()
+
+	type AIAgentResponse struct {
+		Name      string `json:"name"`
+		Mention   string `json:"mention"`
+		IsDefault bool   `json:"is_default"`
+	}
+
+	type AIAgentsResponse struct {
+		Agents []AIAgentResponse `json:"agents"`
+	}
+
+	agentList := make([]AIAgentResponse, 0, len(agents))
+	for _, a := range agents {
+		agentList = append(agentList, AIAgentResponse{
+			Name:      a.Name,
+			Mention:   a.Mention,
+			IsDefault: a.IsDefault,
+		})
+	}
+
+	p.writeJSON(w, AIAgentsResponse{
+		Agents: agentList,
+	})
 }

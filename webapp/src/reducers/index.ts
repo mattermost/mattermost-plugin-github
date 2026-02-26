@@ -3,7 +3,7 @@
 
 import {combineReducers} from 'redux';
 
-import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData, Organization, RepositoriesByOrg} from '../types/github_types';
+import {AttachCommentToIssueModalForPostIdData, ConfigurationData, ConnectedData, CreateIssueModalData, GithubUsersData, MentionsData, PrsDetailsData, ShowRhsPluginActionData, SidebarContentData, UserSettingsData, YourReposData, Organization, RepositoriesByOrg, SelectedPRData, PRReviewThreadsData, AIAgent} from '../types/github_types';
 
 import ActionTypes from '../action_types';
 import Constants from '../constants';
@@ -239,6 +239,46 @@ const yourReposByOrg = (state: RepositoriesByOrg[] = [], action:{type: string, d
     }
 };
 
+function selectedPR(state: SelectedPRData | null = null, action: {type: string, data: SelectedPRData}) {
+    switch (action.type) {
+    case ActionTypes.SET_SELECTED_PR:
+        return action.data;
+    case ActionTypes.CLEAR_SELECTED_PR:
+        return null;
+    default:
+        return state;
+    }
+}
+
+function prReviewThreads(state: PRReviewThreadsData | null = null, action: {type: string, data: PRReviewThreadsData}) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_PR_REVIEW_THREADS:
+        return action.data;
+    case ActionTypes.CLEAR_SELECTED_PR:
+        return null;
+    default:
+        return state;
+    }
+}
+
+function prReviewThreadsLoading(state = false, action: {type: string, data: boolean}) {
+    switch (action.type) {
+    case ActionTypes.PR_REVIEW_THREADS_LOADING:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
+function aiAgents(state: AIAgent[] = [], action: {type: string, data: AIAgent[]}) {
+    switch (action.type) {
+    case ActionTypes.RECEIVED_AI_AGENTS:
+        return action.data;
+    default:
+        return state;
+    }
+}
+
 export default combineReducers({
     yourOrgs,
     yourReposByOrg,
@@ -261,4 +301,8 @@ export default combineReducers({
     attachCommentToIssueModalVisible,
     attachCommentToIssueModalForPostId,
     sidebarContent,
+    selectedPR,
+    prReviewThreads,
+    prReviewThreadsLoading,
+    aiAgents,
 });

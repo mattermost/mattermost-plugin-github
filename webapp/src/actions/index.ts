@@ -8,7 +8,7 @@ import {ClientError} from '@mattermost/client';
 import {ApiError} from '../client/client';
 import Client from '../client';
 
-import {APIError, PrsDetailsData, ShowRhsPluginActionData} from '../types/github_types';
+import {APIError, PrsDetailsData, ShowRhsPluginActionData, SelectedPRData} from '../types/github_types';
 
 import {getPluginState} from '../selectors';
 
@@ -402,6 +402,155 @@ export function attachCommentToIssue(payload: AttachCommentToIssuePayload) {
                 type: ActionTypes.RECEIVED_ATTACH_COMMENT_RESULT,
                 data,
             });
+            return {data};
+        } catch (e) {
+            return {error: e as ClientError};
+        }
+    };
+}
+
+export function selectPR(prData: SelectedPRData) {
+    return {
+        type: ActionTypes.SET_SELECTED_PR,
+        data: prData,
+    };
+}
+
+export function clearSelectedPR() {
+    return {
+        type: ActionTypes.CLEAR_SELECTED_PR,
+    };
+}
+
+export function getPRReviewThreads(owner: string, repo: string, number: number) {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            dispatch({
+                type: ActionTypes.PR_REVIEW_THREADS_LOADING,
+                data: true,
+            });
+
+            const data = await Client.getPRReviewThreads(owner, repo, number);
+
+            const connected = await checkAndHandleNotConnected(data)(dispatch);
+            if (!connected) {
+                dispatch({
+                    type: ActionTypes.PR_REVIEW_THREADS_LOADING,
+                    data: false,
+                });
+                return {error: data};
+            }
+
+            dispatch({
+                type: ActionTypes.RECEIVED_PR_REVIEW_THREADS,
+                data,
+            });
+
+            dispatch({
+                type: ActionTypes.PR_REVIEW_THREADS_LOADING,
+                data: false,
+            });
+
+            return {data};
+        } catch (e) {
+            dispatch({
+                type: ActionTypes.PR_REVIEW_THREADS_ERROR,
+                data: (e as ClientError).message,
+            });
+
+            dispatch({
+                type: ActionTypes.PR_REVIEW_THREADS_LOADING,
+                data: false,
+            });
+
+            return {error: e as ClientError};
+        }
+    };
+}
+
+export function replyToReviewComment(owner: string, repo: string, number: number, commentId: number, body: string) {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const data = await Client.replyToReviewComment(owner, repo, number, commentId, body);
+
+            const connected = await checkAndHandleNotConnected(data)(dispatch);
+            if (!connected) {
+                return {error: data};
+            }
+
+            return {data};
+        } catch (e) {
+            return {error: e as ClientError};
+        }
+    };
+}
+
+export function toggleReaction(owner: string, repo: string, commentId: number, reaction: string) {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const data = await Client.toggleReaction(owner, repo, commentId, reaction);
+
+            const connected = await checkAndHandleNotConnected(data)(dispatch);
+            if (!connected) {
+                return {error: data};
+            }
+
+            return {data};
+        } catch (e) {
+            return {error: e as ClientError};
+        }
+    };
+}
+
+export function resolveThread(threadId: string, action: string) {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const data = await Client.resolveThread(threadId, action);
+
+            const connected = await checkAndHandleNotConnected(data)(dispatch);
+            if (!connected) {
+                return {error: data};
+            }
+
+            return {data};
+        } catch (e) {
+            return {error: e as ClientError};
+        }
+    };
+}
+
+export function postAIAssignment(owner: string, repo: string, number: number, body: string) {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const data = await Client.createPRComment(owner, repo, number, body);
+
+            const connected = await checkAndHandleNotConnected(data)(dispatch);
+            if (!connected) {
+                return {error: data};
+            }
+
+            return {data};
+        } catch (e) {
+            return {error: e as ClientError};
+        }
+    };
+}
+
+export function getAIAgents() {
+    return async (dispatch: DispatchFunc) => {
+        try {
+            const data = await Client.getAIAgents();
+
+            const connected = await checkAndHandleNotConnected(data)(dispatch);
+            if (!connected) {
+                return {error: data};
+            }
+
+            dispatch({
+                type: ActionTypes.RECEIVED_AI_AGENTS,
+                data,
+            });
+
             return {data};
         } catch (e) {
             return {error: e as ClientError};

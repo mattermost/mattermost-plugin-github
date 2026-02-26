@@ -64,3 +64,12 @@ func (c *Client) executeQuery(ctx context.Context, qry any, params map[string]an
 
 	return nil
 }
+
+// executeMutation takes a mutation struct and sends it to Github GraphQL API via helper package.
+func (c *Client) executeMutation(ctx context.Context, m any, input githubv4.Input, params map[string]any) error {
+	if err := c.client.Mutate(ctx, m, input, params); err != nil {
+		return errors.Wrap(err, "error in executing mutation")
+	}
+
+	return nil
+}
