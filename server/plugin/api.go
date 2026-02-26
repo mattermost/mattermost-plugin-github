@@ -764,12 +764,10 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 	prDetails := make([]*PRDetails, len(prList))
 	var wg sync.WaitGroup
 	for i, pr := range prList {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			prDetail := p.fetchPRDetails(c, githubClient, pr.URL, pr.Number)
 			prDetails[i] = prDetail
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -789,21 +787,17 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	var wg sync.WaitGroup
 
 	// Fetch reviews
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		fetchedReviews, err := fetchReviews(c, client, repoOwner, repoName, prNumber)
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to fetch reviews for PR details")
 			return
 		}
 		reviewsList = fetchedReviews
-	}()
+	})
 
 	// Fetch reviewers and status
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		prInfo, _, err := client.PullRequests.Get(c.Ctx, repoOwner, repoName, prNumber)
 		if err != nil {
 			c.Log.WithError(err).Warnf("Failed to fetch PR for PR details")
@@ -821,7 +815,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 			return
 		}
 		status = *statuses.State
-	}()
+	})
 
 	wg.Wait()
 	return &PRDetails{
@@ -1873,18 +1867,18 @@ func (p *Plugin) getPRReviewThreads(c *UserContext, w http.ResponseWriter, r *ht
 	}
 
 	type ReviewCommentResponse struct {
-		ID             string                    `json:"id"`
-		DatabaseID     int                       `json:"database_id"`
-		Body           string                    `json:"body"`
-		AuthorLogin    string                    `json:"author_login"`
-		CreatedAt      string                    `json:"created_at"`
-		UpdatedAt      string                    `json:"updated_at"`
-		URL            string                    `json:"url"`
-		DiffHunk       string                    `json:"diff_hunk"`
-		Path           string                    `json:"path"`
-		Line           int                       `json:"line"`
-		StartLine      int                       `json:"start_line"`
-		ReactionGroups []graphql.ReactionInfo    `json:"reaction_groups,omitempty"`
+		ID             string                 `json:"id"`
+		DatabaseID     int                    `json:"database_id"`
+		Body           string                 `json:"body"`
+		AuthorLogin    string                 `json:"author_login"`
+		CreatedAt      string                 `json:"created_at"`
+		UpdatedAt      string                 `json:"updated_at"`
+		URL            string                 `json:"url"`
+		DiffHunk       string                 `json:"diff_hunk"`
+		Path           string                 `json:"path"`
+		Line           int                    `json:"line"`
+		StartLine      int                    `json:"start_line"`
+		ReactionGroups []graphql.ReactionInfo `json:"reaction_groups,omitempty"`
 	}
 
 	type ReviewThreadResponse struct {
@@ -2219,11 +2213,7 @@ func (p *Plugin) getAIAgents(c *UserContext, w http.ResponseWriter, r *http.Requ
 
 	agentList := make([]AIAgentResponse, 0, len(agents))
 	for _, a := range agents {
-		agentList = append(agentList, AIAgentResponse{
-			Name:      a.Name,
-			Mention:   a.Mention,
-			IsDefault: a.IsDefault,
-		})
+		agentList = append(agentList, AIAgentResponse(a))
 	}
 
 	p.writeJSON(w, AIAgentsResponse{

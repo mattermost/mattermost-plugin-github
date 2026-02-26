@@ -291,8 +291,7 @@ func (c *Configuration) ParseAIAgents() []AIAgent {
 	agents := make([]AIAgent, 0, len(defaults))
 	agents = append(agents, defaults...)
 
-	pairs := strings.Split(c.AIAgents, ",")
-	for _, pair := range pairs {
+	for pair := range strings.SplitSeq(c.AIAgents, ",") {
 		pair = strings.TrimSpace(pair)
 		if pair == "" {
 			continue

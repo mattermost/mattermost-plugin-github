@@ -5,6 +5,7 @@ package graphql
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/pkg/errors"
@@ -60,10 +61,14 @@ func (c *Client) GetReviewThreads(ctx context.Context, owner, name string, prNum
 	var allThreads []ReviewThread
 	var reviewSummaries []PRReviewSummary
 
+	if prNumber < 0 || prNumber > math.MaxInt32 {
+		return nil, errors.Errorf("PR number %d overflows int32", prNumber)
+	}
+
 	params := map[string]any{
 		"owner":         githubv4.String(owner),
 		"name":          githubv4.String(name),
-		"prNumber":      githubv4.Int(prNumber),
+		"prNumber":      githubv4.Int(int32(prNumber)), //nolint:gosec // overflow checked above
 		"threadsCursor": (*githubv4.String)(nil),
 	}
 
