@@ -1578,6 +1578,108 @@ Commit: https://github.com/mattermost/mattermost-plugin-github/commit/1234567890
 	})
 }
 
+func TestWorkflowRunNotification(t *testing.T) {
+	t.Run("failed", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Workflow [CI Pipeline](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) failed :x:
+Branch: ` + "`main`" + ` | Run [#42](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) | Triggered by [panda](https://github.com/panda)
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/abc1234567`
+
+		actual, err := renderTemplate("workflowRunCompleted", &github.WorkflowRunEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			Workflow: &github.Workflow{
+				Name: sToP("CI Pipeline"),
+			},
+			WorkflowRun: &github.WorkflowRun{
+				Conclusion: sToP("failure"),
+				HeadBranch: sToP("main"),
+				HeadSHA:    sToP("abc1234567"),
+				HTMLURL:    sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999"),
+				RunNumber:  iToP(42),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Workflow [CI Pipeline](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) succeeded :white_check_mark:
+Branch: ` + "`main`" + ` | Run [#42](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) | Triggered by [panda](https://github.com/panda)
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/abc1234567`
+
+		actual, err := renderTemplate("workflowRunCompleted", &github.WorkflowRunEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			Workflow: &github.Workflow{
+				Name: sToP("CI Pipeline"),
+			},
+			WorkflowRun: &github.WorkflowRun{
+				Conclusion: sToP("success"),
+				HeadBranch: sToP("main"),
+				HeadSHA:    sToP("abc1234567"),
+				HTMLURL:    sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999"),
+				RunNumber:  iToP(42),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("cancelled", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Workflow [CI Pipeline](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) was cancelled :no_entry_sign:
+Branch: ` + "`main`" + ` | Run [#42](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) | Triggered by [panda](https://github.com/panda)
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/abc1234567`
+
+		actual, err := renderTemplate("workflowRunCompleted", &github.WorkflowRunEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			Workflow: &github.Workflow{
+				Name: sToP("CI Pipeline"),
+			},
+			WorkflowRun: &github.WorkflowRun{
+				Conclusion: sToP("cancelled"),
+				HeadBranch: sToP("main"),
+				HeadSHA:    sToP("abc1234567"),
+				HTMLURL:    sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999"),
+				RunNumber:  iToP(42),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+
+	t.Run("timed_out", func(t *testing.T) {
+		expected := `
+[\[mattermost-plugin-github\]](https://github.com/mattermost/mattermost-plugin-github) Workflow [CI Pipeline](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) timed out :warning:
+Branch: ` + "`main`" + ` | Run [#42](https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999) | Triggered by [panda](https://github.com/panda)
+Commit: https://github.com/mattermost/mattermost-plugin-github/commit/abc1234567`
+
+		actual, err := renderTemplate("workflowRunCompleted", &github.WorkflowRunEvent{
+			Repo:   &repo,
+			Sender: &user,
+			Action: sToP(actionCompleted),
+			Workflow: &github.Workflow{
+				Name: sToP("CI Pipeline"),
+			},
+			WorkflowRun: &github.WorkflowRun{
+				Conclusion: sToP("timed_out"),
+				HeadBranch: sToP("main"),
+				HeadSHA:    sToP("abc1234567"),
+				HTMLURL:    sToP("https://github.com/mattermost/mattermost-plugin-github/actions/runs/99999"),
+				RunNumber:  iToP(42),
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
+}
+
 func sToP(s string) *string {
 	return &s
 }

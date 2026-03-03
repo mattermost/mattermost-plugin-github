@@ -38,8 +38,16 @@ const (
 	actionEdited    = "edited"
 	actionCompleted = "completed"
 
+	actionRequested    = "requested"
+	actionInProgress   = "in_progress"
+
 	workflowJobFail    = "failure"
 	workflowJobSuccess = "success"
+
+	workflowRunConclusionFailure   = "failure"
+	workflowRunConclusionSuccess   = "success"
+	workflowRunConclusionCancelled = "cancelled"
+	workflowRunConclusionTimedOut  = "timed_out"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -300,6 +308,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		repo = event.GetRepo()
 		handler = func() {
 			p.postWorkflowJobEvent(event)
+		}
+	case *github.WorkflowRunEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postWorkflowRunEvent(event)
 		}
 	case *github.ReleaseEvent:
 		repo = event.GetRepo()
@@ -1465,6 +1478,61 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 			UserId:    p.BotUserID,
 			Type:      "custom_git_workflow_job",
 			Message:   newWorkflowJobMessage,
+			ChannelId: sub.ChannelID,
+		}
+
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
+	if event.GetAction() != actionCompleted {
+		return
+	}
+
+	conclusion := event.GetWorkflowRun().GetConclusion()
+	if conclusion != workflowRunConclusionFailure &&
+		conclusion != workflowRunConclusionSuccess &&
+		conclusion != workflowRunConclusionCancelled &&
+		conclusion != workflowRunConclusionTimedOut {
+		return
+	}
+
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo)
+
+	if len(subs) == 0 {
+		return
+	}
+
+	workflowRunMessage, err := renderTemplate("workflowRunCompleted", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
+	isFailure := conclusion == workflowRunConclusionFailure ||
+		conclusion == workflowRunConclusionCancelled ||
+		conclusion == workflowRunConclusionTimedOut
+
+	for _, sub := range subs {
+		if !sub.WorkflowRuns() {
+			continue
+		}
+
+		if isFailure && !sub.WorkflowRunFailures() {
+			continue
+		}
+		if conclusion == workflowRunConclusionSuccess && !sub.WorkflowRunSuccesses() {
+			continue
+		}
+
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_workflow_run",
+			Message:   workflowRunMessage,
 			ChannelId: sub.ChannelID,
 		}
 
