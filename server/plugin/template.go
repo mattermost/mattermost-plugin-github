@@ -120,7 +120,7 @@ func init() {
 
 	funcMap["workflowJobFailedStep"] = func(steps []*github.TaskStep) string {
 		for _, step := range steps {
-			if step.GetConclusion() == workflowJobFail {
+			if step.GetConclusion() == workflowConclusionFailure {
 				return step.GetName()
 			}
 		}

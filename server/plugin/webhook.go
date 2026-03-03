@@ -38,13 +38,10 @@ const (
 	actionEdited    = "edited"
 	actionCompleted = "completed"
 
-	workflowJobFail    = "failure"
-	workflowJobSuccess = "success"
-
-	workflowRunConclusionFailure   = "failure"
-	workflowRunConclusionSuccess   = "success"
-	workflowRunConclusionCancelled = "cancelled"
-	workflowRunConclusionTimedOut  = "timed_out"
+	workflowConclusionFailure   = "failure"
+	workflowConclusionSuccess   = "success"
+	workflowConclusionCancelled = "cancelled"
+	workflowConclusionTimedOut  = "timed_out"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -1448,8 +1445,7 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 		return
 	}
 
-	// Create a post only when the workflow job is completed and has either failed or succeeded
-	if event.GetWorkflowJob().GetConclusion() != workflowJobFail && event.GetWorkflowJob().GetConclusion() != workflowJobSuccess {
+	if event.GetWorkflowJob().GetConclusion() != workflowConclusionFailure && event.GetWorkflowJob().GetConclusion() != workflowConclusionSuccess {
 		return
 	}
 
@@ -1490,40 +1486,35 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 	}
 
 	conclusion := event.GetWorkflowRun().GetConclusion()
-	if conclusion != workflowRunConclusionFailure &&
-		conclusion != workflowRunConclusionSuccess &&
-		conclusion != workflowRunConclusionCancelled &&
-		conclusion != workflowRunConclusionTimedOut {
+	isSuccess := conclusion == workflowConclusionSuccess
+	isFailure := conclusion == workflowConclusionFailure ||
+		conclusion == workflowConclusionCancelled ||
+		conclusion == workflowConclusionTimedOut
+
+	if !isSuccess && !isFailure {
 		return
 	}
 
 	repo := event.GetRepo()
 	subs := p.GetSubscribedChannelsForRepository(repo)
-
 	if len(subs) == 0 {
 		return
 	}
 
-	workflowRunMessage, err := renderTemplate("workflowRunCompleted", event)
-	if err != nil {
-		p.client.Log.Warn("Failed to render template", "Error", err.Error())
-		return
-	}
-
-	isFailure := conclusion == workflowRunConclusionFailure ||
-		conclusion == workflowRunConclusionCancelled ||
-		conclusion == workflowRunConclusionTimedOut
-
+	var workflowRunMessage string
 	for _, sub := range subs {
-		if !sub.WorkflowRuns() {
+		// Only send notifications if we have a subscription for the workflow run conclusion
+		if (isFailure && !sub.WorkflowRunFailures()) || (isSuccess && !sub.WorkflowRunSuccesses()) {
 			continue
 		}
 
-		if isFailure && !sub.WorkflowRunFailures() {
-			continue
-		}
-		if conclusion == workflowRunConclusionSuccess && !sub.WorkflowRunSuccesses() {
-			continue
+		if workflowRunMessage == "" {
+			var err error
+			workflowRunMessage, err = renderTemplate("workflowRunCompleted", event)
+			if err != nil {
+				p.client.Log.Warn("Failed to render template", "Error", err.Error())
+				return
+			}
 		}
 
 		post := &model.Post{
@@ -1533,7 +1524,7 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 			ChannelId: sub.ChannelID,
 		}
 
-		if err = p.client.Post.CreatePost(post); err != nil {
+		if err := p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
 	}

@@ -147,10 +147,6 @@ func (s *Subscription) Workflows() bool {
 	return strings.Contains(s.Features.String(), featureWorkflowFailure) || strings.Contains(s.Features.String(), featureWorkflowSuccess)
 }
 
-func (s *Subscription) WorkflowRuns() bool {
-	return strings.Contains(s.Features.String(), featureWorkflowRunFailure) || strings.Contains(s.Features.String(), featureWorkflowRunSuccess)
-}
-
 func (s *Subscription) WorkflowRunFailures() bool {
 	return strings.Contains(s.Features.String(), featureWorkflowRunFailure)
 }
