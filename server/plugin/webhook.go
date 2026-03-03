@@ -38,9 +38,6 @@ const (
 	actionEdited    = "edited"
 	actionCompleted = "completed"
 
-	actionRequested    = "requested"
-	actionInProgress   = "in_progress"
-
 	workflowJobFail    = "failure"
 	workflowJobSuccess = "success"
 
