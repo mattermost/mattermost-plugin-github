@@ -1503,8 +1503,15 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 
 	var workflowRunMessage string
 	for _, sub := range subs {
-		// Only send notifications if we have a subscription for the workflow run conclusion
 		if (isFailure && !sub.WorkflowRunFailures()) || (isSuccess && !sub.WorkflowRunSuccesses()) {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
 			continue
 		}
 
