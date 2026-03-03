@@ -33,12 +33,12 @@ const (
 	featurePullReviews        = "pull_reviews"
 	featureStars              = "stars"
 	featureReleases           = "releases"
-	featureWorkflowFailure       = "workflow_failure"
-	featureWorkflowSuccess       = "workflow_success"
-	featureWorkflowRunFailure    = "workflow_run_failure"
-	featureWorkflowRunSuccess    = "workflow_run_success"
-	featureDiscussions           = "discussions"
-	featureDiscussionComments    = "discussion_comments"
+	featureWorkflowFailure    = "workflow_failure"
+	featureWorkflowSuccess    = "workflow_success"
+	featureWorkflowRunFailure = "workflow_run_failure"
+	featureWorkflowRunSuccess = "workflow_run_success"
+	featureDiscussions        = "discussions"
+	featureDiscussionComments = "discussion_comments"
 )
 
 const (
@@ -62,12 +62,12 @@ var validFeatures = map[string]bool{
 	featurePullReviews:        true,
 	featureStars:              true,
 	featureReleases:           true,
-	featureWorkflowFailure:       true,
-	featureWorkflowSuccess:       true,
-	featureWorkflowRunFailure:    true,
-	featureWorkflowRunSuccess:    true,
-	featureDiscussions:           true,
-	featureDiscussionComments:    true,
+	featureWorkflowFailure:    true,
+	featureWorkflowSuccess:    true,
+	featureWorkflowRunFailure: true,
+	featureWorkflowRunSuccess: true,
+	featureDiscussions:        true,
+	featureDiscussionComments: true,
 }
 
 type Features string
