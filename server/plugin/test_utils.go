@@ -433,8 +433,8 @@ func GetMockWorkflowRunEvent(action, conclusion, repo, org, sender string) *gith
 		Repo: &github.Repository{
 			Name:     github.String(repo),
 			Owner:    &github.User{Login: github.String(org)},
-			FullName: github.String(fmt.Sprintf("%s/%s", repo, org)),
-			HTMLURL:  github.String(fmt.Sprintf("%s%s/%s", GithubBaseURL, repo, org)),
+			FullName: github.String(fmt.Sprintf("%s/%s", org, repo)),
+			HTMLURL:  github.String(fmt.Sprintf("%s%s/%s", GithubBaseURL, org, repo)),
 		},
 		Sender: &github.User{Login: github.String(sender)},
 		Workflow: &github.Workflow{
@@ -444,7 +444,7 @@ func GetMockWorkflowRunEvent(action, conclusion, repo, org, sender string) *gith
 			Conclusion: github.String(conclusion),
 			HeadBranch: github.String("main"),
 			HeadSHA:    github.String("abc1234567"),
-			HTMLURL:    github.String(fmt.Sprintf("%s%s/%s/actions/runs/99999", GithubBaseURL, repo, org)),
+			HTMLURL:    github.String(fmt.Sprintf("%s%s/%s/actions/runs/99999", GithubBaseURL, org, repo)),
 			RunNumber:  github.Int(42),
 		},
 	}
