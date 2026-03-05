@@ -1501,7 +1501,12 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 		return
 	}
 
-	var workflowRunMessage string
+	workflowRunMessage, err := renderTemplate("workflowRunCompleted", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
 	for _, sub := range subs {
 		if (isFailure && !sub.WorkflowRunFailures()) || (isSuccess && !sub.WorkflowRunSuccesses()) {
 			continue
@@ -1515,15 +1520,6 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 			continue
 		}
 
-		if workflowRunMessage == "" {
-			var err error
-			workflowRunMessage, err = renderTemplate("workflowRunCompleted", event)
-			if err != nil {
-				p.client.Log.Warn("Failed to render template", "Error", err.Error())
-				return
-			}
-		}
-
 		post := &model.Post{
 			UserId:    p.BotUserID,
 			Type:      "custom_git_workflow_run",
@@ -1531,7 +1527,7 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 			ChannelId: sub.ChannelID,
 		}
 
-		if err := p.client.Post.CreatePost(post); err != nil {
+		if err = p.client.Post.CreatePost(post); err != nil {
 			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
 		}
 	}

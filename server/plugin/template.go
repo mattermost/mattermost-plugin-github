@@ -496,6 +496,7 @@ Step failed: {{.GetWorkflowJob.Steps | workflowJobFailedStep}}
 {{template "repo" .GetRepo}} Workflow [{{.GetWorkflow.GetName}}]({{.GetWorkflowRun.GetHTMLURL}}) {{if eq .GetWorkflowRun.GetConclusion "success"}}succeeded :white_check_mark:{{else if eq .GetWorkflowRun.GetConclusion "failure"}}failed :x:{{else if eq .GetWorkflowRun.GetConclusion "cancelled"}}was cancelled :no_entry_sign:{{else if eq .GetWorkflowRun.GetConclusion "timed_out"}}timed out :warning:{{else}}completed with conclusion: {{.GetWorkflowRun.GetConclusion}}{{end}}
 Branch: ` + "`" + `{{.GetWorkflowRun.GetHeadBranch}}` + "`" + ` | Run [#{{.GetWorkflowRun.GetRunNumber}}]({{.GetWorkflowRun.GetHTMLURL}}) | Triggered by {{template "user" .GetSender}}
 Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowRun.GetHeadSHA}}`))
+
 	template.Must(masterTemplate.New("newReleaseEvent").Funcs(funcMap).Parse(`
 {{template "repo" .GetRepo}} {{template "user" .GetSender}}
 {{- if eq .GetAction "created" }} created a release {{template "release" .GetRelease}}
@@ -512,8 +513,8 @@ Commit: {{.GetRepo.GetHTMLURL}}/commit/{{.GetWorkflowRun.GetHeadSHA}}`))
 `))
 
 	template.Must(masterTemplate.New("newDiscussionComment").Funcs(funcMap).Parse(`
-{{template "repo" .GetRepo}} 
-{{- if eq .GetAction "created" }} New comment 
+{{template "repo" .GetRepo}}
+{{- if eq .GetAction "created" }} New comment
 {{- else if eq .GetAction "edited" }} Comment edited
 {{- else if eq .GetAction "deleted" }} Comment deleted
 {{- end }} by {{template "user" .GetSender}} on discussion [#{{.GetDiscussion.GetNumber}} {{.GetDiscussion.GetTitle}}]({{.GetDiscussion.GetHTMLURL}}):
