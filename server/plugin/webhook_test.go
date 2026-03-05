@@ -1234,7 +1234,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: featureStars, Repository: MockRepo},
 					},
 				})).Times(1)
@@ -1248,7 +1248,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
 					},
 				})).Times(1)
@@ -1262,7 +1262,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{
 							ChannelID:  MockChannelID,
 							CreatorID:  MockCreatorID,
@@ -1288,7 +1288,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{
 							ChannelID:  MockChannelID,
 							CreatorID:  MockCreatorID,
@@ -1314,7 +1314,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
 					},
 				})).Times(1)
@@ -1330,7 +1330,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
 					},
 				})).Times(1)
@@ -1345,8 +1345,38 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					_, ok := val.(**Subscriptions)
 					return ok
 				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
-					"mockrepo/mockorg": {
+					"mockorg/mockrepo": {
 						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunSuccess), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "successful workflow run cancelled notification",
+			event: GetMockWorkflowRunEvent(actionCompleted, "cancelled", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "successful workflow run timed_out notification",
+			event: GetMockWorkflowRunEvent(actionCompleted, "timed_out", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
 					},
 				})).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
