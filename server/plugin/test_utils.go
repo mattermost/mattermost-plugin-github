@@ -427,6 +427,29 @@ func GetMockDiscussionEvent(repo, org, sender string) *github.DiscussionEvent {
 	}
 }
 
+func GetMockWorkflowRunEvent(action, conclusion, repo, org, sender string) *github.WorkflowRunEvent {
+	return &github.WorkflowRunEvent{
+		Action: github.String(action),
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(fmt.Sprintf("%s/%s", org, repo)),
+			HTMLURL:  github.String(fmt.Sprintf("%s%s/%s", GithubBaseURL, org, repo)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+		Workflow: &github.Workflow{
+			Name: github.String("CI Pipeline"),
+		},
+		WorkflowRun: &github.WorkflowRun{
+			Conclusion: github.String(conclusion),
+			HeadBranch: github.String("main"),
+			HeadSHA:    github.String("abc1234567"),
+			HTMLURL:    github.String(fmt.Sprintf("%s%s/%s/actions/runs/99999", GithubBaseURL, org, repo)),
+			RunNumber:  github.Int(42),
+		},
+	}
+}
+
 func GetMockDiscussionCommentEvent(repo, org, action, sender string) *github.DiscussionCommentEvent {
 	return &github.DiscussionCommentEvent{
 		Action: &action,
