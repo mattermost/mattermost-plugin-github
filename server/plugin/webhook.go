@@ -923,7 +923,7 @@ func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
 		return false
 	}
 	senderLower := strings.ToLower(sender)
-	for _, muted := range strings.Split(mutedUsernames, ",") {
+	for muted := range strings.SplitSeq(mutedUsernames, ",") {
 		if strings.ToLower(muted) == senderLower {
 			return true
 		}
