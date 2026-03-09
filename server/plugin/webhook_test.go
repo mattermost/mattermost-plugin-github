@@ -450,9 +450,10 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 
 func TestHandleCommentMentionNotification(t *testing.T) {
 	tests := []struct {
-		name  string
-		event *github.IssueCommentEvent
-		setup func(*plugintest.API, *mocks.MockKvStore)
+		name      string
+		event     *github.IssueCommentEvent
+		setup     func(*plugintest.API, *mocks.MockKvStore)
+		assertDMs func(*testing.T, *plugintest.API)
 	}{
 		{
 			name:  "Unsupported action",
@@ -535,6 +536,28 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
+		{
+			name:  "Muted sender suppresses mention notification",
+			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("mockUser,anotherUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
 	}
 	for _, tc := range tests {
 		mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
@@ -545,6 +568,9 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 
 			p.handleCommentMentionNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t, mockAPI)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
@@ -740,9 +766,10 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 
 func TestHandlePullRequestNotification(t *testing.T) {
 	tests := []struct {
-		name  string
-		event *github.PullRequestEvent
-		setup func(*plugintest.API, *mocks.MockKvStore)
+		name      string
+		event     *github.PullRequestEvent
+		setup     func(*plugintest.API, *mocks.MockKvStore)
+		assertDMs func(*testing.T, *plugintest.API)
 	}{
 		{
 			name:  "Review requested by sender",
@@ -840,6 +867,72 @@ func TestHandlePullRequestNotification(t *testing.T) {
 			},
 		},
 		{
+			name:  "Muted sender suppresses PR closed notification to author",
+			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "senderUser", "prAuthor", ""),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("prAuthor_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("prAuthorUserID")).Times(1)
+				mockKVStore.EXPECT().Get("prAuthorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser,otherBot")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
+			name:  "Muted sender suppresses PR assigned notification to assignee",
+			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "senderUser", "prAuthor", "assigneeUser"),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
+			name:  "Muted sender suppresses PR review requested notification",
+			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "requestedReviewer", ""),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("requestedUserID")).Times(1)
+				mockKVStore.EXPECT().Get("requestedUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
 			name: "Unhandled event action",
 			event: GetMockPullRequestEvent(
 				"unsupported_action", "mockRepo", false, "senderUser", "", ""),
@@ -858,6 +951,9 @@ func TestHandlePullRequestNotification(t *testing.T) {
 
 			p.handlePullRequestNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t, mockAPI)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
@@ -868,9 +964,10 @@ func TestHandleIssueNotification(t *testing.T) {
 	p := getPluginTest(mockAPI, mockKvStore)
 
 	tests := []struct {
-		name  string
-		event *github.IssuesEvent
-		setup func()
+		name      string
+		event     *github.IssuesEvent
+		setup     func()
+		assertDMs func(*testing.T)
 	}{
 		{
 			name:  "issue closed by author",
@@ -927,6 +1024,50 @@ func TestHandleIssueNotification(t *testing.T) {
 			},
 		},
 		{
+			name:  "muted sender suppresses issue closed notification to author",
+			event: GetMockIssuesEvent(actionClosed, MockRepo, false, "authorUser", "senderUser", ""),
+			setup: func() {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser,otherBot")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
+			name:  "muted sender suppresses issue assigned notification to assignee",
+			event: GetMockIssuesEvent(actionAssigned, MockRepo, false, "authorUser", "senderUser", "assigneeUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
+				mockKvStore.EXPECT().Get("assigneeUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
 			name:  "unhandled event action",
 			event: GetMockIssuesEvent("unsupported_action", MockRepo, false, "senderUser", "", ""),
 			setup: func() {
@@ -937,10 +1078,14 @@ func TestHandleIssueNotification(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockAPI.ExpectedCalls = nil
+			mockAPI.Calls = nil
 			tc.setup()
 
 			p.handleIssueNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
@@ -951,9 +1096,10 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 	p := getPluginTest(mockAPI, mockKvStore)
 
 	tests := []struct {
-		name  string
-		event *github.PullRequestReviewEvent
-		setup func()
+		name      string
+		event     *github.PullRequestReviewEvent
+		setup     func()
+		assertDMs func(*testing.T)
 	}{
 		{
 			name:  "review submitted by author",
@@ -1009,14 +1155,40 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 			},
 		},
+		{
+			name:  "muted sender suppresses review notification to PR author",
+			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "reviewerUser", "authorUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("reviewerUser,otherBot")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockAPI.ExpectedCalls = nil
+			mockAPI.Calls = nil
 			tc.setup()
 
 			p.handlePullRequestReviewNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
