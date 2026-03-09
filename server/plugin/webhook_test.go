@@ -487,8 +487,8 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
-				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
-					_, ok := val.(**GitHubUserInfo)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
@@ -502,6 +502,10 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
@@ -519,6 +523,10 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
@@ -764,6 +772,10 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
@@ -795,12 +807,16 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
-				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 		{
@@ -811,12 +827,16 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("requestedUserID")).Times(1)
-				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockKVStore.EXPECT().Get("requestedUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("requestedUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 		{
@@ -977,6 +997,10 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
 				mockAPI.On("LogWarn", "Couldn't get bot's DM channel", "userID", "authorUserID", "error", "error getting channel")
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
