@@ -919,7 +919,10 @@ func (p *Plugin) senderMutedByReceiver(userID string, sender string) bool {
 	}
 
 	mutedUsernames := string(mutedUsernameBytes)
-	return strings.Contains(mutedUsernames, sender)
+	if len(mutedUsernames) == 0 {
+		return false
+	}
+	return slices.Contains(strings.Split(mutedUsernames, ","), sender)
 }
 
 func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent) {
