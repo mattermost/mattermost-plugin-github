@@ -304,6 +304,38 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			},
 		},
 		{
+			name:   "Sender is muted with different casing",
+			userID: "user1",
+			sender: "Sender1",
+			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Do(func(key string, value any) {
+					*value.(*[]byte) = []byte("sender1,sender2")
+				}).Times(1)
+			},
+			assert: func(t *testing.T, muted bool) {
+				assert.True(t, muted, "Expected sender to be muted regardless of casing")
+			},
+		},
+		{
+			name:   "Empty muted users list",
+			userID: "user1",
+			sender: "sender1",
+			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Do(func(key string, value any) {
+					*value.(*[]byte) = []byte("")
+				}).Times(1)
+			},
+			assert: func(t *testing.T, muted bool) {
+				assert.False(t, muted, "Expected sender to not be muted when mute list is empty")
+			},
+		},
+		{
 			name:   "Error fetching muted users",
 			userID: "user1",
 			sender: "sender1",
