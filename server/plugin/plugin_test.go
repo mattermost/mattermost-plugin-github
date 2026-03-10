@@ -66,7 +66,16 @@ func TestReEncryptUserData_HappyPath(t *testing.T) {
 		},
 	)
 
-	mockKvStore.EXPECT().Set("user1"+githubTokenKey, gomock.Any()).Return(true, nil)
+	mockKvStore.EXPECT().Set("user1"+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(key string, value any, opts ...pluginapi.KVSetOption) (bool, error) {
+			storedInfo, ok := value.(*GitHubUserInfo)
+			require.True(t, ok, "expected *GitHubUserInfo")
+			decrypted, decErr := decrypt([]byte(testNewKey), storedInfo.Token.AccessToken)
+			require.NoError(t, decErr)
+			require.Equal(t, MockAccessToken, decrypted)
+			return true, nil
+		},
+	)
 
 	api.On("LogInfo", "Encryption key changed, re-encrypting user tokens",
 		"user_count", "1").Times(1)
@@ -179,8 +188,8 @@ func TestReEncryptUserData_ListKeysError(t *testing.T) {
 
 	mockKvStore.EXPECT().ListKeys(0, keysPerPage, gomock.Any()).Return(nil, errors.New("KV list error"))
 
-	api.On("LogWarn", "Encryption key changed but failed to list user keys for re-encryption",
-		"page", "0", "error", "KV list error").Times(1)
+	api.On("LogWarn", "Encryption key changed but failed to list user keys for re-encryption, proceeding with keys collected so far",
+		"page", "0", "keys_collected", "0", "error", "KV list error").Times(1)
 
 	p.reEncryptUserData(testOldKey)
 

@@ -744,9 +744,9 @@ func (p *Plugin) reEncryptUserData(previousEncryptionKey string) {
 	for page := 0; ; page++ {
 		keys, err := p.store.ListKeys(page, keysPerPage, pluginapi.WithChecker(checker))
 		if err != nil {
-			p.client.Log.Warn("Encryption key changed but failed to list user keys for re-encryption",
-				"page", fmt.Sprintf("%d", page), "error", err.Error())
-			return
+			p.client.Log.Warn("Encryption key changed but failed to list user keys for re-encryption, proceeding with keys collected so far",
+				"page", fmt.Sprintf("%d", page), "keys_collected", fmt.Sprintf("%d", len(allKeys)), "error", err.Error())
+			break
 		}
 		allKeys = append(allKeys, keys...)
 		if len(keys) < keysPerPage {
