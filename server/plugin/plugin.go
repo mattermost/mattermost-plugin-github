@@ -685,8 +685,21 @@ func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
 }
 
 func (p *Plugin) disconnectGitHubAccount(userID string) {
-	userInfo, _ := p.getGitHubUserInfo(userID)
-	if userInfo == nil {
+	userInfo, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		if apiErr.ID == apiErrorIDNotConnected {
+			return
+		}
+
+		p.client.Log.Warn("Failed to load user info for disconnect, falling back to force-disconnect",
+			"user_id", userID, "error", apiErr.Message)
+		var rawInfo *GitHubUserInfo
+		_ = p.store.Get(userID+githubTokenKey, &rawInfo)
+		githubUsername := ""
+		if rawInfo != nil {
+			githubUsername = rawInfo.GitHubUsername
+		}
+		p.forceDisconnectUser(userID, githubUsername)
 		return
 	}
 
@@ -695,7 +708,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	}
 
 	if err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
-		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
+		p.client.Log.Warn("Failed to delete github username mapping from KV store", "userID", userID, "error", err.Error())
 	}
 
 	user, err := p.client.User.Get(userID)
@@ -707,7 +720,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 			delete(user.Props, "git_user")
 			err := p.client.User.Update(user)
 			if err != nil {
-				p.client.Log.Warn("Failed to get update user props", "userID", userID, "error", err.Error())
+				p.client.Log.Warn("Failed to update user props", "userID", userID, "error", err.Error())
 			}
 		}
 	}
