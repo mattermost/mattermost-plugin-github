@@ -23,6 +23,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 
@@ -35,8 +36,9 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	mm34646MutexKey = "mm34646_token_reset_mutex"
-	mm34646DoneKey  = "mm34646_token_reset_done"
+	mm34646MutexKey   = "mm34646_token_reset_mutex"
+	mm34646DoneKey    = "mm34646_token_reset_done"
+	reEncryptMutexKey = "reencrypt_user_data_mutex"
 
 	wsEventConnect    = "connect"
 	wsEventDisconnect = "disconnect"
@@ -735,7 +737,16 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 // reEncryptUserData re-encrypts all connected users' access tokens when
 // the encryption key changes. Users whose tokens cannot be migrated are
 // force-disconnected and notified to reconnect.
+// A cluster mutex ensures only one node performs the migration in HA setups.
 func (p *Plugin) reEncryptUserData(previousEncryptionKey string) {
+	m, err := cluster.NewMutex(p.API, reEncryptMutexKey)
+	if err != nil {
+		p.client.Log.Warn("Failed to create cluster mutex for encryption key rotation", "error", err.Error())
+		return
+	}
+	m.Lock()
+	defer m.Unlock()
+
 	checker := func(key string) (keep bool, err error) {
 		return strings.HasSuffix(key, githubTokenKey), nil
 	}
@@ -787,6 +798,11 @@ func (p *Plugin) reEncryptUserToken(kvKey, previousEncryptionKey string) (string
 
 	if userInfo.Token == nil || userInfo.Token.AccessToken == "" {
 		return userInfo.GitHubUsername, errors.New("user has no token to re-encrypt")
+	}
+
+	config := p.getConfiguration()
+	if _, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken); err == nil {
+		return userInfo.GitHubUsername, nil
 	}
 
 	plainToken, err := decrypt([]byte(previousEncryptionKey), userInfo.Token.AccessToken)

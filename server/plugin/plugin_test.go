@@ -39,6 +39,9 @@ func setupRotationTest(t *testing.T) (*Plugin, *plugintest.API, *mocks.MockKvSto
 
 	p.setConfiguration(&Configuration{EncryptionKey: testNewKey})
 
+	api.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
+	api.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
 	return p, api, mockKvStore, ctrl
 }
 
@@ -235,6 +238,38 @@ func TestReEncryptUserData_MultipleUsers(t *testing.T) {
 
 	api.On("LogInfo", "Encryption key changed, re-encrypting user tokens",
 		"user_count", "2").Times(1)
+
+	p.reEncryptUserData(testOldKey)
+
+	api.AssertExpectations(t)
+}
+
+func TestReEncryptUserData_AlreadyMigratedToken(t *testing.T) {
+	p, api, mockKvStore, ctrl := setupRotationTest(t)
+	defer ctrl.Finish()
+
+	encryptedWithNewKey, err := encrypt([]byte(testNewKey), MockAccessToken)
+	require.NoError(t, err)
+
+	userInfo := &GitHubUserInfo{
+		UserID:         "user1",
+		GitHubUsername: "ghuser1",
+		Token:          &oauth2.Token{AccessToken: encryptedWithNewKey},
+		Settings:       &UserSettings{},
+	}
+	userInfoBytes, err := json.Marshal(userInfo)
+	require.NoError(t, err)
+
+	mockKvStore.EXPECT().ListKeys(0, keysPerPage, gomock.Any()).Return([]string{"user1" + githubTokenKey}, nil)
+
+	mockKvStore.EXPECT().Get("user1"+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(key string, out any) error {
+			return json.Unmarshal(userInfoBytes, out)
+		},
+	)
+
+	api.On("LogInfo", "Encryption key changed, re-encrypting user tokens",
+		"user_count", "1").Times(1)
 
 	p.reEncryptUserData(testOldKey)
 
