@@ -111,7 +111,7 @@ func TestReEncryptUserData_DecryptFailure(t *testing.T) {
 	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(nil)
 
 	api.On("LogInfo", mock.Anything, mock.Anything, mock.Anything).Maybe()
-	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 	api.On("GetUser", "user1").Return(&model.User{
 		Id:    "user1",
 		Props: model.StringMap{},
@@ -270,12 +270,35 @@ func TestForceDisconnectUser_CleansUpAndNotifies(t *testing.T) {
 	api.AssertExpectations(t)
 }
 
-func TestForceDisconnectUser_NoGitHubUsername(t *testing.T) {
+func TestForceDisconnectUser_NoGitHubUsername_FallbackFromProps(t *testing.T) {
 	p, api, mockKvStore, ctrl := setupRotationTest(t)
 	defer ctrl.Finish()
 
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
-	// Should NOT call Delete for the username mapping when empty
+	// Username recovered from user props, so the mapping delete should happen
+	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(nil)
+
+	api.On("GetUser", "user1").Return(&model.User{
+		Id:    "user1",
+		Props: model.StringMap{"git_user": "ghuser1"},
+	}, nil)
+	api.On("UpdateUser", mock.Anything).Return(&model.User{Id: "user1", Props: model.StringMap{}}, nil)
+	api.On("PublishWebSocketEvent", wsEventDisconnect, map[string]any(nil),
+		&model.WebsocketBroadcast{UserId: "user1"}).Times(1)
+	api.On("GetDirectChannel", "user1", MockBotID).Return(&model.Channel{Id: "dmchannel"}, nil)
+	api.On("CreatePost", mock.Anything).Return(&model.Post{}, nil)
+
+	p.forceDisconnectUser("user1", "")
+
+	api.AssertExpectations(t)
+}
+
+func TestForceDisconnectUser_NoGitHubUsername_NoPropsFallback(t *testing.T) {
+	p, api, mockKvStore, ctrl := setupRotationTest(t)
+	defer ctrl.Finish()
+
+	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
+	// No username available anywhere, so no mapping delete
 
 	api.On("GetUser", "user1").Return(&model.User{
 		Id:    "user1",

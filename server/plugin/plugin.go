@@ -810,21 +810,28 @@ func (p *Plugin) forceDisconnectUser(userID, githubUsername string) {
 			"user_id", userID, "error", err.Error())
 	}
 
-	if githubUsername != "" {
-		if err := p.store.Delete(githubUsername + githubUsernameKey); err != nil {
-			p.client.Log.Warn("forceDisconnectUser: failed to delete username mapping",
-				"user_id", userID, "error", err.Error())
-		}
-	}
-
 	user, err := p.client.User.Get(userID)
 	if err != nil {
 		p.client.Log.Warn("forceDisconnectUser: failed to get user props",
 			"user_id", userID, "error", err.Error())
-	} else if _, ok := user.Props["git_user"]; ok {
-		delete(user.Props, "git_user")
-		if err := p.client.User.Update(user); err != nil {
-			p.client.Log.Warn("forceDisconnectUser: failed to update user props",
+	} else {
+		if githubUsername == "" {
+			if gitUser, ok := user.Props["git_user"]; ok {
+				githubUsername = gitUser
+			}
+		}
+		if _, ok := user.Props["git_user"]; ok {
+			delete(user.Props, "git_user")
+			if err := p.client.User.Update(user); err != nil {
+				p.client.Log.Warn("forceDisconnectUser: failed to update user props",
+					"user_id", userID, "error", err.Error())
+			}
+		}
+	}
+
+	if githubUsername != "" {
+		if err := p.store.Delete(githubUsername + githubUsernameKey); err != nil {
+			p.client.Log.Warn("forceDisconnectUser: failed to delete username mapping",
 				"user_id", userID, "error", err.Error())
 		}
 	}
