@@ -719,6 +719,114 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	)
 }
 
+// reEncryptUserData re-encrypts all connected users' access tokens when
+// the encryption key changes. Users whose tokens cannot be migrated are
+// force-disconnected and notified to reconnect.
+func (p *Plugin) reEncryptUserData(previousEncryptionKey string) {
+	checker := func(key string) (keep bool, err error) {
+		return strings.HasSuffix(key, githubTokenKey), nil
+	}
+
+	var allKeys []string
+	for page := 0; ; page++ {
+		keys, err := p.store.ListKeys(page, keysPerPage, pluginapi.WithChecker(checker))
+		if err != nil {
+			p.client.Log.Warn("Encryption key changed but failed to list user keys for re-encryption",
+				"page", fmt.Sprintf("%d", page), "error", err.Error())
+			return
+		}
+		allKeys = append(allKeys, keys...)
+		if len(keys) < keysPerPage {
+			break
+		}
+	}
+
+	if len(allKeys) == 0 {
+		return
+	}
+
+	p.client.Log.Info("Encryption key changed, re-encrypting user tokens",
+		"user_count", fmt.Sprintf("%d", len(allKeys)))
+
+	for _, key := range allKeys {
+		userID := strings.TrimSuffix(key, githubTokenKey)
+
+		githubUsername, err := p.reEncryptUserToken(key, previousEncryptionKey)
+		if err != nil {
+			p.client.Log.Warn("Failed to re-encrypt user token during encryption key rotation",
+				"user_id", userID, "error", err.Error())
+			p.forceDisconnectUser(userID, githubUsername)
+		}
+	}
+}
+
+// reEncryptUserToken decrypts a single user's token with the old key and
+// re-encrypts it with the current key. Returns the GitHub username (best-effort,
+// may be empty) and any error encountered.
+func (p *Plugin) reEncryptUserToken(kvKey, previousEncryptionKey string) (string, error) {
+	var userInfo *GitHubUserInfo
+	if err := p.store.Get(kvKey, &userInfo); err != nil {
+		return "", errors.Wrap(err, "could not load user info")
+	}
+	if userInfo == nil {
+		return "", errors.New("user info not found")
+	}
+
+	if userInfo.Token == nil || userInfo.Token.AccessToken == "" {
+		return userInfo.GitHubUsername, errors.New("user has no token to re-encrypt")
+	}
+
+	plainToken, err := decrypt([]byte(previousEncryptionKey), userInfo.Token.AccessToken)
+	if err != nil {
+		return userInfo.GitHubUsername, errors.Wrap(err, "could not decrypt token with previous key")
+	}
+
+	userInfo.Token.AccessToken = plainToken
+	if err := p.storeGitHubUserInfo(userInfo); err != nil {
+		return userInfo.GitHubUsername, errors.Wrap(err, "could not store re-encrypted token")
+	}
+
+	return userInfo.GitHubUsername, nil
+}
+
+// forceDisconnectUser performs a best-effort cleanup of a user's encrypted
+// data and notifies them to reconnect
+func (p *Plugin) forceDisconnectUser(userID, githubUsername string) {
+	if err := p.store.Delete(userID + githubTokenKey); err != nil {
+		p.client.Log.Warn("forceDisconnectUser: failed to delete github token",
+			"user_id", userID, "error", err.Error())
+	}
+
+	if githubUsername != "" {
+		if err := p.store.Delete(githubUsername + githubUsernameKey); err != nil {
+			p.client.Log.Warn("forceDisconnectUser: failed to delete username mapping",
+				"user_id", userID, "error", err.Error())
+		}
+	}
+
+	user, err := p.client.User.Get(userID)
+	if err != nil {
+		p.client.Log.Warn("forceDisconnectUser: failed to get user props",
+			"user_id", userID, "error", err.Error())
+	} else if _, ok := user.Props["git_user"]; ok {
+		delete(user.Props, "git_user")
+		if err := p.client.User.Update(user); err != nil {
+			p.client.Log.Warn("forceDisconnectUser: failed to update user props",
+				"user_id", userID, "error", err.Error())
+		}
+	}
+
+	p.client.Frontend.PublishWebSocketEvent(
+		wsEventDisconnect,
+		nil,
+		&model.WebsocketBroadcast{UserId: userID},
+	)
+
+	p.CreateBotDMPost(userID,
+		"Your GitHub connection has been reset due to a change in the plugin configuration. Please reconnect your account using `/github connect`.",
+		"custom_git_disconnect")
+}
+
 func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventCreateIssue,
