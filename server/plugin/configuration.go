@@ -212,12 +212,12 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	p.sendWebsocketEventIfNeeded(previousConfig, configuration)
 
-	p.setConfiguration(configuration)
-
 	if previousEncryptionKey != "" && configuration.EncryptionKey != "" &&
 		previousEncryptionKey != configuration.EncryptionKey {
-		p.reEncryptUserData(previousEncryptionKey)
+		go p.reEncryptUserData(configuration.EncryptionKey, previousEncryptionKey)
 	}
+
+	p.setConfiguration(configuration)
 
 	command, err := p.getCommand(configuration)
 	if err != nil {

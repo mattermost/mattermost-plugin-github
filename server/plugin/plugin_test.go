@@ -83,7 +83,7 @@ func TestReEncryptUserData_HappyPath(t *testing.T) {
 	api.On("LogInfo", "Encryption key changed, re-encrypting user tokens",
 		"user_count", "1").Times(1)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 
 	api.AssertExpectations(t)
 }
@@ -111,6 +111,7 @@ func TestReEncryptUserData_DecryptFailure(t *testing.T) {
 
 	// forceDisconnectUser expectations
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
+	mockKvStore.EXPECT().Delete("user1" + githubPrivateRepoKey).Return(nil)
 	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(nil)
 
 	api.On("LogInfo", mock.Anything, mock.Anything, mock.Anything).Maybe()
@@ -124,7 +125,7 @@ func TestReEncryptUserData_DecryptFailure(t *testing.T) {
 	api.On("PublishWebSocketEvent", wsEventDisconnect, map[string]any(nil),
 		&model.WebsocketBroadcast{UserId: "user1"}).Times(1)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 
 	api.AssertExpectations(t)
 }
@@ -158,6 +159,7 @@ func TestReEncryptUserData_StoreFailure(t *testing.T) {
 
 	// forceDisconnectUser expectations
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
+	mockKvStore.EXPECT().Delete("user1" + githubPrivateRepoKey).Return(nil)
 	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(nil)
 
 	api.On("LogInfo", mock.Anything, mock.Anything, mock.Anything).Maybe()
@@ -171,7 +173,7 @@ func TestReEncryptUserData_StoreFailure(t *testing.T) {
 	api.On("PublishWebSocketEvent", wsEventDisconnect, map[string]any(nil),
 		&model.WebsocketBroadcast{UserId: "user1"}).Times(1)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 
 	api.AssertExpectations(t)
 }
@@ -182,7 +184,7 @@ func TestReEncryptUserData_NoConnectedUsers(t *testing.T) {
 
 	mockKvStore.EXPECT().ListKeys(0, keysPerPage, gomock.Any()).Return([]string{}, nil)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 }
 
 func TestReEncryptUserData_ListKeysError(t *testing.T) {
@@ -194,7 +196,7 @@ func TestReEncryptUserData_ListKeysError(t *testing.T) {
 	api.On("LogWarn", "Encryption key changed but failed to list user keys for re-encryption, proceeding with keys collected so far",
 		"page", "0", "keys_collected", "0", "error", "KV list error").Times(1)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 
 	api.AssertExpectations(t)
 }
@@ -239,7 +241,7 @@ func TestReEncryptUserData_MultipleUsers(t *testing.T) {
 	api.On("LogInfo", "Encryption key changed, re-encrypting user tokens",
 		"user_count", "2").Times(1)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 
 	api.AssertExpectations(t)
 }
@@ -271,7 +273,7 @@ func TestReEncryptUserData_AlreadyMigratedToken(t *testing.T) {
 	api.On("LogInfo", "Encryption key changed, re-encrypting user tokens",
 		"user_count", "1").Times(1)
 
-	p.reEncryptUserData(testOldKey)
+	p.reEncryptUserData(testNewKey, testOldKey)
 
 	api.AssertExpectations(t)
 }
@@ -281,6 +283,7 @@ func TestForceDisconnectUser_CleansUpAndNotifies(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
+	mockKvStore.EXPECT().Delete("user1" + githubPrivateRepoKey).Return(nil)
 	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(nil)
 
 	api.On("GetUser", "user1").Return(&model.User{
@@ -310,6 +313,7 @@ func TestForceDisconnectUser_NoGitHubUsername_FallbackFromProps(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
+	mockKvStore.EXPECT().Delete("user1" + githubPrivateRepoKey).Return(nil)
 	// Username recovered from user props, so the mapping delete should happen
 	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(nil)
 
@@ -333,6 +337,7 @@ func TestForceDisconnectUser_NoGitHubUsername_NoPropsFallback(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(nil)
+	mockKvStore.EXPECT().Delete("user1" + githubPrivateRepoKey).Return(nil)
 	// No username available anywhere, so no mapping delete
 
 	api.On("GetUser", "user1").Return(&model.User{
@@ -354,6 +359,7 @@ func TestForceDisconnectUser_DeleteErrors(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockKvStore.EXPECT().Delete("user1" + githubTokenKey).Return(errors.New("delete failed"))
+	mockKvStore.EXPECT().Delete("user1" + githubPrivateRepoKey).Return(errors.New("delete failed"))
 	mockKvStore.EXPECT().Delete("ghuser1" + githubUsernameKey).Return(errors.New("delete failed"))
 
 	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()

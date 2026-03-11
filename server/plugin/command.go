@@ -787,7 +787,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		}
 	}
 
-	err := p.storeGitHubUserInfo(userInfo)
+	err := p.storeGitHubUserInfo(userInfo, p.getConfiguration().EncryptionKey)
 	if err != nil {
 		p.client.Log.Warn("Failed to store github user info", "error", err.Error())
 		return "Failed to store settings"

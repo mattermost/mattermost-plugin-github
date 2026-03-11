@@ -616,10 +616,8 @@ type UserSettings struct {
 	Notifications         bool   `json:"notifications"`
 }
 
-func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
-	config := p.getConfiguration()
-
-	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
+func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo, encryptionKey string) error {
+	encryptedToken, err := encrypt([]byte(encryptionKey), info.Token.AccessToken)
 	if err != nil {
 		return errors.Wrap(err, "error occurred while encrypting access token")
 	}
@@ -696,7 +694,10 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		p.client.Log.Warn("Failed to load user info for disconnect, falling back to force-disconnect",
 			"user_id", userID, "error", apiErr.Message)
 		var rawInfo *GitHubUserInfo
-		_ = p.store.Get(userID+githubTokenKey, &rawInfo)
+		if err := p.store.Get(userID+githubTokenKey, &rawInfo); err != nil {
+			p.client.Log.Warn("Failed to load raw user info during fallback disconnect",
+				"user_id", userID, "error", err.Error())
+		}
 		githubUsername := ""
 		if rawInfo != nil {
 			githubUsername = rawInfo.GitHubUsername
@@ -711,6 +712,10 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 
 	if err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
 		p.client.Log.Warn("Failed to delete github username mapping from KV store", "userID", userID, "error", err.Error())
+	}
+
+	if err := p.store.Delete(userID + githubPrivateRepoKey); err != nil {
+		p.client.Log.Warn("Failed to delete github private repo key from KV store", "userID", userID, "error", err.Error())
 	}
 
 	user, err := p.client.User.Get(userID)
@@ -738,7 +743,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 // the encryption key changes. Users whose tokens cannot be migrated are
 // force-disconnected and notified to reconnect.
 // A cluster mutex ensures only one node performs the migration in HA setups.
-func (p *Plugin) reEncryptUserData(previousEncryptionKey string) {
+func (p *Plugin) reEncryptUserData(newEncryptionKey, previousEncryptionKey string) {
 	m, err := cluster.NewMutex(p.API, reEncryptMutexKey)
 	if err != nil {
 		p.client.Log.Warn("Failed to create cluster mutex for encryption key rotation", "error", err.Error())
@@ -775,7 +780,7 @@ func (p *Plugin) reEncryptUserData(previousEncryptionKey string) {
 	for _, key := range allKeys {
 		userID := strings.TrimSuffix(key, githubTokenKey)
 
-		githubUsername, err := p.reEncryptUserToken(key, previousEncryptionKey)
+		githubUsername, err := p.reEncryptUserToken(key, newEncryptionKey, previousEncryptionKey)
 		if err != nil {
 			p.client.Log.Warn("Failed to re-encrypt user token during encryption key rotation",
 				"user_id", userID, "error", err.Error())
@@ -785,9 +790,9 @@ func (p *Plugin) reEncryptUserData(previousEncryptionKey string) {
 }
 
 // reEncryptUserToken decrypts a single user's token with the old key and
-// re-encrypts it with the current key. Returns the GitHub username (best-effort,
+// re-encrypts it with the new key. Returns the GitHub username (best-effort,
 // may be empty) and any error encountered.
-func (p *Plugin) reEncryptUserToken(kvKey, previousEncryptionKey string) (string, error) {
+func (p *Plugin) reEncryptUserToken(kvKey, newEncryptionKey, previousEncryptionKey string) (string, error) {
 	var userInfo *GitHubUserInfo
 	if err := p.store.Get(kvKey, &userInfo); err != nil {
 		return "", errors.Wrap(err, "could not load user info")
@@ -800,8 +805,7 @@ func (p *Plugin) reEncryptUserToken(kvKey, previousEncryptionKey string) (string
 		return userInfo.GitHubUsername, errors.New("user has no token to re-encrypt")
 	}
 
-	config := p.getConfiguration()
-	if _, err := decrypt([]byte(config.EncryptionKey), userInfo.Token.AccessToken); err == nil {
+	if _, err := decrypt([]byte(newEncryptionKey), userInfo.Token.AccessToken); err == nil {
 		return userInfo.GitHubUsername, nil
 	}
 
@@ -811,7 +815,7 @@ func (p *Plugin) reEncryptUserToken(kvKey, previousEncryptionKey string) (string
 	}
 
 	userInfo.Token.AccessToken = plainToken
-	if err := p.storeGitHubUserInfo(userInfo); err != nil {
+	if err := p.storeGitHubUserInfo(userInfo, newEncryptionKey); err != nil {
 		return userInfo.GitHubUsername, errors.Wrap(err, "could not store re-encrypted token")
 	}
 
@@ -823,6 +827,11 @@ func (p *Plugin) reEncryptUserToken(kvKey, previousEncryptionKey string) (string
 func (p *Plugin) forceDisconnectUser(userID, githubUsername string) {
 	if err := p.store.Delete(userID + githubTokenKey); err != nil {
 		p.client.Log.Warn("forceDisconnectUser: failed to delete github token",
+			"user_id", userID, "error", err.Error())
+	}
+
+	if err := p.store.Delete(userID + githubPrivateRepoKey); err != nil {
+		p.client.Log.Warn("forceDisconnectUser: failed to delete github private repo key",
 			"user_id", userID, "error", err.Error())
 	}
 

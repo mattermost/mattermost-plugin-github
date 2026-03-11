@@ -74,10 +74,19 @@ func pad(src []byte) []byte {
 
 func unpad(src []byte) ([]byte, error) {
 	length := len(src)
-	unpadding := int(src[length-1])
+	if length == 0 {
+		return nil, errors.New("unpad error: empty input")
+	}
 
-	if unpadding > length {
+	unpadding := int(src[length-1])
+	if unpadding < 1 || unpadding > aes.BlockSize || unpadding > length {
 		return nil, errors.New("unpad error. This could happen when incorrect encryption key is used")
+	}
+
+	for i := length - unpadding; i < length; i++ {
+		if src[i] != byte(unpadding) {
+			return nil, errors.New("unpad error. This could happen when incorrect encryption key is used")
+		}
 	}
 
 	return src[:(length - unpadding)], nil
