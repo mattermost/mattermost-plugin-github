@@ -774,9 +774,16 @@ func (p *Plugin) reEncryptUserData(newEncryptionKey, previousEncryptionKey strin
 		return
 	}
 
+	auditRec := plugin.MakeAuditRecord("reEncryptUserData", model.AuditStatusFail)
+	defer p.API.LogAuditRec(auditRec)
+	model.AddEventParameterAuditableToAuditRec(auditRec, "re_encrypt_user_data", ReEncryptUserDataAuditParams{
+		TotalUsers: len(allKeys),
+	})
+
 	p.client.Log.Info("Encryption key changed, re-encrypting user tokens",
 		"user_count", fmt.Sprintf("%d", len(allKeys)))
 
+	var migrated, forceDisconnected int
 	for _, key := range allKeys {
 		userID := strings.TrimSuffix(key, githubTokenKey)
 
@@ -784,9 +791,21 @@ func (p *Plugin) reEncryptUserData(newEncryptionKey, previousEncryptionKey strin
 		if err != nil {
 			p.client.Log.Warn("Failed to re-encrypt user token during encryption key rotation",
 				"user_id", userID, "error", err.Error())
+			auditRec.AddErrorDesc(fmt.Sprintf("user %s: %s", userID, err.Error()))
 			p.forceDisconnectUser(userID, githubUsername)
+			forceDisconnected++
+		} else {
+			migrated++
 		}
 	}
+
+	if forceDisconnected == 0 {
+		auditRec.Success()
+	}
+	auditRec.AddEventResultState(ReEncryptUserDataAuditResult{
+		Migrated:          migrated,
+		ForceDisconnected: forceDisconnected,
+	})
 }
 
 // reEncryptUserToken decrypts a single user's token with the old key and

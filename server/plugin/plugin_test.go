@@ -41,6 +41,7 @@ func setupRotationTest(t *testing.T) (*Plugin, *plugintest.API, *mocks.MockKvSto
 
 	api.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 	api.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogAuditRec", mock.Anything).Maybe()
 
 	return p, api, mockKvStore, ctrl
 }
