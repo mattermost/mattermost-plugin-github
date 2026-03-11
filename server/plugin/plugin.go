@@ -23,6 +23,7 @@ import (
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
+	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 
@@ -35,8 +36,9 @@ const (
 	githubUsernameKey    = "_githubusername"
 	githubPrivateRepoKey = "_githubprivate"
 
-	mm34646MutexKey = "mm34646_token_reset_mutex"
-	mm34646DoneKey  = "mm34646_token_reset_done"
+	mm34646MutexKey   = "mm34646_token_reset_mutex"
+	mm34646DoneKey    = "mm34646_token_reset_done"
+	reEncryptMutexKey = "reencrypt_user_data_mutex"
 
 	wsEventConnect    = "connect"
 	wsEventDisconnect = "disconnect"
@@ -614,10 +616,8 @@ type UserSettings struct {
 	Notifications         bool   `json:"notifications"`
 }
 
-func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo) error {
-	config := p.getConfiguration()
-
-	encryptedToken, err := encrypt([]byte(config.EncryptionKey), info.Token.AccessToken)
+func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo, encryptionKey string) error {
+	encryptedToken, err := encrypt([]byte(encryptionKey), info.Token.AccessToken)
 	if err != nil {
 		return errors.Wrap(err, "error occurred while encrypting access token")
 	}
@@ -685,8 +685,24 @@ func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
 }
 
 func (p *Plugin) disconnectGitHubAccount(userID string) {
-	userInfo, _ := p.getGitHubUserInfo(userID)
-	if userInfo == nil {
+	userInfo, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		if apiErr.ID == apiErrorIDNotConnected {
+			return
+		}
+
+		p.client.Log.Warn("Failed to load user info for disconnect, falling back to force-disconnect",
+			"user_id", userID, "error", apiErr.Message)
+		var rawInfo *GitHubUserInfo
+		if err := p.store.Get(userID+githubTokenKey, &rawInfo); err != nil {
+			p.client.Log.Warn("Failed to load raw user info during fallback disconnect",
+				"user_id", userID, "error", err.Error())
+		}
+		githubUsername := ""
+		if rawInfo != nil {
+			githubUsername = rawInfo.GitHubUsername
+		}
+		p.forceDisconnectUser(userID, githubUsername)
 		return
 	}
 
@@ -695,7 +711,11 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 	}
 
 	if err := p.store.Delete(userInfo.GitHubUsername + githubUsernameKey); err != nil {
-		p.client.Log.Warn("Failed to delete github token from KV store", "userID", userID, "error", err.Error())
+		p.client.Log.Warn("Failed to delete github username mapping from KV store", "userID", userID, "error", err.Error())
+	}
+
+	if err := p.store.Delete(userID + githubPrivateRepoKey); err != nil {
+		p.client.Log.Warn("Failed to delete github private repo key from KV store", "userID", userID, "error", err.Error())
 	}
 
 	user, err := p.client.User.Get(userID)
@@ -707,7 +727,7 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 			delete(user.Props, "git_user")
 			err := p.client.User.Update(user)
 			if err != nil {
-				p.client.Log.Warn("Failed to get update user props", "userID", userID, "error", err.Error())
+				p.client.Log.Warn("Failed to update user props", "userID", userID, "error", err.Error())
 			}
 		}
 	}
@@ -717,6 +737,158 @@ func (p *Plugin) disconnectGitHubAccount(userID string) {
 		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
+}
+
+// reEncryptUserData re-encrypts all connected users' access tokens when
+// the encryption key changes. Users whose tokens cannot be migrated are
+// force-disconnected and notified to reconnect.
+// A cluster mutex ensures only one node performs the migration in HA setups.
+func (p *Plugin) reEncryptUserData(newEncryptionKey, previousEncryptionKey string) {
+	m, err := cluster.NewMutex(p.API, reEncryptMutexKey)
+	if err != nil {
+		p.client.Log.Warn("Failed to create cluster mutex for encryption key rotation", "error", err.Error())
+		return
+	}
+	m.Lock()
+	defer m.Unlock()
+
+	checker := func(key string) (keep bool, err error) {
+		return strings.HasSuffix(key, githubTokenKey), nil
+	}
+
+	var allKeys []string
+	for page := 0; ; page++ {
+		keys, err := p.store.ListKeys(page, keysPerPage, pluginapi.WithChecker(checker))
+		if err != nil {
+			p.client.Log.Warn("Encryption key changed but failed to list user keys for re-encryption, proceeding with keys collected so far",
+				"page", fmt.Sprintf("%d", page), "keys_collected", fmt.Sprintf("%d", len(allKeys)), "error", err.Error())
+			break
+		}
+		allKeys = append(allKeys, keys...)
+		if len(keys) < keysPerPage {
+			break
+		}
+	}
+
+	if len(allKeys) == 0 {
+		return
+	}
+
+	auditRec := plugin.MakeAuditRecord("reEncryptUserData", model.AuditStatusFail)
+	defer p.API.LogAuditRec(auditRec)
+	model.AddEventParameterAuditableToAuditRec(auditRec, "re_encrypt_user_data", ReEncryptUserDataAuditParams{
+		TotalUsers: len(allKeys),
+	})
+
+	p.client.Log.Info("Encryption key changed, re-encrypting user tokens",
+		"user_count", fmt.Sprintf("%d", len(allKeys)))
+
+	var migrated, forceDisconnected int
+	for _, key := range allKeys {
+		userID := strings.TrimSuffix(key, githubTokenKey)
+
+		githubUsername, err := p.reEncryptUserToken(key, newEncryptionKey, previousEncryptionKey)
+		if err != nil {
+			p.client.Log.Warn("Failed to re-encrypt user token during encryption key rotation",
+				"user_id", userID, "error", err.Error())
+			auditRec.AddErrorDesc(fmt.Sprintf("user %s: %s", userID, err.Error()))
+			p.forceDisconnectUser(userID, githubUsername)
+			forceDisconnected++
+		} else {
+			migrated++
+		}
+	}
+
+	if forceDisconnected == 0 {
+		auditRec.Success()
+	}
+	auditRec.AddEventResultState(ReEncryptUserDataAuditResult{
+		Migrated:          migrated,
+		ForceDisconnected: forceDisconnected,
+	})
+}
+
+// reEncryptUserToken decrypts a single user's token with the old key and
+// re-encrypts it with the new key. Returns the GitHub username (best-effort,
+// may be empty) and any error encountered.
+func (p *Plugin) reEncryptUserToken(kvKey, newEncryptionKey, previousEncryptionKey string) (string, error) {
+	var userInfo *GitHubUserInfo
+	if err := p.store.Get(kvKey, &userInfo); err != nil {
+		return "", errors.Wrap(err, "could not load user info")
+	}
+	if userInfo == nil {
+		return "", errors.New("user info not found")
+	}
+
+	if userInfo.Token == nil || userInfo.Token.AccessToken == "" {
+		return userInfo.GitHubUsername, errors.New("user has no token to re-encrypt")
+	}
+
+	if _, err := decrypt([]byte(newEncryptionKey), userInfo.Token.AccessToken); err == nil {
+		return userInfo.GitHubUsername, nil
+	}
+
+	plainToken, err := decrypt([]byte(previousEncryptionKey), userInfo.Token.AccessToken)
+	if err != nil {
+		return userInfo.GitHubUsername, errors.Wrap(err, "could not decrypt token with previous key")
+	}
+
+	userInfo.Token.AccessToken = plainToken
+	if err := p.storeGitHubUserInfo(userInfo, newEncryptionKey); err != nil {
+		return userInfo.GitHubUsername, errors.Wrap(err, "could not store re-encrypted token")
+	}
+
+	return userInfo.GitHubUsername, nil
+}
+
+// forceDisconnectUser performs a best-effort cleanup of a user's encrypted
+// data and notifies them to reconnect
+func (p *Plugin) forceDisconnectUser(userID, githubUsername string) {
+	if err := p.store.Delete(userID + githubTokenKey); err != nil {
+		p.client.Log.Warn("forceDisconnectUser: failed to delete github token",
+			"user_id", userID, "error", err.Error())
+	}
+
+	if err := p.store.Delete(userID + githubPrivateRepoKey); err != nil {
+		p.client.Log.Warn("forceDisconnectUser: failed to delete github private repo key",
+			"user_id", userID, "error", err.Error())
+	}
+
+	user, err := p.client.User.Get(userID)
+	if err != nil {
+		p.client.Log.Warn("forceDisconnectUser: failed to get user props",
+			"user_id", userID, "error", err.Error())
+	} else {
+		if githubUsername == "" {
+			if gitUser, ok := user.Props["git_user"]; ok {
+				githubUsername = gitUser
+			}
+		}
+		if _, ok := user.Props["git_user"]; ok {
+			delete(user.Props, "git_user")
+			if err := p.client.User.Update(user); err != nil {
+				p.client.Log.Warn("forceDisconnectUser: failed to update user props",
+					"user_id", userID, "error", err.Error())
+			}
+		}
+	}
+
+	if githubUsername != "" {
+		if err := p.store.Delete(githubUsername + githubUsernameKey); err != nil {
+			p.client.Log.Warn("forceDisconnectUser: failed to delete username mapping",
+				"user_id", userID, "error", err.Error())
+		}
+	}
+
+	p.client.Frontend.PublishWebSocketEvent(
+		wsEventDisconnect,
+		nil,
+		&model.WebsocketBroadcast{UserId: userID},
+	)
+
+	p.CreateBotDMPost(userID,
+		"Your GitHub connection has been reset due to a change in the plugin configuration. Please reconnect your account using `/github connect`.",
+		"custom_git_disconnect")
 }
 
 func (p *Plugin) openIssueCreateModal(userID string, channelID string, title string) {
