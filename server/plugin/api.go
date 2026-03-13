@@ -437,9 +437,9 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	if err := p.validateOAuthScopes(resp, state.PrivateAllowed); err != nil {
-		c.Log.WithError(err).Warnf("OAuth scope escalation detected for user %s", c.UserID)
-		rErr = errors.New("token scope does not match the requested permissions")
-		p.writeAPIError(w, &APIErrorResponse{Message: "OAuth token scope exceeds requested permissions. Please reconnect without modifying the authorization URL.", StatusCode: http.StatusForbidden})
+		c.Log.WithError(err).Warnf("Mismatching OAuth scopes, rejecting connection")
+		rErr = errors.New("OAuth token scope does not match the requested permissions")
+		p.writeAPIError(w, &APIErrorResponse{Message: "OAuth token scope does not match the requested permissions. Please reconnect your GitHub account.", StatusCode: http.StatusForbidden})
 		return
 	}
 
