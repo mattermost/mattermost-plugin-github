@@ -595,6 +595,38 @@ func (p *Plugin) getOAuthConfigForChimeraApp(scopes []string) (*oauth2.Config, e
 	}, nil
 }
 
+const oauthScopesHeader = "X-OAuth-Scopes"
+
+func (p *Plugin) validateOAuthScopes(resp *github.Response, privateAllowed bool) error {
+	if privateAllowed && p.getConfiguration().EnablePrivateRepo {
+		return nil
+	}
+
+	if resp == nil || resp.Response == nil {
+		return errors.New("missing GitHub API response for scope validation")
+	}
+
+	scopeHeader := resp.Header.Get(oauthScopesHeader)
+	granted := parseScopes(scopeHeader)
+
+	if slices.Contains(granted, string(github.ScopeRepo)) {
+		return fmt.Errorf("token was granted %q scope but only %q was requested", github.ScopeRepo, github.ScopePublicRepo)
+	}
+
+	return nil
+}
+
+func parseScopes(header string) []string {
+	var scopes []string
+	for s := range strings.SplitSeq(header, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			scopes = append(scopes, s)
+		}
+	}
+	return scopes
+}
+
 type GitHubUserInfo struct {
 	UserID              string
 	Token               *oauth2.Token

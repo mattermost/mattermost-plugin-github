@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/google/go-github/v54/github"
@@ -283,5 +284,114 @@ func TestLastN(t *testing.T) {
 
 	for _, tc := range tcs {
 		assert.Equal(t, tc.Expected, lastN(tc.Text, tc.N))
+	}
+}
+
+func TestParseScopes(t *testing.T) {
+	tests := []struct {
+		name     string
+		header   string
+		expected []string
+	}{
+		{name: "empty header", header: "", expected: nil},
+		{name: "single scope", header: "repo", expected: []string{"repo"}},
+		{name: "multiple scopes", header: "repo, notifications, read:org", expected: []string{"repo", "notifications", "read:org"}},
+		{name: "public_repo only", header: "public_repo, notifications", expected: []string{"public_repo", "notifications"}},
+		{name: "extra whitespace", header: "  repo ,  notifications , read:org  ", expected: []string{"repo", "notifications", "read:org"}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := parseScopes(tc.header)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestValidateOAuthScopes(t *testing.T) {
+	makeResponse := func(scopes string) *github.Response {
+		h := make(http.Header)
+		h.Set(oauthScopesHeader, scopes)
+		return &github.Response{
+			Response: &http.Response{
+				Header: h,
+			},
+		}
+	}
+
+	tests := []struct {
+		name              string
+		resp              *github.Response
+		privateAllowed    bool
+		enablePrivateRepo bool
+		expectError       bool
+	}{
+		{
+			name:              "private allowed and enabled — skip validation",
+			resp:              makeResponse("repo, notifications, read:org"),
+			privateAllowed:    true,
+			enablePrivateRepo: true,
+			expectError:       false,
+		},
+		{
+			name:              "private not allowed — public_repo is fine",
+			resp:              makeResponse("public_repo, notifications, read:org"),
+			privateAllowed:    false,
+			enablePrivateRepo: false,
+			expectError:       false,
+		},
+		{
+			name:              "private not allowed — repo scope is rejected",
+			resp:              makeResponse("repo, notifications, read:org"),
+			privateAllowed:    false,
+			enablePrivateRepo: false,
+			expectError:       true,
+		},
+		{
+			name:              "private allowed but admin disabled — repo scope is rejected",
+			resp:              makeResponse("repo, notifications, read:org"),
+			privateAllowed:    true,
+			enablePrivateRepo: false,
+			expectError:       true,
+		},
+		{
+			name:              "nil response — returns error",
+			resp:              nil,
+			privateAllowed:    false,
+			enablePrivateRepo: false,
+			expectError:       true,
+		},
+		{
+			name: "nil inner response — returns error",
+			resp: &github.Response{
+				Response: nil,
+			},
+			privateAllowed:    false,
+			enablePrivateRepo: false,
+			expectError:       true,
+		},
+		{
+			name:              "empty scope header — no error",
+			resp:              makeResponse(""),
+			privateAllowed:    false,
+			enablePrivateRepo: false,
+			expectError:       false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p := NewPlugin()
+			p.setConfiguration(&Configuration{
+				EnablePrivateRepo: tc.enablePrivateRepo,
+			})
+
+			err := p.validateOAuthScopes(tc.resp, tc.privateAllowed)
+			if tc.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }

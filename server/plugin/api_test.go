@@ -63,6 +63,31 @@ func TestWithRecovery(t *testing.T) {
 	}
 }
 
+func TestConnectUserToGitHub_PrivateRepoDisabled(t *testing.T) {
+	p := NewPlugin()
+	p.setConfiguration(
+		&Configuration{
+			GitHubOrg:               "mockOrg",
+			GitHubOAuthClientID:     "mockID",
+			GitHubOAuthClientSecret: "mockSecret",
+			EncryptionKey:           "mockKey123456789",
+			EnablePrivateRepo:       false,
+		})
+	p.initializeAPI()
+	api := &plugintest.API{}
+	p.SetAPI(api)
+	p.client = pluginapi.NewClient(api, p.Driver)
+
+	req := httptest.NewRequest(http.MethodGet, "/oauth/connect?private=true", nil)
+	req.Header.Set("Mattermost-User-ID", "testuser")
+	rec := httptest.NewRecorder()
+
+	p.ServeHTTP(&plugin.Context{}, rec, req)
+
+	assert.Equal(t, http.StatusForbidden, rec.Code)
+	assert.Contains(t, rec.Body.String(), "private repositories are disabled")
+}
+
 func TestPlugin_ServeHTTP(t *testing.T) {
 	httpTestJSON := testutils.HTTPTest{
 		T:       t,
