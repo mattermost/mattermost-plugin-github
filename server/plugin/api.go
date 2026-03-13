@@ -309,6 +309,10 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 	privateAllowed := false
 	pValBool, _ := strconv.ParseBool(r.URL.Query().Get("private"))
 	if pValBool {
+		if !p.getConfiguration().EnablePrivateRepo {
+			http.Error(w, "private repositories are disabled", http.StatusForbidden)
+			return
+		}
 		privateAllowed = true
 	}
 
@@ -425,10 +429,17 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 	}
 
 	githubClient := p.githubConnectToken(*tok)
-	gitUser, _, err := githubClient.Users.Get(ctx, "")
+	gitUser, resp, err := githubClient.Users.Get(ctx, "")
 	if err != nil {
 		c.Log.WithError(err).Errorf("Failed to get authenticated GitHub user")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to get authenticated GitHub user", StatusCode: http.StatusInternalServerError})
+		return
+	}
+
+	if err := p.validateOAuthScopes(resp, state.PrivateAllowed); err != nil {
+		c.Log.WithError(err).Warnf("OAuth scope escalation detected for user %s", c.UserID)
+		rErr = errors.New("token scope does not match the requested permissions")
+		p.writeAPIError(w, &APIErrorResponse{Message: "OAuth token scope exceeds requested permissions. Please reconnect without modifying the authorization URL.", StatusCode: http.StatusForbidden})
 		return
 	}
 
