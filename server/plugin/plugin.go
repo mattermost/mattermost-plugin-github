@@ -609,10 +609,8 @@ func (p *Plugin) validateOAuthScopes(resp *github.Response, privateAllowed bool)
 	scopeHeader := resp.Header.Get(oauthScopesHeader)
 	granted := parseScopes(scopeHeader)
 
-	for _, s := range granted {
-		if s == string(github.ScopeRepo) {
-			return fmt.Errorf("token was granted %q scope but only %q was requested", github.ScopeRepo, github.ScopePublicRepo)
-		}
+	if slices.Contains(granted, string(github.ScopeRepo)) {
+		return fmt.Errorf("token was granted %q scope but only %q was requested", github.ScopeRepo, github.ScopePublicRepo)
 	}
 
 	return nil
@@ -620,7 +618,7 @@ func (p *Plugin) validateOAuthScopes(resp *github.Response, privateAllowed bool)
 
 func parseScopes(header string) []string {
 	var scopes []string
-	for _, s := range strings.Split(header, ",") {
+	for s := range strings.SplitSeq(header, ",") {
 		s = strings.TrimSpace(s)
 		if s != "" {
 			scopes = append(scopes, s)

@@ -320,62 +320,62 @@ func TestValidateOAuthScopes(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		resp             *github.Response
-		privateAllowed   bool
+		name              string
+		resp              *github.Response
+		privateAllowed    bool
 		enablePrivateRepo bool
-		expectError      bool
+		expectError       bool
 	}{
 		{
-			name:             "private allowed and enabled — skip validation",
-			resp:             makeResponse("repo, notifications, read:org"),
-			privateAllowed:   true,
+			name:              "private allowed and enabled — skip validation",
+			resp:              makeResponse("repo, notifications, read:org"),
+			privateAllowed:    true,
 			enablePrivateRepo: true,
-			expectError:      false,
+			expectError:       false,
 		},
 		{
-			name:             "private not allowed — public_repo is fine",
-			resp:             makeResponse("public_repo, notifications, read:org"),
-			privateAllowed:   false,
+			name:              "private not allowed — public_repo is fine",
+			resp:              makeResponse("public_repo, notifications, read:org"),
+			privateAllowed:    false,
 			enablePrivateRepo: false,
-			expectError:      false,
+			expectError:       false,
 		},
 		{
-			name:             "private not allowed — repo scope is rejected",
-			resp:             makeResponse("repo, notifications, read:org"),
-			privateAllowed:   false,
+			name:              "private not allowed — repo scope is rejected",
+			resp:              makeResponse("repo, notifications, read:org"),
+			privateAllowed:    false,
 			enablePrivateRepo: false,
-			expectError:      true,
+			expectError:       true,
 		},
 		{
-			name:             "private allowed but admin disabled — repo scope is rejected",
-			resp:             makeResponse("repo, notifications, read:org"),
-			privateAllowed:   true,
+			name:              "private allowed but admin disabled — repo scope is rejected",
+			resp:              makeResponse("repo, notifications, read:org"),
+			privateAllowed:    true,
 			enablePrivateRepo: false,
-			expectError:      true,
+			expectError:       true,
 		},
 		{
-			name:             "nil response — returns error",
-			resp:             nil,
-			privateAllowed:   false,
+			name:              "nil response — returns error",
+			resp:              nil,
+			privateAllowed:    false,
 			enablePrivateRepo: false,
-			expectError:      true,
+			expectError:       true,
 		},
 		{
 			name: "nil inner response — returns error",
 			resp: &github.Response{
 				Response: nil,
 			},
-			privateAllowed:   false,
+			privateAllowed:    false,
 			enablePrivateRepo: false,
-			expectError:      true,
+			expectError:       true,
 		},
 		{
-			name:             "empty scope header — no error",
-			resp:             makeResponse(""),
-			privateAllowed:   false,
+			name:              "empty scope header — no error",
+			resp:              makeResponse(""),
+			privateAllowed:    false,
 			enablePrivateRepo: false,
-			expectError:      false,
+			expectError:       false,
 		},
 	}
 
