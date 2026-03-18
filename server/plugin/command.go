@@ -1061,7 +1061,7 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		qparams := ""
 		if privateAllowed {
 			if !p.getConfiguration().EnablePrivateRepo {
-				p.postCommandResponse(args, "Private repositories are disabled. Please ask a System Admin to enabled them.")
+				p.postCommandResponse(args, "Private repositories are disabled. Please ask a System Admin to enable them.")
 				return &model.CommandResponse{}, nil
 			}
 			qparams = "?private=true"
