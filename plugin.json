@@ -134,6 +134,19 @@
                 "type": "bool",
                 "help_text": "When set to 'true' you will get a notification with less details when a draft pull request is created and a notification with complete details when they are marked as ready for review. When set to 'false' no notifications are delivered for draft pull requests.",
                 "default": false
+            },
+            {
+                "key": "ReviewTargetDays",
+                "display_name": "PR review target (days):",
+                "type": "number",
+                "default": "0",
+                "help_text": "Optional. Number of calendar days from when a pull request was opened until it counts as due for review. When greater than zero, the /github todo command lists each review request with days remaining or overdue, and the left sidebar review counter can be color-coded. Set to 0 to disable."
+            },
+            {
+                "key": "OverdueReviewsChannelID",
+                "display_name": "Post overdue review alerts to channel (ID):",
+                "type": "text",
+                "help_text": "Optional. Paste a channel ID (Channel menu > View Info). When set together with **PR review target (days)**, users who receive the daily GitHub reminder DM and have at least one overdue review also trigger a message in this channel that day (the GitHub plugin bot must be a member of the channel)."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

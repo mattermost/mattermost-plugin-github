@@ -16,6 +16,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/mattermost/mattermost/server/public/pluginapi"
@@ -350,6 +351,39 @@ func getToDoDisplayText(baseURL, title, url, notifType string, repository *githu
 	}
 
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
+}
+
+// reviewSLAMarkdown returns HTML-styled SLA suffix for Mattermost markdown and whether the review is overdue.
+func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time) (suffix string, overdue bool) {
+	if targetDays <= 0 || createdAt.IsZero() {
+		return "", false
+	}
+
+	c := createdAt.UTC()
+	createdDay := time.Date(c.Year(), c.Month(), c.Day(), 0, 0, 0, 0, time.UTC)
+	dueDay := createdDay.AddDate(0, 0, targetDays)
+
+	n := now.UTC()
+	todayDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+
+	diffDays := int(dueDay.Sub(todayDay) / (24 * time.Hour))
+
+	if diffDays < 0 {
+		overdueCount := -diffDays
+		unit := "days"
+		if overdueCount == 1 {
+			unit = "day"
+		}
+		return fmt.Sprintf(` <span style="color:#c62828;font-weight:600">(%d %s overdue)</span>`, overdueCount, unit), true
+	}
+	if diffDays == 0 {
+		return ` <span style="color:#2e7d32;font-style:italic">(Due today)</span>`, false
+	}
+	unit := "days"
+	if diffDays == 1 {
+		unit = "day"
+	}
+	return fmt.Sprintf(` <span style="color:#2e7d32;font-style:italic">(Due in %d %s)</span>`, diffDays, unit), false
 }
 
 // isValidURL checks if a given URL is a valid URL with a host and a http or http scheme.

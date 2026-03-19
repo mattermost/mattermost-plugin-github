@@ -73,6 +73,7 @@ export type ConnectedData = {
 
 export type ConfigurationData = {
     left_sidebar_enabled: boolean;
+    review_target_days?: number;
 }
 
 export type PrsDetailsData = {
