@@ -1197,6 +1197,204 @@ func TestPostDiscussionEvent(t *testing.T) {
 	}
 }
 
+func TestPostWorkflowRunEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	tests := []struct {
+		name  string
+		event *github.WorkflowRunEvent
+		setup func()
+	}{
+		{
+			name:  "action is not completed, event ignored",
+			event: GetMockWorkflowRunEvent("in_progress", "success", MockRepo, MockOrg, MockSender),
+			setup: func() {},
+		},
+		{
+			name:  "unsupported conclusion, event ignored",
+			event: GetMockWorkflowRunEvent(actionCompleted, "skipped", MockRepo, MockOrg, MockSender),
+			setup: func() {},
+		},
+		{
+			name:  "no subscribed channels for repository",
+			event: GetMockWorkflowRunEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "subscription does not include workflow_run_failure feature",
+			event: GetMockWorkflowRunEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: featureStars, Repository: MockRepo},
+					},
+				})).Times(1)
+			},
+		},
+		{
+			name:  "subscription does not include workflow_run_success feature",
+			event: GetMockWorkflowRunEvent(actionCompleted, "success", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
+					},
+				})).Times(1)
+			},
+		},
+		{
+			name:  "excluded org member skips subscription",
+			event: GetMockWorkflowRunEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{
+							ChannelID:  MockChannelID,
+							CreatorID:  MockCreatorID,
+							Features:   Features(featureWorkflowRunFailure),
+							Repository: MockRepo,
+							Flags:      SubscriptionFlags{ExcludeOrgMembers: true},
+						},
+					},
+				})).Times(1)
+				mockKvStore.EXPECT().Get(MockCreatorID+"_githubtoken", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**GitHubUserInfo)
+					return ok
+				})).Return(nil).Times(1)
+				mockAPI.On("LogWarn", "Failed to exclude org member", "error", mock.AnythingOfType("string"))
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "include only org members checks membership",
+			event: GetMockWorkflowRunEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{
+							ChannelID:  MockChannelID,
+							CreatorID:  MockCreatorID,
+							Features:   Features(featureWorkflowRunFailure),
+							Repository: MockRepo,
+							Flags:      SubscriptionFlags{IncludeOnlyOrgMembers: true},
+						},
+					},
+				})).Times(1)
+				mockKvStore.EXPECT().Get(MockCreatorID+"_githubtoken", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**GitHubUserInfo)
+					return ok
+				})).Return(nil).Times(1)
+				mockAPI.On("LogWarn", "Failed to get user info", "error", mock.AnythingOfType("string"))
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "error creating post",
+			event: GetMockWorkflowRunEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "Post", mock.Anything, "Error", "error creating post")
+			},
+		},
+		{
+			name:  "successful workflow run failure notification",
+			event: GetMockWorkflowRunEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "successful workflow run success notification",
+			event: GetMockWorkflowRunEvent(actionCompleted, "success", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunSuccess), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "successful workflow run cancelled notification",
+			event: GetMockWorkflowRunEvent(actionCompleted, "cancelled", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "successful workflow run timed_out notification",
+			event: GetMockWorkflowRunEvent(actionCompleted, "timed_out", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**Subscriptions)
+					return ok
+				})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+					"mockorg/mockrepo": {
+						{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: Features(featureWorkflowRunFailure), Repository: MockRepo},
+					},
+				})).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
+			tc.setup()
+
+			p.postWorkflowRunEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
 func TestPostDiscussionCommentEvent(t *testing.T) {
 	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKvStore)
