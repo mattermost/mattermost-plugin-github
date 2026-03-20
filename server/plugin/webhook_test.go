@@ -304,6 +304,38 @@ func TestSenderMutedByReceiver(t *testing.T) {
 			},
 		},
 		{
+			name:   "Sender is muted with different casing",
+			userID: "user1",
+			sender: "Sender1",
+			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Do(func(key string, value any) {
+					*value.(*[]byte) = []byte("sender1,sender2")
+				}).Times(1)
+			},
+			assert: func(t *testing.T, muted bool) {
+				assert.True(t, muted, "Expected sender to be muted regardless of casing")
+			},
+		},
+		{
+			name:   "Empty muted users list",
+			userID: "user1",
+			sender: "sender1",
+			setup: func(mockKVStore *mocks.MockKvStore, _ *plugintest.API) {
+				mockKVStore.EXPECT().Get("user1-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Do(func(key string, value any) {
+					*value.(*[]byte) = []byte("")
+				}).Times(1)
+			},
+			assert: func(t *testing.T, muted bool) {
+				assert.False(t, muted, "Expected sender to not be muted when mute list is empty")
+			},
+		},
+		{
 			name:   "Error fetching muted users",
 			userID: "user1",
 			sender: "sender1",
@@ -450,9 +482,10 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 
 func TestHandleCommentMentionNotification(t *testing.T) {
 	tests := []struct {
-		name  string
-		event *github.IssueCommentEvent
-		setup func(*plugintest.API, *mocks.MockKvStore)
+		name      string
+		event     *github.IssueCommentEvent
+		setup     func(*plugintest.API, *mocks.MockKvStore)
+		assertDMs func(*testing.T, *plugintest.API)
 	}{
 		{
 			name:  "Unsupported action",
@@ -487,8 +520,8 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
-				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
-					_, ok := val.(**GitHubUserInfo)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
 					return ok
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
@@ -502,6 +535,10 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
@@ -519,12 +556,38 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Muted sender suppresses mention notification",
+			event: GetMockIssueCommentEvent(actionCreated, "mention @otherUser", "mockUser"),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("mockUser,anotherUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
 			},
 		},
 	}
@@ -537,6 +600,9 @@ func TestHandleCommentMentionNotification(t *testing.T) {
 
 			p.handleCommentMentionNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t, mockAPI)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
@@ -732,9 +798,10 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 
 func TestHandlePullRequestNotification(t *testing.T) {
 	tests := []struct {
-		name  string
-		event *github.PullRequestEvent
-		setup func(*plugintest.API, *mocks.MockKvStore)
+		name      string
+		event     *github.PullRequestEvent
+		setup     func(*plugintest.API, *mocks.MockKvStore)
+		assertDMs func(*testing.T, *plugintest.API)
 	}{
 		{
 			name:  "Review requested by sender",
@@ -764,6 +831,10 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
@@ -795,12 +866,16 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
-				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("assigneeUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", "assigneeUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
 			},
 		},
 		{
@@ -811,12 +886,82 @@ func TestHandlePullRequestNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("requestedUserID")).Times(1)
-				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
-				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+				mockKVStore.EXPECT().Get("requestedUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockKVStore.EXPECT().Get("requestedUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
 				})).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", "requestedUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Muted sender suppresses PR closed notification to author",
+			event: GetMockPullRequestEvent(actionClosed, "mockRepo", false, "senderUser", "prAuthor", ""),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("prAuthor_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("prAuthorUserID")).Times(1)
+				mockKVStore.EXPECT().Get("prAuthorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser,otherBot")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
+			name:  "Muted sender suppresses PR assigned notification to assignee",
+			event: GetMockPullRequestEvent(actionAssigned, "mockRepo", false, "senderUser", "prAuthor", "assigneeUser"),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
+				mockKVStore.EXPECT().Get("assigneeUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
+			name:  "Muted sender suppresses PR review requested notification",
+			event: GetMockPullRequestEvent("review_requested", "mockRepo", false, "senderUser", "requestedReviewer", ""),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("requestedReviewer_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("requestedUserID")).Times(1)
+				mockKVStore.EXPECT().Get("requestedUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T, mockAPI *plugintest.API) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
 			},
 		},
 		{
@@ -838,6 +983,9 @@ func TestHandlePullRequestNotification(t *testing.T) {
 
 			p.handlePullRequestNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t, mockAPI)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
@@ -848,9 +996,10 @@ func TestHandleIssueNotification(t *testing.T) {
 	p := getPluginTest(mockAPI, mockKvStore)
 
 	tests := []struct {
-		name  string
-		event *github.IssuesEvent
-		setup func()
+		name      string
+		event     *github.IssuesEvent
+		setup     func()
+		assertDMs func(*testing.T)
 	}{
 		{
 			name:  "issue closed by author",
@@ -907,6 +1056,50 @@ func TestHandleIssueNotification(t *testing.T) {
 			},
 		},
 		{
+			name:  "muted sender suppresses issue closed notification to author",
+			event: GetMockIssuesEvent(actionClosed, MockRepo, false, "authorUser", "senderUser", ""),
+			setup: func() {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser,otherBot")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
+			name:  "muted sender suppresses issue assigned notification to assignee",
+			event: GetMockIssuesEvent(actionAssigned, MockRepo, false, "authorUser", "senderUser", "assigneeUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("assigneeUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("assigneeUserID")).Times(1)
+				mockKvStore.EXPECT().Get("assigneeUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("senderUser")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
+		{
 			name:  "unhandled event action",
 			event: GetMockIssuesEvent("unsupported_action", MockRepo, false, "senderUser", "", ""),
 			setup: func() {
@@ -917,10 +1110,14 @@ func TestHandleIssueNotification(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockAPI.ExpectedCalls = nil
+			mockAPI.Calls = nil
 			tc.setup()
 
 			p.handleIssueNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
@@ -931,9 +1128,10 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 	p := getPluginTest(mockAPI, mockKvStore)
 
 	tests := []struct {
-		name  string
-		event *github.PullRequestReviewEvent
-		setup func()
+		name      string
+		event     *github.PullRequestReviewEvent
+		setup     func()
+		assertDMs func(*testing.T)
 	}{
 		{
 			name:  "review submitted by author",
@@ -977,6 +1175,10 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 					_, ok := val.(*[]uint8)
 					return ok
 				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
 				mockAPI.On("LogWarn", "Couldn't get bot's DM channel", "userID", "authorUserID", "error", "error getting channel")
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
@@ -985,14 +1187,40 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 			},
 		},
+		{
+			name:  "muted sender suppresses review notification to PR author",
+			event: GetMockPullRequestReviewEvent(actionSubmitted, "approved", MockRepo, false, "reviewerUser", "authorUser"),
+			setup: func() {
+				mockKvStore.EXPECT().Get("authorUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKvStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					*value.(*[]byte) = []byte("reviewerUser,otherBot")
+					return nil
+				}).Times(1)
+			},
+			assertDMs: func(t *testing.T) {
+				t.Helper()
+				mockAPI.AssertNotCalled(t, "GetDirectChannel", mock.Anything, mock.Anything)
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mockAPI.ExpectedCalls = nil
+			mockAPI.Calls = nil
 			tc.setup()
 
 			p.handlePullRequestReviewNotification(tc.event)
 
+			if tc.assertDMs != nil {
+				tc.assertDMs(t)
+			}
 			mockAPI.AssertExpectations(t)
 		})
 	}
