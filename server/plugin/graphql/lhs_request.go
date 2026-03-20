@@ -27,6 +27,8 @@ type GithubPRDetails struct {
 	Additions    *githubv4.Int `json:"additions,omitempty"`
 	Deletions    *githubv4.Int `json:"deletions,omitempty"`
 	ChangedFiles *githubv4.Int `json:"changed_files,omitempty"`
+	// ReviewSLAStartAt is RFC3339 UTC time used for SLA when the plugin knows review request time (webhook); clients may fall back to created_at.
+	ReviewSLAStartAt *string `json:"review_sla_start,omitempty"`
 }
 
 func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {

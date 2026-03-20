@@ -21,6 +21,7 @@ function mapStateToProps(state) {
         unreads: state[`plugins-${pluginId}`].sidebarContent.unreads,
         enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
         showRHSPlugin: state[`plugins-${pluginId}`].rhsPluginAction,
+        reviewTargetDays: state[`plugins-${pluginId}`].configuration.review_target_days || 0,
     };
 }
 

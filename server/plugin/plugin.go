@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
@@ -296,6 +297,9 @@ func (p *Plugin) OnActivate() error {
 			p.client.Log.Debug("failed to reset user tokens", "error", resetErr.Error())
 		}
 	}()
+
+	go p.runSLADigestScheduler()
+
 	return nil
 }
 
@@ -944,13 +948,21 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 
 	text.WriteString("##### Review Requests\n")
 
+	targetDays := config.ReviewTargetDays
+	now := time.Now()
+
 	if issueResults.GetTotal() == 0 {
 		text.WriteString("You don't have any pull requests awaiting your review.\n")
 	} else {
 		fmt.Fprintf(&text, "You have %v pull requests awaiting your review:\n", issueResults.GetTotal())
 
 		for _, pr := range issueResults.Issues {
-			text.WriteString(getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil))
+			line := strings.TrimSuffix(getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil), "\n")
+			slaStart := p.effectiveReviewSLAStart(pr, baseURL, info.GitHubUsername)
+			if suffix, _ := reviewSLAMarkdown(slaStart, targetDays, now); suffix != "" {
+				line += suffix
+			}
+			text.WriteString(line + "\n")
 		}
 	}
 

@@ -1054,6 +1054,8 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 		return nil, err
 	}
 
+	p.enrichReviewsWithSLAStart(reviewResp, c.GHInfo.GitHubUsername)
+
 	return &SidebarContent{
 		PRs:         openPRResp,
 		Assignments: assignmentResp,

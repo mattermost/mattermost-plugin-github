@@ -65,6 +65,7 @@ function userSettings(state = {
 
 function configuration(state = {
     left_sidebar_enabled: true,
+    review_target_days: 0,
 }, action: {type: string, data: ConnectedData | ConfigurationData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:

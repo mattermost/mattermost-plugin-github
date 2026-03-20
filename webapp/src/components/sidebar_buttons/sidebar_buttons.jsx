@@ -15,6 +15,7 @@ export default class SidebarButtons extends React.PureComponent {
         clientId: PropTypes.string,
         enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
+        reviewTargetDays: PropTypes.number,
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
@@ -118,6 +119,7 @@ export default class SidebarButtons extends React.PureComponent {
         }
 
         const reviews = this.props.reviews || [];
+        const reviewTargetDays = this.props.reviewTargetDays || 0;
         const yourPrs = this.props.yourPrs || [];
         const unreads = this.props.unreads || [];
         const yourAssignments = this.props.yourAssignments || [];
@@ -159,7 +161,7 @@ export default class SidebarButtons extends React.PureComponent {
                 >
                     <a
                         onClick={() => this.openRHS(RHSStates.REVIEWS)}
-                        style={button}
+                        style={reviewButtonStyle(button, reviews, reviewTargetDays)}
                     >
                         <i className='fa fa-code-fork'/>
                         {' ' + reviews.length}
@@ -207,6 +209,50 @@ export default class SidebarButtons extends React.PureComponent {
             </div>
         );
     }
+}
+
+function reviewHasOverdue(reviews, targetDays) {
+    if (!targetDays || !reviews || reviews.length === 0) {
+        return false;
+    }
+    for (const pr of reviews) {
+        const startIso = pr.review_sla_start || pr.created_at;
+        if (!startIso) {
+            continue;
+        }
+        const created = new Date(startIso);
+        if (Number.isNaN(created.getTime())) {
+            continue;
+        }
+        const due = new Date(Date.UTC(
+            created.getUTCFullYear(),
+            created.getUTCMonth(),
+            created.getUTCDate(),
+        ));
+        due.setUTCDate(due.getUTCDate() + targetDays);
+        const today = new Date();
+        const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+        const dueUTC = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+        const diffDays = Math.round((dueUTC - todayUTC) / (24 * 60 * 60 * 1000));
+        if (diffDays < 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function reviewButtonStyle(base, reviews, targetDays) {
+    if (!targetDays) {
+        return base;
+    }
+    const list = reviews || [];
+    if (list.length === 0) {
+        return base;
+    }
+    if (reviewHasOverdue(list, targetDays)) {
+        return {...base, color: '#c62828'};
+    }
+    return {...base, color: '#2e7d32'};
 }
 
 const getStyle = makeStyleFromTheme((theme) => {
