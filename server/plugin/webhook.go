@@ -1257,6 +1257,9 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 	switch event.GetAction() {
 	case "review_requested":
 		requestedReviewer = event.GetRequestedReviewer().GetLogin()
+		if requestedReviewer != "" {
+			p.recordReviewRequestSLAStart(event, requestedReviewer)
+		}
 		if requestedReviewer == sender {
 			return
 		}

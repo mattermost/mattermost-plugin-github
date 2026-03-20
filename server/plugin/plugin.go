@@ -57,7 +57,6 @@ const (
 
 	notificationReasonSubscribed = "subscribed"
 	dailySummary                 = "_dailySummary"
-	overdueReviewChannelKVPrefix = "overdue_review_ch_"
 
 	chimeraGitHubAppIdentifier = "plugin-github"
 
@@ -298,6 +297,9 @@ func (p *Plugin) OnActivate() error {
 			p.client.Log.Debug("failed to reset user tokens", "error", resetErr.Error())
 		}
 	}()
+
+	go p.runSLADigestScheduler()
+
 	return nil
 }
 
@@ -819,7 +821,7 @@ func (p *Plugin) GetDailySummaryText(userID string) (string, error) {
 
 func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 	ctx := context.Background()
-	text, overdueReviewLines, err := p.GetToDo(ctx, info, p.githubConnectUser(ctx, info))
+	text, err := p.GetToDo(ctx, info, p.githubConnectUser(ctx, info))
 	if err != nil {
 		return err
 	}
@@ -838,56 +840,10 @@ func (p *Plugin) PostToDo(info *GitHubUserInfo, userID string) error {
 		}
 	}
 	p.CreateBotDMPost(info.UserID, text, "custom_git_todo")
-	p.maybePostOverdueReviewChannelAlert(userID, overdueReviewLines)
 	return nil
 }
 
-func (p *Plugin) maybePostOverdueReviewChannelAlert(userID string, overdueReviewLines []string) {
-	cfg := p.getConfiguration()
-	if cfg.OverdueReviewsChannelID == "" || cfg.ReviewTargetDays <= 0 || len(overdueReviewLines) == 0 {
-		return
-	}
-
-	day := time.Now().UTC().Format("2006-01-02")
-	key := overdueReviewChannelKVPrefix + userID
-	var prev []byte
-	if err := p.store.Get(key, &prev); err != nil {
-		p.client.Log.Warn("Failed to read overdue review channel dedupe key", "key", key, "error", err.Error())
-		return
-	}
-	if string(prev) == day {
-		return
-	}
-
-	user, appErr := p.client.User.Get(userID)
-	if appErr != nil {
-		p.client.Log.Warn("Failed to get user for overdue review channel alert", "error", appErr.Error())
-		return
-	}
-
-	var body strings.Builder
-	fmt.Fprintf(&body, "@%s has **%d** pull request(s) past the **%d** day review target:\n", user.Username, len(overdueReviewLines), cfg.ReviewTargetDays)
-	for _, line := range overdueReviewLines {
-		body.WriteString(line)
-		body.WriteString("\n")
-	}
-
-	post := &model.Post{
-		ChannelId: cfg.OverdueReviewsChannelID,
-		UserId:    p.BotUserID,
-		Message:   body.String(),
-	}
-	if err := p.client.Post.CreatePost(post); err != nil {
-		p.client.Log.Warn("Failed to post overdue review channel alert", "error", err.Error())
-		return
-	}
-
-	if _, err := p.store.Set(key, []byte(day)); err != nil {
-		p.client.Log.Warn("Failed to store overdue review channel dedupe key", "error", err.Error())
-	}
-}
-
-func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient *github.Client) (string, []string, error) {
+func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient *github.Client) (string, error) {
 	config := p.getConfiguration()
 	baseURL := config.getBaseURL()
 	orgList := p.configuration.getOrganizations()
@@ -902,7 +858,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		return nil
 	})
 	if cErr != nil {
-		return "", nil, errors.Wrap(cErr, "error occurred while searching for reviews")
+		return "", errors.Wrap(cErr, "error occurred while searching for reviews")
 	}
 
 	var notifications []*github.Notification
@@ -914,7 +870,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		return nil
 	})
 	if cErr != nil {
-		return "", nil, errors.Wrap(cErr, "error occurred while listing notifications")
+		return "", errors.Wrap(cErr, "error occurred while listing notifications")
 	}
 
 	var yourPrs *github.IssuesSearchResult
@@ -926,7 +882,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		return nil
 	})
 	if cErr != nil {
-		return "", nil, errors.Wrap(cErr, "error occurred while searching for PRs")
+		return "", errors.Wrap(cErr, "error occurred while searching for PRs")
 	}
 
 	var yourAssignments *github.IssuesSearchResult
@@ -938,7 +894,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		return nil
 	})
 	if cErr != nil {
-		return "", nil, errors.Wrap(cErr, "error occurred while searching for assignments")
+		return "", errors.Wrap(cErr, "error occurred while searching for assignments")
 	}
 
 	var text strings.Builder
@@ -994,7 +950,6 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 
 	targetDays := config.ReviewTargetDays
 	now := time.Now()
-	var overdueReviewLines []string
 
 	if issueResults.GetTotal() == 0 {
 		text.WriteString("You don't have any pull requests awaiting your review.\n")
@@ -1003,11 +958,9 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 
 		for _, pr := range issueResults.Issues {
 			line := strings.TrimSuffix(getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil), "\n")
-			if suffix, isOverdue := reviewSLAMarkdown(pr.GetCreatedAt(), targetDays, now); suffix != "" {
+			slaStart := p.effectiveReviewSLAStart(pr, baseURL, info.GitHubUsername)
+			if suffix, _ := reviewSLAMarkdown(slaStart, targetDays, now); suffix != "" {
 				line += suffix
-				if isOverdue {
-					overdueReviewLines = append(overdueReviewLines, line)
-				}
 			}
 			text.WriteString(line + "\n")
 		}
@@ -1037,7 +990,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		}
 	}
 
-	return text.String(), overdueReviewLines, nil
+	return text.String(), nil
 }
 
 func (p *Plugin) HasUnreads(info *GitHubUserInfo) bool {

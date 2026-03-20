@@ -353,10 +353,10 @@ func getToDoDisplayText(baseURL, title, url, notifType string, repository *githu
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
 }
 
-// reviewSLAMarkdown returns HTML-styled SLA suffix for Mattermost markdown and whether the review is overdue.
-func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time) (suffix string, overdue bool) {
+// slaCalendarDiffDays returns dueDate minus today in calendar days (negative when the review is overdue).
+func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Time) int {
 	if targetDays <= 0 || createdAt.IsZero() {
-		return "", false
+		return 0
 	}
 
 	c := createdAt.UTC()
@@ -366,7 +366,25 @@ func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time
 	n := now.UTC()
 	todayDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 
-	diffDays := int(dueDay.Sub(todayDay) / (24 * time.Hour))
+	return int(dueDay.Sub(todayDay) / (24 * time.Hour))
+}
+
+// formatChannelOverdueReviewLine formats a single line for the overdue-SLA channel digest.
+func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string) string {
+	owner, repo := parseOwnerAndRepo(htmlURL, baseURL)
+	if len(title) > 200 {
+		title = strings.TrimSpace(title[:200]) + "..."
+	}
+	return fmt.Sprintf("- %s - %s/%s : %s", githubLogin, owner, repo, title)
+}
+
+// reviewSLAMarkdown returns HTML-styled SLA suffix for Mattermost markdown and whether the review is overdue.
+func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time) (suffix string, overdue bool) {
+	if targetDays <= 0 || createdAt.IsZero() {
+		return "", false
+	}
+
+	diffDays := slaCalendarDiffDays(createdAt, targetDays, now)
 
 	if diffDays < 0 {
 		overdueCount := -diffDays

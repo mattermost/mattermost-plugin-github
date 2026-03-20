@@ -140,13 +140,13 @@
                 "display_name": "PR review target (days):",
                 "type": "number",
                 "default": "0",
-                "help_text": "Optional. Number of calendar days from when a pull request was opened until it counts as due for review. When greater than zero, the /github todo command lists each review request with days remaining or overdue, and the left sidebar review counter can be color-coded. Set to 0 to disable."
+                "help_text": "Optional. Number of calendar days until a review counts as due. The start time is when you were requested as a reviewer (recorded from GitHub pull_request review_requested webhooks to this server); if unknown, the PR open date is used. When greater than zero, /github todo shows due/overdue text and the sidebar review counter can be color-coded. Set to 0 to disable."
             },
             {
                 "key": "OverdueReviewsChannelID",
                 "display_name": "Post overdue review alerts to channel (ID):",
                 "type": "text",
-                "help_text": "Optional. Paste a channel ID (Channel menu > View Info). When set together with **PR review target (days)**, users who receive the daily GitHub reminder DM and have at least one overdue review also trigger a message in this channel that day (the GitHub plugin bot must be a member of the channel)."
+                "help_text": "Optional. Paste a channel ID (Channel menu > View Info). When set together with PR review target (days), the plugin posts one aggregated overdue-review digest to this channel each day shortly after midnight in the server local timezone (the GitHub bot must be a member of the channel)."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."

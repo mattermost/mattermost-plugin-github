@@ -1054,6 +1054,8 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 		return nil, err
 	}
 
+	p.enrichReviewsWithSLAStart(reviewResp, c.GHInfo.GitHubUsername)
+
 	return &SidebarContent{
 		PRs:         openPRResp,
 		Assignments: assignmentResp,
@@ -1076,7 +1078,7 @@ func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *htt
 func (p *Plugin) postToDo(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	githubClient := p.githubConnectUser(c.Ctx, c.GHInfo)
 
-	text, _, err := p.GetToDo(c.Ctx, c.GHInfo, githubClient)
+	text, err := p.GetToDo(c.Ctx, c.GHInfo, githubClient)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed to get Todos")
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Encountered an error getting the to do items.", StatusCode: http.StatusUnauthorized})

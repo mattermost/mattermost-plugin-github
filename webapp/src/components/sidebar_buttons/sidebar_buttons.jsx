@@ -216,10 +216,11 @@ function reviewHasOverdue(reviews, targetDays) {
         return false;
     }
     for (const pr of reviews) {
-        if (!pr.created_at) {
+        const startIso = pr.review_sla_start || pr.created_at;
+        if (!startIso) {
             continue;
         }
-        const created = new Date(pr.created_at);
+        const created = new Date(startIso);
         if (Number.isNaN(created.getTime())) {
             continue;
         }
@@ -246,12 +247,12 @@ function reviewButtonStyle(base, reviews, targetDays) {
     }
     const list = reviews || [];
     if (list.length === 0) {
-        return {...base, color: '#2e7d32'};
+        return base;
     }
     if (reviewHasOverdue(list, targetDays)) {
         return {...base, color: '#c62828'};
     }
-    return base;
+    return {...base, color: '#2e7d32'};
 }
 
 const getStyle = makeStyleFromTheme((theme) => {
