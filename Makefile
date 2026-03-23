@@ -203,9 +203,9 @@ endif
 # weird reports at golangci-lint step
 ifneq ($(HAS_SERVER),)
 	@echo Running golangci-lint
-	$(GO) vet ./...
+	$(GO) vet $$($(GO) list ./... | grep -v /webapp/)
 	$(GOBIN)/golangci-lint run ./...
-	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -license.year=2018 ./...
+	$(GO) vet -vettool=$(GOBIN)/mattermost-govet -license -license.year=2018 $$($(GO) list ./... | grep -v /webapp/)
 endif
 
 ## Builds the server, if it exists, for all supported architectures, unless MM_SERVICESETTINGS_ENABLEDEVELOPER is set

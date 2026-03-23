@@ -38,6 +38,8 @@ linters:
     unqueryvet:
       check-sql-builders: true
   exclusions:
+    paths:
+      - webapp/node_modules
     rules:
       - path: server/configuration.go
         linters:
