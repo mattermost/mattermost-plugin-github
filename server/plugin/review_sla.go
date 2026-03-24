@@ -45,6 +45,29 @@ func (p *Plugin) recordReviewRequestSLAStart(event *github.PullRequestEvent, req
 	}
 }
 
+// cleanupReviewSLAKeys deletes all stored SLA start-time keys for a closed/merged PR.
+func (p *Plugin) cleanupReviewSLAKeys(event *github.PullRequestEvent) {
+	if event.GetRepo() == nil || event.GetPullRequest() == nil {
+		return
+	}
+	owner := event.GetRepo().GetOwner().GetLogin()
+	repo := event.GetRepo().GetName()
+	num := event.GetPullRequest().GetNumber()
+	if owner == "" || repo == "" || num == 0 {
+		return
+	}
+	for _, reviewer := range event.GetPullRequest().RequestedReviewers {
+		login := reviewer.GetLogin()
+		if login == "" {
+			continue
+		}
+		key := reviewSLAStartKey(owner, repo, num, login)
+		if err := p.store.Delete(key); err != nil {
+			p.client.Log.Debug("Failed to delete SLA key on PR close", "key", key, "error", err.Error())
+		}
+	}
+}
+
 func (p *Plugin) getReviewSLAStartTime(owner, repo string, prNumber int, githubLogin string) time.Time {
 	key := reviewSLAStartKey(owner, repo, prNumber, githubLogin)
 	var raw []byte

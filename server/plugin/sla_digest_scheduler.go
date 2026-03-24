@@ -8,24 +8,43 @@ import (
 	"time"
 )
 
-// runSLADigestScheduler loops forever: when SLA channel + target days are configured, it sleeps
-// until the next midnight in the server's local timezone, then runs the overdue digest. This matches
-// a simple "once per day" schedule without tying to user logins.
-func (p *Plugin) runSLADigestScheduler() {
+// runSLADigestScheduler loops until ctx is cancelled: when SLA channel + target days are
+// configured, it sleeps until the next midnight in the server's local timezone, then runs the
+// overdue digest. This matches a simple "once per day" schedule without tying to user logins.
+func (p *Plugin) runSLADigestScheduler(ctx context.Context) {
+	p.client.Log.Info("SLA digest scheduler started", "timezone", time.Local.String())
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		if !p.slaDigestSchedulingEnabled() {
-			time.Sleep(5 * time.Minute)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Minute):
+			}
 			continue
 		}
 
 		d := durationUntilNextLocalMidnight()
-		time.Sleep(d)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(d):
+		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Minute)
-		p.maybePostDailyOverdueSLADigest(ctx)
+		digestCtx, cancel := context.WithTimeout(ctx, 45*time.Minute)
+		p.maybePostDailyOverdueSLADigest(digestCtx)
 		cancel()
 
-		time.Sleep(2 * time.Second)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
 	}
 }
 

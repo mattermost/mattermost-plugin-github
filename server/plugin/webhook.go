@@ -1268,6 +1268,7 @@ func (p *Plugin) handlePullRequestNotification(event *github.PullRequestEvent) {
 			requestedUserID = ""
 		}
 	case actionClosed:
+		p.cleanupReviewSLAKeys(event)
 		if author == sender {
 			return
 		}

@@ -101,6 +101,10 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 	var out []slaDigestEntry
 
 	for page := 0; ; page++ {
+		if ctx.Err() != nil {
+			return out
+		}
+
 		keys, err := p.store.ListKeys(page, keysPerPage, pluginapi.WithChecker(checker))
 		if err != nil {
 			p.client.Log.Warn("Failed to list keys for SLA digest", "error", err.Error())
@@ -108,6 +112,10 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 		}
 
 		for _, key := range keys {
+			if ctx.Err() != nil {
+				return out
+			}
+
 			userID := strings.TrimSuffix(key, githubTokenKey)
 			ghInfo, apiErr := p.getGitHubUserInfo(userID)
 			if apiErr != nil || ghInfo == nil {

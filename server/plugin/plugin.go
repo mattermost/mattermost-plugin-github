@@ -104,6 +104,8 @@ type Plugin struct {
 	webhookBroker *WebhookBroker
 	oauthBroker   *OAuthBroker
 
+	slaDigestCancel context.CancelFunc
+
 	emojiMap map[string]string
 }
 
@@ -298,12 +300,17 @@ func (p *Plugin) OnActivate() error {
 		}
 	}()
 
-	go p.runSLADigestScheduler()
+	ctx, cancel := context.WithCancel(context.Background())
+	p.slaDigestCancel = cancel
+	go p.runSLADigestScheduler(ctx)
 
 	return nil
 }
 
 func (p *Plugin) OnDeactivate() error {
+	if p.slaDigestCancel != nil {
+		p.slaDigestCancel()
+	}
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
 	return nil

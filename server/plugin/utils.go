@@ -372,10 +372,14 @@ func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Ti
 // formatChannelOverdueReviewLine formats a single line for the overdue-SLA channel digest.
 func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string) string {
 	owner, repo := parseOwnerAndRepo(htmlURL, baseURL)
+	repoDisplay := fmt.Sprintf("%s/%s", owner, repo)
+	if owner == "" || repo == "" {
+		repoDisplay = htmlURL
+	}
 	if len(title) > 200 {
 		title = strings.TrimSpace(title[:200]) + "..."
 	}
-	return fmt.Sprintf("- %s - %s/%s : %s", githubLogin, owner, repo, title)
+	return fmt.Sprintf("- %s - %s : %s", githubLogin, repoDisplay, title)
 }
 
 // reviewSLAMarkdown returns HTML-styled SLA suffix for Mattermost markdown and whether the review is overdue.

@@ -250,9 +250,9 @@ function reviewButtonStyle(base, reviews, targetDays) {
         return base;
     }
     if (reviewHasOverdue(list, targetDays)) {
-        return {...base, color: '#c62828'};
+        return {...base, color: 'var(--dnd-indicator)'};
     }
-    return {...base, color: '#2e7d32'};
+    return {...base, color: 'var(--online-indicator)'};
 }
 
 const getStyle = makeStyleFromTheme((theme) => {
