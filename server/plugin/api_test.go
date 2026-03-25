@@ -514,6 +514,53 @@ func TestParseRepo(t *testing.T) {
 	}
 }
 
+func TestGetRepoOwnerAndNameFromURL(t *testing.T) {
+	tests := []struct {
+		name          string
+		url           string
+		expectedOwner string
+		expectedRepo  string
+		expectError   bool
+	}{
+		{
+			name:          "Valid full GitHub URL",
+			url:           "https://api.github.com/repos/owner/repo/pulls/1",
+			expectedOwner: "pulls",
+			expectedRepo:  "1",
+		},
+		{
+			name:          "Simple owner/repo",
+			url:           "owner/repo",
+			expectedOwner: "owner",
+			expectedRepo:  "repo",
+		},
+		{
+			name:        "No slashes - should error",
+			url:         "crash",
+			expectError: true,
+		},
+		{
+			name:        "Empty string - should error",
+			url:         "",
+			expectError: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			owner, repo, err := getRepoOwnerAndNameFromURL(tc.url)
+			if tc.expectError {
+				assert.Error(t, err)
+				assert.Empty(t, owner)
+				assert.Empty(t, repo)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedOwner, owner)
+				assert.Equal(t, tc.expectedRepo, repo)
+			}
+		})
+	}
+}
+
 func TestUpdateSettings(t *testing.T) {
 	mockKvStore, mockAPI, mockLogger, mockLoggerWith, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKvStore)

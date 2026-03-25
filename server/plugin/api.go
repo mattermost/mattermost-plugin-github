@@ -765,6 +765,13 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	for _, pr := range prList {
+		if _, _, err := getRepoOwnerAndNameFromURL(pr.URL); err != nil {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "invalid PR URL: " + pr.URL, StatusCode: http.StatusBadRequest})
+			return
+		}
+	}
+
 	prDetails := make([]*PRDetails, len(prList))
 	var wg sync.WaitGroup
 	for i, pr := range prList {
@@ -786,7 +793,16 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	requestedReviewers := []*string{}
 	reviewsList := []*github.PullRequestReview{}
 
-	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
+	repoOwner, repoName, err := getRepoOwnerAndNameFromURL(prURL)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Invalid PR URL")
+		return &PRDetails{
+			URL:                prURL,
+			Number:             prNumber,
+			RequestedReviewers: requestedReviewers,
+			Reviews:            reviewsList,
+		}
+	}
 
 	var wg sync.WaitGroup
 
@@ -841,9 +857,12 @@ func fetchReviews(c *UserContext, client *github.Client, repoOwner string, repoN
 	return reviewsList, nil
 }
 
-func getRepoOwnerAndNameFromURL(url string) (string, string) {
+func getRepoOwnerAndNameFromURL(url string) (string, string, error) {
 	splitted := strings.Split(url, "/")
-	return splitted[len(splitted)-2], splitted[len(splitted)-1]
+	if len(splitted) < 2 {
+		return "", "", fmt.Errorf("invalid URL %q: expected at least owner/repo", url)
+	}
+	return splitted[len(splitted)-2], splitted[len(splitted)-1], nil
 }
 
 func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1724,9 +1743,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	splittedRepo := strings.Split(issue.Repo, "/")
-	owner := splittedRepo[0]
-	repoName := splittedRepo[1]
+	owner, repoName, err := parseRepo(issue.Repo)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "invalid repository: " + issue.Repo, StatusCode: http.StatusBadRequest})
+		return
+	}
 
 	githubClient := p.githubConnectUser(c.Ctx, c.GHInfo)
 	var resp *github.Response
