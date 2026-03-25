@@ -1072,6 +1072,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 		return &model.CommandResponse{}, nil
 	}
 
+	if action == "disconnect" {
+		p.disconnectGitHubAccount(args.UserId)
+		p.postCommandResponse(args, "Disconnected your GitHub account.")
+		return &model.CommandResponse{}, nil
+	}
+
 	info, apiErr := p.getGitHubUserInfo(args.UserId)
 	if apiErr != nil {
 		text := "Unknown error."
