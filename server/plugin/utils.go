@@ -382,7 +382,7 @@ func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string)
 	return fmt.Sprintf("- %s - %s : %s", githubLogin, repoDisplay, title)
 }
 
-// reviewSLAMarkdown returns HTML-styled SLA suffix for Mattermost markdown and whether the review is overdue.
+// reviewSLAMarkdown returns a Markdown SLA suffix for Mattermost posts and whether the review is overdue.
 func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time) (suffix string, overdue bool) {
 	if targetDays <= 0 || createdAt.IsZero() {
 		return "", false
@@ -396,16 +396,16 @@ func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time
 		if overdueCount == 1 {
 			unit = "day"
 		}
-		return fmt.Sprintf(` <span style="color:#c62828;font-weight:600">(%d %s overdue)</span>`, overdueCount, unit), true
+		return fmt.Sprintf(` **(:calendar: %d %s overdue)**`, overdueCount, unit), true
 	}
 	if diffDays == 0 {
-		return ` <span style="color:#2e7d32;font-style:italic">(Due today)</span>`, false
+		return ` *(:calendar: Due today)*`, false
 	}
 	unit := "days"
 	if diffDays == 1 {
 		unit = "day"
 	}
-	return fmt.Sprintf(` <span style="color:#2e7d32;font-style:italic">(Due in %d %s)</span>`, diffDays, unit), false
+	return fmt.Sprintf(` *(:calendar: Due in %d %s)*`, diffDays, unit), false
 }
 
 // isValidURL checks if a given URL is a valid URL with a host and a http or http scheme.
