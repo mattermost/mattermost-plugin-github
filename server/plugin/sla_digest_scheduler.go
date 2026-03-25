@@ -29,6 +29,11 @@ func (p *Plugin) runSLADigestScheduler(ctx context.Context) {
 			continue
 		}
 
+		// Catch-up: run immediately for the current day (the day-marker deduplicates).
+		digestCtx, cancel := context.WithTimeout(ctx, 45*time.Minute)
+		p.maybePostDailyOverdueSLADigest(digestCtx)
+		cancel()
+
 		d := durationUntilNextLocalMidnight()
 		select {
 		case <-ctx.Done():
@@ -36,7 +41,7 @@ func (p *Plugin) runSLADigestScheduler(ctx context.Context) {
 		case <-time.After(d):
 		}
 
-		digestCtx, cancel := context.WithTimeout(ctx, 45*time.Minute)
+		digestCtx, cancel = context.WithTimeout(ctx, 45*time.Minute)
 		p.maybePostDailyOverdueSLADigest(digestCtx)
 		cancel()
 

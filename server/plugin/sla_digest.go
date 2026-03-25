@@ -124,11 +124,22 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 			}
 
 			githubClient := p.githubConnectUser(ctx, ghInfo)
-			var issueResults *github.IssuesSearchResult
+			var allIssues []*github.Issue
 			cErr := p.useGitHubClient(ghInfo, func(gi *GitHubUserInfo, token *oauth2.Token) error {
-				var searchErr error
-				issueResults, _, searchErr = githubClient.Search.Issues(ctx, getReviewSearchQuery(gi.GitHubUsername, orgList), &github.SearchOptions{})
-				return searchErr
+				query := getReviewSearchQuery(gi.GitHubUsername, orgList)
+				opts := &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}}
+				for {
+					result, resp, searchErr := githubClient.Search.Issues(ctx, query, opts)
+					if searchErr != nil {
+						return searchErr
+					}
+					allIssues = append(allIssues, result.Issues...)
+					if resp.NextPage == 0 {
+						break
+					}
+					opts.Page = resp.NextPage
+				}
+				return nil
 			})
 			if cErr != nil {
 				p.client.Log.Debug("SLA digest skipped user review search", "user_id", userID, "error", cErr.Error())
@@ -136,7 +147,7 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 				continue
 			}
 
-			for _, pr := range issueResults.Issues {
+			for _, pr := range allIssues {
 				slaStart := p.effectiveReviewSLAStart(pr, baseURL, ghInfo.GitHubUsername)
 				diff := slaCalendarDiffDays(slaStart, targetDays, now)
 				if diff >= 0 {
