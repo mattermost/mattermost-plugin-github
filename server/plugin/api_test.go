@@ -523,10 +523,16 @@ func TestGetRepoOwnerAndNameFromURL(t *testing.T) {
 		expectError   bool
 	}{
 		{
-			name:          "Valid full GitHub URL",
+			name:          "GitHub API repository URL",
+			url:           "https://api.github.com/repos/owner/repo",
+			expectedOwner: "owner",
+			expectedRepo:  "repo",
+		},
+		{
+			name:          "GitHub API repository URL with trailing path",
 			url:           "https://api.github.com/repos/owner/repo/pulls/1",
-			expectedOwner: "pulls",
-			expectedRepo:  "1",
+			expectedOwner: "owner",
+			expectedRepo:  "repo",
 		},
 		{
 			name:          "Simple owner/repo",
@@ -543,6 +549,17 @@ func TestGetRepoOwnerAndNameFromURL(t *testing.T) {
 			name:        "Empty string - should error",
 			url:         "",
 			expectError: true,
+		},
+		{
+			name:        "Single segment path - should error",
+			url:         "https://api.github.com/repos/owner",
+			expectError: true,
+		},
+		{
+			name:          "Enterprise GitHub API URL",
+			url:           "https://github.example.com/api/v3/repos/myorg/myrepo",
+			expectedOwner: "myorg",
+			expectedRepo:  "myrepo",
 		},
 	}
 	for _, tc := range tests {

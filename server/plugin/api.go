@@ -857,12 +857,34 @@ func fetchReviews(c *UserContext, client *github.Client, repoOwner string, repoN
 	return reviewsList, nil
 }
 
-func getRepoOwnerAndNameFromURL(url string) (string, string, error) {
-	splitted := strings.Split(url, "/")
-	if len(splitted) < 2 {
-		return "", "", fmt.Errorf("invalid URL %q: expected at least owner/repo", url)
+func getRepoOwnerAndNameFromURL(rawURL string) (string, string, error) {
+	if rawURL == "" {
+		return "", "", fmt.Errorf("URL must not be empty")
 	}
-	return splitted[len(splitted)-2], splitted[len(splitted)-1], nil
+
+	var segments []string
+	if parsed, err := url.Parse(rawURL); err == nil && parsed.Scheme != "" {
+		segments = strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	} else {
+		segments = strings.Split(strings.Trim(rawURL, "/"), "/")
+	}
+
+	hasReposSegment := false
+	for i, seg := range segments {
+		if seg == "repos" {
+			hasReposSegment = true
+			if i+2 < len(segments) {
+				return segments[i+1], segments[i+2], nil
+			}
+			break
+		}
+	}
+
+	if !hasReposSegment && len(segments) == 2 && segments[0] != "" && segments[1] != "" {
+		return segments[0], segments[1], nil
+	}
+
+	return "", "", fmt.Errorf("invalid repository URL %q: expected owner/repo or a GitHub API URL containing /repos/owner/repo", rawURL)
 }
 
 func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Request) {
