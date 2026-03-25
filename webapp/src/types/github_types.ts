@@ -24,6 +24,9 @@ export type GithubItem = PrsDetailsData & {
     id: number;
     title: string;
     created_at: string;
+
+    /** When set, instant used for review SLA (review request time if plugin recorded it). */
+    review_sla_start?: string;
     updated_at: string;
     html_url: string;
     repository_url?: string;
@@ -73,6 +76,7 @@ export type ConnectedData = {
 
 export type ConfigurationData = {
     left_sidebar_enabled: boolean;
+    review_target_days?: number;
 }
 
 export type PrsDetailsData = {

@@ -16,6 +16,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/mattermost/mattermost/server/public/pluginapi"
@@ -350,6 +351,61 @@ func getToDoDisplayText(baseURL, title, url, notifType string, repository *githu
 	}
 
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
+}
+
+// slaCalendarDiffDays returns dueDate minus today in calendar days (negative when the review is overdue).
+func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Time) int {
+	if targetDays <= 0 || createdAt.IsZero() {
+		return 0
+	}
+
+	c := createdAt.UTC()
+	createdDay := time.Date(c.Year(), c.Month(), c.Day(), 0, 0, 0, 0, time.UTC)
+	dueDay := createdDay.AddDate(0, 0, targetDays)
+
+	n := now.UTC()
+	todayDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+
+	return int(dueDay.Sub(todayDay) / (24 * time.Hour))
+}
+
+// formatChannelOverdueReviewLine formats a single line for the overdue-SLA channel digest.
+func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string) string {
+	owner, repo := parseOwnerAndRepo(htmlURL, baseURL)
+	repoDisplay := fmt.Sprintf("%s/%s", owner, repo)
+	if owner == "" || repo == "" {
+		repoDisplay = htmlURL
+	}
+	if len(title) > 200 {
+		title = strings.TrimSpace(title[:200]) + "..."
+	}
+	return fmt.Sprintf("- %s - %s : %s", githubLogin, repoDisplay, title)
+}
+
+// reviewSLAMarkdown returns a Markdown SLA suffix for Mattermost posts and whether the review is overdue.
+func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time) (suffix string, overdue bool) {
+	if targetDays <= 0 || createdAt.IsZero() {
+		return "", false
+	}
+
+	diffDays := slaCalendarDiffDays(createdAt, targetDays, now)
+
+	if diffDays < 0 {
+		overdueCount := -diffDays
+		unit := "days"
+		if overdueCount == 1 {
+			unit = "day"
+		}
+		return fmt.Sprintf(` **(:calendar: %d %s overdue)**`, overdueCount, unit), true
+	}
+	if diffDays == 0 {
+		return ` *(:calendar: Due today)*`, false
+	}
+	unit := "days"
+	if diffDays == 1 {
+		unit = "day"
+	}
+	return fmt.Sprintf(` *(:calendar: Due in %d %s)*`, diffDays, unit), false
 }
 
 // isValidURL checks if a given URL is a valid URL with a host and a http or http scheme.

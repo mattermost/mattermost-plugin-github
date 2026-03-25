@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/assert"
@@ -205,6 +206,40 @@ func TestInsideLink(t *testing.T) {
 	for _, tc := range tcs {
 		assert.Equalf(t, tc.expected, isInsideLink(tc.input, tc.index), "unexpected result for isInsideLink(%q, %d)", tc.input, tc.index)
 	}
+}
+
+func TestReviewSLAMarkdown(t *testing.T) {
+	created := time.Date(2025, 3, 10, 15, 30, 0, 0, time.UTC)
+	ts := github.Timestamp{Time: created}
+
+	t.Run("disabled when target is zero", func(t *testing.T) {
+		s, overdue := reviewSLAMarkdown(ts, 0, time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC))
+		assert.Empty(t, s)
+		assert.False(t, overdue)
+	})
+
+	t.Run("overdue", func(t *testing.T) {
+		// Due March 15 (10th + 5), today March 19 -> 4 days overdue
+		now := time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC)
+		s, overdue := reviewSLAMarkdown(ts, 5, now)
+		assert.True(t, overdue)
+		assert.Contains(t, s, "4 days overdue")
+	})
+
+	t.Run("due in future", func(t *testing.T) {
+		// Due March 20 (10th + 10), today March 18 -> 2 days
+		now := time.Date(2025, 3, 18, 12, 0, 0, 0, time.UTC)
+		s, overdue := reviewSLAMarkdown(ts, 10, now)
+		assert.False(t, overdue)
+		assert.Contains(t, s, "Due in 2 days")
+	})
+
+	t.Run("due today", func(t *testing.T) {
+		now := time.Date(2025, 3, 20, 23, 59, 0, 0, time.UTC)
+		s, overdue := reviewSLAMarkdown(ts, 10, now)
+		assert.False(t, overdue)
+		assert.Contains(t, s, "Due today")
+	})
 }
 
 func TestGetToDoDisplayText(t *testing.T) {
