@@ -457,7 +457,7 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		MM34646ResetTokenDone: true,
 	}
 
-	if err = p.storeGitHubUserInfo(userInfo); err != nil {
+	if err = p.storeGitHubUserInfo(userInfo, p.getConfiguration().EncryptionKey); err != nil {
 		c.Log.WithError(err).Errorf("Failed to store GitHub user info")
 		p.writeAPIError(w, &APIErrorResponse{Message: "unable to connect user to GitHub", StatusCode: http.StatusInternalServerError})
 		return
@@ -653,7 +653,7 @@ func (p *Plugin) getConnected(c *Context, w http.ResponseWriter, r *http.Request
 					c.Log.WithError(err).Warnf("Failed to create GitHub todo message")
 				}
 				info.LastToDoPostAt = now
-				if err := p.storeGitHubUserInfo(info); err != nil {
+				if err := p.storeGitHubUserInfo(info, p.getConfiguration().EncryptionKey); err != nil {
 					c.Log.WithError(err).Warnf("Failed to store github info for new user")
 				}
 			}
@@ -1111,7 +1111,7 @@ func (p *Plugin) updateSettings(c *UserContext, w http.ResponseWriter, r *http.R
 	info := c.GHInfo
 	info.Settings = settings
 
-	if err := p.storeGitHubUserInfo(info); err != nil {
+	if err := p.storeGitHubUserInfo(info, p.getConfiguration().EncryptionKey); err != nil {
 		c.Log.WithError(err).Errorf("Failed to store GitHub user info")
 		p.writeAPIError(w, &APIErrorResponse{Message: "error occurred while updating settings", StatusCode: http.StatusInternalServerError})
 		return

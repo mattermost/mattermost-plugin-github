@@ -115,7 +115,7 @@ func (p *Plugin) forceResetUserTokenMM34646(ctx context.Context, config *Configu
 
 	info.Token.AccessToken = *a.Token
 	info.MM34646ResetTokenDone = true
-	err = p.storeGitHubUserInfo(info)
+	err = p.storeGitHubUserInfo(info, p.getConfiguration().EncryptionKey)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to store updated GitHubUserInfo")
 	}

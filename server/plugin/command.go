@@ -787,7 +787,7 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		}
 	}
 
-	err := p.storeGitHubUserInfo(userInfo)
+	err := p.storeGitHubUserInfo(userInfo, p.getConfiguration().EncryptionKey)
 	if err != nil {
 		p.client.Log.Warn("Failed to store github user info", "error", err.Error())
 		return "Failed to store settings"
@@ -1069,6 +1069,12 @@ func (p *Plugin) ExecuteCommand(c *plugin.Context, args *model.CommandArgs) (*mo
 
 		msg := fmt.Sprintf("[Click here to link your GitHub account.](%s%s)", connectURL, qparams)
 		p.postCommandResponse(args, msg)
+		return &model.CommandResponse{}, nil
+	}
+
+	if action == "disconnect" {
+		p.disconnectGitHubAccount(args.UserId)
+		p.postCommandResponse(args, "Disconnected your GitHub account.")
 		return &model.CommandResponse{}, nil
 	}
 
