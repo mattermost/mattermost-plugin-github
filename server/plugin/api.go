@@ -765,16 +765,18 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	var validPRs []*PRDetails
 	for _, pr := range prList {
 		if _, _, err := getRepoOwnerAndNameFromURL(pr.URL); err != nil {
-			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "invalid PR URL: " + pr.URL, StatusCode: http.StatusBadRequest})
-			return
+			c.Log.WithError(err).Warnf("Skipping PR with invalid URL")
+			continue
 		}
+		validPRs = append(validPRs, pr)
 	}
 
-	prDetails := make([]*PRDetails, len(prList))
+	prDetails := make([]*PRDetails, len(validPRs))
 	var wg sync.WaitGroup
-	for i, pr := range prList {
+	for i, pr := range validPRs {
 		wg.Go(func() {
 			prDetail := p.fetchPRDetails(c, githubClient, pr.URL, pr.Number)
 			prDetails[i] = prDetail
