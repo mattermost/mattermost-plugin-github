@@ -38,8 +38,10 @@ const (
 	actionEdited    = "edited"
 	actionCompleted = "completed"
 
-	workflowJobFail    = "failure"
-	workflowJobSuccess = "success"
+	workflowConclusionFailure   = "failure"
+	workflowConclusionSuccess   = "success"
+	workflowConclusionCancelled = "cancelled"
+	workflowConclusionTimedOut  = "timed_out"
 
 	postPropGithubRepo       = "gh_repo"
 	postPropGithubObjectID   = "gh_object_id"
@@ -300,6 +302,11 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		repo = event.GetRepo()
 		handler = func() {
 			p.postWorkflowJobEvent(event)
+		}
+	case *github.WorkflowRunEvent:
+		repo = event.GetRepo()
+		handler = func() {
+			p.postWorkflowRunEvent(event)
 		}
 	case *github.ReleaseEvent:
 		repo = event.GetRepo()
@@ -1463,8 +1470,7 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 		return
 	}
 
-	// Create a post only when the workflow job is completed and has either failed or succeeded
-	if event.GetWorkflowJob().GetConclusion() != workflowJobFail && event.GetWorkflowJob().GetConclusion() != workflowJobSuccess {
+	if event.GetWorkflowJob().GetConclusion() != workflowConclusionFailure && event.GetWorkflowJob().GetConclusion() != workflowConclusionSuccess {
 		return
 	}
 
@@ -1490,6 +1496,59 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 			UserId:    p.BotUserID,
 			Type:      "custom_git_workflow_job",
 			Message:   newWorkflowJobMessage,
+			ChannelId: sub.ChannelID,
+		}
+
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
+		}
+	}
+}
+
+func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
+	if event.GetAction() != actionCompleted {
+		return
+	}
+
+	conclusion := event.GetWorkflowRun().GetConclusion()
+	isSuccess := conclusion == workflowConclusionSuccess
+	isFailure := conclusion == workflowConclusionFailure ||
+		conclusion == workflowConclusionCancelled ||
+		conclusion == workflowConclusionTimedOut
+
+	if !isSuccess && !isFailure {
+		return
+	}
+
+	repo := event.GetRepo()
+	subs := p.GetSubscribedChannelsForRepository(repo)
+	if len(subs) == 0 {
+		return
+	}
+
+	workflowRunMessage, err := renderTemplate("workflowRunCompleted", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "Error", err.Error())
+		return
+	}
+
+	for _, sub := range subs {
+		if (isFailure && !sub.WorkflowRunFailures()) || (isSuccess && !sub.WorkflowRunSuccesses()) {
+			continue
+		}
+
+		if p.excludeConfigOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		if p.shouldDenyEventDueToNotOrgMember(event.GetSender(), sub) {
+			continue
+		}
+
+		post := &model.Post{
+			UserId:    p.BotUserID,
+			Type:      "custom_git_workflow_run",
+			Message:   workflowRunMessage,
 			ChannelId: sub.ChannelID,
 		}
 
