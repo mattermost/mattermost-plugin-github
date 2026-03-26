@@ -502,6 +502,26 @@ func TestParseRepo(t *testing.T) {
 				assert.EqualError(t, err, "invalid repository")
 			},
 		},
+		{
+			name:      "Empty owner",
+			repoParam: "/repo",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "invalid repository")
+			},
+		},
+		{
+			name:      "Empty repo",
+			repoParam: "owner/",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "invalid repository")
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -560,6 +580,16 @@ func TestGetRepoOwnerAndNameFromURL(t *testing.T) {
 			url:           "https://github.example.com/api/v3/repos/myorg/myrepo",
 			expectedOwner: "myorg",
 			expectedRepo:  "myrepo",
+		},
+		{
+			name:        "Empty owner after repos segment",
+			url:         "https://api.github.com/repos//repo",
+			expectError: true,
+		},
+		{
+			name:        "Empty repo after repos segment",
+			url:         "https://api.github.com/repos/owner/",
+			expectError: true,
 		},
 	}
 	for _, tc := range tests {

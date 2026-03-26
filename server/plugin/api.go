@@ -767,6 +767,9 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	var validPRs []*PRDetails
 	for _, pr := range prList {
+		if pr == nil {
+			continue
+		}
 		if _, _, err := getRepoOwnerAndNameFromURL(pr.URL); err != nil {
 			c.Log.WithError(err).Warnf("Skipping PR with invalid URL")
 			continue
@@ -875,7 +878,7 @@ func getRepoOwnerAndNameFromURL(rawURL string) (string, string, error) {
 	for i, seg := range segments {
 		if seg == "repos" {
 			hasReposSegment = true
-			if i+2 < len(segments) {
+			if i+2 < len(segments) && segments[i+1] != "" && segments[i+2] != "" {
 				return segments[i+1], segments[i+2], nil
 			}
 			break
@@ -1864,7 +1867,7 @@ func parseRepo(repoParam string) (owner, repo string, err error) {
 	}
 
 	splitted := strings.Split(repoParam, "/")
-	if len(splitted) != 2 {
+	if len(splitted) != 2 || splitted[0] == "" || splitted[1] == "" {
 		return "", "", errors.New("invalid repository")
 	}
 
