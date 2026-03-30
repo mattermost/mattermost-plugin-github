@@ -502,6 +502,26 @@ func TestParseRepo(t *testing.T) {
 				assert.EqualError(t, err, "invalid repository")
 			},
 		},
+		{
+			name:      "Empty owner",
+			repoParam: "/repo",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "invalid repository")
+			},
+		},
+		{
+			name:      "Empty repo",
+			repoParam: "owner/",
+			setup:     func() {},
+			assertions: func(t *testing.T, owner, repo string, err error) {
+				assert.Equal(t, "", owner)
+				assert.Equal(t, "", repo)
+				assert.EqualError(t, err, "invalid repository")
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -510,6 +530,80 @@ func TestParseRepo(t *testing.T) {
 			owner, repo, err := parseRepo(tc.repoParam)
 
 			tc.assertions(t, owner, repo, err)
+		})
+	}
+}
+
+func TestGetRepoOwnerAndNameFromURL(t *testing.T) {
+	tests := []struct {
+		name          string
+		url           string
+		expectedOwner string
+		expectedRepo  string
+		expectError   bool
+	}{
+		{
+			name:          "GitHub API repository URL",
+			url:           "https://api.github.com/repos/owner/repo",
+			expectedOwner: "owner",
+			expectedRepo:  "repo",
+		},
+		{
+			name:          "GitHub API repository URL with trailing path",
+			url:           "https://api.github.com/repos/owner/repo/pulls/1",
+			expectedOwner: "owner",
+			expectedRepo:  "repo",
+		},
+		{
+			name:          "Simple owner/repo",
+			url:           "owner/repo",
+			expectedOwner: "owner",
+			expectedRepo:  "repo",
+		},
+		{
+			name:        "No slashes - should error",
+			url:         "crash",
+			expectError: true,
+		},
+		{
+			name:        "Empty string - should error",
+			url:         "",
+			expectError: true,
+		},
+		{
+			name:        "Single segment path - should error",
+			url:         "https://api.github.com/repos/owner",
+			expectError: true,
+		},
+		{
+			name:          "Enterprise GitHub API URL",
+			url:           "https://github.example.com/api/v3/repos/myorg/myrepo",
+			expectedOwner: "myorg",
+			expectedRepo:  "myrepo",
+		},
+		{
+			name:        "Empty owner after repos segment",
+			url:         "https://api.github.com/repos//repo",
+			expectError: true,
+		},
+		{
+			name:        "Empty repo after repos segment",
+			url:         "https://api.github.com/repos/owner/",
+			expectError: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			owner, repo, err := getRepoOwnerAndNameFromURL(tc.url)
+			if tc.expectError {
+				assert.Error(t, err)
+				assert.Empty(t, owner)
+				assert.Empty(t, repo)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.expectedOwner, owner)
+				assert.Equal(t, tc.expectedRepo, repo)
+			}
 		})
 	}
 }

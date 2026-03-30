@@ -765,9 +765,21 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	prDetails := make([]*PRDetails, len(prList))
+	var validPRs []*PRDetails
+	for _, pr := range prList {
+		if pr == nil {
+			continue
+		}
+		if _, _, err := getRepoOwnerAndNameFromURL(pr.URL); err != nil {
+			c.Log.WithError(err).Warnf("Skipping PR with invalid URL")
+			continue
+		}
+		validPRs = append(validPRs, pr)
+	}
+
+	prDetails := make([]*PRDetails, len(validPRs))
 	var wg sync.WaitGroup
-	for i, pr := range prList {
+	for i, pr := range validPRs {
 		wg.Go(func() {
 			prDetail := p.fetchPRDetails(c, githubClient, pr.URL, pr.Number)
 			prDetails[i] = prDetail
@@ -786,7 +798,16 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	requestedReviewers := []*string{}
 	reviewsList := []*github.PullRequestReview{}
 
-	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
+	repoOwner, repoName, err := getRepoOwnerAndNameFromURL(prURL)
+	if err != nil {
+		c.Log.WithError(err).Warnf("Invalid PR URL")
+		return &PRDetails{
+			URL:                prURL,
+			Number:             prNumber,
+			RequestedReviewers: requestedReviewers,
+			Reviews:            reviewsList,
+		}
+	}
 
 	var wg sync.WaitGroup
 
@@ -841,9 +862,34 @@ func fetchReviews(c *UserContext, client *github.Client, repoOwner string, repoN
 	return reviewsList, nil
 }
 
-func getRepoOwnerAndNameFromURL(url string) (string, string) {
-	splitted := strings.Split(url, "/")
-	return splitted[len(splitted)-2], splitted[len(splitted)-1]
+func getRepoOwnerAndNameFromURL(rawURL string) (string, string, error) {
+	if rawURL == "" {
+		return "", "", fmt.Errorf("URL must not be empty")
+	}
+
+	var segments []string
+	if parsed, err := url.Parse(rawURL); err == nil && parsed.Scheme != "" {
+		segments = strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	} else {
+		segments = strings.Split(strings.Trim(rawURL, "/"), "/")
+	}
+
+	hasReposSegment := false
+	for i, seg := range segments {
+		if seg == "repos" {
+			hasReposSegment = true
+			if i+2 < len(segments) && segments[i+1] != "" && segments[i+2] != "" {
+				return segments[i+1], segments[i+2], nil
+			}
+			break
+		}
+	}
+
+	if !hasReposSegment && len(segments) == 2 && segments[0] != "" && segments[1] != "" {
+		return segments[0], segments[1], nil
+	}
+
+	return "", "", fmt.Errorf("invalid repository URL %q: expected owner/repo or a GitHub API URL containing /repos/owner/repo", rawURL)
 }
 
 func (p *Plugin) searchIssues(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1726,9 +1772,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	splittedRepo := strings.Split(issue.Repo, "/")
-	owner := splittedRepo[0]
-	repoName := splittedRepo[1]
+	owner, repoName, err := parseRepo(issue.Repo)
+	if err != nil {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "invalid repository: " + issue.Repo, StatusCode: http.StatusBadRequest})
+		return
+	}
 
 	githubClient := p.githubConnectUser(c.Ctx, c.GHInfo)
 	var resp *github.Response
@@ -1821,7 +1869,7 @@ func parseRepo(repoParam string) (owner, repo string, err error) {
 	}
 
 	splitted := strings.Split(repoParam, "/")
-	if len(splitted) != 2 {
+	if len(splitted) != 2 || splitted[0] == "" || splitted[1] == "" {
 		return "", "", errors.New("invalid repository")
 	}
 
