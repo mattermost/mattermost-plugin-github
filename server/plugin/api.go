@@ -118,18 +118,23 @@ const (
 )
 
 func (p *Plugin) writeJSON(w http.ResponseWriter, v any) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		p.client.Log.Error("Failed to marshal JSON response", "error", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	_, err = w.Write(b)
-	if err != nil {
-		p.client.Log.Error("Failed to write JSON response", "error", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+    w.Header().Set("Content-Type", "application/json")
+
+    if v == nil {
+        v = map[string]any{}
+    }
+
+    b, err := json.Marshal(v)
+    if err != nil {
+        p.client.Log.Error("Failed to marshal JSON response", "error", err.Error())
+        w.WriteHeader(http.StatusInternalServerError)
+        return
+    }
+
+    _, err = w.Write(b)
+    if err != nil {
+        p.client.Log.Error("Failed to write JSON response", "error", err.Error())
+    }
 }
 
 func (p *Plugin) writeAPIError(w http.ResponseWriter, apiErr *APIErrorResponse) {
@@ -724,9 +729,9 @@ func (p *Plugin) getUnreadsData(c *UserContext) []*FilteredNotification {
 		return nil
 	})
 	if cErr != nil {
-		c.Log.WithError(cErr).Warnf("Failed to list notifications")
-		return nil
-	}
+    c.Log.WithError(cErr).Warnf("Failed to list notifications")
+    return []*FilteredNotification{}
+}
 
 	filteredNotifications := []*FilteredNotification{}
 	for _, n := range notifications {
@@ -1097,8 +1102,15 @@ func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetai
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 	reviewResp, assignmentResp, openPRResp, err := p.getLHSData(c)
 	if err != nil {
-		return nil, err
-	}
+    c.Log.WithError(err).Warn("Sidebar data fetch failed")
+
+    return &SidebarContent{
+        PRs:         []*graphql.GithubPRDetails{},
+        Reviews:     []*graphql.GithubPRDetails{},
+        Assignments: []*github.Issue{},
+        Unreads:     []*FilteredNotification{},
+    }, nil
+}
 
 	p.enrichReviewsWithSLAStart(reviewResp, c.GHInfo.GitHubUsername)
 
@@ -1112,13 +1124,18 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 
 func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	sidebarContent, err := p.getSidebarData(c)
-	if err != nil {
-		c.Log.WithError(err).Errorf("Failed to search for the sidebar data")
-		p.writeAPIError(w, &APIErrorResponse{Message: "failed to search for the sidebar data", StatusCode: http.StatusInternalServerError})
-		return
-	}
+if err != nil || sidebarContent == nil {
+    c.Log.Warn("Sidebar content empty, returning defaults")
 
-	p.writeJSON(w, sidebarContent)
+    sidebarContent = &SidebarContent{
+        PRs:         []*graphql.GithubPRDetails{},
+        Reviews:     []*graphql.GithubPRDetails{},
+        Assignments: []*github.Issue{},
+        Unreads:     []*FilteredNotification{},
+    }
+}
+
+p.writeJSON(w, sidebarContent)
 }
 
 func (p *Plugin) postToDo(c *UserContext, w http.ResponseWriter, r *http.Request) {
