@@ -216,7 +216,15 @@ func (p *Plugin) OnConfigurationChange() error {
 
 	configuration.sanitize()
 
-	p.sendWebsocketEventIfNeeded(p.getConfiguration(), configuration)
+	previousConfig := p.getConfiguration()
+	previousEncryptionKey := previousConfig.EncryptionKey
+
+	p.sendWebsocketEventIfNeeded(previousConfig, configuration)
+
+	if previousEncryptionKey != "" && configuration.EncryptionKey != "" &&
+		previousEncryptionKey != configuration.EncryptionKey {
+		go p.reEncryptUserData(configuration.EncryptionKey, previousEncryptionKey)
+	}
 
 	p.setConfiguration(configuration)
 
