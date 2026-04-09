@@ -9,6 +9,7 @@ import (
 	"crypto/sha1" //nolint:gosec // GitHub webhooks are signed using sha1 https://developer.github.com/webhooks/.
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"html"
 	"io"
 	"net/http"
@@ -199,11 +200,20 @@ func (wb *WebhookBroker) Close() {
 	}
 }
 
+const maxWebhookPayloadSize = 25 * 1024 * 1024 // 25 MB, matching GitHub's documented maximum
+
 func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	p.client.Log.Info("Webhook event received")
 	config := p.getConfiguration()
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxWebhookPayloadSize)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			http.Error(w, "Request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}

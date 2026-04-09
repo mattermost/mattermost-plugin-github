@@ -30,6 +30,52 @@ const (
 	gitHubOrginization = "test-org"
 )
 
+func TestHandleWebhookBodySizeLimit(t *testing.T) {
+	t.Run("rejects oversized request body", func(t *testing.T) {
+		_, mockAPI, _, _, _ := GetTestSetup(t)
+		p := NewPlugin()
+		p.initializeAPI()
+		p.SetAPI(mockAPI)
+		p.client = pluginapi.NewClient(mockAPI, p.Driver)
+		p.setConfiguration(&Configuration{
+			WebhookSecret: webhookSecret,
+		})
+
+		mockAPI.On("LogInfo", "Webhook event received")
+
+		oversizedBody := strings.NewReader(strings.Repeat("x", 26*1024*1024))
+		req := httptest.NewRequest(http.MethodPost, "/webhook", oversizedBody)
+		req.Header.Set("X-Hub-Signature", "sha1=invalid")
+		w := httptest.NewRecorder()
+
+		p.handleWebhook(w, req)
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+	})
+
+	t.Run("accepts normal sized request body", func(t *testing.T) {
+		_, mockAPI, _, _, _ := GetTestSetup(t)
+		p := NewPlugin()
+		p.initializeAPI()
+		p.SetAPI(mockAPI)
+		p.client = pluginapi.NewClient(mockAPI, p.Driver)
+		p.setConfiguration(&Configuration{
+			WebhookSecret: webhookSecret,
+		})
+
+		mockAPI.On("LogInfo", "Webhook event received")
+
+		body := `{"zen": "test"}`
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+		req.Header.Set("X-Hub-Signature", "sha1=invalid")
+		w := httptest.NewRecorder()
+
+		p.handleWebhook(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+}
+
 func TestPostPushEvent(t *testing.T) {
 	tests := []struct {
 		name      string
