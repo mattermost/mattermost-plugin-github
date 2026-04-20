@@ -401,7 +401,7 @@ func (p *Plugin) createPost(channelID, userID, message string) error {
 	}
 
 	if err := p.client.Post.CreatePost(post); err != nil {
-		p.client.Log.Warn("Error while creating post", "post", post, "error", err.Error())
+		p.client.Log.Warn("Error while creating post", "channel_id", post.ChannelId, "error", err.Error())
 		return err
 	}
 

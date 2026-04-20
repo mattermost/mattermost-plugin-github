@@ -105,7 +105,7 @@ func TestPostPushEvent(t *testing.T) {
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -161,7 +161,7 @@ func TestPostCreateEvent(t *testing.T) {
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -217,7 +217,7 @@ func TestPostDeleteEvent(t *testing.T) {
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -282,7 +282,7 @@ func TestPostIssueCommentEvent(t *testing.T) {
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
 			},
 		},
 		{
@@ -450,7 +450,7 @@ func TestPostPullRequestReviewEvent(t *testing.T) {
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
 			},
 		},
 		{
@@ -499,7 +499,7 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post").Times(1)
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
 			},
 		},
 		{
@@ -1305,7 +1305,7 @@ func TestPostStarEvent(t *testing.T) {
 					},
 				})).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "post", mock.Anything, "error", "error creating post")
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -1375,7 +1375,7 @@ func TestPostReleaseEvent(t *testing.T) {
 					},
 				})).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -1440,7 +1440,7 @@ func TestPostDiscussionEvent(t *testing.T) {
 					},
 				})).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error creating discussion notification post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("LogWarn", "Error creating discussion notification post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -1593,7 +1593,7 @@ func TestPostWorkflowRunEvent(t *testing.T) {
 					},
 				})).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error webhook post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("LogWarn", "Error webhook post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{
@@ -1702,7 +1702,7 @@ func TestPostDiscussionCommentEvent(t *testing.T) {
 					},
 				})).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error creating discussion comment post", "Post", mock.Anything, "Error", "error creating post")
+				mockAPI.On("LogWarn", "Error creating discussion comment post", "channel_id", mock.Anything, "error", "error creating post")
 			},
 		},
 		{

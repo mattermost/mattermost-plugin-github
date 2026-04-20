@@ -561,7 +561,7 @@ func (p *Plugin) postPullRequestEvent(event *github.PullRequestEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if err := p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -624,7 +624,7 @@ func (p *Plugin) handlePRDescriptionMentionNotification(event *github.PullReques
 		post.ChannelId = channel.Id
 
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 
 		p.sendRefreshEvent(userID)
@@ -725,7 +725,7 @@ func (p *Plugin) postIssueEvent(event *github.IssuesEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -768,7 +768,7 @@ func (p *Plugin) postPushEvent(event *github.PushEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -809,7 +809,7 @@ func (p *Plugin) postCreateEvent(event *github.CreateEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -851,7 +851,7 @@ func (p *Plugin) postDeleteEvent(event *github.DeleteEvent) {
 		post := p.makeBotPost(newDeleteMessage, "custom_git_delete")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -922,7 +922,7 @@ func (p *Plugin) postIssueCommentEvent(event *github.IssueCommentEvent) {
 		post.ChannelId = sub.ChannelID
 
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1011,7 +1011,7 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1072,7 +1072,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1470,7 +1470,7 @@ func (p *Plugin) postStarEvent(event *github.StarEvent) {
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "post", post, "error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1510,7 +1510,7 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 		}
 
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1563,7 +1563,7 @@ func (p *Plugin) postWorkflowRunEvent(event *github.WorkflowRunEvent) {
 		}
 
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1607,7 +1607,7 @@ func (p *Plugin) postReleaseEvent(event *github.ReleaseEvent) {
 		}
 
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error webhook post", "Post", post, "Error", err.Error())
+			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1645,7 +1645,7 @@ func (p *Plugin) postDiscussionEvent(event *github.DiscussionEvent) {
 		post.AddProp(postPropGithubObjectType, "discussion")
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error creating discussion notification post", "Post", post, "Error", err.Error())
+			p.client.Log.Warn("Error creating discussion notification post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
@@ -1683,7 +1683,7 @@ func (p *Plugin) postDiscussionCommentEvent(event *github.DiscussionCommentEvent
 
 		post.ChannelId = sub.ChannelID
 		if err = p.client.Post.CreatePost(post); err != nil {
-			p.client.Log.Warn("Error creating discussion comment post", "Post", post, "Error", err.Error())
+			p.client.Log.Warn("Error creating discussion comment post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
 }
