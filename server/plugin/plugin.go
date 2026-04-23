@@ -962,7 +962,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	}
 
 	if err = p.client.Post.CreatePost(post); err != nil {
-		p.client.Log.Warn("Failed to create DM post", "userID", userID, "post", post, "error", err.Error())
+		p.client.Log.Warn("Failed to create DM post", "user_id", userID, "channel_id", post.ChannelId, "error", err.Error())
 		return
 	}
 }

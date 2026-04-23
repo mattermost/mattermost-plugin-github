@@ -1063,7 +1063,7 @@ func TestCreatePost(t *testing.T) {
 			name: "Error creating a post",
 			setup: func() {
 				mockAPI.On("CreatePost", post).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
-				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
+				mockAPI.On("LogWarn", "Error while creating post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
 			},
 			assertions: func(t *testing.T, err error) {
 				assert.EqualError(t, err, "error creating post")
@@ -1179,7 +1179,7 @@ func TestHandleUnsubscribe(t *testing.T) {
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				post.Message = "@mockUsername unsubscribed this channel from [owner](https://github.com/owner)"
-				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
+				mockAPI.On("LogWarn", "Error while creating post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
 				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 			assertions: func(result string) {
@@ -1217,7 +1217,7 @@ func TestHandleUnsubscribe(t *testing.T) {
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				post.Message = "@mockUsername Unsubscribed this channel from [owner/repo](https://github.com/owner/repo)\n Please delete the [webhook](https://github.com/owner/repo/settings/hooks) for this subscription unless it's required for other subscriptions."
-				mockAPI.On("LogWarn", "Error while creating post", "post", post, "error", "error creating post").Times(1)
+				mockAPI.On("LogWarn", "Error while creating post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
 				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 			assertions: func(result string) {
