@@ -859,7 +859,15 @@ func fetchReviews(c *UserContext, client *github.Client, repoOwner string, repoN
 		return []*github.PullRequestReview{}, errors.Wrap(err, "could not list reviews")
 	}
 
-	return reviewsList, nil
+	// Filtering reviews where user is nil
+	filtered := make([]*github.PullRequestReview, 0, len(reviewsList))
+	for _, review := range reviewsList {
+		if review != nil && review.User != nil {
+			filtered = append(filtered, review)
+		}
+	}
+
+	return filtered, nil
 }
 
 func getRepoOwnerAndNameFromURL(rawURL string) (string, string, error) {
