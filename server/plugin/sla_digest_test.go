@@ -13,14 +13,24 @@ import (
 func TestFormatChannelOverdueReviewLine(t *testing.T) {
 	const baseURL = "https://github.com/"
 
-	t.Run("renders title as a markdown link to the PR", func(t *testing.T) {
+	t.Run("renders connected reviewer with @-mention and bracketed github login", func(t *testing.T) {
 		line := formatChannelOverdueReviewLine(
-			"hmhealey",
+			"@harrison (hmhealey)",
 			"Fix race condition",
 			"https://github.com/mattermost/mattermost/pull/12345",
 			baseURL,
 		)
-		assert.Equal(t, "- hmhealey - mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", line)
+		assert.Equal(t, "- @harrison (hmhealey) - mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", line)
+	})
+
+	t.Run("renders unconnected reviewer with `(not connected) - login` prefix", func(t *testing.T) {
+		line := formatChannelOverdueReviewLine(
+			"(not connected) - hmhealey",
+			"Fix race condition",
+			"https://github.com/mattermost/mattermost/pull/12345",
+			baseURL,
+		)
+		assert.Equal(t, "- (not connected) - hmhealey - mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", line)
 	})
 
 	t.Run("escapes closing brackets in the title so the link does not terminate early", func(t *testing.T) {

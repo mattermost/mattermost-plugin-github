@@ -87,6 +87,20 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 	}
 }
 
+// resolveReviewerDisplayName turns a GitHub login into the digest's reviewer column.
+// Connected users get an actual Mattermost @-mention so the post notifies them; unconnected
+// users render as "(not connected) - <githublogin>" so admins can see who is missing.
+func (p *Plugin) resolveReviewerDisplayName(githubLogin string) string {
+	if githubLogin == "" {
+		return ""
+	}
+	mmUsername := p.getGitHubToUsernameMapping(githubLogin)
+	if mmUsername != "" {
+		return fmt.Sprintf("@%s (%s)", mmUsername, githubLogin)
+	}
+	return fmt.Sprintf("(not connected) - %s", githubLogin)
+}
+
 func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry {
 	config := p.getConfiguration()
 	targetDays := config.ReviewTargetDays
@@ -147,6 +161,7 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 				continue
 			}
 
+			reviewerDisplay := p.resolveReviewerDisplayName(ghInfo.GitHubUsername)
 			for _, pr := range allIssues {
 				slaStart := p.effectiveReviewSLAStart(pr, baseURL, ghInfo.GitHubUsername)
 				diff := slaCalendarDiffDays(slaStart, targetDays, now)
@@ -154,7 +169,7 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 					continue
 				}
 				daysOverdue := -diff
-				line := formatChannelOverdueReviewLine(ghInfo.GitHubUsername, pr.GetTitle(), pr.GetHTMLURL(), baseURL)
+				line := formatChannelOverdueReviewLine(reviewerDisplay, pr.GetTitle(), pr.GetHTMLURL(), baseURL)
 				out = append(out, slaDigestEntry{DaysOverdue: daysOverdue, Line: line})
 			}
 

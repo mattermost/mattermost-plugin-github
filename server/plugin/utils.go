@@ -379,10 +379,12 @@ func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Ti
 }
 
 // formatChannelOverdueReviewLine formats a single line for the overdue-SLA channel digest.
+// reviewerDisplay is a pre-resolved name for the reviewer column (e.g. "@harrison (hmhealey)" for
+// connected users or "(not connected) - hmhealey" for users without a Mattermost mapping).
 // The title is rendered as a markdown link to htmlURL so readers can click straight to the PR.
 // When owner/repo cannot be parsed from htmlURL, the raw URL is used as the repo display so
 // nothing renders as " / ".
-func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string) string {
+func formatChannelOverdueReviewLine(reviewerDisplay, title, htmlURL, baseURL string) string {
 	owner, repo := parseOwnerAndRepo(htmlURL, baseURL)
 	repoDisplay := fmt.Sprintf("%s/%s", owner, repo)
 	if owner == "" || repo == "" {
@@ -395,7 +397,7 @@ func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string)
 	if htmlURL != "" {
 		titleDisplay = fmt.Sprintf("[%s](%s)", escapeMarkdownLinkText(title), htmlURL)
 	}
-	return fmt.Sprintf("- %s - %s - %s", githubLogin, repoDisplay, titleDisplay)
+	return fmt.Sprintf("- %s - %s - %s", reviewerDisplay, repoDisplay, titleDisplay)
 }
 
 // escapeMarkdownLinkText escapes characters that would break a markdown link's display text.
