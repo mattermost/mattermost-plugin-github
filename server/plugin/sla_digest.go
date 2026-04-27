@@ -7,15 +7,17 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/go-github/v54/github"
 
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
+
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
-	"golang.org/x/oauth2"
 )
 
 const (
@@ -101,6 +103,37 @@ func (p *Plugin) resolveReviewerDisplayName(githubLogin string) string {
 	return fmt.Sprintf("(not connected) - %s", githubLogin)
 }
 
+// pickServiceGitHubUser returns the first connected user the digest can use as a service
+// caller for org-wide GitHub queries. Skips users whose token cannot be loaded. Returns nil
+// when no connected user is available; the digest cannot run in that case.
+func (p *Plugin) pickServiceGitHubUser(ctx context.Context) *GitHubUserInfo {
+	checker := func(key string) (bool, error) {
+		return strings.HasSuffix(key, githubTokenKey), nil
+	}
+	for page := 0; ; page++ {
+		if ctx.Err() != nil {
+			return nil
+		}
+		keys, err := p.store.ListKeys(page, keysPerPage, pluginapi.WithChecker(checker))
+		if err != nil {
+			p.client.Log.Warn("SLA digest failed to list connected users", "error", err.Error())
+			return nil
+		}
+		for _, key := range keys {
+			userID := strings.TrimSuffix(key, githubTokenKey)
+			ghInfo, apiErr := p.getGitHubUserInfo(userID)
+			if apiErr != nil || ghInfo == nil {
+				continue
+			}
+			return ghInfo
+		}
+		if len(keys) < keysPerPage {
+			break
+		}
+	}
+	return nil
+}
+
 func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry {
 	config := p.getConfiguration()
 	targetDays := config.ReviewTargetDays
@@ -108,76 +141,109 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 	orgList := config.getOrganizations()
 	now := time.Now()
 
-	checker := func(key string) (bool, error) {
-		return strings.HasSuffix(key, githubTokenKey), nil
+	if len(orgList) == 0 {
+		p.client.Log.Warn("SLA digest cannot run without configured organizations (System Console -> Plugins -> GitHub -> GitHub Organizations)")
+		return nil
+	}
+
+	serviceUser := p.pickServiceGitHubUser(ctx)
+	if serviceUser == nil {
+		p.client.Log.Warn("SLA digest cannot run: no connected GitHub user available to act as the service caller")
+		return nil
+	}
+
+	githubClient := p.githubConnectUser(ctx, serviceUser)
+	graphQLClient := p.graphQLConnect(serviceUser)
+
+	var allPRs []graphql.DigestPR
+	for _, org := range orgList {
+		if ctx.Err() != nil {
+			return nil
+		}
+		prs, err := graphQLClient.GetOpenPRsWithRequestedReviewers(ctx, org)
+		if err != nil {
+			p.client.Log.Warn("SLA digest org PR fetch failed", "org", org, "error", err.Error())
+			continue
+		}
+		allPRs = append(allPRs, prs...)
+	}
+
+	teamCache := make(map[string][]string)
+	resolveTeam := func(team graphql.DigestTeamRef) []string {
+		key := team.Org + "/" + team.Slug
+		if members, ok := teamCache[key]; ok {
+			return members
+		}
+		var members []string
+		opts := &github.TeamListTeamMembersOptions{ListOptions: github.ListOptions{PerPage: 100}}
+		for {
+			page, resp, err := githubClient.Teams.ListTeamMembersBySlug(ctx, team.Org, team.Slug, opts)
+			if err != nil {
+				p.client.Log.Debug("SLA digest team expansion failed", "team", key, "error", err.Error())
+				break
+			}
+			for _, u := range page {
+				if login := u.GetLogin(); login != "" {
+					members = append(members, login)
+				}
+			}
+			if resp == nil || resp.NextPage == 0 {
+				break
+			}
+			opts.Page = resp.NextPage
+		}
+		teamCache[key] = members
+		return members
 	}
 
 	var out []slaDigestEntry
+	seen := make(map[string]bool)
 
-	for page := 0; ; page++ {
+	for _, pr := range allPRs {
 		if ctx.Err() != nil {
 			return out
 		}
 
-		keys, err := p.store.ListKeys(page, keysPerPage, pluginapi.WithChecker(checker))
-		if err != nil {
-			p.client.Log.Warn("Failed to list keys for SLA digest", "error", err.Error())
-			break
+		logins := append([]string(nil), pr.RequestedUsers...)
+		for _, team := range pr.RequestedTeams {
+			logins = append(logins, resolveTeam(team)...)
+		}
+		if len(logins) == 0 {
+			continue
 		}
 
-		for _, key := range keys {
-			if ctx.Err() != nil {
-				return out
-			}
-
-			userID := strings.TrimSuffix(key, githubTokenKey)
-			ghInfo, apiErr := p.getGitHubUserInfo(userID)
-			if apiErr != nil || ghInfo == nil {
-				time.Sleep(delayBetweenUsers)
-				continue
-			}
-
-			githubClient := p.githubConnectUser(ctx, ghInfo)
-			var allIssues []*github.Issue
-			cErr := p.useGitHubClient(ghInfo, func(gi *GitHubUserInfo, token *oauth2.Token) error {
-				query := getReviewSearchQuery(gi.GitHubUsername, orgList)
-				opts := &github.SearchOptions{ListOptions: github.ListOptions{PerPage: 100}}
-				for {
-					result, resp, searchErr := githubClient.Search.Issues(ctx, query, opts)
-					if searchErr != nil {
-						return searchErr
-					}
-					allIssues = append(allIssues, result.Issues...)
-					if resp.NextPage == 0 {
-						break
-					}
-					opts.Page = resp.NextPage
-				}
-				return nil
-			})
-			if cErr != nil {
-				p.client.Log.Debug("SLA digest skipped user review search", "user_id", userID, "error", cErr.Error())
-				time.Sleep(delayBetweenUsers)
-				continue
-			}
-
-			reviewerDisplay := p.resolveReviewerDisplayName(ghInfo.GitHubUsername)
-			for _, pr := range allIssues {
-				slaStart := p.effectiveReviewSLAStartForDigest(ctx, githubClient, pr, baseURL, ghInfo.GitHubUsername)
-				diff := slaCalendarDiffDays(slaStart, targetDays, now)
-				if diff >= 0 {
-					continue
-				}
-				daysOverdue := -diff
-				line := formatChannelOverdueReviewLine(reviewerDisplay, pr.GetTitle(), pr.GetHTMLURL(), baseURL)
-				out = append(out, slaDigestEntry{DaysOverdue: daysOverdue, Line: line})
-			}
-
-			time.Sleep(delayBetweenUsers)
+		// Synthetic *github.Issue so we can reuse effectiveReviewSLAStartForDigest, which
+		// expects the same shape as the per-user search results.
+		prIssue := &github.Issue{
+			Number:    github.Int(pr.Number),
+			Title:     github.String(pr.Title),
+			HTMLURL:   github.String(pr.URL),
+			CreatedAt: &github.Timestamp{Time: pr.CreatedAt},
+			Repository: &github.Repository{
+				Name:  github.String(pr.Repo),
+				Owner: &github.User{Login: github.String(pr.Owner)},
+			},
 		}
 
-		if len(keys) < keysPerPage {
-			break
+		for _, login := range logins {
+			if login == "" {
+				continue
+			}
+			dedupeKey := pr.Owner + "/" + pr.Repo + "#" + strconv.Itoa(pr.Number) + "@" + strings.ToLower(login)
+			if seen[dedupeKey] {
+				continue
+			}
+			seen[dedupeKey] = true
+
+			slaStart := p.effectiveReviewSLAStartForDigest(ctx, githubClient, prIssue, baseURL, login)
+			diff := slaCalendarDiffDays(slaStart, targetDays, now)
+			if diff >= 0 {
+				continue
+			}
+			daysOverdue := -diff
+			reviewerDisplay := p.resolveReviewerDisplayName(login)
+			line := formatChannelOverdueReviewLine(reviewerDisplay, pr.Title, pr.URL, baseURL)
+			out = append(out, slaDigestEntry{DaysOverdue: daysOverdue, Line: line})
 		}
 	}
 

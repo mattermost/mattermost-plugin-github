@@ -137,7 +137,7 @@ func findMostRecentReviewRequestTime(events []*github.Timeline, githubLogin stri
 		sorted = append(sorted, e)
 	}
 	sort.SliceStable(sorted, func(i, j int) bool {
-		return sorted[i].CreatedAt.Time.Before(sorted[j].CreatedAt.Time)
+		return sorted[i].CreatedAt.Before(sorted[j].CreatedAt.Time)
 	})
 
 	var current time.Time
