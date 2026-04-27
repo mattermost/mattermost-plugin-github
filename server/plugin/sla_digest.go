@@ -71,7 +71,7 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		return
 	}
 
-	msg := buildSLADigestMessage(entries)
+	msg := buildSLADigestMessage(entries, cfg.ReviewTargetDays)
 	post := &model.Post{
 		ChannelId: cfg.OverdueReviewsChannelID,
 		UserId:    p.BotUserID,
@@ -169,28 +169,68 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 	return out
 }
 
-func buildSLADigestMessage(entries []slaDigestEntry) string {
-	buckets := make(map[int][]string)
-	for _, e := range entries {
-		buckets[e.DaysOverdue] = append(buckets[e.DaysOverdue], e.Line)
-	}
+// slaBuckets enumerates the digest's overdue buckets in display order (most overdue first).
+// Each bucket emits a header even if empty buckets in between are skipped.
+var slaBuckets = []struct {
+	label string
+	min   int // inclusive; -1 for open-ended upper bucket
+	max   int // inclusive; -1 for open-ended upper bucket
+}{
+	{label: "More than 1 year overdue", min: 366, max: -1},
+	{label: "91-365 days overdue", min: 91, max: 365},
+	{label: "31-90 days overdue", min: 31, max: 90},
+	{label: "15-30 days overdue", min: 15, max: 30},
+	{label: "8-14 days overdue", min: 8, max: 14},
+	{label: "4-7 days overdue", min: 4, max: 7},
+	{label: "1-3 days overdue", min: 1, max: 3},
+}
 
-	days := make([]int, 0, len(buckets))
-	for d := range buckets {
-		days = append(days, d)
+// slaBucketIndex returns the index into slaBuckets for the given days-overdue value, or -1 if not overdue.
+func slaBucketIndex(daysOverdue int) int {
+	if daysOverdue < 1 {
+		return -1
 	}
-	sort.Sort(sort.Reverse(sort.IntSlice(days)))
+	for i, b := range slaBuckets {
+		if b.max == -1 {
+			if daysOverdue >= b.min {
+				return i
+			}
+			continue
+		}
+		if daysOverdue >= b.min && daysOverdue <= b.max {
+			return i
+		}
+	}
+	return -1
+}
+
+func buildSLADigestMessage(entries []slaDigestEntry, targetDays int) string {
+	bucketLines := make([][]string, len(slaBuckets))
+	for _, e := range entries {
+		idx := slaBucketIndex(e.DaysOverdue)
+		if idx < 0 {
+			continue
+		}
+		bucketLines[idx] = append(bucketLines[idx], e.Line)
+	}
 
 	var b strings.Builder
-	b.WriteString("### Pull request reviews past SLA\n\n")
-	for _, d := range days {
-		lines := buckets[d]
-		sort.Strings(lines)
+	if targetDays > 0 {
 		unit := "days"
-		if d == 1 {
+		if targetDays == 1 {
 			unit = "day"
 		}
-		fmt.Fprintf(&b, "#### %d %s overdue\n", d, unit)
+		fmt.Fprintf(&b, "### Pull request reviews past SLA (target: %d %s from most recent review request)\n\n", targetDays, unit)
+	} else {
+		b.WriteString("### Pull request reviews past SLA\n\n")
+	}
+	for i, bucket := range slaBuckets {
+		lines := bucketLines[i]
+		if len(lines) == 0 {
+			continue
+		}
+		sort.Strings(lines)
+		fmt.Fprintf(&b, "#### %s\n", bucket.label)
 		for _, line := range lines {
 			b.WriteString(line)
 			b.WriteString("\n")
