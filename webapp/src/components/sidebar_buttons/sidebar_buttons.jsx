@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {RHSStates} from '../../constants';
+import {reviewsHaveOverdue} from '../../utils/sla';
 
 export default class SidebarButtons extends React.PureComponent {
     static propTypes = {
@@ -211,36 +212,6 @@ export default class SidebarButtons extends React.PureComponent {
     }
 }
 
-function reviewHasOverdue(reviews, targetDays) {
-    if (!targetDays || !reviews || reviews.length === 0) {
-        return false;
-    }
-    for (const pr of reviews) {
-        const startIso = pr.review_sla_start || pr.created_at;
-        if (!startIso) {
-            continue;
-        }
-        const created = new Date(startIso);
-        if (Number.isNaN(created.getTime())) {
-            continue;
-        }
-        const due = new Date(Date.UTC(
-            created.getUTCFullYear(),
-            created.getUTCMonth(),
-            created.getUTCDate(),
-        ));
-        due.setUTCDate(due.getUTCDate() + targetDays);
-        const today = new Date();
-        const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-        const dueUTC = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
-        const diffDays = Math.round((dueUTC - todayUTC) / (24 * 60 * 60 * 1000));
-        if (diffDays < 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 function reviewButtonStyle(base, reviews, targetDays) {
     if (!targetDays) {
         return base;
@@ -249,7 +220,7 @@ function reviewButtonStyle(base, reviews, targetDays) {
     if (list.length === 0) {
         return base;
     }
-    if (reviewHasOverdue(list, targetDays)) {
+    if (reviewsHaveOverdue(list, targetDays)) {
         return {...base, color: 'var(--dnd-indicator)'};
     }
     return {...base, color: 'var(--online-indicator)'};
