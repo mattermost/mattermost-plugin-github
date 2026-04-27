@@ -379,6 +379,9 @@ func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Ti
 }
 
 // formatChannelOverdueReviewLine formats a single line for the overdue-SLA channel digest.
+// The title is rendered as a markdown link to htmlURL so readers can click straight to the PR.
+// When owner/repo cannot be parsed from htmlURL, the raw URL is used as the repo display so
+// nothing renders as " / ".
 func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string) string {
 	owner, repo := parseOwnerAndRepo(htmlURL, baseURL)
 	repoDisplay := fmt.Sprintf("%s/%s", owner, repo)
@@ -388,7 +391,22 @@ func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string)
 	if len(title) > 200 {
 		title = strings.TrimSpace(title[:200]) + "..."
 	}
-	return fmt.Sprintf("- %s - %s : %s", githubLogin, repoDisplay, title)
+	titleDisplay := title
+	if htmlURL != "" {
+		titleDisplay = fmt.Sprintf("[%s](%s)", escapeMarkdownLinkText(title), htmlURL)
+	}
+	return fmt.Sprintf("- %s - %s - %s", githubLogin, repoDisplay, titleDisplay)
+}
+
+// escapeMarkdownLinkText escapes characters that would break a markdown link's display text.
+// We only escape `]` and `\` so that titles containing brackets (common in JIRA-prefixed PRs)
+// do not terminate the link early.
+func escapeMarkdownLinkText(s string) string {
+	if s == "" {
+		return s
+	}
+	r := strings.NewReplacer(`\`, `\\`, `]`, `\]`)
+	return r.Replace(s)
 }
 
 // reviewSLAMarkdown returns a Markdown SLA suffix for Mattermost posts and whether the review is overdue.

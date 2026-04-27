@@ -10,6 +10,54 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestFormatChannelOverdueReviewLine(t *testing.T) {
+	const baseURL = "https://github.com/"
+
+	t.Run("renders title as a markdown link to the PR", func(t *testing.T) {
+		line := formatChannelOverdueReviewLine(
+			"hmhealey",
+			"Fix race condition",
+			"https://github.com/mattermost/mattermost/pull/12345",
+			baseURL,
+		)
+		assert.Equal(t, "- hmhealey - mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", line)
+	})
+
+	t.Run("escapes closing brackets in the title so the link does not terminate early", func(t *testing.T) {
+		line := formatChannelOverdueReviewLine(
+			"hmhealey",
+			"[MM-12345] Fix [thing]",
+			"https://github.com/mattermost/mattermost/pull/1",
+			baseURL,
+		)
+		// Only `]` needs escaping inside a markdown link's display text; `[` is allowed.
+		assert.Contains(t, line, `[[MM-12345\] Fix [thing\]](https://github.com/mattermost/mattermost/pull/1)`)
+	})
+
+	t.Run("falls back to raw URL as the repo display when owner/repo cannot be parsed", func(t *testing.T) {
+		line := formatChannelOverdueReviewLine(
+			"hmhealey",
+			"Title",
+			"https://example.invalid/something/odd",
+			baseURL,
+		)
+		assert.Contains(t, line, "https://example.invalid/something/odd - [Title]")
+	})
+
+	t.Run("truncates very long titles before linking", func(t *testing.T) {
+		title := strings.Repeat("a", 250)
+		line := formatChannelOverdueReviewLine(
+			"hmhealey",
+			title,
+			"https://github.com/mattermost/mattermost/pull/1",
+			baseURL,
+		)
+		assert.Contains(t, line, "...](https://github.com/mattermost/mattermost/pull/1)")
+		// Title body inside the link should not exceed 200 'a's followed by the ellipsis.
+		assert.NotContains(t, line, strings.Repeat("a", 201))
+	})
+}
+
 func TestSLABucketIndex(t *testing.T) {
 	cases := []struct {
 		daysOverdue int
