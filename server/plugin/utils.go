@@ -30,7 +30,7 @@ func getMentionSearchQuery(username string, orgs []string) string {
 }
 
 func getReviewSearchQuery(username string, orgs []string) string {
-	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, orgs)
+	return buildSearchQuery("is:pr is:open draft:false review-requested:%v archived:false %v", username, orgs)
 }
 
 func getYourPrsSearchQuery(username string, orgs []string) string {
