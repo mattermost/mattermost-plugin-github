@@ -163,7 +163,7 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 
 			reviewerDisplay := p.resolveReviewerDisplayName(ghInfo.GitHubUsername)
 			for _, pr := range allIssues {
-				slaStart := p.effectiveReviewSLAStart(pr, baseURL, ghInfo.GitHubUsername)
+				slaStart := p.effectiveReviewSLAStartForDigest(ctx, githubClient, pr, baseURL, ghInfo.GitHubUsername)
 				diff := slaCalendarDiffDays(slaStart, targetDays, now)
 				if diff >= 0 {
 					continue

@@ -5,7 +5,9 @@ package plugin
 
 import (
 	"testing"
+	"time"
 
+	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,4 +18,91 @@ func TestReviewSLAStartKeyStable(t *testing.T) {
 
 	k3 := reviewSLAStartKey("Mattermost", "mattermost", 99999, "octocat")
 	assert.NotEqual(t, k1, k3)
+}
+
+func TestFindMostRecentReviewRequestTime(t *testing.T) {
+	user := func(login string) *github.User { return &github.User{Login: github.String(login)} }
+	at := func(s string) *github.Timestamp {
+		ts, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			t.Fatalf("bad timestamp %q: %v", s, err)
+		}
+		return &github.Timestamp{Time: ts}
+	}
+	ev := func(name, login, ts string) *github.Timeline {
+		return &github.Timeline{
+			Event:     github.String(name),
+			Reviewer:  user(login),
+			CreatedAt: at(ts),
+		}
+	}
+
+	t.Run("no events returns zero", func(t *testing.T) {
+		got := findMostRecentReviewRequestTime(nil, "octocat")
+		assert.True(t, got.IsZero())
+	})
+
+	t.Run("single review_requested returns its timestamp", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("login match is case-insensitive", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("review_requested", "OctoCat", "2026-04-20T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("review_request_removed after request invalidates pending", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
+			ev("review_request_removed", "octocat", "2026-04-21T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.True(t, got.IsZero(), "removed request should leave no pending start")
+	})
+
+	t.Run("re-request after remove uses the most recent request", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
+			ev("review_request_removed", "octocat", "2026-04-21T10:00:00Z"),
+			ev("review_requested", "octocat", "2026-04-22T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("events for other reviewers are ignored", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("review_requested", "alice", "2026-04-25T10:00:00Z"),
+			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("out-of-order pages are sorted defensively", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("review_requested", "octocat", "2026-04-22T10:00:00Z"),
+			ev("review_request_removed", "octocat", "2026-04-21T10:00:00Z"),
+			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("non-review-request events are ignored", func(t *testing.T) {
+		events := []*github.Timeline{
+			ev("commented", "octocat", "2026-04-25T10:00:00Z"),
+			ev("labeled", "octocat", "2026-04-26T10:00:00Z"),
+			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
+		}
+		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
+	})
 }
