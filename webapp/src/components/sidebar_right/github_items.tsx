@@ -407,7 +407,11 @@ function getReviewText(item: GithubItem, style: any, secondLine: boolean) {
     };
 
     const lastReviews = item.reviews.reduce(reverse, []).filter((v) => {
-        if (v.user.login === item.user.login) {
+        if (!v.user) {
+            return false;
+        }
+
+        if (item.user && v.user.login === item.user.login) {
             return false;
         }
 

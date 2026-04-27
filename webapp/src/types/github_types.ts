@@ -17,7 +17,7 @@ type GitHubUser = {
 
 export type Review = {
     state: string;
-    user: GitHubUser;
+    user?: GitHubUser;
 }
 
 export type GithubItem = PrsDetailsData & {
