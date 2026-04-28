@@ -65,7 +65,14 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		return
 	}
 
-	entries := p.collectAllOverdueSLAItems(ctx)
+	entries, ok := p.collectAllOverdueSLAItems(ctx)
+	if !ok {
+		// Distinguishes "digest could not complete a real scan" (config issue, no service user,
+		// or every configured org's GraphQL fetch failed) from "scan ran and found nothing
+		// overdue." We deliberately do NOT advance slaDigestDayKVKey here so the 5-minute
+		// scheduler retries within the same local day instead of skipping until tomorrow.
+		return
+	}
 	if len(entries) == 0 {
 		if _, err := p.store.Set(slaDigestDayKVKey, []byte(day)); err != nil {
 			p.client.Log.Warn("Failed to store SLA digest day marker", "error", err.Error())
@@ -145,7 +152,13 @@ func (p *Plugin) pickServiceGitHubUser(ctx context.Context) *GitHubUserInfo {
 	return nil
 }
 
-func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry {
+// collectAllOverdueSLAItems returns the digest's overdue entries along with an "ok" flag the
+// caller uses to decide whether to advance the daily marker. ok is false when the digest
+// could not complete a real scan (no orgs configured, no connected service user, or every
+// configured org's GraphQL fetch failed); the caller should retry on the next scheduler tick
+// rather than treat that as "ran successfully and found nothing." A successful scan returns
+// ok=true even when entries is empty.
+func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) ([]slaDigestEntry, bool) {
 	config := p.getConfiguration()
 	targetDays := config.ReviewTargetDays
 	orgList := config.getOrganizations()
@@ -153,21 +166,25 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 
 	if len(orgList) == 0 {
 		p.client.Log.Warn("SLA digest cannot run without configured organizations (System Console -> Plugins -> GitHub -> GitHub Organizations)")
-		return nil
+		return nil, false
 	}
 
 	serviceUser := p.pickServiceGitHubUser(ctx)
 	if serviceUser == nil {
 		p.client.Log.Warn("SLA digest cannot run: no connected GitHub user available to act as the service caller")
-		return nil
+		return nil, false
 	}
 
 	githubClient := p.githubConnectUser(ctx, serviceUser)
 	graphQLClient := p.graphQLConnect(serviceUser)
 
-	allPRs := p.fetchAllOrgOpenPRs(ctx, graphQLClient, orgList)
+	allPRs, anyOrgOK := p.fetchAllOrgOpenPRs(ctx, graphQLClient, orgList)
+	if !anyOrgOK {
+		p.client.Log.Warn("SLA digest cannot run: no configured organization returned a successful PR search")
+		return nil, false
+	}
 	if len(allPRs) == 0 {
-		return nil
+		return nil, true
 	}
 
 	resolveTeam := newTeamMemberResolver(ctx, githubClient, p.client.Log)
@@ -178,7 +195,7 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 	seen := make(map[string]bool)
 	for _, pr := range allPRs {
 		if ctx.Err() != nil {
-			return out
+			return out, true
 		}
 		ref := prRef{
 			Owner:     pr.Owner,
@@ -186,32 +203,35 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) []slaDigestEntry
 			Number:    pr.Number,
 			CreatedAt: github.Timestamp{Time: pr.CreatedAt},
 		}
-		for _, login := range gatherReviewersForPR(pr, resolveTeam) {
-			entry := p.evaluateOverdueForReviewer(ref, pr, login, targetDays, now, seen, resolveSLAStart)
+		for _, rr := range gatherReviewersForPR(pr, resolveTeam) {
+			entry := p.evaluateOverdueForReviewer(ref, pr, rr, targetDays, now, seen, resolveSLAStart)
 			if entry != nil {
 				out = append(out, *entry)
 			}
 		}
 	}
-	return out
+	return out, true
 }
 
 // fetchAllOrgOpenPRs runs the org-wide PR search once per configured org, logging and skipping
-// orgs that fail rather than aborting the whole digest.
-func (p *Plugin) fetchAllOrgOpenPRs(ctx context.Context, graphQLClient *graphql.Client, orgList []string) []graphql.DigestPR {
-	var allPRs []graphql.DigestPR
+// orgs that fail rather than aborting the whole digest. Returns the combined PR list and a
+// flag that is true iff at least one configured org returned successfully (a zero-PR org is
+// still a success). The caller uses anyOK to distinguish "every org failed, retry later" from
+// "configured orgs are simply quiet."
+func (p *Plugin) fetchAllOrgOpenPRs(ctx context.Context, graphQLClient *graphql.Client, orgList []string) (allPRs []graphql.DigestPR, anyOK bool) {
 	for _, org := range orgList {
 		if ctx.Err() != nil {
-			return allPRs
+			return allPRs, anyOK
 		}
 		prs, err := graphQLClient.GetOpenPRsWithRequestedReviewers(ctx, org)
 		if err != nil {
 			p.client.Log.Warn("SLA digest org PR fetch failed", "org", org, "error", err.Error())
 			continue
 		}
+		anyOK = true
 		allPRs = append(allPRs, prs...)
 	}
-	return allPRs
+	return allPRs, anyOK
 }
 
 // newTeamMemberResolver returns a closure that expands org/team references to member logins,
@@ -247,33 +267,74 @@ func newTeamMemberResolver(ctx context.Context, githubClient *github.Client, log
 	}
 }
 
-// gatherReviewersForPR flattens a PR's directly-requested users and all members of its
-// requested teams into a single login list. Empty logins are dropped at the consumer.
-func gatherReviewersForPR(pr graphql.DigestPR, resolveTeam func(graphql.DigestTeamRef) []string) []string {
-	logins := append([]string(nil), pr.RequestedUsers...)
-	for _, team := range pr.RequestedTeams {
-		logins = append(logins, resolveTeam(team)...)
+// reviewerRequest preserves a reviewer login alongside the team(s) they were added through, so
+// the SLA backfill can fall back to a team-scoped review_requested timeline event when the
+// reviewer has no user-scoped request. Direct (non-team) requests carry an empty Teams slice.
+//
+// Each login appears at most once: a user who is both directly requested and a member of one
+// or more requested teams aggregates into a single entry whose Teams slice records every team
+// they were also part of (used as a tie-break only when the user-scoped lookup is empty).
+type reviewerRequest struct {
+	Login string
+	Teams []graphql.DigestTeamRef
+}
+
+// gatherReviewersForPR collapses a PR's directly-requested users and all members of its
+// requested teams into a deduplicated reviewer set, preserving each reviewer's team origin so
+// the SLA backfill can use a team-scoped review_requested event when no user-scoped event is
+// available. Logins are matched case-insensitively for deduplication; the first-seen casing is
+// preserved on the returned struct.
+func gatherReviewersForPR(pr graphql.DigestPR, resolveTeam func(graphql.DigestTeamRef) []string) []reviewerRequest {
+	byLogin := make(map[string]int)
+	out := make([]reviewerRequest, 0, len(pr.RequestedUsers))
+	add := func(login string, team *graphql.DigestTeamRef) {
+		if login == "" {
+			return
+		}
+		key := strings.ToLower(login)
+		idx, ok := byLogin[key]
+		if !ok {
+			out = append(out, reviewerRequest{Login: login})
+			idx = len(out) - 1
+			byLogin[key] = idx
+		}
+		if team != nil {
+			out[idx].Teams = append(out[idx].Teams, *team)
+		}
 	}
-	return logins
+	for _, login := range pr.RequestedUsers {
+		add(login, nil)
+	}
+	for _, team := range pr.RequestedTeams {
+		team := team
+		for _, login := range resolveTeam(team) {
+			add(login, &team)
+		}
+	}
+	return out
 }
 
 // newDigestSLAStartResolver returns a closure that resolves a reviewer's SLA-start time for
-// the digest, with two layers of caching:
+// the digest, with three layers of lookup:
 //
 //  1. The KV record from the live review_requested webhook (free).
-//  2. A timeline backfill, fetched at most once per PR per digest run and shared across
-//     reviewers on the same PR. Resolved times are written back to KV so subsequent runs hit
-//     the fast path.
+//  2. A user-scoped review_requested event from the PR timeline. Timeline pages are fetched
+//     at most once per PR per digest run and shared across reviewers on the same PR.
+//  3. For reviewers added via team membership only, the earliest surviving team-scoped
+//     review_requested event. This avoids overstating overdue days for users who are pending
+//     solely because their team was requested.
 //
-// Falls back to the PR open time when no review_requested event is found, matching the
-// read-only effectiveReviewSLAStart contract.
+// Resolved times (from either timeline path) are written back to KV under the user-scoped
+// key so subsequent runs hit the fast path. Falls back to the PR open time when no
+// review_requested event is found, matching the read-only effectiveReviewSLAStart contract.
 //
 // Also returns a summarize() callback the caller must invoke once the resolver is no longer
 // in use (typically via defer). It logs cumulative cache hit / timeline-fetch counts at Info
 // level so admins can verify the backfill is healthy across runs (see Day-1-vs-steady-state
-// patterns in the docs); calling it before the resolver runs would log misleading zeroes,
-// which is why this isn't wired up via defer inside this constructor.
-func (p *Plugin) newDigestSLAStartResolver(ctx context.Context, gh *github.Client) (resolve func(prRef, string) github.Timestamp, summarize func()) {
+// patterns in the docs). The callback is a no-op when neither counter moved, so digests that
+// reach this point but never actually call the resolver (e.g. PRs with no requested
+// reviewers) don't emit a misleading "0,0" line.
+func (p *Plugin) newDigestSLAStartResolver(ctx context.Context, gh *github.Client) (resolve func(prRef, reviewerRequest) github.Timestamp, summarize func()) {
 	type prKey struct {
 		owner string
 		repo  string
@@ -283,11 +344,11 @@ func (p *Plugin) newDigestSLAStartResolver(ctx context.Context, gh *github.Clien
 	timelineFetched := make(map[prKey]bool)
 	var fetched, hits int
 
-	resolve = func(pr prRef, login string) github.Timestamp {
+	resolve = func(pr prRef, rr reviewerRequest) github.Timestamp {
 		if pr.Owner == "" || pr.Repo == "" || pr.Number == 0 {
 			return pr.CreatedAt
 		}
-		if t := p.getReviewSLAStartTime(pr.Owner, pr.Repo, pr.Number, login); !t.IsZero() {
+		if t := p.getReviewSLAStartTime(pr.Owner, pr.Repo, pr.Number, rr.Login); !t.IsZero() {
 			hits++
 			return github.Timestamp{Time: t}
 		}
@@ -310,15 +371,23 @@ func (p *Plugin) newDigestSLAStartResolver(ctx context.Context, gh *github.Clien
 			fetched++
 		}
 
-		found := findMostRecentReviewRequestTime(events, login)
-		if found.IsZero() {
-			return pr.CreatedAt
+		if found := findMostRecentReviewRequestTime(events, rr.Login); !found.IsZero() {
+			p.storeReviewSLAStart(pr.Owner, pr.Repo, pr.Number, rr.Login, found)
+			return github.Timestamp{Time: found.UTC()}
 		}
-		p.storeReviewSLAStart(pr.Owner, pr.Repo, pr.Number, login, found)
-		return github.Timestamp{Time: found.UTC()}
+		// No user-scoped event. For team-membership requests, anchor to the earliest still-
+		// surviving team request: the user has been on the hook since the first such ask.
+		if found := findEarliestSurvivingTeamRequestTime(events, rr.Teams); !found.IsZero() {
+			p.storeReviewSLAStart(pr.Owner, pr.Repo, pr.Number, rr.Login, found)
+			return github.Timestamp{Time: found.UTC()}
+		}
+		return pr.CreatedAt
 	}
 
 	summarize = func() {
+		if fetched == 0 && hits == 0 {
+			return
+		}
 		p.client.Log.Info("SLA digest backfill summary",
 			"timeline_pages_fetched", fetched,
 			"kv_hits", hits)
@@ -327,35 +396,36 @@ func (p *Plugin) newDigestSLAStartResolver(ctx context.Context, gh *github.Clien
 	return resolve, summarize
 }
 
-// evaluateOverdueForReviewer returns a digest entry for (pr, login) when the reviewer is past
-// SLA, or nil when not overdue, already accounted for, or missing identity. seen is mutated
-// to record the (pr, login) pair so duplicate review requests across team membership and
-// direct user-request don't double-count.
+// evaluateOverdueForReviewer returns a digest entry for (pr, reviewer) when the reviewer is
+// past SLA, or nil when not overdue, already accounted for, or missing identity. seen is
+// mutated to record the (pr, login) pair. gatherReviewersForPR already deduplicates a single
+// PR's reviewer set, but seen guards against any unexpected duplicates that slip through
+// (e.g. case-mismatched names from different code paths).
 func (p *Plugin) evaluateOverdueForReviewer(
 	ref prRef,
 	pr graphql.DigestPR,
-	login string,
+	rr reviewerRequest,
 	targetDays int,
 	now time.Time,
 	seen map[string]bool,
-	resolveSLAStart func(prRef, string) github.Timestamp,
+	resolveSLAStart func(prRef, reviewerRequest) github.Timestamp,
 ) *slaDigestEntry {
-	if login == "" {
+	if rr.Login == "" {
 		return nil
 	}
-	dedupeKey := pr.Owner + "/" + pr.Repo + "#" + strconv.Itoa(pr.Number) + "@" + strings.ToLower(login)
+	dedupeKey := pr.Owner + "/" + pr.Repo + "#" + strconv.Itoa(pr.Number) + "@" + strings.ToLower(rr.Login)
 	if seen[dedupeKey] {
 		return nil
 	}
 	seen[dedupeKey] = true
 
-	slaStart := resolveSLAStart(ref, login)
+	slaStart := resolveSLAStart(ref, rr)
 	diff := slaCalendarDiffDays(slaStart, targetDays, now)
 	if diff >= 0 {
 		return nil
 	}
 
-	reviewerDisplay := p.resolveReviewerDisplayName(login)
+	reviewerDisplay := p.resolveReviewerDisplayName(rr.Login)
 	line := formatChannelOverdueReviewLine(reviewerDisplay, pr.Title, pr.URL, p.getConfiguration().getBaseURL())
 	return &slaDigestEntry{DaysOverdue: -diff, Line: line}
 }

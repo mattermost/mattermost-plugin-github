@@ -213,7 +213,10 @@ export default class SidebarButtons extends React.PureComponent {
 }
 
 function reviewButtonStyle(base, reviews, targetDays) {
-    if (!targetDays) {
+    // Match getReviewSLAStatus / reviewsHaveOverdue: a non-positive target means SLA
+    // is not configured. !targetDays alone would let a negative value through and
+    // produce a misleading green indicator.
+    if (!targetDays || targetDays <= 0) {
         return base;
     }
     const list = reviews || [];

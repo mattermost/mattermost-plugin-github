@@ -181,18 +181,30 @@ func TestBuildSLADigestMessage(t *testing.T) {
 }
 
 func TestGatherReviewersForPR(t *testing.T) {
-	t.Run("flattens direct user requests", func(t *testing.T) {
+	logins := func(rrs []reviewerRequest) []string {
+		out := make([]string, 0, len(rrs))
+		for _, r := range rrs {
+			out = append(out, r.Login)
+		}
+		return out
+	}
+
+	t.Run("flattens direct user requests with empty Teams", func(t *testing.T) {
 		pr := graphql.DigestPR{
 			RequestedUsers: []string{"alice", "bob"},
 		}
 		got := gatherReviewersForPR(pr, func(graphql.DigestTeamRef) []string { return nil })
-		assert.Equal(t, []string{"alice", "bob"}, got)
+		assert.Equal(t, []string{"alice", "bob"}, logins(got))
+		for _, r := range got {
+			assert.Empty(t, r.Teams, "direct request should carry no team origin")
+		}
 	})
 
-	t.Run("expands team references through the resolver", func(t *testing.T) {
+	t.Run("expands team references and tags reviewer with the originating team", func(t *testing.T) {
+		core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
 		pr := graphql.DigestPR{
 			RequestedUsers: []string{"alice"},
-			RequestedTeams: []graphql.DigestTeamRef{{Org: "mattermost", Slug: "core"}},
+			RequestedTeams: []graphql.DigestTeamRef{core},
 		}
 		resolver := func(team graphql.DigestTeamRef) []string {
 			if team.Slug == "core" {
@@ -201,7 +213,36 @@ func TestGatherReviewersForPR(t *testing.T) {
 			return nil
 		}
 		got := gatherReviewersForPR(pr, resolver)
-		assert.Equal(t, []string{"alice", "bob", "carol"}, got)
+		assert.Equal(t, []string{"alice", "bob", "carol"}, logins(got))
+		assert.Empty(t, got[0].Teams, "alice was directly requested, not via team")
+		assert.Equal(t, []graphql.DigestTeamRef{core}, got[1].Teams)
+		assert.Equal(t, []graphql.DigestTeamRef{core}, got[2].Teams)
+	})
+
+	t.Run("user in both direct list and team list is deduplicated to one entry retaining team origin", func(t *testing.T) {
+		core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
+		pr := graphql.DigestPR{
+			RequestedUsers: []string{"bob"},
+			RequestedTeams: []graphql.DigestTeamRef{core},
+		}
+		resolver := func(graphql.DigestTeamRef) []string { return []string{"bob"} }
+		got := gatherReviewersForPR(pr, resolver)
+		require.Len(t, got, 1, "bob should be merged into a single entry")
+		assert.Equal(t, "bob", got[0].Login)
+		assert.Equal(t, []graphql.DigestTeamRef{core}, got[0].Teams,
+			"team origin must survive deduplication so the SLA backfill can use the team request as a fallback")
+	})
+
+	t.Run("user requested via two teams accumulates both teams", func(t *testing.T) {
+		core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
+		platform := graphql.DigestTeamRef{Org: "mattermost", Slug: "platform"}
+		pr := graphql.DigestPR{
+			RequestedTeams: []graphql.DigestTeamRef{core, platform},
+		}
+		resolver := func(graphql.DigestTeamRef) []string { return []string{"bob"} }
+		got := gatherReviewersForPR(pr, resolver)
+		require.Len(t, got, 1)
+		assert.ElementsMatch(t, []graphql.DigestTeamRef{core, platform}, got[0].Teams)
 	})
 
 	t.Run("does not mutate the underlying RequestedUsers slice", func(t *testing.T) {
@@ -218,6 +259,18 @@ func TestGatherReviewersForPR(t *testing.T) {
 	t.Run("returns empty slice when no reviewers are requested", func(t *testing.T) {
 		got := gatherReviewersForPR(graphql.DigestPR{}, func(graphql.DigestTeamRef) []string { return nil })
 		assert.Empty(t, got)
+	})
+
+	t.Run("dedupe is case-insensitive on login", func(t *testing.T) {
+		core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
+		pr := graphql.DigestPR{
+			RequestedUsers: []string{"Bob"},
+			RequestedTeams: []graphql.DigestTeamRef{core},
+		}
+		resolver := func(graphql.DigestTeamRef) []string { return []string{"bob"} }
+		got := gatherReviewersForPR(pr, resolver)
+		require.Len(t, got, 1)
+		assert.Equal(t, "Bob", got[0].Login, "first-seen casing wins")
 	})
 }
 
@@ -343,7 +396,7 @@ func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
 		Repo:      "repo",
 		Number:    1,
 		CreatedAt: github.Timestamp{Time: time.Now().UTC()},
-	}, "alice")
+	}, reviewerRequest{Login: "alice"})
 	require.Equal(t, 0, logCalls, "summary must not fire on resolver invocation")
 	require.True(t, got.UTC().Equal(cachedTime),
 		"resolver should return the cached SLA start time; got %v want %v", got.UTC(), cachedTime)
@@ -352,6 +405,28 @@ func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
 	assert.Equal(t, 1, logCalls, "summary should fire exactly once when summarize() is called")
 	assert.Equal(t, 1, loggedHits, "kv_hits should reflect the resolver's actual usage after one cached lookup")
 	assert.Equal(t, 0, loggedFetches, "no timeline pages fetched on the cached path")
+}
+
+func TestNewDigestSLAStartResolver_SkipsSummaryLogWhenNoLookups(t *testing.T) {
+	// summarize() is wired up via defer in collectAllOverdueSLAItems, so it can fire even
+	// when the resolver was never invoked (e.g. PRs with no requested reviewers, or
+	// degenerate prRefs that take the early return inside resolve). When no lookups ran,
+	// the "0,0" summary line is misleading and is intentionally suppressed.
+	p, _, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	api, ok := p.API.(*plugintest.API)
+	require.True(t, ok, "expected plugintest.API")
+	var logCalls int
+	api.On("LogInfo",
+		"SLA digest backfill summary",
+		"timeline_pages_fetched", mock.AnythingOfType("int"),
+		"kv_hits", mock.AnythingOfType("int"),
+	).Run(func(mock.Arguments) { logCalls++ }).Maybe()
+
+	_, summarize := p.newDigestSLAStartResolver(context.Background(), nil)
+	summarize()
+	assert.Equal(t, 0, logCalls, "summary must be suppressed when no lookups ran")
 }
 
 // setupServiceUserPickTest wires up a Plugin instance with a mocked KvStore and a mock

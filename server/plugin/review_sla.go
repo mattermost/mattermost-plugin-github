@@ -185,6 +185,71 @@ func findMostRecentReviewRequestTime(events []*github.Timeline, githubLogin stri
 	return current
 }
 
+// findEarliestSurvivingTeamRequestTime walks PR timeline events and returns the earliest
+// surviving review_requested event time across any of the given teams. "Surviving" means
+// not later cancelled by a matching review_request_removed event for the same team. Returns
+// the zero time when no team has a still-active request (or when teams is empty).
+//
+// Used as a fallback for reviewers added solely via team membership: their user-scoped
+// timeline doesn't contain a review_requested event, so without this they'd fall all the way
+// back to the PR's created_at and overstate days-overdue. The earliest still-active team
+// request is the right anchor: if a user is in two requested teams, they have been on the
+// hook since the first ask, and a later team request doesn't reset that clock.
+//
+// Match is on team slug only. A PR's timeline lives within a single GitHub org, and team
+// slugs are unique within an org, so cross-org slug collision isn't possible here.
+func findEarliestSurvivingTeamRequestTime(events []*github.Timeline, teams []graphql.DigestTeamRef) time.Time {
+	if len(teams) == 0 {
+		return time.Time{}
+	}
+	wantedSlugs := make(map[string]bool, len(teams))
+	for _, t := range teams {
+		slug := strings.ToLower(strings.TrimSpace(t.Slug))
+		if slug != "" {
+			wantedSlugs[slug] = true
+		}
+	}
+	if len(wantedSlugs) == 0 {
+		return time.Time{}
+	}
+
+	sorted := make([]*github.Timeline, 0, len(events))
+	for _, e := range events {
+		if e == nil || e.CreatedAt == nil {
+			continue
+		}
+		sorted = append(sorted, e)
+	}
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].CreatedAt.Before(sorted[j].CreatedAt.Time)
+	})
+
+	surviving := make(map[string]time.Time)
+	for _, e := range sorted {
+		if e.RequestedTeam == nil {
+			continue
+		}
+		slug := strings.ToLower(e.RequestedTeam.GetSlug())
+		if !wantedSlugs[slug] {
+			continue
+		}
+		switch e.GetEvent() {
+		case "review_requested":
+			surviving[slug] = e.CreatedAt.Time
+		case "review_request_removed":
+			delete(surviving, slug)
+		}
+	}
+
+	var earliest time.Time
+	for _, t := range surviving {
+		if earliest.IsZero() || t.Before(earliest) {
+			earliest = t
+		}
+	}
+	return earliest
+}
+
 // fetchPRTimeline returns every timeline event for (owner, repo, prNumber), paging until done.
 // Pulled out of the digest's backfill so it can be cached at a higher level (one fetch per PR
 // even when many reviewers on the same PR need backfilling).

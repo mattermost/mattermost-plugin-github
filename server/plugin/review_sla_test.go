@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
 func TestReviewSLAStartKeyStable(t *testing.T) {
@@ -132,6 +134,116 @@ func TestFindMostRecentReviewRequestTime(t *testing.T) {
 			ev("review_requested", "octocat", "2026-04-20T10:00:00Z"),
 		}
 		got := findMostRecentReviewRequestTime(events, "octocat")
+		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
+	})
+}
+
+func TestFindEarliestSurvivingTeamRequestTime(t *testing.T) {
+	at := func(s string) *github.Timestamp {
+		ts, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			t.Fatalf("bad timestamp %q: %v", s, err)
+		}
+		return &github.Timestamp{Time: ts}
+	}
+	teamEv := func(name, slug, ts string) *github.Timeline {
+		return &github.Timeline{
+			Event:         github.String(name),
+			RequestedTeam: &github.Team{Slug: github.String(slug)},
+			CreatedAt:     at(ts),
+		}
+	}
+
+	core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
+	platform := graphql.DigestTeamRef{Org: "mattermost", Slug: "platform"}
+
+	t.Run("empty teams returns zero", func(t *testing.T) {
+		got := findEarliestSurvivingTeamRequestTime(nil, nil)
+		assert.True(t, got.IsZero())
+	})
+
+	t.Run("single team request returns its timestamp", func(t *testing.T) {
+		events := []*github.Timeline{teamEv("review_requested", "core", "2026-04-20T10:00:00Z")}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core})
+		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("removed team request leaves no surviving anchor", func(t *testing.T) {
+		events := []*github.Timeline{
+			teamEv("review_requested", "core", "2026-04-20T10:00:00Z"),
+			teamEv("review_request_removed", "core", "2026-04-21T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core})
+		assert.True(t, got.IsZero())
+	})
+
+	t.Run("re-request after remove uses the most recent request for that team", func(t *testing.T) {
+		events := []*github.Timeline{
+			teamEv("review_requested", "core", "2026-04-20T10:00:00Z"),
+			teamEv("review_request_removed", "core", "2026-04-21T10:00:00Z"),
+			teamEv("review_requested", "core", "2026-04-22T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core})
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("two surviving teams return the earlier ask", func(t *testing.T) {
+		events := []*github.Timeline{
+			teamEv("review_requested", "platform", "2026-04-15T10:00:00Z"),
+			teamEv("review_requested", "core", "2026-04-22T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core, platform})
+		assert.Equal(t, "2026-04-15T10:00:00Z", got.Format(time.RFC3339),
+			"reviewer in two requested teams has been on the hook since the EARLIEST surviving ask")
+	})
+
+	t.Run("removed team is excluded from the earliest calculation", func(t *testing.T) {
+		events := []*github.Timeline{
+			teamEv("review_requested", "platform", "2026-04-15T10:00:00Z"),
+			teamEv("review_request_removed", "platform", "2026-04-16T10:00:00Z"),
+			teamEv("review_requested", "core", "2026-04-22T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core, platform})
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("events for non-requested teams are ignored", func(t *testing.T) {
+		events := []*github.Timeline{
+			teamEv("review_requested", "other-team", "2026-04-15T10:00:00Z"),
+			teamEv("review_requested", "core", "2026-04-22T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core})
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("user-scoped events with nil RequestedTeam are skipped", func(t *testing.T) {
+		userEv := &github.Timeline{
+			Event:     github.String("review_requested"),
+			Reviewer:  &github.User{Login: github.String("alice")},
+			CreatedAt: at("2026-04-15T10:00:00Z"),
+		}
+		events := []*github.Timeline{
+			userEv,
+			teamEv("review_requested", "core", "2026-04-22T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core})
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339))
+	})
+
+	t.Run("out-of-order pages are sorted defensively", func(t *testing.T) {
+		events := []*github.Timeline{
+			teamEv("review_requested", "core", "2026-04-22T10:00:00Z"),
+			teamEv("review_request_removed", "core", "2026-04-21T10:00:00Z"),
+			teamEv("review_requested", "core", "2026-04-20T10:00:00Z"),
+		}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{core})
+		assert.Equal(t, "2026-04-22T10:00:00Z", got.Format(time.RFC3339),
+			"defensive sort means the latest event wins after re-request, even if pages arrived out of order")
+	})
+
+	t.Run("team slug match is case-insensitive", func(t *testing.T) {
+		events := []*github.Timeline{teamEv("review_requested", "Core", "2026-04-20T10:00:00Z")}
+		got := findEarliestSurvivingTeamRequestTime(events, []graphql.DigestTeamRef{{Slug: "CORE"}})
 		assert.Equal(t, "2026-04-20T10:00:00Z", got.Format(time.RFC3339))
 	})
 }
