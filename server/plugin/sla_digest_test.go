@@ -4,10 +4,25 @@
 package plugin
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/oauth2"
+
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
+
+	"github.com/mattermost/mattermost-plugin-github/server/mocks"
+	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
 func TestFormatChannelOverdueReviewLine(t *testing.T) {
@@ -163,4 +178,200 @@ func TestBuildSLADigestMessage(t *testing.T) {
 		zi := strings.Index(msg, "- zeta")
 		assert.True(t, ai >= 0 && mi > ai && zi > mi, "expected alpha < mu < zeta in output")
 	})
+}
+
+func TestGatherReviewersForPR(t *testing.T) {
+	t.Run("flattens direct user requests", func(t *testing.T) {
+		pr := graphql.DigestPR{
+			RequestedUsers: []string{"alice", "bob"},
+		}
+		got := gatherReviewersForPR(pr, func(graphql.DigestTeamRef) []string { return nil })
+		assert.Equal(t, []string{"alice", "bob"}, got)
+	})
+
+	t.Run("expands team references through the resolver", func(t *testing.T) {
+		pr := graphql.DigestPR{
+			RequestedUsers: []string{"alice"},
+			RequestedTeams: []graphql.DigestTeamRef{{Org: "mattermost", Slug: "core"}},
+		}
+		resolver := func(team graphql.DigestTeamRef) []string {
+			if team.Slug == "core" {
+				return []string{"bob", "carol"}
+			}
+			return nil
+		}
+		got := gatherReviewersForPR(pr, resolver)
+		assert.Equal(t, []string{"alice", "bob", "carol"}, got)
+	})
+
+	t.Run("does not mutate the underlying RequestedUsers slice", func(t *testing.T) {
+		original := []string{"alice"}
+		pr := graphql.DigestPR{
+			RequestedUsers: original,
+			RequestedTeams: []graphql.DigestTeamRef{{Org: "mattermost", Slug: "core"}},
+		}
+		resolver := func(graphql.DigestTeamRef) []string { return []string{"bob"} }
+		_ = gatherReviewersForPR(pr, resolver)
+		assert.Equal(t, []string{"alice"}, original, "team expansion must not append into the caller's slice")
+	})
+
+	t.Run("returns empty slice when no reviewers are requested", func(t *testing.T) {
+		got := gatherReviewersForPR(graphql.DigestPR{}, func(graphql.DigestTeamRef) []string { return nil })
+		assert.Empty(t, got)
+	})
+}
+
+func TestPickServiceGitHubUser_DeterministicOrdering(t *testing.T) {
+	// Returns the lexicographically-first connected user even when KV iteration order is
+	// reversed, so digest output is stable across runs and cluster nodes.
+	p, mockKvStore, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	mockKvStore.EXPECT().ListKeys(0, keysPerPage, gomock.Any()).Return(
+		[]string{
+			"user-z" + githubTokenKey,
+			"user-a" + githubTokenKey,
+			"user-m" + githubTokenKey,
+		},
+		nil,
+	)
+
+	encryptedToken, err := encrypt([]byte("dummyEncryptKey1"), MockAccessToken)
+	require.NoError(t, err)
+	storedInfo := GitHubUserInfo{
+		UserID:         "user-a",
+		GitHubUsername: "user-a-gh",
+		Token:          &oauth2.Token{AccessToken: encryptedToken},
+		Settings:       &UserSettings{},
+	}
+	infoBytes, err := json.Marshal(&storedInfo)
+	require.NoError(t, err)
+
+	mockKvStore.EXPECT().Get("user-a"+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(_ string, out any) error {
+			return json.Unmarshal(infoBytes, out)
+		},
+	)
+
+	picked := p.pickServiceGitHubUser(context.Background())
+	require.NotNil(t, picked, "expected a connected user to be picked")
+	assert.Equal(t, "user-a", picked.UserID, "expected lexicographically-first user")
+}
+
+func TestPickServiceGitHubUser_SkipsUsersWithBrokenTokens(t *testing.T) {
+	// A user whose KV record can't be loaded should be skipped, not abort the digest. We
+	// expect the iterator to fall through to the next user.
+	p, mockKvStore, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	mockKvStore.EXPECT().ListKeys(0, keysPerPage, gomock.Any()).Return(
+		[]string{"user-a" + githubTokenKey, "user-b" + githubTokenKey},
+		nil,
+	)
+
+	mockKvStore.EXPECT().Get("user-a"+githubTokenKey, gomock.Any()).Return(errors.New("kv read failed"))
+
+	encryptedToken, err := encrypt([]byte("dummyEncryptKey1"), MockAccessToken)
+	require.NoError(t, err)
+	storedInfo := GitHubUserInfo{
+		UserID:         "user-b",
+		GitHubUsername: "user-b-gh",
+		Token:          &oauth2.Token{AccessToken: encryptedToken},
+		Settings:       &UserSettings{},
+	}
+	infoBytes, err := json.Marshal(&storedInfo)
+	require.NoError(t, err)
+	mockKvStore.EXPECT().Get("user-b"+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(_ string, out any) error {
+			return json.Unmarshal(infoBytes, out)
+		},
+	)
+
+	picked := p.pickServiceGitHubUser(context.Background())
+	require.NotNil(t, picked)
+	assert.Equal(t, "user-b", picked.UserID)
+}
+
+func TestPickServiceGitHubUser_NoConnectedUsers(t *testing.T) {
+	p, mockKvStore, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	mockKvStore.EXPECT().ListKeys(0, keysPerPage, gomock.Any()).Return([]string{}, nil)
+
+	assert.Nil(t, p.pickServiceGitHubUser(context.Background()))
+}
+
+func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
+	// The summary log must (a) not fire until summarize() is called and (b) reflect the
+	// resolver's actual usage when it does. Locks in the fix for a prior bug where the log
+	// was deferred inside the constructor and so always reported zeroes.
+	p, mockKvStore, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	cachedTime := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
+	mockKvStore.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ string, out any) error {
+			b, ok := out.(*[]byte)
+			require.True(t, ok, "getReviewSLAStartTime should pass *[]byte")
+			*b = []byte(cachedTime.Format(time.RFC3339Nano))
+			return nil
+		},
+	).AnyTimes()
+
+	api, ok := p.API.(*plugintest.API)
+	require.True(t, ok, "expected plugintest.API")
+	var (
+		logCalls       int
+		loggedHits     int
+		loggedFetches  int
+	)
+	api.On("LogInfo",
+		"SLA digest backfill summary",
+		"timeline_pages_fetched", mock.AnythingOfType("int"),
+		"kv_hits", mock.AnythingOfType("int"),
+	).Run(func(args mock.Arguments) {
+		logCalls++
+		loggedFetches = args.Get(2).(int)
+		loggedHits = args.Get(4).(int)
+	}).Maybe()
+
+	resolve, summarize := p.newDigestSLAStartResolver(context.Background(), nil)
+	require.Equal(t, 0, logCalls, "summary must not fire at construction time")
+
+	got := resolve(prRef{
+		Owner:     "owner",
+		Repo:      "repo",
+		Number:    1,
+		CreatedAt: github.Timestamp{Time: time.Now().UTC()},
+	}, "alice")
+	require.Equal(t, 0, logCalls, "summary must not fire on resolver invocation")
+	require.True(t, got.UTC().Equal(cachedTime),
+		"resolver should return the cached SLA start time; got %v want %v", got.UTC(), cachedTime)
+
+	summarize()
+	assert.Equal(t, 1, logCalls, "summary should fire exactly once when summarize() is called")
+	assert.Equal(t, 1, loggedHits, "kv_hits should reflect the resolver's actual usage after one cached lookup")
+	assert.Equal(t, 0, loggedFetches, "no timeline pages fetched on the cached path")
+}
+
+// setupServiceUserPickTest wires up a Plugin instance with a mocked KvStore and a mock
+// plugintest.API that swallows the warn-level logs pickServiceGitHubUser emits on failure
+// paths. Returns the plugin, the KV mock for setting expectations, and the gomock controller
+// for the caller to Finish().
+func setupServiceUserPickTest(t *testing.T) (*Plugin, *mocks.MockKvStore, *gomock.Controller) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	mockKvStore := mocks.NewMockKvStore(ctrl)
+
+	api := &plugintest.API{}
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogDebug", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+	p := NewPlugin()
+	p.store = mockKvStore
+	p.SetAPI(api)
+	p.client = pluginapi.NewClient(api, p.Driver)
+	p.setConfiguration(&Configuration{EncryptionKey: "dummyEncryptKey1"})
+
+	return p, mockKvStore, ctrl
 }

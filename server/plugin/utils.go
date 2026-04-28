@@ -29,6 +29,10 @@ func getMentionSearchQuery(username string, orgs []string) string {
 	return buildSearchQuery("is:open mentions:%v archived:false %v", username, orgs)
 }
 
+// getReviewSearchQuery returns the GitHub search query for a user's pending review requests.
+// Drafts are excluded from the search results, but the SLA clock still runs through any draft
+// period: review_requested webhooks are recorded regardless of draft state, so a PR that was
+// review-requested while draft and later un-drafted retains its original SLA start time.
 func getReviewSearchQuery(username string, orgs []string) string {
 	return buildSearchQuery("is:pr is:open draft:false review-requested:%v archived:false %v", username, orgs)
 }

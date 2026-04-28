@@ -19,6 +19,29 @@ import (
 
 const slaReviewReqKeyPrefix = "slarr_v1_"
 
+// prRef is the minimal PR identity the SLA code needs: stable enough to derive the KV key,
+// rich enough to fall back to PR open time when no review-request record exists. Centralizing
+// this avoids forging *github.Issue values whenever a non-search caller (e.g. the digest)
+// needs to ask SLA questions.
+type prRef struct {
+	Owner     string
+	Repo      string
+	Number    int
+	CreatedAt github.Timestamp
+}
+
+// prRefFromIssue extracts a prRef from a search-result issue. Owner/repo come from the API
+// response when present, otherwise from the HTML URL (mirrors issueOwnerRepo's behavior).
+func prRefFromIssue(pr *github.Issue, baseURL string) prRef {
+	owner, repo := issueOwnerRepo(pr, baseURL)
+	return prRef{
+		Owner:     owner,
+		Repo:      repo,
+		Number:    pr.GetNumber(),
+		CreatedAt: pr.GetCreatedAt(),
+	}
+}
+
 // reviewSLAStartKey returns a stable KV key for (repo, PR, requested reviewer login).
 func reviewSLAStartKey(owner, repo string, prNumber int, githubLogin string) string {
 	normalized := strings.ToLower(strings.TrimSpace(owner)) + "/" + strings.ToLower(strings.TrimSpace(repo)) +
@@ -39,9 +62,14 @@ func (p *Plugin) recordReviewRequestSLAStart(event *github.PullRequestEvent, req
 	if owner == "" || repo == "" || num == 0 || requestedGitHubLogin == "" {
 		return
 	}
-	key := reviewSLAStartKey(owner, repo, num, requestedGitHubLogin)
-	at := time.Now().UTC()
-	val := []byte(at.Format(time.RFC3339Nano))
+	p.storeReviewSLAStart(owner, repo, num, requestedGitHubLogin, time.Now().UTC())
+}
+
+// storeReviewSLAStart writes a review-request timestamp to KV under the canonical key. Used by
+// both the live webhook path and the digest's timeline backfill so the wire format matches.
+func (p *Plugin) storeReviewSLAStart(owner, repo string, prNumber int, githubLogin string, t time.Time) {
+	key := reviewSLAStartKey(owner, repo, prNumber, githubLogin)
+	val := []byte(t.UTC().Format(time.RFC3339Nano))
 	if _, err := p.store.Set(key, val); err != nil {
 		p.client.Log.Warn("Failed to store review SLA start time", "key", key, "error", err.Error())
 	}
@@ -103,18 +131,17 @@ func issueOwnerRepo(pr *github.Issue, baseURL string) (owner, repo string) {
 	return parseOwnerAndRepo(pr.GetHTMLURL(), baseURL)
 }
 
-// effectiveReviewSLAStart returns the timestamp used for SLA: when we recorded a review_request webhook
-// for this reviewer on this PR, else the PR created time.
-func (p *Plugin) effectiveReviewSLAStart(pr *github.Issue, baseURL, reviewerGitHubLogin string) github.Timestamp {
-	owner, repo := issueOwnerRepo(pr, baseURL)
-	num := pr.GetNumber()
-	if owner == "" || repo == "" || num == 0 {
-		return pr.GetCreatedAt()
+// effectiveReviewSLAStart returns the timestamp used for SLA: when we recorded a review_request
+// webhook for this reviewer on this PR, else the PR created time. Read-only — callers serving
+// user-facing requests (/github todo, RHS) can call freely without network I/O.
+func (p *Plugin) effectiveReviewSLAStart(pr prRef, reviewerGitHubLogin string) github.Timestamp {
+	if pr.Owner == "" || pr.Repo == "" || pr.Number == 0 {
+		return pr.CreatedAt
 	}
-	if t := p.getReviewSLAStartTime(owner, repo, num, reviewerGitHubLogin); !t.IsZero() {
+	if t := p.getReviewSLAStartTime(pr.Owner, pr.Repo, pr.Number, reviewerGitHubLogin); !t.IsZero() {
 		return github.Timestamp{Time: t}
 	}
-	return pr.GetCreatedAt()
+	return pr.CreatedAt
 }
 
 // findMostRecentReviewRequestTime walks PR timeline events chronologically and returns the
@@ -158,13 +185,12 @@ func findMostRecentReviewRequestTime(events []*github.Timeline, githubLogin stri
 	return current
 }
 
-// backfillReviewSLAStartFromTimeline reads the PR timeline for (owner, repo, prNumber) and, if
-// it finds a surviving review_requested event for githubLogin, persists the timestamp under
-// the same KV key used by recordReviewRequestSLAStart so subsequent digest runs are free.
-// Returns the resolved time (zero if none was found) so callers can use it directly.
-func (p *Plugin) backfillReviewSLAStartFromTimeline(ctx context.Context, gh *github.Client, owner, repo string, prNumber int, githubLogin string) (time.Time, error) {
-	if gh == nil || owner == "" || repo == "" || prNumber == 0 || githubLogin == "" {
-		return time.Time{}, nil
+// fetchPRTimeline returns every timeline event for (owner, repo, prNumber), paging until done.
+// Pulled out of the digest's backfill so it can be cached at a higher level (one fetch per PR
+// even when many reviewers on the same PR need backfilling).
+func fetchPRTimeline(ctx context.Context, gh *github.Client, owner, repo string, prNumber int) ([]*github.Timeline, error) {
+	if gh == nil || owner == "" || repo == "" || prNumber == 0 {
+		return nil, nil
 	}
 
 	var events []*github.Timeline
@@ -172,7 +198,7 @@ func (p *Plugin) backfillReviewSLAStartFromTimeline(ctx context.Context, gh *git
 	for {
 		page, resp, err := gh.Issues.ListIssueTimeline(ctx, owner, repo, prNumber, opts)
 		if err != nil {
-			return time.Time{}, err
+			return nil, err
 		}
 		events = append(events, page...)
 		if resp == nil || resp.NextPage == 0 {
@@ -180,42 +206,7 @@ func (p *Plugin) backfillReviewSLAStartFromTimeline(ctx context.Context, gh *git
 		}
 		opts.Page = resp.NextPage
 	}
-
-	found := findMostRecentReviewRequestTime(events, githubLogin)
-	if found.IsZero() {
-		return time.Time{}, nil
-	}
-
-	key := reviewSLAStartKey(owner, repo, prNumber, githubLogin)
-	val := []byte(found.UTC().Format(time.RFC3339Nano))
-	if _, err := p.store.Set(key, val); err != nil {
-		p.client.Log.Warn("Failed to cache backfilled review SLA start time", "key", key, "error", err.Error())
-	}
-	return found.UTC(), nil
-}
-
-// effectiveReviewSLAStartForDigest is the digest's SLA-start resolver. It prefers the cached
-// KV record, falls back to a one-time timeline backfill (caching the result), and finally
-// falls back to PR open date. Unlike effectiveReviewSLAStart this can make a network call,
-// so callers serving user-facing requests (/github todo, RHS) should keep using
-// effectiveReviewSLAStart.
-func (p *Plugin) effectiveReviewSLAStartForDigest(ctx context.Context, gh *github.Client, pr *github.Issue, baseURL, reviewerGitHubLogin string) github.Timestamp {
-	owner, repo := issueOwnerRepo(pr, baseURL)
-	num := pr.GetNumber()
-	if owner == "" || repo == "" || num == 0 {
-		return pr.GetCreatedAt()
-	}
-	if t := p.getReviewSLAStartTime(owner, repo, num, reviewerGitHubLogin); !t.IsZero() {
-		return github.Timestamp{Time: t}
-	}
-	if gh != nil {
-		if t, err := p.backfillReviewSLAStartFromTimeline(ctx, gh, owner, repo, num, reviewerGitHubLogin); err != nil {
-			p.client.Log.Debug("Timeline backfill failed; falling back to PR created_at", "owner", owner, "repo", repo, "pr", num, "reviewer", reviewerGitHubLogin, "error", err.Error())
-		} else if !t.IsZero() {
-			return github.Timestamp{Time: t}
-		}
-	}
-	return pr.GetCreatedAt()
+	return events, nil
 }
 
 // enrichReviewsWithSLAStart sets review_sla_start on LHS review items so the webapp can match server SLA logic.
@@ -229,7 +220,7 @@ func (p *Plugin) enrichReviewsWithSLAStart(reviews []*graphql.GithubPRDetails, r
 		if d == nil || d.Issue == nil {
 			continue
 		}
-		eff := p.effectiveReviewSLAStart(d.Issue, baseURL, reviewerLogin)
+		eff := p.effectiveReviewSLAStart(prRefFromIssue(d.Issue, baseURL), reviewerLogin)
 		if eff.IsZero() {
 			continue
 		}

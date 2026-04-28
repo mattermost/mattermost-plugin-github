@@ -20,6 +20,35 @@ func TestReviewSLAStartKeyStable(t *testing.T) {
 	assert.NotEqual(t, k1, k3)
 }
 
+func TestPrRefFromIssue(t *testing.T) {
+	const baseURL = "https://github.com/"
+	createdAt := github.Timestamp{Time: time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)}
+
+	t.Run("prefers explicit Repository fields", func(t *testing.T) {
+		pr := &github.Issue{
+			Number:    github.Int(42),
+			HTMLURL:   github.String("https://github.com/wrong/wrong/pull/42"),
+			CreatedAt: &createdAt,
+			Repository: &github.Repository{
+				Name:  github.String("right"),
+				Owner: &github.User{Login: github.String("owner")},
+			},
+		}
+		got := prRefFromIssue(pr, baseURL)
+		assert.Equal(t, prRef{Owner: "owner", Repo: "right", Number: 42, CreatedAt: createdAt}, got)
+	})
+
+	t.Run("falls back to HTMLURL parsing when Repository is missing", func(t *testing.T) {
+		pr := &github.Issue{
+			Number:    github.Int(7),
+			HTMLURL:   github.String("https://github.com/mattermost/plugin-github/pull/7"),
+			CreatedAt: &createdAt,
+		}
+		got := prRefFromIssue(pr, baseURL)
+		assert.Equal(t, prRef{Owner: "mattermost", Repo: "plugin-github", Number: 7, CreatedAt: createdAt}, got)
+	})
+}
+
 func TestFindMostRecentReviewRequestTime(t *testing.T) {
 	user := func(login string) *github.User { return &github.User{Login: github.String(login)} }
 	at := func(s string) *github.Timestamp {
