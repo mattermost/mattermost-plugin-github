@@ -321,9 +321,9 @@ func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
 	api, ok := p.API.(*plugintest.API)
 	require.True(t, ok, "expected plugintest.API")
 	var (
-		logCalls       int
-		loggedHits     int
-		loggedFetches  int
+		logCalls      int
+		loggedHits    int
+		loggedFetches int
 	)
 	api.On("LogInfo",
 		"SLA digest backfill summary",
