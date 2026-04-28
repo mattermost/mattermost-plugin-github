@@ -296,6 +296,11 @@ type reviewerRequest struct {
 func gatherReviewersForPR(pr graphql.DigestPR, resolveTeam func(graphql.DigestTeamRef) []string) []reviewerRequest {
 	byLogin := make(map[string]int)
 	out := make([]reviewerRequest, 0, len(pr.RequestedUsers))
+	// add is the single chokepoint for both call paths below (direct RequestedUsers and
+	// team-expanded logins). The empty-login guard belongs here, not at the loop sites,
+	// because it must apply uniformly to both: the GraphQL layer (digest_query.go) already
+	// drops empty user logins, but a third-party resolveTeam implementation could surface
+	// them and we'd still want them filtered before they leak into out[idx].Login.
 	add := func(login string, team *graphql.DigestTeamRef) {
 		if login == "" {
 			return

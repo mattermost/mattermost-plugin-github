@@ -316,6 +316,25 @@ func TestGatherReviewersForPR(t *testing.T) {
 		assert.Empty(t, got)
 	})
 
+	t.Run("empty logins are dropped from both direct and team-expanded paths", func(t *testing.T) {
+		// Locks in the invariant that no reviewerRequest with Login=="" can reach the
+		// caller, regardless of which code path a bad value comes in on. The GraphQL
+		// layer already filters empty user logins, but resolveTeam is a callback whose
+		// implementation we don't control, so the protection has to apply uniformly.
+		core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
+		pr := graphql.DigestPR{
+			RequestedUsers: []string{"", "alice", ""},
+			RequestedTeams: []graphql.DigestTeamRef{core},
+		}
+		resolver := func(graphql.DigestTeamRef) []string { return []string{"", "bob", ""} }
+		got := gatherReviewersForPR(pr, resolver)
+		assert.Equal(t, []string{"alice", "bob"}, logins(got),
+			"empty logins must be dropped from both pr.RequestedUsers and team-expanded results")
+		for _, r := range got {
+			assert.NotEmpty(t, r.Login, "no reviewerRequest may reach the caller with an empty login")
+		}
+	})
+
 	t.Run("dedupe is case-insensitive on login", func(t *testing.T) {
 		core := graphql.DigestTeamRef{Org: "mattermost", Slug: "core"}
 		pr := graphql.DigestPR{
