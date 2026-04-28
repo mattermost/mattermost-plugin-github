@@ -306,7 +306,6 @@ func gatherReviewersForPR(pr graphql.DigestPR, resolveTeam func(graphql.DigestTe
 		add(login, nil)
 	}
 	for _, team := range pr.RequestedTeams {
-		team := team
 		for _, login := range resolveTeam(team) {
 			add(login, &team)
 		}
