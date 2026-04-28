@@ -407,6 +407,26 @@ func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
 	assert.Equal(t, 0, loggedFetches, "no timeline pages fetched on the cached path")
 }
 
+func TestFetchAllOrgOpenPRs_CanceledContextReturnsNotOK(t *testing.T) {
+	// A canceled context mid-iteration must NOT report anyOK=true to the caller, even if
+	// earlier orgs in the list had already returned successfully (here we cancel before any
+	// org runs, which is the strict version: anyOK starts false and must stay false). The
+	// caller uses this to decide whether to advance slaDigestDayKVKey — an interrupted scan
+	// should retry on the next scheduler tick, not silently skip until tomorrow.
+	p, _, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	// graphQLClient is intentionally nil: the ctx.Err() check fires before any GraphQL call,
+	// so a nil client must never be dereferenced on the cancellation path. Locks in the
+	// fast-fail-without-network behavior alongside the failure-flag contract.
+	prs, ok := p.fetchAllOrgOpenPRs(ctx, nil, []string{"mattermost"})
+	assert.Nil(t, prs, "canceled context should not surface partial results")
+	assert.False(t, ok, "canceled context must not be reported as a successful scan")
+}
+
 func TestNewDigestSLAStartResolver_SkipsSummaryLogWhenNoLookups(t *testing.T) {
 	// summarize() is wired up via defer in collectAllOverdueSLAItems, so it can fire even
 	// when the resolver was never invoked (e.g. PRs with no requested reviewers, or

@@ -195,7 +195,11 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) ([]slaDigestEntr
 	seen := make(map[string]bool)
 	for _, pr := range allPRs {
 		if ctx.Err() != nil {
-			return out, true
+			// A canceled context means the scan was interrupted partway through (e.g.
+			// scheduler shutdown). Whatever we've accumulated is a partial view, so we
+			// must not let the caller treat it as a real scan and advance the day
+			// marker. Return ok=false so the next scheduler tick retries.
+			return nil, false
 		}
 		ref := prRef{
 			Owner:     pr.Owner,
@@ -215,13 +219,14 @@ func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) ([]slaDigestEntr
 
 // fetchAllOrgOpenPRs runs the org-wide PR search once per configured org, logging and skipping
 // orgs that fail rather than aborting the whole digest. Returns the combined PR list and a
-// flag that is true iff at least one configured org returned successfully (a zero-PR org is
-// still a success). The caller uses anyOK to distinguish "every org failed, retry later" from
-// "configured orgs are simply quiet."
+// flag that is true iff every configured org was visited and at least one returned
+// successfully (a zero-PR org is still a success). A context cancellation mid-iteration
+// forces anyOK to false: the caller uses anyOK to distinguish a "real but quiet scan" from
+// an interrupted one, and a partial walk is the latter even if some orgs already responded.
 func (p *Plugin) fetchAllOrgOpenPRs(ctx context.Context, graphQLClient *graphql.Client, orgList []string) (allPRs []graphql.DigestPR, anyOK bool) {
 	for _, org := range orgList {
 		if ctx.Err() != nil {
-			return allPRs, anyOK
+			return nil, false
 		}
 		prs, err := graphQLClient.GetOpenPRsWithRequestedReviewers(ctx, org)
 		if err != nil {
