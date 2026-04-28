@@ -64,7 +64,11 @@ type digestPRSearchNode struct {
 	} `graphql:"... on PullRequest"`
 }
 
-var orgOpenPRsQuery struct {
+// orgOpenPRsSearchQuery is the response shape for GetOpenPRsWithRequestedReviewers. Defined
+// at package scope so the graphql library can reflect on its tags, but instantiated locally
+// per call so concurrent callers (e.g. the digest scheduler running alongside an LHS fetch)
+// don't share mutable state.
+type orgOpenPRsSearchQuery struct {
 	Search struct {
 		Nodes    []digestPRSearchNode
 		PageInfo struct {
@@ -88,6 +92,7 @@ func (c *Client) GetOpenPRsWithRequestedReviewers(ctx context.Context, org strin
 		"cursor": (*githubv4.String)(nil),
 	}
 
+	var orgOpenPRsQuery orgOpenPRsSearchQuery
 	var out []DigestPR
 	for {
 		if err := c.executeQuery(ctx, &orgOpenPRsQuery, params); err != nil {
