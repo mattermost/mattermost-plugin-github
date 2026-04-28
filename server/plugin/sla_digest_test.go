@@ -25,61 +25,55 @@ import (
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
 )
 
-func TestFormatChannelOverdueReviewLine(t *testing.T) {
+func TestFormatChannelOverduePRBody(t *testing.T) {
 	const baseURL = "https://github.com/"
 
-	t.Run("renders connected reviewer with @-mention and bracketed github login", func(t *testing.T) {
-		line := formatChannelOverdueReviewLine(
-			"@harrison (hmhealey)",
+	t.Run("renders owner/repo and a markdown-linked title", func(t *testing.T) {
+		body := formatChannelOverduePRBody(
 			"Fix race condition",
 			"https://github.com/mattermost/mattermost/pull/12345",
 			baseURL,
 		)
-		assert.Equal(t, "- @harrison (hmhealey) - mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", line)
-	})
-
-	t.Run("renders unconnected reviewer with `(not connected) - login` prefix", func(t *testing.T) {
-		line := formatChannelOverdueReviewLine(
-			"(not connected) - hmhealey",
-			"Fix race condition",
-			"https://github.com/mattermost/mattermost/pull/12345",
-			baseURL,
-		)
-		assert.Equal(t, "- (not connected) - hmhealey - mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", line)
+		assert.Equal(t, "mattermost/mattermost - [Fix race condition](https://github.com/mattermost/mattermost/pull/12345)", body)
 	})
 
 	t.Run("escapes closing brackets in the title so the link does not terminate early", func(t *testing.T) {
-		line := formatChannelOverdueReviewLine(
-			"hmhealey",
+		body := formatChannelOverduePRBody(
 			"[MM-12345] Fix [thing]",
 			"https://github.com/mattermost/mattermost/pull/1",
 			baseURL,
 		)
 		// Only `]` needs escaping inside a markdown link's display text; `[` is allowed.
-		assert.Contains(t, line, `[[MM-12345\] Fix [thing\]](https://github.com/mattermost/mattermost/pull/1)`)
+		assert.Contains(t, body, `[[MM-12345\] Fix [thing\]](https://github.com/mattermost/mattermost/pull/1)`)
 	})
 
 	t.Run("falls back to raw URL as the repo display when owner/repo cannot be parsed", func(t *testing.T) {
-		line := formatChannelOverdueReviewLine(
-			"hmhealey",
+		body := formatChannelOverduePRBody(
 			"Title",
 			"https://example.invalid/something/odd",
 			baseURL,
 		)
-		assert.Contains(t, line, "https://example.invalid/something/odd - [Title]")
+		assert.Contains(t, body, "https://example.invalid/something/odd - [Title]")
 	})
 
 	t.Run("truncates very long titles before linking", func(t *testing.T) {
 		title := strings.Repeat("a", 250)
-		line := formatChannelOverdueReviewLine(
-			"hmhealey",
+		body := formatChannelOverduePRBody(
 			title,
 			"https://github.com/mattermost/mattermost/pull/1",
 			baseURL,
 		)
-		assert.Contains(t, line, "...](https://github.com/mattermost/mattermost/pull/1)")
-		// Title body inside the link should not exceed 200 'a's followed by the ellipsis.
-		assert.NotContains(t, line, strings.Repeat("a", 201))
+		assert.Contains(t, body, "...](https://github.com/mattermost/mattermost/pull/1)")
+		// Title text inside the link should not exceed 200 'a's followed by the ellipsis.
+		assert.NotContains(t, body, strings.Repeat("a", 201))
+	})
+
+	t.Run("does not include a leading bullet or reviewer prefix", func(t *testing.T) {
+		// Locks in the contract that the per-PR body is composable: the digest builder
+		// is responsible for the `- ` outer bullet and the reviewer header, not this helper.
+		body := formatChannelOverduePRBody("Fix", "https://github.com/m/m/pull/1", baseURL)
+		assert.False(t, strings.HasPrefix(body, "- "), "body should be composable, not pre-bulleted")
+		assert.False(t, strings.HasPrefix(body, "@"), "body should not carry a reviewer prefix")
 	})
 }
 
@@ -119,13 +113,17 @@ func TestSLABucketIndex(t *testing.T) {
 }
 
 func TestBuildSLADigestMessage(t *testing.T) {
+	entry := func(days int, reviewer, body string) slaDigestEntry {
+		return slaDigestEntry{DaysOverdue: days, ReviewerDisplay: reviewer, Body: body}
+	}
+
 	t.Run("groups entries into the correct buckets in display order", func(t *testing.T) {
 		entries := []slaDigestEntry{
-			{DaysOverdue: 2, Line: "- a"},
-			{DaysOverdue: 5, Line: "- b"},
-			{DaysOverdue: 12, Line: "- c"},
-			{DaysOverdue: 100, Line: "- d"},
-			{DaysOverdue: 400, Line: "- e"},
+			entry(2, "@a (a-gh)", "owner/repo - [A](url)"),
+			entry(5, "@b (b-gh)", "owner/repo - [B](url)"),
+			entry(12, "@c (c-gh)", "owner/repo - [C](url)"),
+			entry(100, "@d (d-gh)", "owner/repo - [D](url)"),
+			entry(400, "@e (e-gh)", "owner/repo - [E](url)"),
 		}
 
 		msg := buildSLADigestMessage(entries, 3)
@@ -146,37 +144,94 @@ func TestBuildSLADigestMessage(t *testing.T) {
 
 	t.Run("non-overdue entries are dropped", func(t *testing.T) {
 		entries := []slaDigestEntry{
-			{DaysOverdue: 0, Line: "- skipped"},
-			{DaysOverdue: -2, Line: "- skipped-too"},
-			{DaysOverdue: 1, Line: "- kept"},
+			entry(0, "@skip (skip-gh)", "owner/repo - [skipped](url)"),
+			entry(-2, "@skip2 (skip2-gh)", "owner/repo - [skipped-too](url)"),
+			entry(1, "@keep (keep-gh)", "owner/repo - [kept](url)"),
 		}
 		msg := buildSLADigestMessage(entries, 3)
-		assert.Contains(t, msg, "- kept")
-		assert.NotContains(t, msg, "- skipped")
-		assert.NotContains(t, msg, "- skipped-too")
+		assert.Contains(t, msg, "[kept]")
+		assert.NotContains(t, msg, "[skipped]")
+		assert.NotContains(t, msg, "[skipped-too]")
 	})
 
 	t.Run("singular target days uses 'day'", func(t *testing.T) {
-		msg := buildSLADigestMessage([]slaDigestEntry{{DaysOverdue: 1, Line: "- x"}}, 1)
+		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 1)
 		assert.Contains(t, msg, "target: 1 day from")
 	})
 
 	t.Run("zero target days falls back to plain header", func(t *testing.T) {
-		msg := buildSLADigestMessage([]slaDigestEntry{{DaysOverdue: 1, Line: "- x"}}, 0)
+		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 0)
 		assert.True(t, strings.HasPrefix(msg, "### Pull request reviews past SLA\n"))
 	})
 
-	t.Run("lines within a bucket are sorted alphabetically", func(t *testing.T) {
+	t.Run("reviewers within a bucket are sorted alphabetically (case-insensitive)", func(t *testing.T) {
 		entries := []slaDigestEntry{
-			{DaysOverdue: 2, Line: "- zeta"},
-			{DaysOverdue: 2, Line: "- alpha"},
-			{DaysOverdue: 2, Line: "- mu"},
+			entry(2, "@Zeta (zeta-gh)", "owner/repo - [PR-z](url)"),
+			entry(2, "@alpha (alpha-gh)", "owner/repo - [PR-a](url)"),
+			entry(2, "@Mu (mu-gh)", "owner/repo - [PR-m](url)"),
 		}
 		msg := buildSLADigestMessage(entries, 3)
-		ai := strings.Index(msg, "- alpha")
-		mi := strings.Index(msg, "- mu")
-		zi := strings.Index(msg, "- zeta")
-		assert.True(t, ai >= 0 && mi > ai && zi > mi, "expected alpha < mu < zeta in output")
+		ai := strings.Index(msg, "@alpha")
+		mi := strings.Index(msg, "@Mu")
+		zi := strings.Index(msg, "@Zeta")
+		assert.True(t, ai >= 0 && mi > ai && zi > mi, "expected alpha < Mu < Zeta (case-insensitive) in output")
+	})
+
+	t.Run("multiple PRs by the same reviewer in one bucket render under a single reviewer header with sorted indented bodies", func(t *testing.T) {
+		const reviewer = "@harrison (hmhealey)"
+		entries := []slaDigestEntry{
+			entry(2, reviewer, "owner/repo - [zeta-pr](https://example/pr/3)"),
+			entry(2, reviewer, "owner/repo - [alpha-pr](https://example/pr/1)"),
+			entry(2, reviewer, "owner/repo - [mu-pr](https://example/pr/2)"),
+		}
+		msg := buildSLADigestMessage(entries, 3)
+
+		// The reviewer header must appear EXACTLY once in this bucket — that's the whole
+		// point of grouping; otherwise the digest still @-spams the reviewer per-PR.
+		bucketStart := strings.Index(msg, "#### 1-3 days overdue")
+		require.True(t, bucketStart >= 0, "expected the 1-3 days bucket header")
+		bucketSlice := msg[bucketStart:]
+		assert.Equal(t, 1, strings.Count(bucketSlice, "- "+reviewer+"\n"),
+			"reviewer should appear once per bucket as the outer bullet")
+
+		// Bodies should be indented two spaces and sorted alphabetically within the group.
+		ai := strings.Index(bucketSlice, "  - owner/repo - [alpha-pr]")
+		mi := strings.Index(bucketSlice, "  - owner/repo - [mu-pr]")
+		zi := strings.Index(bucketSlice, "  - owner/repo - [zeta-pr]")
+		assert.True(t, ai > 0 && mi > ai && zi > mi,
+			"PR bodies should be indented (`  - `) and sorted alphabetically under the reviewer header")
+	})
+
+	t.Run("two reviewers in the same bucket render as two separate reviewer groups", func(t *testing.T) {
+		entries := []slaDigestEntry{
+			entry(2, "@alice (alice-gh)", "o/r - [a-pr](url)"),
+			entry(2, "@alice (alice-gh)", "o/r - [b-pr](url)"),
+			entry(2, "@bob (bob-gh)", "o/r - [c-pr](url)"),
+		}
+		msg := buildSLADigestMessage(entries, 3)
+		bucketStart := strings.Index(msg, "#### 1-3 days overdue")
+		require.True(t, bucketStart >= 0)
+		bucket := msg[bucketStart:]
+
+		// Each reviewer header appears exactly once; alice's two bodies are nested under hers.
+		assert.Equal(t, 1, strings.Count(bucket, "- @alice (alice-gh)\n"))
+		assert.Equal(t, 1, strings.Count(bucket, "- @bob (bob-gh)\n"))
+		assert.Contains(t, bucket, "- @alice (alice-gh)\n  - o/r - [a-pr](url)\n  - o/r - [b-pr](url)\n")
+	})
+
+	t.Run("groupBucketEntriesByReviewer is deterministic and sorts bodies within a group", func(t *testing.T) {
+		// Direct unit test on the helper: more focused than scanning the full message.
+		bucketEntries := []slaDigestEntry{
+			{ReviewerDisplay: "@bob (bob-gh)", Body: "o/r - [b1](url)"},
+			{ReviewerDisplay: "@alice (alice-gh)", Body: "o/r - [zeta](url)"},
+			{ReviewerDisplay: "@alice (alice-gh)", Body: "o/r - [alpha](url)"},
+		}
+		groups := groupBucketEntriesByReviewer(bucketEntries)
+		require.Len(t, groups, 2)
+		assert.Equal(t, "@alice (alice-gh)", groups[0].ReviewerDisplay)
+		assert.Equal(t, []string{"o/r - [alpha](url)", "o/r - [zeta](url)"}, groups[0].Bodies,
+			"bodies inside a reviewer group should be sorted alphabetically")
+		assert.Equal(t, "@bob (bob-gh)", groups[1].ReviewerDisplay)
 	})
 }
 

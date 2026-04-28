@@ -26,9 +26,13 @@ const (
 	slaDigestMutexKey = "github_sla_digest_mutex"
 )
 
+// slaDigestEntry is one (reviewer, PR) pair past SLA. Stored as separate fields rather than
+// a pre-baked single line so buildSLADigestMessage can group entries by reviewer within each
+// bucket and avoid repeating the @-mention on every row.
 type slaDigestEntry struct {
-	DaysOverdue int
-	Line        string
+	DaysOverdue     int
+	ReviewerDisplay string // e.g. "@harrison (hmhealey)" or "(not connected) - hmhealey"
+	Body            string // e.g. "mattermost/mattermost - [Fix race condition](url)"
 }
 
 // maybePostDailyOverdueSLADigest posts one aggregated message per local calendar day to the
@@ -430,8 +434,8 @@ func (p *Plugin) evaluateOverdueForReviewer(
 	}
 
 	reviewerDisplay := p.resolveReviewerDisplayName(rr.Login)
-	line := formatChannelOverdueReviewLine(reviewerDisplay, pr.Title, pr.URL, p.getConfiguration().getBaseURL())
-	return &slaDigestEntry{DaysOverdue: -diff, Line: line}
+	body := formatChannelOverduePRBody(pr.Title, pr.URL, p.getConfiguration().getBaseURL())
+	return &slaDigestEntry{DaysOverdue: -diff, ReviewerDisplay: reviewerDisplay, Body: body}
 }
 
 // slaBuckets enumerates the digest's overdue buckets in display order (most overdue first).
@@ -469,14 +473,47 @@ func slaBucketIndex(daysOverdue int) int {
 	return -1
 }
 
+// reviewerBucketGroup is one reviewer's overdue PRs within a single bucket, used by
+// buildSLADigestMessage to render `- <reviewer>\n  - <body>\n  - <body>` instead of
+// repeating the reviewer prefix on every PR row.
+type reviewerBucketGroup struct {
+	ReviewerDisplay string
+	Bodies          []string
+}
+
+// groupBucketEntriesByReviewer collapses a bucket's entries into one group per reviewer,
+// sorts bodies within each group, and sorts the groups themselves by reviewer display
+// (case-insensitive). The deterministic ordering is required for stable channel posts and
+// snapshot-style assertions; map iteration order alone would leave the output flaky.
+func groupBucketEntriesByReviewer(entries []slaDigestEntry) []reviewerBucketGroup {
+	idxByReviewer := make(map[string]int, len(entries))
+	out := make([]reviewerBucketGroup, 0, len(entries))
+	for _, e := range entries {
+		idx, ok := idxByReviewer[e.ReviewerDisplay]
+		if !ok {
+			out = append(out, reviewerBucketGroup{ReviewerDisplay: e.ReviewerDisplay})
+			idx = len(out) - 1
+			idxByReviewer[e.ReviewerDisplay] = idx
+		}
+		out[idx].Bodies = append(out[idx].Bodies, e.Body)
+	}
+	for i := range out {
+		sort.Strings(out[i].Bodies)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return strings.ToLower(out[i].ReviewerDisplay) < strings.ToLower(out[j].ReviewerDisplay)
+	})
+	return out
+}
+
 func buildSLADigestMessage(entries []slaDigestEntry, targetDays int) string {
-	bucketLines := make([][]string, len(slaBuckets))
+	bucketEntries := make([][]slaDigestEntry, len(slaBuckets))
 	for _, e := range entries {
 		idx := slaBucketIndex(e.DaysOverdue)
 		if idx < 0 {
 			continue
 		}
-		bucketLines[idx] = append(bucketLines[idx], e.Line)
+		bucketEntries[idx] = append(bucketEntries[idx], e)
 	}
 
 	var b strings.Builder
@@ -490,15 +527,16 @@ func buildSLADigestMessage(entries []slaDigestEntry, targetDays int) string {
 		b.WriteString("### Pull request reviews past SLA\n\n")
 	}
 	for i, bucket := range slaBuckets {
-		lines := bucketLines[i]
-		if len(lines) == 0 {
+		bes := bucketEntries[i]
+		if len(bes) == 0 {
 			continue
 		}
-		sort.Strings(lines)
 		fmt.Fprintf(&b, "#### %s\n", bucket.label)
-		for _, line := range lines {
-			b.WriteString(line)
-			b.WriteString("\n")
+		for _, g := range groupBucketEntriesByReviewer(bes) {
+			fmt.Fprintf(&b, "- %s\n", g.ReviewerDisplay)
+			for _, body := range g.Bodies {
+				fmt.Fprintf(&b, "  - %s\n", body)
+			}
 		}
 		b.WriteString("\n")
 	}
