@@ -54,7 +54,7 @@ function mapPrsToDetails(prs: GithubIssueData[], details: PrsDetailsData[]) {
 export const getSidebarData = createSelector(
     getPluginState,
     (pluginState): SidebarData => {
-        const {username, sidebarContent, reviewDetails, yourPrDetails, organizations, rhsState} = pluginState;
+        const {username, sidebarContent, reviewDetails, yourPrDetails, organizations, rhsState, configuration: pluginConfig} = pluginState;
         return {
             username,
             reviews: mapPrsToDetails(sidebarContent.reviews || emptyArray, reviewDetails),
@@ -63,6 +63,7 @@ export const getSidebarData = createSelector(
             unreads: sidebarContent.unreads || emptyArray,
             orgs: organizations,
             rhsState,
+            reviewTargetDays: pluginConfig.review_target_days || 0,
         };
     },
 );

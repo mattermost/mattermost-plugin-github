@@ -63,15 +63,15 @@ function userSettings(state = {
     }
 }
 
-function configuration(state = {
+function configuration(state: ConfigurationData = {
     left_sidebar_enabled: true,
     review_target_days: 0,
-}, action: {type: string, data: ConnectedData | ConfigurationData}) {
+}, action: {type: string, data: ConnectedData | ConfigurationData}): ConfigurationData {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:
         return {
             ...state,
-            ...(action.data as ConnectedData).configuration,
+            ...((action.data as ConnectedData).configuration as Partial<ConfigurationData>),
         };
     case ActionTypes.RECEIVED_CONFIGURATION:
         return action.data as ConfigurationData;

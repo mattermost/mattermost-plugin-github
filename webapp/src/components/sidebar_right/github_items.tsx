@@ -12,6 +12,7 @@ import {GitPullRequestIcon, IssueOpenedIcon, IconProps, CalendarIcon, PersonIcon
 import {GithubItemsProps, GithubLabel, GithubItem, Review} from '../../types/github_types';
 
 import {formatTimeSince} from '../../utils/date_utils';
+import {getReviewSLAStatus} from '../../utils/sla';
 
 import CrossIcon from '../../images/icons/cross';
 import DotIcon from '../../images/icons/dot';
@@ -37,6 +38,7 @@ const notificationReasons = {
 
 function GithubItems(props: GithubItemsProps) {
     const style = getStyle(props.theme);
+    const showReviewSLA = Boolean(props.showReviewSLA && props.reviewTargetDays && props.reviewTargetDays > 0);
 
     return props.items.length > 0 ? props.items.map((item) => {
         let repoName = '';
@@ -136,6 +138,11 @@ function GithubItems(props: GithubItemsProps) {
         }
 
         const reviews = getReviewText(item, style, (item.created_at != null || userName != null || milestone != null));
+
+        let slaBadge: JSX.Element | null = null;
+        if (showReviewSLA) {
+            slaBadge = renderReviewSLABadge(item, props.reviewTargetDays || 0, style);
+        }
 
         // Status images pasted directly from GitHub. Change to our own version when styles are decided.
         let status: JSX.Element | null = null;
@@ -304,6 +311,7 @@ function GithubItems(props: GithubItemsProps) {
                         {notificationReasons[item.reason as keyof typeof notificationReasons]}
                     </>) : null }
                 </div>
+                {slaBadge}
                 {reviews}
                 {pullRequestDetails}
             </div>
@@ -375,8 +383,60 @@ const getStyle = makeStyleFromTheme((theme) => {
         prOpenSince: {
             margin: '5px 0 0 0',
         },
+        slaBadgeRow: {
+            margin: '6px 0 0 0',
+        },
+        slaBadgeBase: {
+            display: 'inline-block',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontWeight: 600,
+            lineHeight: 1.4,
+        },
+        slaBadgeOverdue: {
+            backgroundColor: changeOpacity(theme.dndIndicator, 0.15),
+            color: theme.dndIndicator,
+        },
+        slaBadgeDueToday: {
+            backgroundColor: changeOpacity(theme.awayIndicator, 0.2),
+            color: theme.awayIndicator,
+        },
+        slaBadgeDueLater: {
+            backgroundColor: changeOpacity(theme.centerChannelColor, 0.08),
+            color: changeOpacity(theme.centerChannelColor, 0.75),
+        },
     };
 });
+
+function renderReviewSLABadge(item: GithubItem, targetDays: number, style: any): JSX.Element | null {
+    const status = getReviewSLAStatus(item, targetDays);
+    if (!status) {
+        return null;
+    }
+
+    let label: string;
+    let badgeStyle: CSS.Properties;
+    if (status.daysFromDue < 0) {
+        const overdueDays = -status.daysFromDue;
+        label = `Overdue by ${overdueDays} ${overdueDays === 1 ? 'day' : 'days'}`;
+        badgeStyle = style.slaBadgeOverdue;
+    } else if (status.daysFromDue === 0) {
+        label = 'Due today';
+        badgeStyle = style.slaBadgeDueToday;
+    } else {
+        label = `Due in ${status.daysFromDue} ${status.daysFromDue === 1 ? 'day' : 'days'}`;
+        badgeStyle = style.slaBadgeDueLater;
+    }
+
+    return (
+        <div style={style.slaBadgeRow}>
+            <span style={{...style.slaBadgeBase, ...badgeStyle}}>
+                {label}
+            </span>
+        </div>
+    );
+}
 
 function getGithubLabels(labels: GithubLabel[]) {
     return labels.map((label) => {

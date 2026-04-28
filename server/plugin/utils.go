@@ -29,8 +29,12 @@ func getMentionSearchQuery(username string, orgs []string) string {
 	return buildSearchQuery("is:open mentions:%v archived:false %v", username, orgs)
 }
 
+// getReviewSearchQuery returns the GitHub search query for a user's pending review requests.
+// Drafts are excluded from the search results, but the SLA clock still runs through any draft
+// period: review_requested webhooks are recorded regardless of draft state, so a PR that was
+// review-requested while draft and later un-drafted retains its original SLA start time.
 func getReviewSearchQuery(username string, orgs []string) string {
-	return buildSearchQuery("is:pr is:open review-requested:%v archived:false %v", username, orgs)
+	return buildSearchQuery("is:pr is:open draft:false review-requested:%v archived:false %v", username, orgs)
 }
 
 func getYourPrsSearchQuery(username string, orgs []string) string {
@@ -378,8 +382,13 @@ func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Ti
 	return int(dueDay.Sub(todayDay) / (24 * time.Hour))
 }
 
-// formatChannelOverdueReviewLine formats a single line for the overdue-SLA channel digest.
-func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string) string {
+// formatChannelOverduePRBody formats the per-PR portion of an overdue-SLA digest line:
+// "<owner>/<repo> - [<title>](<url>)". The reviewer column and list-bullet prefix are
+// composed by the caller so the digest can group several of a reviewer's overdue PRs under
+// a single reviewer header without duplicating their @-mention on every row. When owner/repo
+// cannot be parsed from htmlURL the raw URL is used as the repo display, so nothing renders
+// as a bare " / ". Long titles are truncated to 200 chars + "...".
+func formatChannelOverduePRBody(title, htmlURL, baseURL string) string {
 	owner, repo := parseOwnerAndRepo(htmlURL, baseURL)
 	repoDisplay := fmt.Sprintf("%s/%s", owner, repo)
 	if owner == "" || repo == "" {
@@ -388,7 +397,22 @@ func formatChannelOverdueReviewLine(githubLogin, title, htmlURL, baseURL string)
 	if len(title) > 200 {
 		title = strings.TrimSpace(title[:200]) + "..."
 	}
-	return fmt.Sprintf("- %s - %s : %s", githubLogin, repoDisplay, title)
+	titleDisplay := title
+	if htmlURL != "" {
+		titleDisplay = fmt.Sprintf("[%s](%s)", escapeMarkdownLinkText(title), htmlURL)
+	}
+	return fmt.Sprintf("%s - %s", repoDisplay, titleDisplay)
+}
+
+// escapeMarkdownLinkText escapes characters that would break a markdown link's display text.
+// We only escape `]` and `\` so that titles containing brackets (common in JIRA-prefixed PRs)
+// do not terminate the link early.
+func escapeMarkdownLinkText(s string) string {
+	if s == "" {
+		return s
+	}
+	r := strings.NewReplacer(`\`, `\\`, `]`, `\]`)
+	return r.Replace(s)
 }
 
 // reviewSLAMarkdown returns a Markdown SLA suffix for Mattermost posts and whether the review is overdue.

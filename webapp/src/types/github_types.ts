@@ -56,6 +56,12 @@ export type GithubItem = PrsDetailsData & {
 export type GithubItemsProps = {
     items: GithubItem[];
     theme: Theme;
+
+    /** When true, render an SLA-status badge (Overdue / Due today / Due in N days) next to each item. */
+    showReviewSLA?: boolean;
+
+    /** SLA target in days, used to compute the badge. Falsy disables the badge regardless of showReviewSLA. */
+    reviewTargetDays?: number;
 }
 
 export type UserSettingsData = {
@@ -171,7 +177,8 @@ export type SidebarData = {
     yourAssignments: GithubIssueData[],
     unreads: UnreadsData[]
     orgs: string[],
-    rhsState?: string | null
+    rhsState?: string | null,
+    reviewTargetDays: number,
 }
 
 export type Organization = {
