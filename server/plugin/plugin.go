@@ -5,7 +5,6 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -25,7 +24,6 @@ import (
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 	"github.com/mattermost/mattermost/server/public/pluginapi/cluster"
-	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/logger"
 	"github.com/mattermost/mattermost/server/public/pluginapi/experimental/bot/poster"
 
 	"github.com/mattermost/mattermost-plugin-github/server/plugin/graphql"
@@ -1305,64 +1303,18 @@ func (p *Plugin) isOrganizationLocked() bool {
 }
 
 func (p *Plugin) sendRefreshEvent(userID string) {
-	eventLogger := logger.New(p.API).With(logger.LogContext{
-		"userid": userID,
-	})
-
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-
-	context := &Context{
-		Ctx:    ctx,
-		UserID: userID,
-		Log:    eventLogger,
-	}
-
-	defer cancel()
-
-	info, apiErr := p.getGitHubUserInfo(context.UserID)
-	if apiErr != nil {
+	if _, apiErr := p.getGitHubUserInfo(userID); apiErr != nil {
 		if apiErr.ID != apiErrorIDNotConnected {
 			p.client.Log.Debug("Failed to get github user info", "error", apiErr.Error())
 		}
 		return
 	}
 
-	userContext := &UserContext{
-		Context: *context,
-		GHInfo:  info,
-	}
-
-	sidebarContent, err := p.getSidebarData(userContext)
-	if err != nil {
-		p.client.Log.Warn("Failed to get the sidebar data", "error", err.Error())
-		return
-	}
-
-	contentMap, err := sidebarContent.toMap()
-	if err != nil {
-		p.client.Log.Warn("Failed to convert sidebar content to map", "error", err.Error())
-		return
-	}
-
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventRefresh,
-		contentMap,
+		map[string]any{"user_id": userID},
 		&model.WebsocketBroadcast{UserId: userID},
 	)
-}
-
-func (s *SidebarContent) toMap() (map[string]any, error) {
-	var m map[string]any
-	bytes, err := json.Marshal(&s)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = json.Unmarshal(bytes, &m); err != nil {
-		return nil, err
-	}
-
-	return m, nil
 }
 
 // getUsername returns the GitHub username for a given Mattermost user,
