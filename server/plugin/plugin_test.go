@@ -5,7 +5,9 @@ package plugin
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/golang/mock/gomock"
 	"github.com/pkg/errors"
@@ -373,4 +375,34 @@ func TestForceDisconnectUser_DeleteErrors(t *testing.T) {
 	p.forceDisconnectUser("user1", "ghuser1")
 
 	api.AssertExpectations(t)
+}
+
+func TestTruncatePostMessage(t *testing.T) {
+	t.Run("short message is returned unchanged", func(t *testing.T) {
+		msg := "hello world"
+		require.Equal(t, msg, truncatePostMessage(msg))
+	})
+
+	t.Run("message at the rune limit is returned unchanged", func(t *testing.T) {
+		msg := strings.Repeat("a", model.PostMessageMaxRunesV2)
+		require.Equal(t, msg, truncatePostMessage(msg))
+	})
+
+	t.Run("oversized ASCII message is truncated and marker appended", func(t *testing.T) {
+		msg := strings.Repeat("a", model.PostMessageMaxRunesV2+5_000)
+		out := truncatePostMessage(msg)
+
+		require.LessOrEqual(t, utf8.RuneCountInString(out), model.PostMessageMaxRunesV2)
+		require.True(t, strings.HasSuffix(out, "_… message truncated_"))
+	})
+
+	t.Run("oversized multibyte message keeps rune boundaries", func(t *testing.T) {
+		// Each rune is 3 bytes, so byte-based truncation would corrupt the output.
+		msg := strings.Repeat("✓", model.PostMessageMaxRunesV2+1_000)
+		out := truncatePostMessage(msg)
+
+		require.LessOrEqual(t, utf8.RuneCountInString(out), model.PostMessageMaxRunesV2)
+		require.True(t, utf8.ValidString(out), "truncated output should remain valid UTF-8")
+		require.True(t, strings.HasSuffix(out, "_… message truncated_"))
+	})
 }
