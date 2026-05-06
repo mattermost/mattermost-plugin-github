@@ -1312,7 +1312,7 @@ func (p *Plugin) sendRefreshEvent(userID string) {
 
 	p.client.Frontend.PublishWebSocketEvent(
 		wsEventRefresh,
-		map[string]any{"user_id": userID},
+		nil,
 		&model.WebsocketBroadcast{UserId: userID},
 	)
 }
