@@ -79,14 +79,9 @@ export function handleReconnect(store, reminder = false) {
 }
 
 export function handleRefresh(store) {
-    return (msg) => {
+    return () => {
         if (store.getState()[`plugins-${manifest.id}`].connected) {
-            const {data} = msg;
-
-            store.dispatch({
-                type: ActionTypes.RECEIVED_SIDEBAR_CONTENT,
-                data,
-            });
+            getSidebarContent()(store.dispatch, store.getState);
         }
     };
 }
