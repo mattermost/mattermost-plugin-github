@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
@@ -955,7 +956,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 	post := &model.Post{
 		UserId:    p.BotUserID,
 		ChannelId: channel.Id,
-		Message:   message,
+		Message:   truncatePostMessage(message),
 		Type:      postType,
 	}
 
@@ -963,6 +964,21 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 		p.client.Log.Warn("Failed to create DM post", "user_id", userID, "channel_id", post.ChannelId, "error", err.Error())
 		return
 	}
+}
+
+func truncatePostMessage(message string) string {
+	const truncationMarker = "\n\n_… message truncated_"
+
+	if utf8.RuneCountInString(message) <= model.PostMessageMaxRunesV2 {
+		return message
+	}
+
+	keep := model.PostMessageMaxRunesV2 - utf8.RuneCountInString(truncationMarker)
+	if keep <= 0 {
+		return string([]rune(truncationMarker)[:model.PostMessageMaxRunesV2])
+	}
+
+	return string([]rune(message)[:keep]) + truncationMarker
 }
 
 func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error) {
