@@ -17,3 +17,6 @@ server/plugin/manifest.go
 
 # notice
 .notice-work
+
+# Runtime-generated agent instructions (never commit)
+AGENTS.md
