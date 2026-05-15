@@ -1094,6 +1094,8 @@ func (p *Plugin) handleReviewCommentMentionNotification(event *github.PullReques
 		body = strings.Split(body, "\n\nOn")[0]
 	}
 
+	body = mdCommentRegex.ReplaceAllString(body, "")
+
 	mentionedUsernames := parseGitHubUsernamesFromText(body)
 
 	message, err := renderTemplate("reviewCommentMentionNotification", event)
@@ -1103,11 +1105,11 @@ func (p *Plugin) handleReviewCommentMentionNotification(event *github.PullReques
 	}
 
 	for _, username := range mentionedUsernames {
-		if username == event.GetSender().GetLogin() {
+		if strings.EqualFold(username, event.GetSender().GetLogin()) {
 			continue
 		}
 
-		if username == event.GetPullRequest().GetUser().GetLogin() {
+		if strings.EqualFold(username, event.GetPullRequest().GetUser().GetLogin()) {
 			continue
 		}
 
@@ -1141,7 +1143,7 @@ func (p *Plugin) handleReviewCommentMentionNotification(event *github.PullReques
 
 func (p *Plugin) handleReviewCommentAuthorNotification(event *github.PullRequestReviewCommentEvent) {
 	author := event.GetPullRequest().GetUser().GetLogin()
-	if author == event.GetSender().GetLogin() {
+	if strings.EqualFold(author, event.GetSender().GetLogin()) {
 		return
 	}
 
