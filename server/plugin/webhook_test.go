@@ -484,8 +484,13 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
 		{
+			name:  "Non-created action is ignored",
+			event: GetMockPullRequestReviewCommentEvent(actionEdited, "body", MockUserLogin),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
 			name:  "No subscriptions found",
-			event: GetMockPullRequestReviewCommentEvent(),
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "This is a review comment", MockUserLogin),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockKVStore.EXPECT().Get(SubscriptionsKey, mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**Subscriptions)
@@ -495,7 +500,7 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 		},
 		{
 			name:  "Error creating post",
-			event: GetMockPullRequestReviewCommentEvent(),
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "This is a review comment", MockUserLogin),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
@@ -503,8 +508,8 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 			},
 		},
 		{
-			name:  "Successful handling of pull request review comment event",
-			event: GetMockPullRequestReviewCommentEvent(),
+			name:  "Successful handling of created review comment event",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "This is a review comment", MockUserLogin),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockSubscription(mockKVStore)
 				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
@@ -520,6 +525,154 @@ func TestPostPullRequestReviewCommentEvent(t *testing.T) {
 			tc.setup(mockAPI, mockKVStore)
 
 			p.postPullRequestReviewCommentEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandleReviewCommentMentionNotification(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *github.PullRequestReviewCommentEvent
+		setup func(*plugintest.API, *mocks.MockKvStore)
+	}{
+		{
+			name:  "Unsupported action edited",
+			event: GetMockPullRequestReviewCommentEvent(actionEdited, "mention @otherUser", MockUserLogin),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Commenter is the same as mentioned user",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "mention @mockUser", MockUserLogin),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Mentioned user is PR author (handled separately)",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "mention @issueAuthor", MockUserLogin),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Mentioned user not mapped to Mattermost",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "mention @otherUser", MockUserLogin),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "Successful mention notification",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "mention @otherUser", MockUserLogin),
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("otherUser_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("otherUserID")).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("otherUserID_githubtoken", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**GitHubUserInfo)
+					return ok
+				})).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", "otherUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			mockAPI.ExpectedCalls = nil
+			tc.setup(mockAPI, mockKVStore)
+
+			p.handleReviewCommentMentionNotification(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+func TestHandleReviewCommentAuthorNotification(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *github.PullRequestReviewCommentEvent
+		setup func(*plugintest.API, *mocks.MockKvStore)
+	}{
+		{
+			name:  "Unsupported action edited",
+			event: GetMockPullRequestReviewCommentEvent(actionEdited, "body", MockUserLogin),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Sender is the PR author",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockIssueAuthor),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Author not mapped to Mattermost",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
+			},
+		},
+		{
+			name:  "Successful author notification",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
+			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).Return(nil).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(**GitHubUserInfo)
+					return ok
+				})).Return(nil).Times(1)
+				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(&model.Channel{Id: "mockChannelID"}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "Muted sender suppresses author notification",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
+			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
+				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(setByteValue("authorUserID")).Times(1)
+				mockKVStore.EXPECT().Get("authorUserID-muted-users", mock.MatchedBy(func(val any) bool {
+					_, ok := val.(*[]uint8)
+					return ok
+				})).DoAndReturn(func(key string, value any) error {
+					if v, ok := value.(*[]byte); ok {
+						*v = []byte(MockUserLogin)
+					}
+					return nil
+				}).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKVStore)
+
+			mockAPI.ExpectedCalls = nil
+			tc.setup(mockAPI, mockKVStore)
+
+			p.handleReviewCommentAuthorNotification(tc.event)
 
 			mockAPI.AssertExpectations(t)
 		})
@@ -762,6 +915,16 @@ func TestHandleCommentAssigneeNotification(t *testing.T) {
 		event *github.IssueCommentEvent
 		setup func(*plugintest.API, *mocks.MockKvStore)
 	}{
+		{
+			name:  "Edited action is ignored",
+			event: GetMockIssueCommentEventWithAssignees("pull", actionEdited, "mockBody", "mockUser", []string{"assigneeUser"}),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Deleted action is ignored",
+			event: GetMockIssueCommentEventWithAssignees("pull", actionDeleted, "mockBody", "mockUser", []string{"assigneeUser"}),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
 		{
 			name:  "Unsupported issue type",
 			event: GetMockIssueCommentEventWithAssignees("mockType", actionCreated, "mockBody", "mockUser", []string{"assigneeUser"}),

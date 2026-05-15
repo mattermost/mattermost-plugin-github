@@ -287,6 +287,8 @@ func (p *Plugin) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		repo = event.GetRepo()
 		handler = func() {
 			p.postPullRequestReviewCommentEvent(event)
+			p.handleReviewCommentMentionNotification(event)
+			p.handleReviewCommentAuthorNotification(event)
 		}
 	case *github.PushEvent:
 		repo = ConvertPushEventRepositoryToRepository(event.GetRepo())
@@ -1019,12 +1021,16 @@ func (p *Plugin) postPullRequestReviewEvent(event *github.PullRequestReviewEvent
 func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestReviewCommentEvent) {
 	repo := event.GetRepo()
 
+	if event.GetAction() != actionCreated {
+		return
+	}
+
 	subs := p.GetSubscribedChannelsForRepository(repo)
 	if len(subs) == 0 {
 		return
 	}
 
-	newReviewMessage, err := renderTemplate("newReviewComment", event)
+	message, err := renderTemplate("newReviewComment", event)
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
@@ -1061,7 +1067,7 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			continue
 		}
 
-		post := p.makeBotPost(newReviewMessage, "custom_git_pr_comment")
+		post := p.makeBotPost(message, "custom_git_pr_comment")
 
 		repoName := strings.ToLower(repo.GetFullName())
 		commentID := event.GetComment().GetID()
@@ -1075,6 +1081,95 @@ func (p *Plugin) postPullRequestReviewCommentEvent(event *github.PullRequestRevi
 			p.client.Log.Warn("Error webhook post", "channel_id", post.ChannelId, "error", err.Error())
 		}
 	}
+}
+
+func (p *Plugin) handleReviewCommentMentionNotification(event *github.PullRequestReviewCommentEvent) {
+	if event.GetAction() != actionCreated {
+		return
+	}
+
+	body := event.GetComment().GetBody()
+
+	if strings.Contains(body, "notifications@github.com") {
+		body = strings.Split(body, "\n\nOn")[0]
+	}
+
+	mentionedUsernames := parseGitHubUsernamesFromText(body)
+
+	message, err := renderTemplate("reviewCommentMentionNotification", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
+		return
+	}
+
+	for _, username := range mentionedUsernames {
+		if username == event.GetSender().GetLogin() {
+			continue
+		}
+
+		if username == event.GetPullRequest().GetUser().GetLogin() {
+			continue
+		}
+
+		userID := p.getGitHubToUserIDMapping(username)
+		if userID == "" {
+			continue
+		}
+
+		if event.GetRepo().GetPrivate() && !p.permissionToRepo(userID, event.GetRepo().GetFullName()) {
+			continue
+		}
+
+		if p.senderMutedByReceiver(userID, event.GetSender().GetLogin()) {
+			continue
+		}
+
+		channel, err := p.client.Channel.GetDirect(userID, p.BotUserID)
+		if err != nil {
+			continue
+		}
+
+		post := p.makeBotPost(message, "custom_git_mention")
+		post.ChannelId = channel.Id
+		if err = p.client.Post.CreatePost(post); err != nil {
+			p.client.Log.Warn("Error creating review comment mention post", "error", err.Error())
+		}
+
+		p.sendRefreshEvent(userID)
+	}
+}
+
+func (p *Plugin) handleReviewCommentAuthorNotification(event *github.PullRequestReviewCommentEvent) {
+	author := event.GetPullRequest().GetUser().GetLogin()
+	if author == event.GetSender().GetLogin() {
+		return
+	}
+
+	if event.GetAction() != actionCreated {
+		return
+	}
+
+	authorUserID := p.getGitHubToUserIDMapping(author)
+	if authorUserID == "" {
+		return
+	}
+
+	if event.GetRepo().GetPrivate() && !p.permissionToRepo(authorUserID, event.GetRepo().GetFullName()) {
+		return
+	}
+
+	if p.senderMutedByReceiver(authorUserID, event.GetSender().GetLogin()) {
+		return
+	}
+
+	message, err := renderTemplate("reviewCommentAuthorNotification", event)
+	if err != nil {
+		p.client.Log.Warn("Failed to render template", "error", err.Error())
+		return
+	}
+
+	p.CreateBotDMPost(authorUserID, message, "custom_git_author")
+	p.sendRefreshEvent(authorUserID)
 }
 
 func (p *Plugin) handleCommentMentionNotification(event *github.IssueCommentEvent) {
@@ -1205,6 +1300,11 @@ func (p *Plugin) handleCommentAuthorNotification(event *github.IssueCommentEvent
 }
 
 func (p *Plugin) handleCommentAssigneeNotification(event *github.IssueCommentEvent) {
+	action := event.GetAction()
+	if action == actionEdited || action == actionDeleted {
+		return
+	}
+
 	author := event.GetIssue().GetUser().GetLogin()
 	assignees := event.GetIssue().Assignees
 	repoName := event.GetRepo().GetFullName()
