@@ -1027,6 +1027,11 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 		return
 	}
 
+	if !p.client.User.HasPermissionToChannel(c.UserID, post.ChannelId, model.PermissionCreatePost) {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "not authorized to post in this channel", StatusCode: http.StatusForbidden})
+		return
+	}
+
 	commentUsername, err := p.getUsername(post.UserId)
 	if err != nil {
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to get username", StatusCode: http.StatusInternalServerError})
@@ -1726,6 +1731,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if issue.PostID == "" && !p.client.User.HasPermissionToChannel(c.UserID, issue.ChannelID, model.PermissionCreatePost) {
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "not authorized to post in this channel", StatusCode: http.StatusForbidden})
+		return
+	}
+
 	mmMessage := ""
 	var post *model.Post
 	permalink := ""
@@ -1738,6 +1748,11 @@ func (p *Plugin) createIssue(c *UserContext, w http.ResponseWriter, r *http.Requ
 		}
 		if post == nil {
 			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "failed to load post " + issue.PostID + ": not found", StatusCode: http.StatusNotFound})
+			return
+		}
+
+		if !p.client.User.HasPermissionToChannel(c.UserID, post.ChannelId, model.PermissionCreatePost) {
+			p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "not authorized to post in this channel", StatusCode: http.StatusForbidden})
 			return
 		}
 
