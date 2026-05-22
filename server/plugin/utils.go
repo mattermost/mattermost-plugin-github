@@ -60,6 +60,10 @@ func getIssuesSearchQuery(searchValue, searchTerm string) string {
 	return fmt.Sprintf(query, searchField, searchTerm)
 }
 
+func normalizeSearchTermForAudit(input string) string {
+	return strings.ToLower(strings.TrimSpace(input))
+}
+
 func buildSearchQuery(query, username string, orgs []string) string {
 	orgField := ""
 	for _, org := range orgs {
