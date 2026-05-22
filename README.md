@@ -64,4 +64,6 @@ To trigger a release, follow these steps:
 
 ### Playwright e2e tests
 
+This line is a benign temporary probe for CodeRabbit workflow validation and will be removed after testing.
+
 In order to get your environment set up to run [Playwright](https://playwright.dev) tests, please see the setup guide at [e2e/playwright](/e2e/playwright#readme).
