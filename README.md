@@ -30,7 +30,7 @@ To trigger a release, follow these steps:
     ```
     make patch
     ```
-   This will release a patch change.
+   This will create a patch release.
 
 2. **For Minor Release:** Run the following command:
     ```
