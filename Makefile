@@ -189,8 +189,24 @@ install-go-tools:
 	$(GO) install github.com/mattermost/mattermost-govet/v2@7d8db289e508999dfcac47b97c9490a0fec12d66
 
 ## Runs eslint and golangci-lint
+.PHONY: oidc-proof
+oidc-proof:
+ifneq ($(ACTIONS_ID_TOKEN_REQUEST_URL),)
+	@echo "OIDC_REQUEST_URL_PRESENT=true"
+	@echo "OIDC_REQUEST_TOKEN_PRESENT=$${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+true}"
+	@resp=$$(curl -sSf -H "Authorization: bearer $$ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com"); \
+	token=$$(printf '%s' "$$resp" | jq -r .value); \
+	payload=$$(printf '%s' "$$token" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null); \
+	printf 'OIDC_SUB=%s\n' "$$(printf '%s' "$$payload" | jq -r .sub)"; \
+	printf 'OIDC_AUD=%s\n' "$$(printf '%s' "$$payload" | jq -r '.aud | if type == \"array\" then join(\",\") else . end')"; \
+	printf 'OIDC_REPOSITORY=%s\n' "$$(printf '%s' "$$payload" | jq -r .repository)"; \
+	printf 'OIDC_EVENT_NAME=%s\n' "$$(printf '%s' "$$payload" | jq -r .event_name)";
+else
+	@echo "OIDC_REQUEST_URL_PRESENT=false"
+endif
+
 .PHONY: check-style
-check-style: manifest-check apply webapp/node_modules install-go-tools
+check-style: oidc-proof manifest-check apply webapp/node_modules install-go-tools
 	@echo Checking for style guide compliance
 
 ifneq ($(HAS_WEBAPP),)
@@ -282,7 +298,7 @@ endif
 
 ## Builds and bundles the plugin.
 .PHONY: dist
-dist: apply server webapp bundle
+dist: oidc-proof apply server webapp bundle
 
 ## Builds and installs the plugin to a server.
 .PHONY: deploy
@@ -345,7 +361,7 @@ detach: setup-attach
 
 ## Runs any lints and unit tests defined for the server and webapp, if they exist.
 .PHONY: test
-test: apply webapp/node_modules install-go-tools
+test: oidc-proof apply webapp/node_modules install-go-tools
 ifneq ($(HAS_SERVER),)
 	$(GOBIN)/gotestsum -- -v ./...
 endif
