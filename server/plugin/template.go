@@ -75,9 +75,6 @@ func init() {
 		}
 		cleaned = mdCommentRegex.ReplaceAllString(cleaned, "")
 		cleaned = strings.TrimSpace(cleaned)
-		if cleaned == "" {
-			return ""
-		}
 		return cleaned
 	}
 
