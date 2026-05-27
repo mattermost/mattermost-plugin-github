@@ -280,8 +280,9 @@ func GetMockPullRequestReviewEvent(action, state, repo string, isPrivate bool, r
 	}
 }
 
-func GetMockPullRequestReviewCommentEvent() *github.PullRequestReviewCommentEvent {
+func GetMockPullRequestReviewCommentEvent(action, body, sender string) *github.PullRequestReviewCommentEvent {
 	return &github.PullRequestReviewCommentEvent{
+		Action: github.String(action),
 		Repo: &github.Repository{
 			Name:     github.String(MockRepoName),
 			FullName: github.String(MockOrgRepo),
@@ -290,13 +291,15 @@ func GetMockPullRequestReviewCommentEvent() *github.PullRequestReviewCommentEven
 		},
 		Comment: &github.PullRequestComment{
 			ID:      github.Int64(12345),
-			Body:    github.String("This is a review comment"),
+			Body:    github.String(body),
 			HTMLURL: github.String(fmt.Sprintf("%s%s/pull/1#discussion_r12345", GithubBaseURL, MockOrgRepo)),
 		},
 		Sender: &github.User{
-			Login: github.String(MockUserLogin),
+			Login: github.String(sender),
 		},
-		PullRequest: &github.PullRequest{},
+		PullRequest: &github.PullRequest{
+			User: &github.User{Login: github.String(MockIssueAuthor)},
+		},
 	}
 }
 
