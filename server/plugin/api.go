@@ -355,7 +355,7 @@ func (p *Plugin) connectUserToGitHub(c *Context, w http.ResponseWriter, r *http.
 		}
 
 		if errorMsg != "" {
-			_, err := p.poster.DMWithAttachments(c.UserID, &model.SlackAttachment{
+			_, err := p.poster.DMWithAttachments(c.UserID, &model.MessageAttachment{
 				Text:  fmt.Sprintf("There was an error connecting to your GitHub: `%s` Please double check your configuration.", errorMsg),
 				Color: string(flow.ColorDanger),
 			})
