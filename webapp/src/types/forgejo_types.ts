@@ -89,17 +89,7 @@ export type ForgejoIssueData = {
     repository_url: string;
 }
 
-export type DefaultRepo = {
-    name: string;
-    full_name: string;
-}
-
 export type YourReposData = {
-    defaultRepo?: DefaultRepo;
-    repos: ReposData[];
-}
-
-export type ReposData = {
     name: string;
     full_name: string;
 }

@@ -13,7 +13,7 @@ const initialState = {
 
 export default class ForgejoRepoSelector extends PureComponent {
     static propTypes = {
-        yourRepos: PropTypes.object.isRequired,
+        yourRepos: PropTypes.array.isRequired,
         theme: PropTypes.object.isRequired,
         onChange: PropTypes.func.isRequired,
         value: PropTypes.string,
@@ -34,21 +34,13 @@ export default class ForgejoRepoSelector extends PureComponent {
         this.props.actions.getRepos(this.props.currentChannelId);
     }
 
-    componentDidUpdate() {
-        const defaultRepo = this.props.yourRepos.defaultRepo;
-
-        if (!(this.props.value) && defaultRepo?.full_name) {
-            this.onChange(defaultRepo.name, defaultRepo.full_name);
-        }
-    }
-
     onChange = (_, name) => {
-        const repo = this.props.yourRepos.repos.find((r) => r.full_name === name);
+        const repo = this.props.yourRepos.find((r) => r.full_name === name);
         this.props.onChange({name, permissions: repo.permissions});
     }
 
     render() {
-        const repoOptions = this.props.yourRepos.repos ? this.props.yourRepos.repos.map((item) => ({value: item.full_name, label: item.full_name})) : [];
+        const repoOptions = this.props.yourRepos.map((item) => ({value: item.full_name, label: item.full_name}));
 
         return (
             <div className={'form-group x3'}>
