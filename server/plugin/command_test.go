@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	testToken = "ycbODW-BWbNBGfF7ac4T5RL5ruNm5BChCXgbkY1bWHqMt80JTkLsicQwo8de3tqfqlfMaglpgjqGOmSHeGp0dA=="
+	testToken = "ycbODW-BWbNBGfF7ac4T5RL5ruNm5BChCXgbkY1bWHqMt80JTkLsicQwo8de3tqfqlfMaglpgjqGOmSHeGp0dA==" //nolint:gosec // test fixture, not a real credential
 )
 
 // Function to get the plugin object for test cases.

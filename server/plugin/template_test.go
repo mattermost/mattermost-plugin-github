@@ -24,11 +24,6 @@ var fRepo = FRepository{
 	HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github"),
 }
 
-var pushEventRepository = github.PushEventRepository{
-	FullName: sToP("mattermost-plugin-forgejo"),
-	HTMLURL:  sToP("https://github.com/mattermost/mattermost-plugin-github"),
-}
-
 var singleLabel = []*github.Label{
 	{
 		Name: sToP("Help Wanted"),
@@ -668,7 +663,7 @@ func TestPushedCommitsTemplate(t *testing.T) {
 			Compare: sToP("https://github.com/mattermost/mattermost-plugin-github/compare/master...branch"),
 			Ref:     sToP("refs/heads/branch"),
 		}
-		//var forced bool = event.Forced
+		// var forced bool = event.Forced
 		actual, err := renderTemplate("pushedCommits", &event)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
@@ -1004,7 +999,6 @@ Excited to see git-get-head land!
 
 func TestPullRequestReviewCommentEventTemplate(t *testing.T) {
 	t.Run("without mentions", func(*testing.T) {
-
 		expected := `
 [\[mattermost-plugin-forgejo\]](https://github.com/mattermost/mattermost-plugin-github) New review comment by [panda](https://github.com/panda) on [#42 Leverage git-get-head](https://github.com/mattermost/mattermost-plugin-github/pull/42):
 
@@ -1317,7 +1311,6 @@ func TestIssueNotification(t *testing.T) {
 
 func TestPullRequestReviewNotification(t *testing.T) {
 	t.Run("approved", func(t *testing.T) {
-
 		expected := `
 [panda](https://github.com/panda) approved your pull request [mattermost-plugin-forgejo#42](https://github.com/mattermost/mattermost-plugin-github/pull/42) - Leverage git-get-head
 >Excited to see git-get-head land!

@@ -47,9 +47,7 @@ func init() {
 	}
 
 	// Trim space
-	funcMap["trimSpace"] = func(body string) string {
-		return strings.TrimSpace(body)
-	}
+	funcMap["trimSpace"] = strings.TrimSpace
 
 	// Trim a ref to use in constructing a link.
 	funcMap["trimRef"] = func(ref string) string {

@@ -506,12 +506,15 @@ func (p *Plugin) MessageWillBePosted(c *plugin.Context, post *model.Post) (*mode
 
 func (p *Plugin) getOAuthConfig() (*oauth2.Config, error) {
 	oauthConfig, err := getOauthConfig(p.getConfiguration())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create OAuth config")
+	}
 	redirectURL, err := buildPluginURL(p.client, "oauth", "complete")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create PluginURL")
 	}
 	oauthConfig.RedirectURL = redirectURL
-	return oauthConfig, err
+	return oauthConfig, nil
 }
 
 func getOauthConfig(config *Configuration) (*oauth2.Config, error) {
@@ -771,9 +774,9 @@ func (p *Plugin) GetToDo(info *ForgejoUserInfo) (string, error) {
 
 	var resultReview, resultAssignee, resultOpenPR []*github.Issue
 	for _, org := range orgList {
-		resultReviewData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestUrl(baseURL, org, "review_requested"))
-		resultOpenPRData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestUrl(baseURL, org, "created"))
-		resultAssigneeData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestUrl(baseURL, org, "assigned"))
+		resultReviewData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestURL(baseURL, org, "review_requested"))
+		resultOpenPRData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestURL(baseURL, org, "created"))
+		resultAssigneeData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestURL(baseURL, org, "assigned"))
 
 		resultReview = fillGhIssue(resultReviewData, baseURL, resultReview)
 		resultOpenPR = fillGhIssue(resultOpenPRData, baseURL, resultOpenPR)
@@ -865,12 +868,14 @@ func (p *Plugin) GetToDo(info *ForgejoUserInfo) (string, error) {
 }
 
 func makeForgejoRequest[T any](p *Plugin, forgejoClient *http.Client, requestURL string) T {
+	var result T
 	response, err := forgejoClient.Get(requestURL)
 	if err != nil {
-		p.client.Log.Error("Failed Forgejo request", "url", requestURL, "error", "error", err.Error())
+		p.client.Log.Error("Failed Forgejo request", "url", requestURL, "error", err.Error())
+		return result
 	}
+	defer response.Body.Close()
 
-	var result T
 	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
 		p.client.Log.Error("Error decoding Plugin JSON body", err.Error())
 	}
@@ -886,9 +891,9 @@ func (p *Plugin) HasUnreads(info *ForgejoUserInfo) bool {
 
 	var resultReview, resultAssignee, resultOpenPR []*github.Issue
 	for _, org := range orgList {
-		resultReviewData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestUrl(baseURL, org, "review_requested"))
-		resultOpenPRData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestUrl(baseURL, org, "created"))
-		resultAssigneeData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestUrl(baseURL, org, "assigned"))
+		resultReviewData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestURL(baseURL, org, "review_requested"))
+		resultOpenPRData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestURL(baseURL, org, "created"))
+		resultAssigneeData := makeForgejoRequest[[]FIssue](p, forgejoClient, p.createRequestURL(baseURL, org, "assigned"))
 
 		resultReview = fillGhIssue(resultReviewData, baseURL, resultReview)
 		resultOpenPR = fillGhIssue(resultOpenPRData, baseURL, resultOpenPR)

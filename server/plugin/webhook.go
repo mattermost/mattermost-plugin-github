@@ -420,7 +420,7 @@ func (p *Plugin) postPullRequestEvent(event *FPullRequestEvent) {
 
 	pr := *event.PullRequest
 	isPRInDraftState := *pr.Draft
-	//eventLabel := *event.Label.Name
+	// eventLabel := *event.Label.Name
 	labels := make([]string, len(pr.Labels))
 	for i, v := range pr.Labels {
 		labels[i] = *v.Name
@@ -477,7 +477,7 @@ func (p *Plugin) postPullRequestEvent(event *FPullRequestEvent) {
 		post.AddProp(postPropForgejoObjectID, prNumber)
 		post.AddProp(postPropForgejoObjectType, forgejoObjectTypeIssue)
 
-		//if action == actionLabeled {
+		// if action == actionLabeled {
 		//	if label != "" && label == eventLabel {
 		//		pullRequestLabelledMessage, err := renderTemplate("pullRequestLabelled", event)
 		//		if err != nil {
@@ -515,7 +515,7 @@ func (p *Plugin) postPullRequestEvent(event *FPullRequestEvent) {
 			post.Message = p.sanitizeDescription(reopenedPRMessage)
 		}
 
-		//if action == actionMarkedReadyForReview {
+		// if action == actionMarkedReadyForReview {
 		//	markedReadyToReviewPRMessage, err := renderTemplate("markedReadyToReviewPR", GetEventWithRenderConfig(event, sub))
 		//	if err != nil {
 		//		p.client.Log.Warn("Failed to render template", "error", err.Error())
@@ -1374,8 +1374,8 @@ func (p *Plugin) handlePullRequestReviewNotification(event *FPullRequestReviewEv
 		return
 	}
 
-	//there is no such action in forgejo
-	//if *event.Action != actionSubmitted {
+	// there is no such action in forgejo
+	// if *event.Action != actionSubmitted {
 	//	return
 	//}
 

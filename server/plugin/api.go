@@ -861,7 +861,7 @@ func (p *Plugin) getMentions(c *UserContext, w http.ResponseWriter, r *http.Requ
 
 	var result []*github.Issue
 	for _, org := range orgList {
-		resultData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "mentioned"))
+		resultData := getRequestResponse(c, forgejoClient, p.createRequestURL(baseURL, org, "mentioned"))
 		result = fillGhIssue(resultData, baseURL, result)
 	}
 	p.writeJSON(w, result)
@@ -930,24 +930,11 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	var mergeable bool
 	// Initialize to a non-nil slice to simplify JSON handling semantics
 	requestedReviewers := []*string{}
-	//reviewsList := []*github.PullRequestReview{}
+	// reviewsList := []*github.PullRequestReview{}
 
 	repoOwner, repoName := getRepoOwnerAndNameFromURL(prURL)
 
 	var wg sync.WaitGroup
-
-	// Fetch reviews
-	//TODO: commented cause of bug in request that always return empty data
-	//wg.Add(1)
-	//go func() {
-	//	defer wg.Done()
-	//	fetchedReviews, err := fetchReviews(c, client, repoOwner, repoName, prNumber)
-	//	if err != nil {
-	//		c.Log.WithError(err).Warnf("Failed to fetch reviews for PR details")
-	//		return
-	//	}
-	//	reviewsList = fetchedReviews
-	//}()
 
 	// Fetch reviewers and status
 	wg.Add(1)
@@ -985,16 +972,6 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 		RequestedReviewers: requestedReviewers,
 		Reviews:            []string{},
 	}
-}
-
-func fetchReviews(c *UserContext, client *github.Client, repoOwner string, repoName string, number int) ([]*github.PullRequestReview, error) {
-	reviewsList, _, err := client.PullRequests.ListReviews(c.Ctx, repoOwner, repoName, number, nil)
-
-	if err != nil {
-		return []*github.PullRequestReview{}, errors.Wrap(err, "could not list reviews")
-	}
-
-	return reviewsList, nil
 }
 
 func getRepoOwnerAndNameFromURL(url string) (string, string) {
@@ -1166,9 +1143,9 @@ func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*github.Issue, assignm
 	orgsList := config.getOrganizations()
 	var resultReview, resultAssignee, resultOpenPR []*github.Issue
 	for _, org := range orgsList {
-		resultReviewData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "review_requested"))
-		resultAssigneeData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "assigned"))
-		resultOpenPRData := getRequestResponse(c, forgejoClient, p.createRequestUrl(baseURL, org, "created"))
+		resultReviewData := getRequestResponse(c, forgejoClient, p.createRequestURL(baseURL, org, "review_requested"))
+		resultAssigneeData := getRequestResponse(c, forgejoClient, p.createRequestURL(baseURL, org, "assigned"))
+		resultOpenPRData := getRequestResponse(c, forgejoClient, p.createRequestURL(baseURL, org, "created"))
 
 		resultReview = fillGhIssue(resultReviewData, baseURL, resultReview)
 		resultAssignee = fillGhIssue(resultAssigneeData, baseURL, resultAssignee)
@@ -1190,7 +1167,9 @@ func getRequestResponse(c *UserContext, forgejoClient *http.Client, requestURL s
 	response, err := forgejoClient.Get(requestURL)
 	if err != nil {
 		c.Log.WithError(err).Warnf("Failed Forgejo issues request")
+		return nil
 	}
+	defer response.Body.Close()
 
 	var result []FIssue
 	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
@@ -1200,8 +1179,8 @@ func getRequestResponse(c *UserContext, forgejoClient *http.Client, requestURL s
 	return result
 }
 
-func (p *Plugin) createRequestUrl(baseUrl string, org string, filter string) string {
-	return fmt.Sprintf("%sapi/v1/repos/issues/search?owner=%s&%s=true&type=pulls&state=open&limit=100", baseUrl, org, filter)
+func (p *Plugin) createRequestURL(baseURL string, org string, filter string) string {
+	return fmt.Sprintf("%sapi/v1/repos/issues/search?owner=%s&%s=true&type=pulls&state=open&limit=100", baseURL, org, filter)
 }
 
 func getGithubLabels(labels []*FLabel) []*github.Label {

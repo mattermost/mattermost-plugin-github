@@ -7,8 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 
-	"github.com/mattermost/mattermost-plugin-github/server/mocks"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+
+	"github.com/mattermost/mattermost-plugin-github/server/mocks"
 )
 
 func TestIgnoreRequestedReview(t *testing.T) {
