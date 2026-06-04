@@ -17,3 +17,6 @@ server/plugin/manifest.go
 .vscode
 
 dev/.env
+
+# notice
+.notice-work

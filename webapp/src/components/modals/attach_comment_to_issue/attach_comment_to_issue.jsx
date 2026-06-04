@@ -5,11 +5,10 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import FormButton from 'components/form_button';
-import Input from 'components/input';
-
-import ForgejoIssueSelector from 'src/components/forgejo_issue_selector';
-import {getErrorMessage} from 'utils/user_utils';
+import ForgejoIssueSelector from '@/components/forgejo_issue_selector';
+import FormButton from '@/components/form_button';
+import Input from '@/components/input';
+import {getErrorMessage} from '@/utils/user_utils';
 
 const initialState = {
     submitting: false,

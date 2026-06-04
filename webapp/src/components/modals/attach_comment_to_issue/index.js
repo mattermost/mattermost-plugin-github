@@ -5,8 +5,9 @@ import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 import {getPost} from 'mattermost-redux/selectors/entities/posts';
 
-import manifest from 'manifest';
-import {closeAttachCommentToIssueModal, attachCommentToIssue} from 'actions';
+import manifest from '@/manifest';
+
+import {closeAttachCommentToIssueModal, attachCommentToIssue} from '@/actions';
 
 import AttachCommentToIssue from './attach_comment_to_issue';
 

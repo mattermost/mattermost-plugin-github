@@ -1,10 +1,14 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import './tooltip.css';
 import {GitMergeIcon, GitPullRequestIcon, IssueClosedIcon, IssueOpenedIcon} from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 
-import Client from 'client';
+import Client from '@/client';
+
 import {getLabelFontColor, hexToRGB} from '../../utils/styles';
 
 const maxTicketDescriptionLength = 160;

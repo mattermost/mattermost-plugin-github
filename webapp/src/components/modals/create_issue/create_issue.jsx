@@ -5,14 +5,14 @@ import React, {PureComponent} from 'react';
 import PropTypes from 'prop-types';
 import {Modal} from 'react-bootstrap';
 
-import ForgejoLabelSelector from 'components/forgejo_label_selector';
-import ForgejoAssigneeSelector from 'components/forgejo_assignee_selector';
-import ForgejoMilestoneSelector from 'components/forgejo_milestone_selector';
-import ForgejoRepoSelector from 'components/forgejo_repo_selector';
-import Validator from 'components/validator';
-import FormButton from 'components/form_button';
-import Input from 'components/input';
-import {getErrorMessage} from 'utils/user_utils';
+import ForgejoLabelSelector from '@/components/forgejo_label_selector';
+import ForgejoAssigneeSelector from '@/components/forgejo_assignee_selector';
+import ForgejoMilestoneSelector from '@/components/forgejo_milestone_selector';
+import ForgejoRepoSelector from '@/components/forgejo_repo_selector';
+import Validator from '@/components/validator';
+import FormButton from '@/components/form_button';
+import Input from '@/components/input';
+import {getErrorMessage} from '@/utils/user_utils';
 
 const MAX_TITLE_LENGTH = 256;
 
@@ -197,7 +197,6 @@ export default class CreateIssueModal extends PureComponent {
                     label='Title for the Forgejo Issue'
                     type='input'
                     required={true}
-                    disabled={false}
                     maxLength={MAX_TITLE_LENGTH}
                     value={this.state.issueTitle}
                     onChange={this.handleIssueTitleChange}

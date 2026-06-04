@@ -1,4 +1,4 @@
-// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
 import {combineReducers} from 'redux';
@@ -106,7 +106,9 @@ function sidebarContent(state = {
     }
 }
 
-function yourRepos(state: YourReposData[] = [], action: {type: string, data: YourReposData[]}) {
+function yourRepos(state: YourReposData = {
+    repos: [],
+}, action: {type: string, data: YourReposData}) {
     switch (action.type) {
     case ActionTypes.RECEIVED_REPOSITORIES:
         return action.data;
