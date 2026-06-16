@@ -81,6 +81,15 @@ export default class SidebarRight extends React.PureComponent {
         }).isRequired,
     };
 
+    constructor(props) {
+        super(props);
+        this.state = {sortBy: 'created'};
+    }
+
+    handleSortChange = (e) => {
+        this.setState({sortBy: e.target.value});
+    }
+
     componentDidMount() {
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
@@ -145,6 +154,14 @@ export default class SidebarRight extends React.PureComponent {
             break;
         }
 
+        // Sort items by selected criteria
+        const {sortBy} = this.state;
+        const sortedItems = githubItems.slice().sort((a, b) => {
+            const dateA = sortBy === 'updated' ? a.updated_at : a.created_at;
+            const dateB = sortBy === 'updated' ? b.updated_at : b.created_at;
+            return new Date(dateB) - new Date(dateA);
+        });
+
         return (
             <React.Fragment>
                 <Scrollbars
@@ -163,10 +180,18 @@ export default class SidebarRight extends React.PureComponent {
                                 rel='noopener noreferrer'
                             >{title}</a>
                         </strong>
+                        <select
+                            value={sortBy}
+                            onChange={this.handleSortChange}
+                            style={style.sortDropdown}
+                        >
+                            <option value='created'>Sort: Created</option>
+                            <option value='updated'>Sort: Updated</option>
+                        </select>
                     </div>
                     <div>
                         <GithubItems
-                            items={githubItems}
+                            items={sortedItems}
                             theme={this.props.theme}
                             showReviewSLA={rhsState === RHSStates.REVIEWS}
                             reviewTargetDays={this.props.reviewTargetDays || 0}
@@ -181,5 +206,13 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
+    },
+    sortDropdown: {
+        marginLeft: '8px',
+        padding: '2px 4px',
+        fontSize: '12px',
+        borderRadius: '4px',
+        border: '1px solid rgba(0, 0, 0, 0.2)',
+        background: 'transparent',
     },
 };
