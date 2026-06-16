@@ -4,7 +4,7 @@
 import {connect} from 'react-redux';
 import {bindActionCreators} from 'redux';
 
-import {getReviewsDetails, getYourPrsDetails} from '../../actions';
+import {getReviewsDetails, getYourPrsDetails, getSidebarContent} from '../../actions';
 
 import {getSidebarData} from 'src/selectors';
 
@@ -30,6 +30,7 @@ function mapDispatchToProps(dispatch) {
         actions: bindActionCreators({
             getYourPrsDetails,
             getReviewsDetails,
+            getSidebarContent,
         }, dispatch),
     };
 }
