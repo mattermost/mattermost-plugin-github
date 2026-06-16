@@ -146,7 +146,7 @@
                 "key": "OverdueReviewsChannelID",
                 "display_name": "Post overdue review alerts to channel (ID):",
                 "type": "text",
-                "help_text": "Optional. Paste a channel ID (Channel menu > View Info). When set together with PR review target (days), the plugin posts one aggregated overdue-review digest to this channel each day shortly after midnight in the server local timezone (the GitHub bot must be a member of the channel)."
+                "help_text": "Optional. Paste a channel ID (Channel menu > View Info). When set together with PR review target (days) and GitHub Organizations, the plugin posts one aggregated overdue-review digest for those orgs to this channel each day shortly after midnight in the server local timezone. Requires at least one user connected via /github connect. The GitHub bot must be a member of the channel."
             }
         ],
         "footer": "* To report an issue, make a suggestion or a contribution, [check the repository](https://github.com/mattermost/mattermost-plugin-github)."
