@@ -409,47 +409,68 @@ func (p *Plugin) createPost(channelID, userID, message string) error {
 }
 
 func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, userInfo *GitHubUserInfo, repo, owner string) (bool, error) {
-	found := false
-	opt := &github.ListOptions{
-		PerPage: PerPageValue,
-	}
 	siteURL, err := getSiteURL(p.client)
 	if err != nil {
 		return false, err
 	}
 
+	// For an organization subscription only the organization-level webhooks are relevant.
+	if repo == "" {
+		return p.findWebhookForSiteURL(userInfo, siteURL, func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error) {
+			return githubClient.Organizations.ListHooks(ctx, owner, opt)
+		})
+	}
+
+	// For a repository subscription, check the repository-level webhooks first.
+	found, err := p.findWebhookForSiteURL(userInfo, siteURL, func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error) {
+		return githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+	})
+	if err != nil || found {
+		return found, err
+	}
+
+	// The webhook may instead be configured at the organization level, which still
+	// delivers events for this repository. Listing organization webhooks requires
+	// org-admin scope that a repository subscriber often lacks (yielding a 403/404), so
+	// treat this as a best-effort fallback: swallow its error and report "not found"
+	// rather than propagating, preserving the caller's existing behavior for such users.
+	found, orgErr := p.findWebhookForSiteURL(userInfo, siteURL, func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error) {
+		return githubClient.Organizations.ListHooks(ctx, owner, opt)
+	})
+	if orgErr != nil {
+		p.client.Log.Debug("Unable to check organization webhooks as fallback for repository subscription", "Owner", owner, "Repo", repo, "error", orgErr.Error())
+		return false, nil
+	}
+
+	return found, nil
+}
+
+// findWebhookForSiteURL pages through the webhooks returned by listHooks and reports
+// whether any of them targets the configured site URL. listHooks fetches a single page of
+// webhooks for the given list options; pagination is handled here. Any error from the
+// underlying GitHub call is returned unwrapped so callers can string-match on it (e.g.
+// "404 Not Found").
+func (p *Plugin) findWebhookForSiteURL(userInfo *GitHubUserInfo, siteURL string, listHooks func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error)) (bool, error) {
+	opt := &github.ListOptions{
+		PerPage: PerPageValue,
+	}
+
 	for {
 		var githubHooks []*github.Hook
 		var githubResponse *github.Response
-		var err, cErr error
+		var err error
 
-		if repo == "" {
-			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		} else {
-			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		}
-
+		cErr := p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
+			githubHooks, githubResponse, err = listHooks(opt)
+			return err
+		})
 		if cErr != nil {
-			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", err.Error())
-			return found, err
+			return false, cErr
 		}
 
 		for _, hook := range githubHooks {
-			if strings.Contains(hook.Config["url"].(string), siteURL) {
-				found = true
-				break
+			if url, ok := hook.Config["url"].(string); ok && strings.Contains(url, siteURL) {
+				return true, nil
 			}
 		}
 
@@ -459,7 +480,7 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 		opt.Page = githubResponse.NextPage
 	}
 
-	return found, nil
+	return false, nil
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
