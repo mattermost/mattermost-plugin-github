@@ -409,57 +409,73 @@ func (p *Plugin) createPost(channelID, userID, message string) error {
 }
 
 func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClient *github.Client, userInfo *GitHubUserInfo, repo, owner string) (bool, error) {
-	found := false
-	opt := &github.ListOptions{
-		PerPage: PerPageValue,
-	}
 	siteURL, err := getSiteURL(p.client)
 	if err != nil {
 		return false, err
 	}
 
+	listOrgHooks := func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error) {
+		return githubClient.Organizations.ListHooks(ctx, owner, opt)
+	}
+
+	if repo == "" {
+		return p.anyHookMatchesSiteURL(userInfo, owner, repo, siteURL, listOrgHooks)
+	}
+
+	found, err := p.anyHookMatchesSiteURL(userInfo, owner, repo, siteURL, func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error) {
+		return githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
+	})
+	if err != nil {
+		return false, err
+	}
+	if found {
+		return true, nil
+	}
+
+	found, err = p.anyHookMatchesSiteURL(userInfo, owner, repo, siteURL, listOrgHooks)
+	if err != nil {
+		if isWebhookListAccessError(err) {
+			return true, nil
+		}
+		return false, err
+	}
+	return found, nil
+}
+
+func (p *Plugin) anyHookMatchesSiteURL(userInfo *GitHubUserInfo, owner, repo, siteURL string, list func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error)) (bool, error) {
+	opt := &github.ListOptions{PerPage: PerPageValue}
 	for {
-		var githubHooks []*github.Hook
-		var githubResponse *github.Response
-		var err, cErr error
-
-		if repo == "" {
-			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-				githubHooks, githubResponse, err = githubClient.Organizations.ListHooks(ctx, owner, opt)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		} else {
-			cErr = p.useGitHubClient(userInfo, func(info *GitHubUserInfo, token *oauth2.Token) error {
-				githubHooks, githubResponse, err = githubClient.Repositories.ListHooks(ctx, owner, repo, opt)
-				if err != nil {
-					return err
-				}
-				return nil
-			})
-		}
-
+		var hooks []*github.Hook
+		var resp *github.Response
+		var listErr error
+		cErr := p.useGitHubClient(userInfo, func(_ *GitHubUserInfo, _ *oauth2.Token) error {
+			hooks, resp, listErr = list(opt)
+			return listErr
+		})
 		if cErr != nil {
-			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", err.Error())
-			return found, err
+			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", listErr.Error())
+			return false, listErr
 		}
 
-		for _, hook := range githubHooks {
-			if strings.Contains(hook.Config["url"].(string), siteURL) {
-				found = true
-				break
+		for _, hook := range hooks {
+			if url, ok := hook.Config["url"].(string); ok && strings.Contains(url, siteURL) {
+				return true, nil
 			}
 		}
 
-		if githubResponse.NextPage == 0 {
-			break
+		if resp.NextPage == 0 {
+			return false, nil
 		}
-		opt.Page = githubResponse.NextPage
+		opt.Page = resp.NextPage
 	}
+}
 
-	return found, nil
+func isWebhookListAccessError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "404 Not Found") || strings.Contains(msg, "403 Forbidden")
 }
 
 func (p *Plugin) handleSubscribesAdd(_ *plugin.Context, args *model.CommandArgs, parameters []string, userInfo *GitHubUserInfo) string {
