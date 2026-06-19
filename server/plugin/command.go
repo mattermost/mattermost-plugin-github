@@ -453,8 +453,8 @@ func (p *Plugin) anyHookMatchesSiteURL(userInfo *GitHubUserInfo, owner, repo, si
 			return listErr
 		})
 		if cErr != nil {
-			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", listErr.Error())
-			return false, listErr
+			p.client.Log.Warn("Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", cErr.Error())
+			return false, cErr
 		}
 
 		for _, hook := range hooks {
@@ -463,7 +463,7 @@ func (p *Plugin) anyHookMatchesSiteURL(userInfo *GitHubUserInfo, owner, repo, si
 			}
 		}
 
-		if resp.NextPage == 0 {
+		if resp == nil || resp.NextPage == 0 {
 			return false, nil
 		}
 		opt.Page = resp.NextPage
