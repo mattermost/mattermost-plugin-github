@@ -114,13 +114,40 @@ func (p *Plugin) resolveReviewerDisplayName(githubLogin string) string {
 	return fmt.Sprintf("(not connected) - %s", githubLogin)
 }
 
-// pickServiceGitHubUser returns the first connected user the digest can use as a service
-// caller for org-wide GitHub queries. Keys are sorted before iteration so the choice is
-// deterministic across runs (and across cluster nodes) — otherwise the digest's visibility
-// into private repos/teams could silently shift run-to-run with KV iteration order.
+// pickServiceGitHubUser returns the connected user the digest uses as a service caller for
+// org-wide GitHub queries. When DigestServiceUsername is set, only that Mattermost user is
+// considered; otherwise keys are sorted before iteration so the choice is deterministic
+// across runs (and across cluster nodes).
 //
-// Returns nil when no connected user is available; the digest cannot run in that case.
+// Returns nil when no usable connected user is available; the digest cannot run in that case.
 func (p *Plugin) pickServiceGitHubUser(ctx context.Context) *GitHubUserInfo {
+	if configured := strings.TrimSpace(p.getConfiguration().DigestServiceUsername); configured != "" {
+		if ctx.Err() != nil {
+			return nil
+		}
+		user, err := p.client.User.GetByUsername(configured)
+		if err != nil {
+			p.client.Log.Warn("SLA digest configured service user not found",
+				"username", configured, "error", err.Error())
+			return nil
+		}
+		if user == nil {
+			p.client.Log.Warn("SLA digest configured service user not found", "username", configured)
+			return nil
+		}
+		ghInfo, apiErr := p.getGitHubUserInfo(user.Id)
+		if apiErr != nil || ghInfo == nil {
+			p.client.Log.Warn("SLA digest configured service user is not connected to GitHub",
+				"username", configured, "user_id", user.Id)
+			return nil
+		}
+		p.client.Log.Info("SLA digest using configured service user",
+			"mattermost_username", configured,
+			"github_username", ghInfo.GitHubUsername,
+			"user_id", user.Id)
+		return ghInfo
+	}
+
 	checker := func(key string) (bool, error) {
 		return strings.HasSuffix(key, githubTokenKey), nil
 	}

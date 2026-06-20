@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 
@@ -428,6 +429,42 @@ func TestPickServiceGitHubUser_NoConnectedUsers(t *testing.T) {
 	assert.Nil(t, p.pickServiceGitHubUser(context.Background()))
 }
 
+func TestPickServiceGitHubUser_ConfiguredMattermostUsername(t *testing.T) {
+	p, mockKvStore, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	p.setConfiguration(&Configuration{
+		EncryptionKey:         "dummyEncryptKey1",
+		DigestServiceUsername: "it33",
+	})
+
+	api, ok := p.API.(*plugintest.API)
+	require.True(t, ok, "expected plugintest.API")
+	api.On("GetUserByUsername", "it33").Return(&model.User{Id: "ceo-user-id", Username: "it33"}, nil)
+	api.On("LogInfo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+	encryptedToken, err := encrypt([]byte("dummyEncryptKey1"), MockAccessToken)
+	require.NoError(t, err)
+	storedInfo := GitHubUserInfo{
+		UserID:         "ceo-user-id",
+		GitHubUsername: "ceo-gh",
+		Token:          &oauth2.Token{AccessToken: encryptedToken},
+		Settings:       &UserSettings{},
+	}
+	infoBytes, err := json.Marshal(&storedInfo)
+	require.NoError(t, err)
+	mockKvStore.EXPECT().Get("ceo-user-id"+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(_ string, out any) error {
+			return json.Unmarshal(infoBytes, out)
+		},
+	)
+
+	picked := p.pickServiceGitHubUser(context.Background())
+	require.NotNil(t, picked)
+	assert.Equal(t, "ceo-user-id", picked.UserID)
+	assert.Equal(t, "ceo-gh", picked.GitHubUsername)
+}
+
 func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
 	// The summary log must (a) not fire until summarize() is called and (b) reflect the
 	// resolver's actual usage when it does. Locks in the fix for a prior bug where the log
@@ -533,7 +570,8 @@ func setupServiceUserPickTest(t *testing.T) (*Plugin, *mocks.MockKvStore, *gomoc
 	mockKvStore := mocks.NewMockKvStore(ctrl)
 
 	api := &plugintest.API{}
-	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 	api.On("LogDebug", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 
 	p := NewPlugin()
