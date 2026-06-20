@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v54/github"
@@ -233,6 +234,27 @@ func TestBuildSLADigestMessage(t *testing.T) {
 		assert.Equal(t, []string{"o/r - [alpha](url)", "o/r - [zeta](url)"}, groups[0].Bodies,
 			"bodies inside a reviewer group should be sorted alphabetically")
 		assert.Equal(t, "@bob (bob-gh)", groups[1].ReviewerDisplay)
+	})
+}
+
+func TestClipSLADigestMessage(t *testing.T) {
+	t.Run("short message is unchanged", func(t *testing.T) {
+		msg := "hello"
+		assert.Equal(t, msg, clipSLADigestMessage(msg))
+	})
+
+	t.Run("oversized message is clipped with marker", func(t *testing.T) {
+		msg := strings.Repeat("a", slaDigestMaxMessageRunes+1000)
+		out := clipSLADigestMessage(msg)
+		assert.LessOrEqual(t, utf8.RuneCountInString(out), slaDigestMaxMessageRunes)
+		assert.True(t, strings.HasSuffix(out, slaDigestClippedMarker))
+	})
+
+	t.Run("multibyte runes are not split", func(t *testing.T) {
+		msg := strings.Repeat("✓", slaDigestMaxMessageRunes+500)
+		out := clipSLADigestMessage(msg)
+		assert.LessOrEqual(t, utf8.RuneCountInString(out), slaDigestMaxMessageRunes)
+		assert.True(t, utf8.ValidString(out))
 	})
 }
 

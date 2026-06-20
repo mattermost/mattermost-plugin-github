@@ -24,6 +24,9 @@ const (
 	// slaDigestDayKVKey stores the last local calendar day (server timezone) we posted or skipped the digest.
 	slaDigestDayKVKey = "github_sla_digest_local_day"
 	slaDigestMutexKey = "github_sla_digest_mutex"
+	// slaDigestMaxMessageRunes caps the channel digest below Mattermost post limits (64K runes).
+	slaDigestMaxMessageRunes = 64000
+	slaDigestClippedMarker   = "\n\n_This digest was clipped due to message size limits._"
 )
 
 // slaDigestEntry is one (reviewer, PR) pair past SLA. Stored as separate fields rather than
@@ -84,7 +87,7 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		return
 	}
 
-	msg := buildSLADigestMessage(entries, cfg.ReviewTargetDays)
+	msg := clipSLADigestMessage(buildSLADigestMessage(entries, cfg.ReviewTargetDays))
 	post := &model.Post{
 		ChannelId: cfg.OverdueReviewsChannelID,
 		UserId:    p.BotUserID,
@@ -573,4 +576,8 @@ func buildSLADigestMessage(entries []slaDigestEntry, targetDays int) string {
 		b.WriteString("\n")
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func clipSLADigestMessage(message string) string {
+	return truncateMessageAtRunes(message, slaDigestMaxMessageRunes, slaDigestClippedMarker)
 }

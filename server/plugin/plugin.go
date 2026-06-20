@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/go-github/v54/github"
 	"github.com/gorilla/mux"
@@ -968,17 +967,7 @@ func (p *Plugin) CreateBotDMPost(userID, message, postType string) {
 
 func truncatePostMessage(message string) string {
 	const truncationMarker = "\n\n_… message truncated_"
-
-	if utf8.RuneCountInString(message) <= model.PostMessageMaxRunesV2 {
-		return message
-	}
-
-	keep := model.PostMessageMaxRunesV2 - utf8.RuneCountInString(truncationMarker)
-	if keep <= 0 {
-		return string([]rune(truncationMarker)[:model.PostMessageMaxRunesV2])
-	}
-
-	return string([]rune(message)[:keep]) + truncationMarker
+	return truncateMessageAtRunes(message, model.PostMessageMaxRunesV2, truncationMarker)
 }
 
 func (p *Plugin) CheckIfDuplicateDailySummary(userID, text string) (bool, error) {
