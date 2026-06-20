@@ -86,20 +86,22 @@ func TestSLABucketIndex(t *testing.T) {
 	}{
 		{0, ""},
 		{-3, ""},
-		{1, "1-3 days overdue"},
-		{3, "1-3 days overdue"},
-		{4, "4-7 days overdue"},
-		{7, "4-7 days overdue"},
-		{8, "8-14 days overdue"},
-		{14, "8-14 days overdue"},
-		{15, "15-30 days overdue"},
-		{30, "15-30 days overdue"},
-		{31, "31-90 days overdue"},
-		{90, "31-90 days overdue"},
-		{91, "91-365 days overdue"},
-		{365, "91-365 days overdue"},
-		{366, "More than 1 year overdue"},
-		{1000, "More than 1 year overdue"},
+		{1, "Overdue"},
+		{6, "Overdue"},
+		{7, "Overdue by 1 week"},
+		{13, "Overdue by 1 week"},
+		{14, "Overdue by 2 weeks"},
+		{20, "Overdue by 2 weeks"},
+		{21, "Overdue by 3 weeks"},
+		{27, "Overdue by 3 weeks"},
+		{28, "Overdue by 1 month"},
+		{89, "Overdue by 1 month"},
+		{90, "Overdue by 3 months"},
+		{179, "Overdue by 3 months"},
+		{180, "Overdue by 6 months"},
+		{364, "Overdue by 6 months"},
+		{365, "Over a year overdue"},
+		{1000, "Over a year overdue"},
 	}
 
 	for _, tc := range cases {
@@ -133,15 +135,15 @@ func TestBuildSLADigestMessage(t *testing.T) {
 		assert.True(t, strings.HasPrefix(msg, "### Pull request reviews past SLA (target: 3 days from most recent review request)"))
 
 		// Verify bucket order in message: most overdue first.
-		idxYear := strings.Index(msg, "#### More than 1 year overdue")
-		idx91 := strings.Index(msg, "#### 91-365 days overdue")
-		idx8 := strings.Index(msg, "#### 8-14 days overdue")
-		idx4 := strings.Index(msg, "#### 4-7 days overdue")
-		idx1 := strings.Index(msg, "#### 1-3 days overdue")
-		assert.True(t, idxYear >= 0 && idx91 > idxYear && idx8 > idx91 && idx4 > idx8 && idx1 > idx4, "buckets should appear in most-overdue-first order")
+		idxYear := strings.Index(msg, "#### Over a year overdue")
+		idx3mo := strings.Index(msg, "#### Overdue by 3 months")
+		idx1wk := strings.Index(msg, "#### Overdue by 1 week")
+		idxOverdue := strings.Index(msg, "#### Overdue\n")
+		assert.True(t, idxYear >= 0 && idx3mo > idxYear && idx1wk > idx3mo && idxOverdue > idx1wk,
+			"buckets should appear in most-overdue-first order")
 
-		assert.NotContains(t, msg, "#### 31-90 days overdue", "empty bucket should be omitted")
-		assert.NotContains(t, msg, "#### 15-30 days overdue", "empty bucket should be omitted")
+		assert.NotContains(t, msg, "#### Overdue by 6 months", "empty bucket should be omitted")
+		assert.NotContains(t, msg, "#### Overdue by 1 month", "empty bucket should be omitted")
 	})
 
 	t.Run("non-overdue entries are dropped", func(t *testing.T) {
@@ -190,8 +192,8 @@ func TestBuildSLADigestMessage(t *testing.T) {
 
 		// The reviewer header must appear EXACTLY once in this bucket — that's the whole
 		// point of grouping; otherwise the digest still @-spams the reviewer per-PR.
-		bucketStart := strings.Index(msg, "#### 1-3 days overdue")
-		require.True(t, bucketStart >= 0, "expected the 1-3 days bucket header")
+		bucketStart := strings.Index(msg, "#### Overdue\n")
+		require.True(t, bucketStart >= 0, "expected the Overdue bucket header")
 		bucketSlice := msg[bucketStart:]
 		assert.Equal(t, 1, strings.Count(bucketSlice, "- "+reviewer+"\n"),
 			"reviewer should appear once per bucket as the outer bullet")
@@ -211,7 +213,7 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(2, "@bob (bob-gh)", "o/r - [c-pr](url)"),
 		}
 		msg := buildSLADigestMessage(entries, 3)
-		bucketStart := strings.Index(msg, "#### 1-3 days overdue")
+		bucketStart := strings.Index(msg, "#### Overdue\n")
 		require.True(t, bucketStart >= 0)
 		bucket := msg[bucketStart:]
 

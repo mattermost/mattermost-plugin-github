@@ -480,13 +480,14 @@ var slaBuckets = []struct {
 	min   int // inclusive; -1 for open-ended upper bucket
 	max   int // inclusive; -1 for open-ended upper bucket
 }{
-	{label: "More than 1 year overdue", min: 366, max: -1},
-	{label: "91-365 days overdue", min: 91, max: 365},
-	{label: "31-90 days overdue", min: 31, max: 90},
-	{label: "15-30 days overdue", min: 15, max: 30},
-	{label: "8-14 days overdue", min: 8, max: 14},
-	{label: "4-7 days overdue", min: 4, max: 7},
-	{label: "1-3 days overdue", min: 1, max: 3},
+	{label: "Over a year overdue", min: 365, max: -1},
+	{label: "Overdue by 6 months", min: 180, max: 364},
+	{label: "Overdue by 3 months", min: 90, max: 179},
+	{label: "Overdue by 1 month", min: 28, max: 89},
+	{label: "Overdue by 3 weeks", min: 21, max: 27},
+	{label: "Overdue by 2 weeks", min: 14, max: 20},
+	{label: "Overdue by 1 week", min: 7, max: 13},
+	{label: "Overdue", min: 1, max: 6},
 }
 
 // slaBucketIndex returns the index into slaBuckets for the given days-overdue value, or -1 if not overdue.
