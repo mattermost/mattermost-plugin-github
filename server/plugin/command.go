@@ -432,6 +432,14 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 		return true, nil
 	}
 
+	isOrg, err := p.isOrganization(ctx, githubClient, owner)
+	if err != nil {
+		return false, err
+	}
+	if !isOrg {
+		return false, nil
+	}
+
 	found, err = p.anyHookMatchesSiteURL(userInfo, owner, repo, siteURL, listOrgHooks)
 	if err != nil {
 		if isWebhookListAccessError(err) {
@@ -440,6 +448,17 @@ func (p *Plugin) checkIfConfiguredWebhookExists(ctx context.Context, githubClien
 		return false, err
 	}
 	return found, nil
+}
+
+func (p *Plugin) isOrganization(ctx context.Context, githubClient *github.Client, owner string) (bool, error) {
+	_, resp, err := githubClient.Organizations.Get(ctx, owner)
+	if err != nil {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func (p *Plugin) anyHookMatchesSiteURL(userInfo *GitHubUserInfo, owner, repo, siteURL string, list func(opt *github.ListOptions) ([]*github.Hook, *github.Response, error)) (bool, error) {

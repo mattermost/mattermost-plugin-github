@@ -4,12 +4,18 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-github/v54/github"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
@@ -1782,6 +1788,131 @@ func TestFormattedString(t *testing.T) {
 			assert.Equal(t, tc.expectedString, result)
 		})
 	}
+}
+
+func TestCheckIfConfiguredWebhookExists(t *testing.T) {
+	const (
+		siteURL = "https://example.com"
+		owner   = "test-owner"
+		repo    = "test-repo"
+	)
+
+	newGitHubClient := func(t *testing.T, server *httptest.Server) *github.Client {
+		t.Helper()
+		client := github.NewClient(nil)
+		base, err := url.Parse(server.URL + "/")
+		require.NoError(t, err)
+		client.BaseURL = base
+		client.UploadURL = base
+		return client
+	}
+
+	configureSiteURL := func(api *plugintest.API) {
+		siteURLCopy := siteURL
+		api.On("GetConfig").Return(&model.Config{
+			ServiceSettings: model.ServiceSettings{SiteURL: &siteURLCopy},
+		})
+	}
+
+	t.Run("user-owned repo skips org-hooks fallback and returns false", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		userInfo, err := GetMockGHUserInfo(p)
+		require.NoError(t, err)
+		configureSiteURL(mockAPI)
+
+		var orgHooksCalls int32
+		mux := http.NewServeMux()
+		mux.HandleFunc(fmt.Sprintf("/repos/%s/%s/hooks", owner, repo), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("[]"))
+		})
+		mux.HandleFunc(fmt.Sprintf("/orgs/%s", owner), func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, `{"message":"Not Found"}`, http.StatusNotFound)
+		})
+		mux.HandleFunc(fmt.Sprintf("/orgs/%s/hooks", owner), func(w http.ResponseWriter, _ *http.Request) {
+			atomic.AddInt32(&orgHooksCalls, 1)
+			http.Error(w, `{"message":"Not Found"}`, http.StatusNotFound)
+		})
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		found, err := p.checkIfConfiguredWebhookExists(context.Background(), newGitHubClient(t, server), userInfo, repo, owner)
+		require.NoError(t, err)
+		assert.False(t, found)
+		assert.Zero(t, atomic.LoadInt32(&orgHooksCalls), "org-hooks endpoint must not be called for user-owned repos")
+	})
+
+	t.Run("repo-level webhook matches site URL", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		userInfo, err := GetMockGHUserInfo(p)
+		require.NoError(t, err)
+		configureSiteURL(mockAPI)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc(fmt.Sprintf("/repos/%s/%s/hooks", owner, repo), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, `[{"config":{"url":"%s/plugins/github/webhook"}}]`, siteURL)
+		})
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		found, err := p.checkIfConfiguredWebhookExists(context.Background(), newGitHubClient(t, server), userInfo, repo, owner)
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
+
+	t.Run("org-owned repo falls back to org-hooks and finds a match", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		userInfo, err := GetMockGHUserInfo(p)
+		require.NoError(t, err)
+		configureSiteURL(mockAPI)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc(fmt.Sprintf("/repos/%s/%s/hooks", owner, repo), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("[]"))
+		})
+		mux.HandleFunc(fmt.Sprintf("/orgs/%s", owner), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, `{"login":"%s","type":"Organization"}`, owner)
+		})
+		mux.HandleFunc(fmt.Sprintf("/orgs/%s/hooks", owner), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, `[{"config":{"url":"%s/plugins/github/webhook"}}]`, siteURL)
+		})
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		found, err := p.checkIfConfiguredWebhookExists(context.Background(), newGitHubClient(t, server), userInfo, repo, owner)
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
+
+	t.Run("org-owned repo treats org-hooks access error as configured", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		userInfo, err := GetMockGHUserInfo(p)
+		require.NoError(t, err)
+		configureSiteURL(mockAPI)
+		mockAPI.On("LogWarn", "Not able to get the list of webhooks", "Owner", owner, "Repo", repo, "error", mock.Anything).Maybe()
+		mockAPI.On("LogWarn", "Error occurred while using the Github client", "error", mock.Anything).Maybe()
+
+		mux := http.NewServeMux()
+		mux.HandleFunc(fmt.Sprintf("/repos/%s/%s/hooks", owner, repo), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte("[]"))
+		})
+		mux.HandleFunc(fmt.Sprintf("/orgs/%s", owner), func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = fmt.Fprintf(w, `{"login":"%s","type":"Organization"}`, owner)
+		})
+		mux.HandleFunc(fmt.Sprintf("/orgs/%s/hooks", owner), func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"message":"Forbidden"}`))
+		})
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		found, err := p.checkIfConfiguredWebhookExists(context.Background(), newGitHubClient(t, server), userInfo, repo, owner)
+		require.NoError(t, err)
+		assert.True(t, found, "403 from org-hooks should be treated as access error and assumed configured")
+	})
 }
 
 func TestToSlice(t *testing.T) {
