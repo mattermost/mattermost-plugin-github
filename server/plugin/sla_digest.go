@@ -24,6 +24,9 @@ const (
 	// slaDigestDayKVKey stores the last local calendar day (server timezone) we posted or skipped the digest.
 	slaDigestDayKVKey = "github_sla_digest_local_day"
 	slaDigestMutexKey = "github_sla_digest_mutex"
+	// slaDigestMaxMessageRunes caps the channel digest below Mattermost post limits (64K runes).
+	slaDigestMaxMessageRunes = 64000
+	slaDigestClippedMarker   = "\n\n_This digest was clipped due to message size limits._"
 )
 
 // slaDigestEntry is one (reviewer, PR) pair past SLA. Stored as separate fields rather than
@@ -84,7 +87,7 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		return
 	}
 
-	msg := buildSLADigestMessage(entries, cfg.ReviewTargetDays)
+	msg := clipSLADigestMessage(buildSLADigestMessage(entries, cfg.ReviewTargetDays))
 	post := &model.Post{
 		ChannelId: cfg.OverdueReviewsChannelID,
 		UserId:    p.BotUserID,
@@ -114,13 +117,40 @@ func (p *Plugin) resolveReviewerDisplayName(githubLogin string) string {
 	return fmt.Sprintf("(not connected) - %s", githubLogin)
 }
 
-// pickServiceGitHubUser returns the first connected user the digest can use as a service
-// caller for org-wide GitHub queries. Keys are sorted before iteration so the choice is
-// deterministic across runs (and across cluster nodes) — otherwise the digest's visibility
-// into private repos/teams could silently shift run-to-run with KV iteration order.
+// pickServiceGitHubUser returns the connected user the digest uses as a service caller for
+// org-wide GitHub queries. When DigestServiceUsername is set, only that Mattermost user is
+// considered; otherwise keys are sorted before iteration so the choice is deterministic
+// across runs (and across cluster nodes).
 //
-// Returns nil when no connected user is available; the digest cannot run in that case.
+// Returns nil when no usable connected user is available; the digest cannot run in that case.
 func (p *Plugin) pickServiceGitHubUser(ctx context.Context) *GitHubUserInfo {
+	if configured := strings.TrimSpace(p.getConfiguration().DigestServiceUsername); configured != "" {
+		if ctx.Err() != nil {
+			return nil
+		}
+		user, err := p.client.User.GetByUsername(configured)
+		if err != nil {
+			p.client.Log.Warn("SLA digest configured service user not found",
+				"username", configured, "error", err.Error())
+			return nil
+		}
+		if user == nil {
+			p.client.Log.Warn("SLA digest configured service user not found", "username", configured)
+			return nil
+		}
+		ghInfo, apiErr := p.getGitHubUserInfo(user.Id)
+		if apiErr != nil || ghInfo == nil {
+			p.client.Log.Warn("SLA digest configured service user is not connected to GitHub",
+				"username", configured, "user_id", user.Id)
+			return nil
+		}
+		p.client.Log.Info("SLA digest using configured service user",
+			"mattermost_username", configured,
+			"github_username", ghInfo.GitHubUsername,
+			"user_id", user.Id)
+		return ghInfo
+	}
+
 	checker := func(key string) (bool, error) {
 		return strings.HasSuffix(key, githubTokenKey), nil
 	}
@@ -450,13 +480,14 @@ var slaBuckets = []struct {
 	min   int // inclusive; -1 for open-ended upper bucket
 	max   int // inclusive; -1 for open-ended upper bucket
 }{
-	{label: "More than 1 year overdue", min: 366, max: -1},
-	{label: "91-365 days overdue", min: 91, max: 365},
-	{label: "31-90 days overdue", min: 31, max: 90},
-	{label: "15-30 days overdue", min: 15, max: 30},
-	{label: "8-14 days overdue", min: 8, max: 14},
-	{label: "4-7 days overdue", min: 4, max: 7},
-	{label: "1-3 days overdue", min: 1, max: 3},
+	{label: "Over a year overdue", min: 365, max: -1},
+	{label: "Overdue by 6 months", min: 180, max: 364},
+	{label: "Overdue by 3 months", min: 90, max: 179},
+	{label: "Overdue by 1 month", min: 28, max: 89},
+	{label: "Overdue by 3 weeks", min: 21, max: 27},
+	{label: "Overdue by 2 weeks", min: 14, max: 20},
+	{label: "Overdue by 1 week", min: 7, max: 13},
+	{label: "Overdue", min: 1, max: 6},
 }
 
 // slaBucketIndex returns the index into slaBuckets for the given days-overdue value, or -1 if not overdue.
@@ -546,4 +577,8 @@ func buildSLADigestMessage(entries []slaDigestEntry, targetDays int) string {
 		b.WriteString("\n")
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func clipSLADigestMessage(message string) string {
+	return truncateMessageAtRunes(message, slaDigestMaxMessageRunes, slaDigestClippedMarker)
 }

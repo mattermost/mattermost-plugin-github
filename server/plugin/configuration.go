@@ -46,6 +46,9 @@ type Configuration struct {
 	ReviewTargetDays int `json:"reviewtargetdays"`
 	// OverdueReviewsChannelID is an optional channel ID for daily alerts when users have overdue review requests.
 	OverdueReviewsChannelID string `json:"overduereviewschannelid"`
+	// DigestServiceUsername is the Mattermost username whose GitHub connection runs the overdue review digest.
+	// When empty, the plugin falls back to the lexicographically-first connected user.
+	DigestServiceUsername string `json:"digestserviceusername"`
 }
 
 func (c *Configuration) ToMap() (map[string]any, error) {
@@ -105,6 +108,7 @@ func (c *Configuration) sanitize() {
 	c.EnterpriseBaseURL = strings.TrimRight(c.EnterpriseBaseURL, "/")
 	c.EnterpriseUploadURL = strings.TrimRight(c.EnterpriseUploadURL, "/")
 	c.OverdueReviewsChannelID = strings.TrimSpace(c.OverdueReviewsChannelID)
+	c.DigestServiceUsername = strings.TrimSpace(c.DigestServiceUsername)
 	if c.ReviewTargetDays < 0 {
 		c.ReviewTargetDays = 0
 	}

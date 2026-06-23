@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 
@@ -402,6 +403,27 @@ func formatChannelOverduePRBody(title, htmlURL, baseURL string) string {
 		titleDisplay = fmt.Sprintf("[%s](%s)", escapeMarkdownLinkText(title), htmlURL)
 	}
 	return fmt.Sprintf("%s - %s", repoDisplay, titleDisplay)
+}
+
+// truncateMessageAtRunes shortens message to at most maxRunes runes, appending marker when clipped.
+// Truncation is rune-aware so multibyte UTF-8 sequences are not split.
+func truncateMessageAtRunes(message string, maxRunes int, marker string) string {
+	if maxRunes <= 0 {
+		return ""
+	}
+	if utf8.RuneCountInString(message) <= maxRunes {
+		return message
+	}
+	markerRunes := utf8.RuneCountInString(marker)
+	keep := maxRunes - markerRunes
+	if keep <= 0 {
+		runes := []rune(marker)
+		if len(runes) > maxRunes {
+			return string(runes[:maxRunes])
+		}
+		return marker
+	}
+	return string([]rune(message)[:keep]) + marker
 }
 
 // escapeMarkdownLinkText escapes characters that would break a markdown link's display text.

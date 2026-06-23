@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v54/github"
@@ -18,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
 
@@ -84,20 +86,22 @@ func TestSLABucketIndex(t *testing.T) {
 	}{
 		{0, ""},
 		{-3, ""},
-		{1, "1-3 days overdue"},
-		{3, "1-3 days overdue"},
-		{4, "4-7 days overdue"},
-		{7, "4-7 days overdue"},
-		{8, "8-14 days overdue"},
-		{14, "8-14 days overdue"},
-		{15, "15-30 days overdue"},
-		{30, "15-30 days overdue"},
-		{31, "31-90 days overdue"},
-		{90, "31-90 days overdue"},
-		{91, "91-365 days overdue"},
-		{365, "91-365 days overdue"},
-		{366, "More than 1 year overdue"},
-		{1000, "More than 1 year overdue"},
+		{1, "Overdue"},
+		{6, "Overdue"},
+		{7, "Overdue by 1 week"},
+		{13, "Overdue by 1 week"},
+		{14, "Overdue by 2 weeks"},
+		{20, "Overdue by 2 weeks"},
+		{21, "Overdue by 3 weeks"},
+		{27, "Overdue by 3 weeks"},
+		{28, "Overdue by 1 month"},
+		{89, "Overdue by 1 month"},
+		{90, "Overdue by 3 months"},
+		{179, "Overdue by 3 months"},
+		{180, "Overdue by 6 months"},
+		{364, "Overdue by 6 months"},
+		{365, "Over a year overdue"},
+		{1000, "Over a year overdue"},
 	}
 
 	for _, tc := range cases {
@@ -131,15 +135,15 @@ func TestBuildSLADigestMessage(t *testing.T) {
 		assert.True(t, strings.HasPrefix(msg, "### Pull request reviews past SLA (target: 3 days from most recent review request)"))
 
 		// Verify bucket order in message: most overdue first.
-		idxYear := strings.Index(msg, "#### More than 1 year overdue")
-		idx91 := strings.Index(msg, "#### 91-365 days overdue")
-		idx8 := strings.Index(msg, "#### 8-14 days overdue")
-		idx4 := strings.Index(msg, "#### 4-7 days overdue")
-		idx1 := strings.Index(msg, "#### 1-3 days overdue")
-		assert.True(t, idxYear >= 0 && idx91 > idxYear && idx8 > idx91 && idx4 > idx8 && idx1 > idx4, "buckets should appear in most-overdue-first order")
+		idxYear := strings.Index(msg, "#### Over a year overdue")
+		idx3mo := strings.Index(msg, "#### Overdue by 3 months")
+		idx1wk := strings.Index(msg, "#### Overdue by 1 week")
+		idxOverdue := strings.Index(msg, "#### Overdue\n")
+		assert.True(t, idxYear >= 0 && idx3mo > idxYear && idx1wk > idx3mo && idxOverdue > idx1wk,
+			"buckets should appear in most-overdue-first order")
 
-		assert.NotContains(t, msg, "#### 31-90 days overdue", "empty bucket should be omitted")
-		assert.NotContains(t, msg, "#### 15-30 days overdue", "empty bucket should be omitted")
+		assert.NotContains(t, msg, "#### Overdue by 6 months", "empty bucket should be omitted")
+		assert.NotContains(t, msg, "#### Overdue by 1 month", "empty bucket should be omitted")
 	})
 
 	t.Run("non-overdue entries are dropped", func(t *testing.T) {
@@ -188,8 +192,8 @@ func TestBuildSLADigestMessage(t *testing.T) {
 
 		// The reviewer header must appear EXACTLY once in this bucket — that's the whole
 		// point of grouping; otherwise the digest still @-spams the reviewer per-PR.
-		bucketStart := strings.Index(msg, "#### 1-3 days overdue")
-		require.True(t, bucketStart >= 0, "expected the 1-3 days bucket header")
+		bucketStart := strings.Index(msg, "#### Overdue\n")
+		require.True(t, bucketStart >= 0, "expected the Overdue bucket header")
 		bucketSlice := msg[bucketStart:]
 		assert.Equal(t, 1, strings.Count(bucketSlice, "- "+reviewer+"\n"),
 			"reviewer should appear once per bucket as the outer bullet")
@@ -209,7 +213,7 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(2, "@bob (bob-gh)", "o/r - [c-pr](url)"),
 		}
 		msg := buildSLADigestMessage(entries, 3)
-		bucketStart := strings.Index(msg, "#### 1-3 days overdue")
+		bucketStart := strings.Index(msg, "#### Overdue\n")
 		require.True(t, bucketStart >= 0)
 		bucket := msg[bucketStart:]
 
@@ -232,6 +236,27 @@ func TestBuildSLADigestMessage(t *testing.T) {
 		assert.Equal(t, []string{"o/r - [alpha](url)", "o/r - [zeta](url)"}, groups[0].Bodies,
 			"bodies inside a reviewer group should be sorted alphabetically")
 		assert.Equal(t, "@bob (bob-gh)", groups[1].ReviewerDisplay)
+	})
+}
+
+func TestClipSLADigestMessage(t *testing.T) {
+	t.Run("short message is unchanged", func(t *testing.T) {
+		msg := "hello"
+		assert.Equal(t, msg, clipSLADigestMessage(msg))
+	})
+
+	t.Run("oversized message is clipped with marker", func(t *testing.T) {
+		msg := strings.Repeat("a", slaDigestMaxMessageRunes+1000)
+		out := clipSLADigestMessage(msg)
+		assert.LessOrEqual(t, utf8.RuneCountInString(out), slaDigestMaxMessageRunes)
+		assert.True(t, strings.HasSuffix(out, slaDigestClippedMarker))
+	})
+
+	t.Run("multibyte runes are not split", func(t *testing.T) {
+		msg := strings.Repeat("✓", slaDigestMaxMessageRunes+500)
+		out := clipSLADigestMessage(msg)
+		assert.LessOrEqual(t, utf8.RuneCountInString(out), slaDigestMaxMessageRunes)
+		assert.True(t, utf8.ValidString(out))
 	})
 }
 
@@ -428,6 +453,42 @@ func TestPickServiceGitHubUser_NoConnectedUsers(t *testing.T) {
 	assert.Nil(t, p.pickServiceGitHubUser(context.Background()))
 }
 
+func TestPickServiceGitHubUser_ConfiguredMattermostUsername(t *testing.T) {
+	p, mockKvStore, ctrl := setupServiceUserPickTest(t)
+	defer ctrl.Finish()
+
+	p.setConfiguration(&Configuration{
+		EncryptionKey:         "dummyEncryptKey1",
+		DigestServiceUsername: "it33",
+	})
+
+	api, ok := p.API.(*plugintest.API)
+	require.True(t, ok, "expected plugintest.API")
+	api.On("GetUserByUsername", "it33").Return(&model.User{Id: "ceo-user-id", Username: "it33"}, nil)
+	api.On("LogInfo", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+
+	encryptedToken, err := encrypt([]byte("dummyEncryptKey1"), MockAccessToken)
+	require.NoError(t, err)
+	storedInfo := GitHubUserInfo{
+		UserID:         "ceo-user-id",
+		GitHubUsername: "ceo-gh",
+		Token:          &oauth2.Token{AccessToken: encryptedToken},
+		Settings:       &UserSettings{},
+	}
+	infoBytes, err := json.Marshal(&storedInfo)
+	require.NoError(t, err)
+	mockKvStore.EXPECT().Get("ceo-user-id"+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(_ string, out any) error {
+			return json.Unmarshal(infoBytes, out)
+		},
+	)
+
+	picked := p.pickServiceGitHubUser(context.Background())
+	require.NotNil(t, picked)
+	assert.Equal(t, "ceo-user-id", picked.UserID)
+	assert.Equal(t, "ceo-gh", picked.GitHubUsername)
+}
+
 func TestNewDigestSLAStartResolver_LogsAccurateCounters(t *testing.T) {
 	// The summary log must (a) not fire until summarize() is called and (b) reflect the
 	// resolver's actual usage when it does. Locks in the fix for a prior bug where the log
@@ -533,7 +594,8 @@ func setupServiceUserPickTest(t *testing.T) (*Plugin, *mocks.MockKvStore, *gomoc
 	mockKvStore := mocks.NewMockKvStore(ctrl)
 
 	api := &plugintest.API{}
-	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 	api.On("LogDebug", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
 
 	p := NewPlugin()
