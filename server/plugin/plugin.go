@@ -726,6 +726,8 @@ func (p *Plugin) getGitHubToUsernameMapping(githubUsername string) string {
 }
 
 func (p *Plugin) disconnectGitHubAccount(userID string) {
+	p.clearSAMLSSONotification(userID)
+
 	userInfo, apiErr := p.getGitHubUserInfo(userID)
 	if apiErr != nil {
 		if apiErr.ID == apiErrorIDNotConnected {
@@ -1351,6 +1353,10 @@ func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUs
 
 	if err != nil && strings.Contains(err.Error(), invalidTokenError) {
 		p.handleRevokedToken(info)
+	}
+
+	if err != nil {
+		p.handleGitHubAPIError(&UserContext{Context: Context{UserID: info.UserID}, GHInfo: info}, err)
 	}
 
 	return err

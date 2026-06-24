@@ -124,6 +124,7 @@ export type SidebarContentData = {
     reviews: GithubIssueData[];
     assignments: GithubIssueData[];
     unreads: UnreadsData[];
+    saml_sso_message?: string;
 }
 
 export type MentionsData = {
@@ -179,6 +180,7 @@ export type SidebarData = {
     orgs: string[],
     rhsState?: string | null,
     reviewTargetDays: number,
+    samlSSOMessage?: string,
 }
 
 export type Organization = {

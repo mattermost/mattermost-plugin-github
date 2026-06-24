@@ -64,6 +64,7 @@ export const getSidebarData = createSelector(
             orgs: organizations,
             rhsState,
             reviewTargetDays: pluginConfig.review_target_days || 0,
+            samlSSOMessage: sidebarContent.saml_sso_message,
         };
     },
 );

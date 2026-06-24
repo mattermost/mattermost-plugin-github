@@ -10,6 +10,8 @@ import (
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
+
+	"github.com/mattermost/mattermost-plugin-github/server/githuberrors"
 )
 
 const (
@@ -31,24 +33,25 @@ type GithubPRDetails struct {
 	ReviewSLAStartAt *string `json:"review_sla_start,omitempty"`
 }
 
-func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
+func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, bool, error) {
 	orgsList := c.getOrganizations()
 	var resultAssignee []*github.Issue
 	var resultReview, resultOpenPR []*GithubPRDetails
+	var samlSSORequired bool
 
 	var err error
 	for _, org := range orgsList {
-		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, c.username)
+		resultReview, resultAssignee, resultOpenPR, samlSSORequired, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, c.username, samlSSORequired)
 		if err != nil {
 			c.logger.Error("Error fetching LHS data for org", "org", org, "error", err.Error())
 		}
 	}
 
 	if len(orgsList) == 0 {
-		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", c.username)
+		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", c.username, samlSSORequired)
 	}
 
-	return resultReview, resultAssignee, resultOpenPR, nil
+	return resultReview, resultAssignee, resultOpenPR, samlSSORequired, nil
 }
 
 func (c *Client) fetchLHSData(
@@ -58,7 +61,8 @@ func (c *Client) fetchLHSData(
 	resultOpenPR []*GithubPRDetails,
 	org string,
 	username string,
-) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, error) {
+	samlSSORequired bool,
+) ([]*GithubPRDetails, []*github.Issue, []*GithubPRDetails, bool, error) {
 	baseOpenPR := fmt.Sprintf("author:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
 	baseReviewPR := fmt.Sprintf("review-requested:%s is:pr is:%s archived:false", username, githubv4.PullRequestStateOpen)
 	baseAssignee := fmt.Sprintf("assignee:%s is:%s archived:false", username, githubv4.PullRequestStateOpen)
@@ -82,7 +86,11 @@ func (c *Client) fetchLHSData(
 
 	for !allReviewRequestsFetched || !allAssignmentsFetched || !allOpenPRsFetched {
 		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Not able to execute the query")
+			if githuberrors.IsSAMLSSORequired(err) {
+				samlSSORequired = true
+				return resultReview, resultAssignee, resultOpenPR, samlSSORequired, nil
+			}
+			return nil, nil, nil, samlSSORequired, errors.Wrap(err, "Not able to execute the query")
 		}
 
 		if !allReviewRequestsFetched {
@@ -128,7 +136,7 @@ func (c *Client) fetchLHSData(
 		}
 	}
 
-	return resultReview, resultAssignee, resultOpenPR, nil
+	return resultReview, resultAssignee, resultOpenPR, samlSSORequired, nil
 }
 
 func getPR(prResp *prSearchNodes) *GithubPRDetails {

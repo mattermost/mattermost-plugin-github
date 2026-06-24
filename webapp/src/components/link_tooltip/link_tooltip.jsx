@@ -15,6 +15,7 @@ const maxTicketDescriptionLength = 160;
 
 export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
     const [data, setData] = useState(null);
+    const [errorMessage, setErrorMessage] = useState(null);
     useEffect(() => {
         const initData = async () => {
             let owner;
@@ -36,13 +37,26 @@ export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
             }
 
             let res;
-            switch (type) {
-            case 'issues':
-                res = await Client.getIssue(owner, repo, number);
-                break;
-            case 'pull':
-                res = await Client.getPullRequest(owner, repo, number);
-                break;
+            try {
+                switch (type) {
+                case 'issues':
+                    res = await Client.getIssue(owner, repo, number);
+                    break;
+                case 'pull':
+                    res = await Client.getPullRequest(owner, repo, number);
+                    break;
+                }
+            } catch (e) {
+                const message = e?.message || '';
+                if (message.includes('saml_sso_required') || message.toLowerCase().includes('saml')) {
+                    try {
+                        const parsed = JSON.parse(message);
+                        setErrorMessage(parsed.message || message);
+                    } catch {
+                        setErrorMessage(message);
+                    }
+                }
+                return;
             }
             if (res) {
                 res.owner = owner;
@@ -53,12 +67,12 @@ export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
         };
 
         // show is not provided for Mattermost Server < 5.28
-        if (!connected || data || ((typeof (show) !== 'undefined' || show != null) && !show)) {
+        if (!connected || data || errorMessage || ((typeof (show) !== 'undefined' || show != null) && !show)) {
             return;
         }
 
         initData();
-    }, [connected, data, href, show, enterpriseURL]);
+    }, [connected, data, errorMessage, href, show, enterpriseURL]);
 
     const openedByLink = useMemo(() => {
         if (!data?.user?.login) {
@@ -119,6 +133,24 @@ export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
             </span>
         );
     };
+
+    if (errorMessage) {
+        return (
+            <div className='github-tooltip'>
+                <div
+                    className='github-tooltip box github-tooltip--large github-tooltip--bottom-left p-4'
+                    style={{backgroundColor: theme.centerChannelBg, border: `1px solid ${hexToRGB(theme.centerChannelColor, '0.16')}`}}
+                >
+                    <p
+                        className='mb-0'
+                        style={{color: theme.errorTextColor || theme.dndIndicator}}
+                    >
+                        {errorMessage}
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     if (data) {
         let date = new Date(data.created_at);

@@ -74,6 +74,7 @@ export default class SidebarRight extends React.PureComponent {
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         rhsState: PropTypes.string,
         reviewTargetDays: PropTypes.number,
+        samlSSOMessage: PropTypes.string,
         theme: PropTypes.object.isRequired,
         actions: PropTypes.shape({
             getYourPrsDetails: PropTypes.func.isRequired,
@@ -108,7 +109,7 @@ export default class SidebarRight extends React.PureComponent {
             orgQuery += ('+org%3A' + org);
             return orgQuery;
         });
-        const {yourPrs, reviews, unreads, yourAssignments, username, rhsState} = this.props;
+        const {yourPrs, reviews, unreads, yourAssignments, username, rhsState, samlSSOMessage} = this.props;
 
         let title = '';
         let githubItems = [];
@@ -164,6 +165,14 @@ export default class SidebarRight extends React.PureComponent {
                             >{title}</a>
                         </strong>
                     </div>
+                    {samlSSOMessage && (
+                        <div
+                            className='alert alert-warning'
+                            style={style.samlAlert}
+                        >
+                            {samlSSOMessage}
+                        </div>
+                    )}
                     <div>
                         <GithubItems
                             items={githubItems}
@@ -181,5 +190,8 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
+    },
+    samlAlert: {
+        margin: '0 15px 15px',
     },
 };

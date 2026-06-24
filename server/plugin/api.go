@@ -84,10 +84,11 @@ type FilteredNotification struct {
 }
 
 type SidebarContent struct {
-	PRs         []*graphql.GithubPRDetails `json:"prs"`
-	Reviews     []*graphql.GithubPRDetails `json:"reviews"`
-	Assignments []*github.Issue            `json:"assignments"`
-	Unreads     []*FilteredNotification    `json:"unreads"`
+	PRs            []*graphql.GithubPRDetails `json:"prs"`
+	Reviews        []*graphql.GithubPRDetails `json:"reviews"`
+	Assignments    []*github.Issue            `json:"assignments"`
+	Unreads        []*FilteredNotification    `json:"unreads"`
+	SAMLSSOMessage string                     `json:"saml_sso_message,omitempty"`
 }
 
 type Context struct {
@@ -463,6 +464,8 @@ func (p *Plugin) completeConnectUserToGitHub(c *Context, w http.ResponseWriter, 
 		return
 	}
 
+	p.clearSAMLSSONotification(state.UserID)
+
 	if err = p.storeGitHubToUserIDMapping(gitUser.GetLogin(), state.UserID); err != nil {
 		c.Log.WithError(err).Warnf("Failed to store GitHub user info mapping")
 	}
@@ -815,6 +818,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	wg.Go(func() {
 		fetchedReviews, err := fetchReviews(c, client, repoOwner, repoName, prNumber)
 		if err != nil {
+			p.handleGitHubAPIError(c, err)
 			c.Log.WithError(err).Warnf("Failed to fetch reviews for PR details")
 			return
 		}
@@ -825,6 +829,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	wg.Go(func() {
 		prInfo, _, err := client.PullRequests.Get(c.Ctx, repoOwner, repoName, prNumber)
 		if err != nil {
+			p.handleGitHubAPIError(c, err)
 			c.Log.WithError(err).Warnf("Failed to fetch PR for PR details")
 			return
 		}
@@ -836,6 +841,7 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 		}
 		statuses, _, err := client.Repositories.GetCombinedStatus(c.Ctx, repoOwner, repoName, prInfo.GetHead().GetSHA(), nil)
 		if err != nil {
+			p.handleGitHubAPIError(c, err)
 			c.Log.WithError(err).Warnf("Failed to fetch combined status")
 			return
 		}
@@ -1096,31 +1102,40 @@ func (p *Plugin) createIssueComment(c *UserContext, w http.ResponseWriter, r *ht
 	p.writeJSON(w, result)
 }
 
-func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetails, assignmentResp []*github.Issue, openPRResp []*graphql.GithubPRDetails, err error) {
+func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetails, assignmentResp []*github.Issue, openPRResp []*graphql.GithubPRDetails, samlSSORequired bool, err error) {
 	graphQLClient := p.graphQLConnect(c.GHInfo)
 
-	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Ctx)
+	reviewResp, assignmentResp, openPRResp, samlSSORequired, err = graphQLClient.GetLHSData(c.Ctx)
 	if err != nil {
-		return []*graphql.GithubPRDetails{}, []*github.Issue{}, []*graphql.GithubPRDetails{}, err
+		return []*graphql.GithubPRDetails{}, []*github.Issue{}, []*graphql.GithubPRDetails{}, samlSSORequired, err
 	}
 
-	return reviewResp, assignmentResp, openPRResp, nil
+	if samlSSORequired {
+		p.notifySAMLSSORequired(c.UserID)
+	}
+
+	return reviewResp, assignmentResp, openPRResp, samlSSORequired, nil
 }
 
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
-	reviewResp, assignmentResp, openPRResp, err := p.getLHSData(c)
+	reviewResp, assignmentResp, openPRResp, samlSSORequired, err := p.getLHSData(c)
 	if err != nil {
 		return nil, err
 	}
 
 	p.enrichReviewsWithSLAStart(reviewResp, c.GHInfo.GitHubUsername)
 
-	return &SidebarContent{
+	content := &SidebarContent{
 		PRs:         openPRResp,
 		Assignments: assignmentResp,
 		Reviews:     reviewResp,
 		Unreads:     p.getUnreadsData(c),
-	}, nil
+	}
+	if samlSSORequired {
+		content.SAMLSSOMessage = samlSSOUserMessage
+	}
+
+	return content, nil
 }
 
 func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *http.Request) {
@@ -1212,6 +1227,10 @@ func (p *Plugin) getIssueByNumber(c *UserContext, w http.ResponseWriter, r *http
 			return
 		}
 
+		if p.writeSAMLSSOErrorIfNeeded(c, w, cErr) {
+			return
+		}
+
 		c.Log.WithError(cErr).With(logger.LogContext{
 			"owner":  owner,
 			"repo":   repo,
@@ -1257,6 +1276,10 @@ func (p *Plugin) getPrByNumber(c *UserContext, w http.ResponseWriter, r *http.Re
 			}).Debugf("Pull request not found")
 
 			p.writeJSON(w, nil)
+			return
+		}
+
+		if p.writeSAMLSSOErrorIfNeeded(c, w, cErr) {
 			return
 		}
 
