@@ -4,6 +4,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Scrollbars from 'react-custom-scrollbars-2';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 
 import {RHSStates} from '../../constants';
 
@@ -78,10 +79,31 @@ export default class SidebarRight extends React.PureComponent {
         actions: PropTypes.shape({
             getYourPrsDetails: PropTypes.func.isRequired,
             getReviewsDetails: PropTypes.func.isRequired,
+            getSidebarContent: PropTypes.func.isRequired,
         }).isRequired,
     };
 
+    constructor(props) {
+        super(props);
+        this.state = {refreshing: false};
+    }
+
+    handleRefresh = async (e) => {
+        if (e) {
+            e.preventDefault();
+        }
+        if (this.state.refreshing) {
+            return;
+        }
+        this.setState({refreshing: true});
+        await this.props.actions.getSidebarContent();
+        this.setState({refreshing: false});
+    };
+
     componentDidMount() {
+        // Auto-refresh on open to guarantee latest data (issue #131)
+        this.handleRefresh();
+
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
         }
@@ -163,6 +185,19 @@ export default class SidebarRight extends React.PureComponent {
                                 rel='noopener noreferrer'
                             >{title}</a>
                         </strong>
+                        <OverlayTrigger
+                            key='rhsRefreshButton'
+                            placement='left'
+                            overlay={<Tooltip id='rhsRefreshTooltip'>{'Refresh'}</Tooltip>}
+                        >
+                            <a
+                                href='#'
+                                style={style.refreshButton}
+                                onClick={this.handleRefresh}
+                            >
+                                <i className={'fa fa-refresh' + (this.state.refreshing ? ' fa-spin' : '')}/>
+                            </a>
+                        </OverlayTrigger>
                     </div>
                     <div>
                         <GithubItems
@@ -181,5 +216,12 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    refreshButton: {
+        color: 'rgba(0, 0, 0, 0.4)',
+        cursor: 'pointer',
     },
 };
