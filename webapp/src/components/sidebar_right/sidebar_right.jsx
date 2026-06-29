@@ -81,6 +81,15 @@ export default class SidebarRight extends React.PureComponent {
         }).isRequired,
     };
 
+    constructor(props) {
+        super(props);
+        this.state = {selectedRepo: ''};
+    }
+
+    handleRepoFilterChange = (e) => {
+        this.setState({selectedRepo: e.target.value});
+    }
+
     componentDidMount() {
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
@@ -92,6 +101,11 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     componentDidUpdate(prevProps) {
+        // Reset repo filter when switching RHS tabs
+        if (prevProps.rhsState !== this.props.rhsState) {
+            this.setState({selectedRepo: ''});
+        }
+
         if (shouldUpdateDetails(this.props.yourPrs, prevProps.yourPrs, RHSStates.PRS, this.props.rhsState, prevProps.rhsState)) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
         }
@@ -134,16 +148,41 @@ export default class SidebarRight extends React.PureComponent {
             githubItems = unreads;
             title = 'Unread Messages';
             listUrl = baseURL + '/notifications';
+
             break;
         case RHSStates.ASSIGNMENTS:
 
             githubItems = yourAssignments;
             title = 'Your Assignments';
             listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + username + orgQuery;
+
             break;
         default:
             break;
         }
+
+        // Extract unique repo names for filter dropdown
+        const repoNames = [...new Set(
+            githubItems.map((item) => {
+                if (item.repository_url) {
+                    return item.repository_url.replace(/.+\/repos\//, '');
+                } else if (item.repository?.full_name) {
+                    return item.repository.full_name;
+                }
+                return null;
+            }).filter(Boolean),
+        )].sort();
+
+        // Filter items by selected repo
+        const {selectedRepo} = this.state;
+        const filteredItems = selectedRepo ?
+            githubItems.filter((item) => {
+                const repoName = item.repository_url ?
+                    item.repository_url.replace(/.+\/repos\//, '') :
+                    item.repository?.full_name;
+                return repoName === selectedRepo;
+            }) :
+            githubItems;
 
         return (
             <React.Fragment>
@@ -163,10 +202,22 @@ export default class SidebarRight extends React.PureComponent {
                                 rel='noopener noreferrer'
                             >{title}</a>
                         </strong>
+                        {repoNames.length > 1 && (
+                            <select
+                                value={selectedRepo}
+                                onChange={this.handleRepoFilterChange}
+                                style={style.repoFilter}
+                            >
+                                <option value=''>All repositories</option>
+                                {repoNames.map((repo) => (
+                                    <option key={repo} value={repo}>{repo}</option>
+                                ))}
+                            </select>
+                        )}
                     </div>
                     <div>
                         <GithubItems
-                            items={githubItems}
+                            items={filteredItems}
                             theme={this.props.theme}
                             showReviewSLA={rhsState === RHSStates.REVIEWS}
                             reviewTargetDays={this.props.reviewTargetDays || 0}
@@ -181,5 +232,13 @@ export default class SidebarRight extends React.PureComponent {
 const style = {
     sectionHeader: {
         padding: '15px',
+    },
+    repoFilter: {
+        marginLeft: '8px',
+        padding: '2px 4px',
+        fontSize: '12px',
+        borderRadius: '4px',
+        border: '1px solid rgba(0, 0, 0, 0.2)',
+        background: 'transparent',
     },
 };
