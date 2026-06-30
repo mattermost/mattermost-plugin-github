@@ -5,11 +5,13 @@ package plugin
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 	"unicode/utf8"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -43,6 +45,7 @@ func setupRotationTest(t *testing.T) (*Plugin, *plugintest.API, *mocks.MockKvSto
 
 	api.On("KVSetWithOptions", mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Maybe()
 	api.On("LogError", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+	api.On("LogWarn", mock.Anything, mock.Anything, mock.Anything).Maybe()
 	api.On("LogAuditRec", mock.Anything).Maybe()
 
 	return p, api, mockKvStore, ctrl
@@ -405,4 +408,156 @@ func TestTruncatePostMessage(t *testing.T) {
 		require.True(t, utf8.ValidString(out), "truncated output should remain valid UTF-8")
 		require.True(t, strings.HasSuffix(out, "_… message truncated_"))
 	})
+}
+
+func TestIsGitHubAuthFailure(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		require.False(t, isGitHubAuthFailure(nil))
+	})
+
+	t.Run("401 bad credentials string", func(t *testing.T) {
+		require.True(t, isGitHubAuthFailure(errors.New(invalidTokenError)))
+	})
+
+	t.Run("401 from ErrorResponse", func(t *testing.T) {
+		err := &github.ErrorResponse{Response: &http.Response{StatusCode: http.StatusUnauthorized}}
+		require.True(t, isGitHubAuthFailure(err))
+	})
+
+	t.Run("401 from graphql client message", func(t *testing.T) {
+		err := errors.New("non-200 OK status code: 401 Unauthorized")
+		require.True(t, isGitHubAuthFailure(err))
+	})
+
+	t.Run("403 SAML from ErrorResponse", func(t *testing.T) {
+		err := &github.ErrorResponse{
+			Message: "Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.",
+			Response: &http.Response{
+				StatusCode: http.StatusForbidden,
+				Header:     http.Header{"X-Github-Sso": []string{"required; url=https://github.com/orgs/foo/sso"}},
+			},
+		}
+		require.True(t, isGitHubAuthFailure(err))
+	})
+
+	t.Run("403 SAML from graphql error string", func(t *testing.T) {
+		err := errors.New("error in executing query: GraphQL: Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.")
+		require.True(t, isGitHubAuthFailure(err))
+	})
+
+	t.Run("403 unrelated", func(t *testing.T) {
+		err := &github.ErrorResponse{
+			Message:  "Forbidden",
+			Response: &http.Response{StatusCode: http.StatusForbidden},
+		}
+		require.False(t, isGitHubAuthFailure(err))
+	})
+
+	t.Run("generic error", func(t *testing.T) {
+		require.False(t, isGitHubAuthFailure(errors.New("connection reset")))
+	})
+}
+
+func connectedGitHubUserInfo(t *testing.T) *GitHubUserInfo {
+	t.Helper()
+	encryptedToken, err := encrypt([]byte(testNewKey), MockAccessToken)
+	require.NoError(t, err)
+	return &GitHubUserInfo{
+		UserID:         "user1",
+		GitHubUsername: "ghuser1",
+		Token:          &oauth2.Token{AccessToken: encryptedToken},
+		Settings:       &UserSettings{},
+	}
+}
+
+func expectRevokedTokenNotification(api *plugintest.API, mockKvStore *mocks.MockKvStore, userInfo *GitHubUserInfo) {
+	mockKvStore.EXPECT().Get(userInfo.UserID+githubTokenKey, gomock.Any()).DoAndReturn(
+		func(_ string, out any) error {
+			userInfoBytes, err := json.Marshal(userInfo)
+			if err != nil {
+				return err
+			}
+			return json.Unmarshal(userInfoBytes, out)
+		},
+	)
+	mockKvStore.EXPECT().Delete(userInfo.UserID + githubTokenKey).Return(nil)
+	mockKvStore.EXPECT().Delete(userInfo.GitHubUsername + githubUsernameKey).Return(nil)
+	mockKvStore.EXPECT().Delete(userInfo.UserID + githubPrivateRepoKey).Return(nil)
+	api.On("GetUser", userInfo.UserID).Return(&model.User{
+		Id:    userInfo.UserID,
+		Props: model.StringMap{"git_user": userInfo.GitHubUsername},
+	}, nil)
+	api.On("UpdateUser", mock.Anything).Return(&model.User{Id: userInfo.UserID, Props: model.StringMap{}}, nil)
+	api.On("PublishWebSocketEvent", wsEventDisconnect, map[string]any(nil),
+		&model.WebsocketBroadcast{UserId: userInfo.UserID}).Return()
+	api.On("GetDirectChannel", userInfo.UserID, MockBotID).Return(&model.Channel{Id: "dmchannel"}, nil)
+	api.On("CreatePost", mock.MatchedBy(func(post *model.Post) bool {
+		return post.UserId == MockBotID &&
+			post.ChannelId == "dmchannel" &&
+			post.Type == "custom_git_revoked_token"
+	})).Return(&model.Post{}, nil).Once()
+}
+
+func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
+	samlGraphQLErr := errors.New("error in executing query: GraphQL: Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.")
+
+	tests := []struct {
+		name   string
+		err    error
+		notify bool
+	}{
+		{
+			name:   "401 bad credentials",
+			err:    errors.New(invalidTokenError),
+			notify: true,
+		},
+		{
+			name: "403 SAML REST",
+			err: &github.ErrorResponse{
+				Message: "Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.",
+				Response: &http.Response{
+					StatusCode: http.StatusForbidden,
+					Header:     http.Header{"X-Github-Sso": []string{"required; url=https://github.com/orgs/foo/sso"}},
+					Request:    &http.Request{},
+				},
+			},
+			notify: true,
+		},
+		{
+			name:   "403 SAML graphql",
+			err:    samlGraphQLErr,
+			notify: true,
+		},
+		{
+			name: "403 unrelated",
+			err: &github.ErrorResponse{
+				Message:  "Forbidden",
+				Response: &http.Response{StatusCode: http.StatusForbidden, Request: &http.Request{}},
+			},
+			notify: false,
+		},
+		{
+			name:   "generic error",
+			err:    errors.New("connection reset"),
+			notify: false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p, api, mockKvStore, ctrl := setupRotationTest(t)
+			defer ctrl.Finish()
+
+			userInfo := connectedGitHubUserInfo(t)
+			if tc.notify {
+				expectRevokedTokenNotification(api, mockKvStore, userInfo)
+			}
+
+			err := p.useGitHubClient(userInfo, func(_ *GitHubUserInfo, _ *oauth2.Token) error {
+				return tc.err
+			})
+			require.Equal(t, tc.err, err)
+			api.AssertExpectations(t)
+		})
+	}
 }

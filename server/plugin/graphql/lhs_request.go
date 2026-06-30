@@ -36,11 +36,15 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.
 	var resultAssignee []*github.Issue
 	var resultReview, resultOpenPR []*GithubPRDetails
 
-	var err error
+	var firstErr error
 	for _, org := range orgsList {
+		var err error
 		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, c.username)
 		if err != nil {
 			c.logger.Error("Error fetching LHS data for org", "org", org, "error", err.Error())
+			if firstErr == nil {
+				firstErr = err
+			}
 		}
 	}
 
@@ -48,7 +52,9 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.
 		return c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, "", c.username)
 	}
 
-	return resultReview, resultAssignee, resultOpenPR, nil
+	// Return partial results alongside the error so callers can detect auth failures
+	// while still rendering whatever orgs succeeded.
+	return resultReview, resultAssignee, resultOpenPR, firstErr
 }
 
 func (c *Client) fetchLHSData(

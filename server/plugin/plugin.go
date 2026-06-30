@@ -1349,11 +1349,62 @@ func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUs
 		p.client.Log.Warn("Error occurred while using the Github client", "error", err.Error())
 	}
 
-	if err != nil && strings.Contains(err.Error(), invalidTokenError) {
+	if isGitHubAuthFailure(err) {
 		p.handleRevokedToken(info)
 	}
 
 	return err
+}
+
+// isGitHubAuthFailure reports whether err indicates the stored OAuth token is no
+// longer usable: a 401, or a 403 from SAML SSO enforcement.
+//
+// We use two detection paths because the plugin talks to GitHub through both the
+// REST client (go-github) and the GraphQL client (githubv4), and they surface
+// errors differently.
+func isGitHubAuthFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// REST API: go-github returns a typed *github.ErrorResponse with the HTTP status.
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil {
+		switch ghErr.Response.StatusCode {
+		case http.StatusUnauthorized:
+			return true
+		case http.StatusForbidden:
+			// Not every 403 is an auth failure; only SAML SSO revocation requires reconnect.
+			return isSAMLError(ghErr)
+		}
+	}
+
+	// GraphQL API: githubv4 returns untyped errors with status and message embedded
+	// in err.Error(), so match on known substrings instead.
+	errMsg := err.Error()
+	if strings.Contains(errMsg, invalidTokenError) {
+		return true
+	}
+	if strings.Contains(errMsg, "non-200 OK status code: 401") {
+		return true
+	}
+	// Match SAML content, not bare 403 — unrelated permission errors also return 403.
+	return strings.Contains(errMsg, "SAML enforcement") || strings.Contains(errMsg, "saml_failure")
+}
+
+func isSAMLError(ghErr *github.ErrorResponse) bool {
+	if ghErr.Response.Header.Get("X-GitHub-SSO") != "" {
+		return true
+	}
+	if strings.Contains(ghErr.Message, "SAML") {
+		return true
+	}
+	for _, e := range ghErr.Errors {
+		if strings.Contains(e.Message, "SAML") {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
