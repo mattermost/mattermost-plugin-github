@@ -5,10 +5,13 @@ package graphql
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/google/go-github/v54/github"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/shurcooL/githubv4"
 )
 
@@ -42,9 +45,7 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.
 		resultReview, resultAssignee, resultOpenPR, err = c.fetchLHSData(ctx, resultReview, resultAssignee, resultOpenPR, org, c.username)
 		if err != nil {
 			c.logger.Error("Error fetching LHS data for org", "org", org, "error", err.Error())
-			if firstErr == nil {
-				firstErr = err
-			}
+			firstErr = preferAuthErr(firstErr, err)
 		}
 	}
 
@@ -55,6 +56,43 @@ func (c *Client) GetLHSData(ctx context.Context) ([]*GithubPRDetails, []*github.
 	// Return partial results alongside the error so callers can detect auth failures
 	// while still rendering whatever orgs succeeded.
 	return resultReview, resultAssignee, resultOpenPR, firstErr
+}
+
+func preferAuthErr(existing, candidate error) error {
+	if existing == nil {
+		return candidate
+	}
+	if candidate == nil {
+		return existing
+	}
+	if isLikelyAuthErr(candidate) && !isLikelyAuthErr(existing) {
+		return candidate
+	}
+	return existing
+}
+
+func isLikelyAuthErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	var ghErr *github.ErrorResponse
+	if errors.As(err, &ghErr) && ghErr.Response != nil {
+		if ghErr.Response.StatusCode == http.StatusUnauthorized {
+			return true
+		}
+		if ghErr.Response.StatusCode == http.StatusForbidden {
+			if ghErr.Response.Header.Get("X-GitHub-SSO") != "" {
+				return true
+			}
+			if strings.Contains(strings.ToLower(ghErr.Message), "saml") {
+				return true
+			}
+		}
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "bad credentials") ||
+		strings.Contains(msg, "non-200 ok status code: 401") ||
+		strings.Contains(msg, "saml")
 }
 
 func (c *Client) fetchLHSData(
@@ -88,7 +126,7 @@ func (c *Client) fetchLHSData(
 
 	for !allReviewRequestsFetched || !allAssignmentsFetched || !allOpenPRsFetched {
 		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Not able to execute the query")
+			return nil, nil, nil, pkgerrors.Wrap(err, "Not able to execute the query")
 		}
 
 		if !allReviewRequestsFetched {

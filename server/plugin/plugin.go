@@ -1392,6 +1392,19 @@ func isGitHubAuthFailure(err error) bool {
 	return strings.Contains(errMsg, "SAML enforcement") || strings.Contains(errMsg, "saml_failure")
 }
 
+func preferAuthErr(existing, candidate error) error {
+	if existing == nil {
+		return candidate
+	}
+	if candidate == nil {
+		return existing
+	}
+	if isGitHubAuthFailure(candidate) && !isGitHubAuthFailure(existing) {
+		return candidate
+	}
+	return existing
+}
+
 func isSAMLError(ghErr *github.ErrorResponse) bool {
 	if ghErr.Response.Header.Get("X-GitHub-SSO") != "" {
 		return true

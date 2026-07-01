@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -424,6 +425,12 @@ func TestIsGitHubAuthFailure(t *testing.T) {
 		require.True(t, isGitHubAuthFailure(err))
 	})
 
+	t.Run("401 wrapped ErrorResponse", func(t *testing.T) {
+		ghErr := &github.ErrorResponse{Response: &http.Response{StatusCode: http.StatusUnauthorized}}
+		err := fmt.Errorf("github request failed: %w", ghErr)
+		require.True(t, isGitHubAuthFailure(err))
+	})
+
 	t.Run("401 from graphql client message", func(t *testing.T) {
 		err := errors.New("non-200 OK status code: 401 Unauthorized")
 		require.True(t, isGitHubAuthFailure(err))
@@ -442,6 +449,11 @@ func TestIsGitHubAuthFailure(t *testing.T) {
 
 	t.Run("403 SAML from graphql error string", func(t *testing.T) {
 		err := errors.New("error in executing query: GraphQL: Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.")
+		require.True(t, isGitHubAuthFailure(err))
+	})
+
+	t.Run("403 saml_failure graphql string", func(t *testing.T) {
+		err := errors.New("error in executing query: GraphQL: saml_failure")
 		require.True(t, isGitHubAuthFailure(err))
 	})
 

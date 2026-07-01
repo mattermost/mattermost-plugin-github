@@ -781,16 +781,17 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 	var wg sync.WaitGroup
 	var fetchErr error
 	var fetchErrMu sync.Mutex
+	recordFetchErr := func(err error) {
+		fetchErrMu.Lock()
+		defer fetchErrMu.Unlock()
+		fetchErr = preferAuthErr(fetchErr, err)
+	}
 	for i, pr := range validPRs {
 		wg.Go(func() {
 			prDetail, err := p.fetchPRDetails(c, githubClient, pr.URL, pr.Number)
 			prDetails[i] = prDetail
 			if err != nil {
-				fetchErrMu.Lock()
-				if fetchErr == nil {
-					fetchErr = err
-				}
-				fetchErrMu.Unlock()
+				recordFetchErr(err)
 			}
 		})
 	}
@@ -799,6 +800,8 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 
 	if isGitHubAuthFailure(fetchErr) {
 		p.handleRevokedToken(c.GHInfo)
+		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
+		return
 	}
 	p.writeJSON(w, prDetails)
 }
@@ -827,10 +830,8 @@ func (p *Plugin) fetchPRDetails(c *UserContext, client *github.Client, prURL str
 	recordFetchErr := func(err error, msg string) {
 		c.Log.WithError(err).Warnf("%s", msg)
 		fetchErrMu.Lock()
-		if fetchErr == nil {
-			fetchErr = err
-		}
-		fetchErrMu.Unlock()
+		defer fetchErrMu.Unlock()
+		fetchErr = preferAuthErr(fetchErr, err)
 	}
 
 	// Fetch reviews
@@ -1126,7 +1127,7 @@ func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetai
 		p.handleRevokedToken(c.GHInfo)
 	}
 	if err != nil {
-		return []*graphql.GithubPRDetails{}, []*github.Issue{}, []*graphql.GithubPRDetails{}, err
+		return reviewResp, assignmentResp, openPRResp, err
 	}
 
 	return reviewResp, assignmentResp, openPRResp, nil
@@ -1134,9 +1135,6 @@ func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetai
 
 func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 	reviewResp, assignmentResp, openPRResp, err := p.getLHSData(c)
-	if err != nil {
-		return nil, err
-	}
 
 	p.enrichReviewsWithSLAStart(reviewResp, c.GHInfo.GitHubUsername)
 
@@ -1145,15 +1143,18 @@ func (p *Plugin) getSidebarData(c *UserContext) (*SidebarContent, error) {
 		Assignments: assignmentResp,
 		Reviews:     reviewResp,
 		Unreads:     p.getUnreadsData(c),
-	}, nil
+	}, err
 }
 
 func (p *Plugin) getSidebarContent(c *UserContext, w http.ResponseWriter, r *http.Request) {
 	sidebarContent, err := p.getSidebarData(c)
-	if err != nil {
+	if err != nil && !isGitHubAuthFailure(err) {
 		c.Log.WithError(err).Errorf("Failed to search for the sidebar data")
 		p.writeAPIError(w, &APIErrorResponse{Message: "failed to search for the sidebar data", StatusCode: http.StatusInternalServerError})
 		return
+	}
+	if err != nil {
+		c.Log.WithError(err).Warnf("Returning partial sidebar data after GitHub auth failure")
 	}
 
 	p.writeJSON(w, sidebarContent)
