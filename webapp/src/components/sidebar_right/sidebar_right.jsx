@@ -5,6 +5,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Scrollbars from 'react-custom-scrollbars-2';
 
+import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+
 import {RHSStates} from '../../constants';
 
 import GithubItems from './github_items';
@@ -41,6 +43,13 @@ function mapGithubItemListToPrList(gilist) {
     return gilist.map((pr) => {
         return {url: pr.repository_url, number: pr.number};
     });
+}
+
+function getRepoName(item) {
+    if (item.repository_url) {
+        return item.repository_url.replace(/.+\/repos\//, '');
+    }
+    return item.repository?.full_name ?? null;
 }
 
 function shouldUpdateDetails(prs, prevPrs, targetState, currentState, prevState) {
@@ -163,26 +172,16 @@ export default class SidebarRight extends React.PureComponent {
 
         // Extract unique repo names for filter dropdown
         const repoNames = [...new Set(
-            githubItems.map((item) => {
-                if (item.repository_url) {
-                    return item.repository_url.replace(/.+\/repos\//, '');
-                } else if (item.repository?.full_name) {
-                    return item.repository.full_name;
-                }
-                return null;
-            }).filter(Boolean),
+            githubItems.map(getRepoName).filter(Boolean),
         )].sort();
 
         // Filter items by selected repo
         const {selectedRepo} = this.state;
         const filteredItems = selectedRepo ?
-            githubItems.filter((item) => {
-                const repoName = item.repository_url ?
-                    item.repository_url.replace(/.+\/repos\//, '') :
-                    item.repository?.full_name;
-                return repoName === selectedRepo;
-            }) :
+            githubItems.filter((item) => getRepoName(item) === selectedRepo) :
             githubItems;
+
+        const style = getStyle(this.props.theme);
 
         return (
             <React.Fragment>
@@ -207,6 +206,7 @@ export default class SidebarRight extends React.PureComponent {
                                 value={selectedRepo}
                                 onChange={this.handleRepoFilterChange}
                                 style={style.repoFilter}
+                                aria-label='Filter by repository'
                             >
                                 <option value=''>All repositories</option>
                                 {repoNames.map((repo) => (
@@ -229,16 +229,19 @@ export default class SidebarRight extends React.PureComponent {
     }
 }
 
-const style = {
-    sectionHeader: {
-        padding: '15px',
-    },
-    repoFilter: {
-        marginLeft: '8px',
-        padding: '2px 4px',
-        fontSize: '12px',
-        borderRadius: '4px',
-        border: '1px solid rgba(0, 0, 0, 0.2)',
-        background: 'transparent',
-    },
-};
+const getStyle = makeStyleFromTheme((theme) => {
+    return {
+        sectionHeader: {
+            padding: '15px',
+        },
+        repoFilter: {
+            marginLeft: '8px',
+            padding: '2px 4px',
+            fontSize: '12px',
+            borderRadius: '4px',
+            border: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
+            background: 'transparent',
+            color: theme.centerChannelColor,
+        },
+    };
+});
