@@ -4,10 +4,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Scrollbars from 'react-custom-scrollbars-2';
+import ReactSelect from 'react-select';
 
-import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
+import {makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
 
 import {RHSStates} from '../../constants';
+import {getStyleForReactSelect} from '@/utils/styles';
 
 import GithubItems from './github_items';
 
@@ -95,8 +97,8 @@ export default class SidebarRight extends React.PureComponent {
         this.state = {selectedRepo: ''};
     }
 
-    handleRepoFilterChange = (e) => {
-        this.setState({selectedRepo: e.target.value});
+    handleRepoFilterChange = (selectedOption) => {
+        this.setState({selectedRepo: selectedOption ? selectedOption.value : ''});
     }
 
     componentDidMount() {
@@ -112,7 +114,18 @@ export default class SidebarRight extends React.PureComponent {
     componentDidUpdate(prevProps) {
         // Reset repo filter when switching RHS tabs
         if (prevProps.rhsState !== this.props.rhsState) {
-            this.setState({selectedRepo: ''});
+            this.setState({selectedRepo: ''}); // eslint-disable-line react/no-did-update-set-state
+        }
+
+        // Validate selectedRepo against the current list — reset if the repo
+        // is no longer present (stale state when the underlying data changes)
+        if (this.state.selectedRepo) {
+            const currentRepos = [...new Set(
+                this.getCurrentItems().map(getRepoName).filter(Boolean),
+            )];
+            if (!currentRepos.includes(this.state.selectedRepo)) {
+                this.setState({selectedRepo: ''}); // eslint-disable-line react/no-did-update-set-state
+            }
         }
 
         if (shouldUpdateDetails(this.props.yourPrs, prevProps.yourPrs, RHSStates.PRS, this.props.rhsState, prevProps.rhsState)) {
@@ -121,6 +134,22 @@ export default class SidebarRight extends React.PureComponent {
 
         if (shouldUpdateDetails(this.props.reviews, prevProps.reviews, RHSStates.REVIEWS, this.props.rhsState, prevProps.rhsState)) {
             this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
+        }
+    }
+
+    getCurrentItems = () => {
+        const {yourPrs, reviews, unreads, yourAssignments, rhsState} = this.props;
+        switch (rhsState) {
+        case RHSStates.PRS:
+            return yourPrs || [];
+        case RHSStates.REVIEWS:
+            return reviews || [];
+        case RHSStates.UNREADS:
+            return unreads || [];
+        case RHSStates.ASSIGNMENTS:
+            return yourAssignments || [];
+        default:
+            return [];
         }
     }
 
@@ -175,8 +204,15 @@ export default class SidebarRight extends React.PureComponent {
             githubItems.map(getRepoName).filter(Boolean),
         )].sort();
 
+        // Build react-select options
+        const repoOptions = [
+            {value: '', label: 'All repositories'},
+            ...repoNames.map((repo) => ({value: repo, label: repo})),
+        ];
+
         // Filter items by selected repo
         const {selectedRepo} = this.state;
+        const selectedOption = repoOptions.find((opt) => opt.value === selectedRepo) || repoOptions[0];
         const filteredItems = selectedRepo ?
             githubItems.filter((item) => getRepoName(item) === selectedRepo) :
             githubItems;
@@ -202,17 +238,18 @@ export default class SidebarRight extends React.PureComponent {
                             >{title}</a>
                         </strong>
                         {repoNames.length > 1 && (
-                            <select
-                                value={selectedRepo}
-                                onChange={this.handleRepoFilterChange}
-                                style={style.repoFilter}
-                                aria-label='Filter by repository'
-                            >
-                                <option value=''>All repositories</option>
-                                {repoNames.map((repo) => (
-                                    <option key={repo} value={repo}>{repo}</option>
-                                ))}
-                            </select>
+                            <div style={style.repoFilterContainer}>
+                                <ReactSelect
+                                    value={selectedOption}
+                                    onChange={this.handleRepoFilterChange}
+                                    options={repoOptions}
+                                    styles={getStyleForReactSelect(this.props.theme)}
+                                    aria-label='Filter by repository'
+                                    isSearchable={false}
+                                    menuPortalTarget={document.body}
+                                    menuPlacement='auto'
+                                />
+                            </div>
                         )}
                     </div>
                     <div>
@@ -234,14 +271,11 @@ const getStyle = makeStyleFromTheme((theme) => {
         sectionHeader: {
             padding: '15px',
         },
-        repoFilter: {
+        repoFilterContainer: {
             marginLeft: '8px',
-            padding: '2px 4px',
+            minWidth: '160px',
+            maxWidth: '220px',
             fontSize: '12px',
-            borderRadius: '4px',
-            border: `1px solid ${changeOpacity(theme.centerChannelColor, 0.2)}`,
-            background: 'transparent',
-            color: theme.centerChannelColor,
         },
     };
 });
