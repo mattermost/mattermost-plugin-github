@@ -470,6 +470,36 @@ func TestIsGitHubAuthFailure(t *testing.T) {
 	})
 }
 
+func TestExtractSSOAuthorizeURL(t *testing.T) {
+	makeErr := func(header string) error {
+		h := http.Header{}
+		if header != "" {
+			h.Set("X-GitHub-SSO", header)
+		}
+		return &github.ErrorResponse{
+			Response: &http.Response{StatusCode: http.StatusForbidden, Header: h, Request: &http.Request{}},
+		}
+	}
+	tests := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{"nil", nil, ""},
+		{"non-github error", errors.New("boom"), ""},
+		{"no header", makeErr(""), ""},
+		{"required with url", makeErr("required; url=https://github.com/orgs/foo/sso?authorization_request=abc"), "https://github.com/orgs/foo/sso?authorization_request=abc"},
+		{"partial-results with url", makeErr("partial-results; url=https://github.com/orgs/foo/sso"), "https://github.com/orgs/foo/sso"},
+		{"header without url", makeErr("required"), ""},
+		{"whitespace tolerant", makeErr("required ;  url=https://github.com/orgs/foo/sso  "), "https://github.com/orgs/foo/sso"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, extractSSOAuthorizeURL(tc.err))
+		})
+	}
+}
+
 func connectedGitHubUserInfo(t *testing.T) *GitHubUserInfo {
 	t.Helper()
 	encryptedToken, err := encrypt([]byte(testNewKey), MockAccessToken)
@@ -510,21 +540,39 @@ func expectRevokedTokenNotification(api *plugintest.API, mockKvStore *mocks.Mock
 	})).Return(&model.Post{}, nil).Once()
 }
 
+func expectSAMLReauthorizeNotification(api *plugintest.API, mockKvStore *mocks.MockKvStore, userInfo *GitHubUserInfo) {
+	mockKvStore.EXPECT().Set(authFailureDMKey+userInfo.UserID, gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
+	api.On("GetDirectChannel", userInfo.UserID, MockBotID).Return(&model.Channel{Id: "dmchannel"}, nil)
+	api.On("CreatePost", mock.MatchedBy(func(post *model.Post) bool {
+		return post.UserId == MockBotID &&
+			post.ChannelId == "dmchannel" &&
+			post.Type == "custom_git_saml_reauth" &&
+			strings.Contains(post.Message, "https://github.com/orgs/foo/sso")
+	})).Return(&model.Post{}, nil).Once()
+}
+
 func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
 	samlGraphQLErr := errors.New("error in executing query: GraphQL: Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.")
+
+	const (
+		expectNone      = ""
+		expectRevoked   = "revoked"
+		expectReauthDM  = "reauth"
+	)
 
 	tests := []struct {
 		name   string
 		err    error
-		notify bool
+		expect string
 	}{
 		{
 			name:   "401 bad credentials",
 			err:    errors.New(invalidTokenError),
-			notify: true,
+			expect: expectRevoked,
 		},
 		{
-			name: "403 SAML REST",
+			// SSO URL is available: keep account connected, DM the reauthorize link.
+			name: "403 SAML REST with SSO URL",
 			err: &github.ErrorResponse{
 				Message: "Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.",
 				Response: &http.Response{
@@ -533,12 +581,13 @@ func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
 					Request:    &http.Request{},
 				},
 			},
-			notify: true,
+			expect: expectReauthDM,
 		},
 		{
+			// GraphQL error string carries no header we can parse — fall back to disconnect.
 			name:   "403 SAML graphql",
 			err:    samlGraphQLErr,
-			notify: true,
+			expect: expectRevoked,
 		},
 		{
 			name: "403 unrelated",
@@ -546,12 +595,12 @@ func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
 				Message:  "Forbidden",
 				Response: &http.Response{StatusCode: http.StatusForbidden, Request: &http.Request{}},
 			},
-			notify: false,
+			expect: expectNone,
 		},
 		{
 			name:   "generic error",
 			err:    errors.New("connection reset"),
-			notify: false,
+			expect: expectNone,
 		},
 	}
 
@@ -561,8 +610,11 @@ func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
 			defer ctrl.Finish()
 
 			userInfo := connectedGitHubUserInfo(t)
-			if tc.notify {
+			switch tc.expect {
+			case expectRevoked:
 				expectRevokedTokenNotification(api, mockKvStore, userInfo)
+			case expectReauthDM:
+				expectSAMLReauthorizeNotification(api, mockKvStore, userInfo)
 			}
 
 			err := p.useGitHubClient(userInfo, func(_ *GitHubUserInfo, _ *oauth2.Token) error {

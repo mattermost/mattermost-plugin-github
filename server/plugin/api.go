@@ -799,7 +799,7 @@ func (p *Plugin) getPrsDetails(c *UserContext, w http.ResponseWriter, r *http.Re
 	wg.Wait()
 
 	if isGitHubAuthFailure(fetchErr) {
-		p.handleRevokedToken(c.GHInfo)
+		p.handleAuthFailure(c.GHInfo, fetchErr)
 		p.writeAPIError(w, &APIErrorResponse{ID: "", Message: "Not authorized.", StatusCode: http.StatusUnauthorized})
 		return
 	}
@@ -1124,7 +1124,7 @@ func (p *Plugin) getLHSData(c *UserContext) (reviewResp []*graphql.GithubPRDetai
 
 	reviewResp, assignmentResp, openPRResp, err = graphQLClient.GetLHSData(c.Ctx)
 	if isGitHubAuthFailure(err) {
-		p.handleRevokedToken(c.GHInfo)
+		p.handleAuthFailure(c.GHInfo, err)
 	}
 	if err != nil {
 		return reviewResp, assignmentResp, openPRResp, err

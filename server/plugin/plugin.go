@@ -1350,7 +1350,7 @@ func (p *Plugin) useGitHubClient(info *GitHubUserInfo, toRun func(info *GitHubUs
 	}
 
 	if isGitHubAuthFailure(err) {
-		p.handleRevokedToken(info)
+		p.handleAuthFailure(info, err)
 	}
 
 	return err
@@ -1423,4 +1423,58 @@ func isSAMLError(ghErr *github.ErrorResponse) bool {
 func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
 	p.disconnectGitHubAccount(info.UserID)
 	p.CreateBotDMPost(info.UserID, "Your Github account was disconnected due to an invalid or revoked authorization token. Reconnect your account using the `/github connect` command.", "custom_git_revoked_token")
+}
+
+const (
+	authFailureDMKey      = "auth_failure_dm_"
+	authFailureDMCooldown = 60 * 60 // seconds
+)
+
+func (p *Plugin) handleAuthFailure(info *GitHubUserInfo, err error) {
+	if ssoURL := extractSSOAuthorizeURL(err); ssoURL != "" {
+		p.dmSAMLReauthorize(info, ssoURL)
+		return
+	}
+	p.handleRevokedToken(info)
+}
+
+func (p *Plugin) dmSAMLReauthorize(info *GitHubUserInfo, ssoURL string) {
+	// Throttle only DM once per cooldown window per user.
+	ok, err := p.store.Set(authFailureDMKey+info.UserID, []byte("1"),
+		pluginapi.SetExpiry(authFailureDMCooldown),
+		pluginapi.SetAtomic(nil),
+	)
+	if err != nil {
+		p.client.Log.Warn("Failed to set SAML reauthorize DM cooldown", "error", err.Error())
+	}
+	if !ok {
+		return
+	}
+	msg := fmt.Sprintf(
+		"Your GitHub SAML SSO session expired, so GitHub temporarily blocked this plugin from acting on your behalf. "+
+			"Re-authorize SSO for your organization here: %s\n\n"+
+			"You do not need to run `/github connect` again — once SSO is re-authorized, this account will keep working.",
+		ssoURL,
+	)
+	p.CreateBotDMPost(info.UserID, msg, "custom_git_saml_reauth")
+}
+
+// extractSSOAuthorizeURL pulls the SSO reauthorization url that GitHub
+// includes in the X-GitHub-SSO header on SAML enforced 403 responses
+func extractSSOAuthorizeURL(err error) string {
+	var ghErr *github.ErrorResponse
+	if !errors.As(err, &ghErr) || ghErr.Response == nil {
+		return ""
+	}
+	header := ghErr.Response.Header.Get("X-GitHub-SSO")
+	if header == "" {
+		return ""
+	}
+	for _, part := range strings.Split(header, ";") {
+		part = strings.TrimSpace(part)
+		if u, ok := strings.CutPrefix(part, "url="); ok {
+			return strings.TrimSpace(u)
+		}
+	}
+	return ""
 }
