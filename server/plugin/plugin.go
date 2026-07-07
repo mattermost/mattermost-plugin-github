@@ -1470,7 +1470,7 @@ func extractSSOAuthorizeURL(err error) string {
 	if header == "" {
 		return ""
 	}
-	for _, part := range strings.Split(header, ";") {
+	for part := range strings.SplitSeq(header, ";") {
 		part = strings.TrimSpace(part)
 		if u, ok := strings.CutPrefix(part, "url="); ok {
 			return strings.TrimSpace(u)

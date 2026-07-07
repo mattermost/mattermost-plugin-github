@@ -555,9 +555,9 @@ func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
 	samlGraphQLErr := errors.New("error in executing query: GraphQL: Resource protected by organization SAML enforcement. You must grant your OAuth token access to this organization.")
 
 	const (
-		expectNone      = ""
-		expectRevoked   = "revoked"
-		expectReauthDM  = "reauth"
+		expectNone     = ""
+		expectRevoked  = "revoked"
+		expectReauthDM = "reauth"
 	)
 
 	tests := []struct {
