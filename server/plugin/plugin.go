@@ -1427,7 +1427,7 @@ func (p *Plugin) handleRevokedToken(info *GitHubUserInfo) {
 
 const (
 	authFailureDMKey      = "auth_failure_dm_"
-	authFailureDMCooldown = 60 * 60 // seconds
+	authFailureDMCooldown = time.Hour
 )
 
 func (p *Plugin) handleAuthFailure(info *GitHubUserInfo, err error) {
