@@ -11,6 +11,24 @@ import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_ut
 import {RHSStates} from '../../constants';
 import GithubItems from './github_items';
 
+const getStyle = makeStyleFromTheme((theme) => {
+    return {
+        sectionHeader: {
+            padding: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        refreshButton: {
+            color: changeOpacity(theme.centerChannelColor, 0.6),
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+        },
+    };
+});
+
 export function renderView(props) {
     return (
         <div
@@ -140,24 +158,6 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     render() {
-        const getStyle = makeStyleFromTheme((theme) => {
-            return {
-                sectionHeader: {
-                    padding: '15px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                },
-                refreshButton: {
-                    color: changeOpacity(theme.centerChannelColor, 0.6),
-                    cursor: 'pointer',
-                    background: 'transparent',
-                    border: 'none',
-                    padding: 0,
-                },
-            };
-        });
-
         const style = getStyle(this.props.theme);
         const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
         let orgQuery = '';
