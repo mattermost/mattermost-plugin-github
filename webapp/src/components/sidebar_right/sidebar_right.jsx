@@ -9,6 +9,7 @@ import {OverlayTrigger, Tooltip} from 'react-bootstrap';
 import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {RHSStates} from '../../constants';
+
 import GithubItems from './github_items';
 
 const getStyle = makeStyleFromTheme((theme) => {
@@ -108,12 +109,12 @@ export default class SidebarRight extends React.PureComponent {
     constructor(props) {
         super(props);
         this.state = {refreshing: false};
-        this._mounted = false;
-        this._refreshing = false;
+        this.mounted = false;
+        this.refreshing = false;
     }
 
     componentDidMount() {
-        this._mounted = true;
+        this.mounted = true;
 
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
@@ -125,23 +126,23 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     componentWillUnmount() {
-        this._mounted = false;
+        this.mounted = false;
     }
 
     handleRefresh = async (e) => {
         if (e) {
             e.preventDefault();
         }
-        if (this._refreshing) {
+        if (this.refreshing) {
             return;
         }
-        this._refreshing = true;
+        this.refreshing = true;
         this.setState({refreshing: true});
         try {
             await this.props.actions.getSidebarContent();
         } finally {
-            this._refreshing = false;
-            if (this._mounted) {
+            this.refreshing = false;
+            if (this.mounted) {
                 this.setState({refreshing: false});
             }
         }
