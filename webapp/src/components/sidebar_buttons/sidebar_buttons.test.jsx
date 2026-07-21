@@ -113,7 +113,7 @@ test('prevents the refresh anchor default action while a refresh is pending', as
         resolveRequest = resolve;
     });
     const getSidebarContent = jest.fn().mockResolvedValueOnce({}).mockReturnValue(pendingRequest);
-    const {container} = renderSidebarButtons({
+    const {container, unmount} = renderSidebarButtons({
         actions: {
             getConnected: jest.fn(),
             getSidebarContent,
@@ -126,6 +126,7 @@ test('prevents the refresh anchor default action while a refresh is pending', as
     expect(fireEvent.click(refreshLink)).toBe(false);
     expect(fireEvent.click(refreshLink)).toBe(false);
 
+    unmount();
     await act(async () => {
         resolveRequest({});
         await pendingRequest;
