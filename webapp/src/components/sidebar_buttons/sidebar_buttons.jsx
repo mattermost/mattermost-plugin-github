@@ -61,6 +61,10 @@ export default class SidebarButtons extends React.PureComponent {
     }
 
     getData = async (e) => {
+        if (e) {
+            e.preventDefault();
+        }
+
         if (this.refreshing) {
             return;
         }
@@ -72,10 +76,6 @@ export default class SidebarButtons extends React.PureComponent {
         // eslint-disable-next-line no-undef
         if (__E2E_TESTING__ && params.get('skip_github_fetch') === 'true') {
             return;
-        }
-
-        if (e) {
-            e.preventDefault();
         }
 
         this.refreshing = true;

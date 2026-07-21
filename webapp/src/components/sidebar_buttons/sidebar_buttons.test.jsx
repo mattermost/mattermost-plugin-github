@@ -1,5 +1,5 @@
 import React from 'react';
-import {act, render} from '@testing-library/react';
+import {act, fireEvent, render} from '@testing-library/react';
 
 import {RHSStates} from '../../constants';
 
@@ -101,6 +101,31 @@ test('does not start duplicate sidebar requests while an open refresh is pending
 
     expect(getSidebarContent).toHaveBeenCalledTimes(1);
     expect(actions.updateRhsState).toHaveBeenCalledTimes(2);
+    await act(async () => {
+        resolveRequest({});
+        await pendingRequest;
+    });
+});
+
+test('prevents the refresh anchor default action while a refresh is pending', async () => {
+    let resolveRequest;
+    const pendingRequest = new Promise((resolve) => {
+        resolveRequest = resolve;
+    });
+    const getSidebarContent = jest.fn().mockResolvedValueOnce({}).mockReturnValue(pendingRequest);
+    const {container} = renderSidebarButtons({
+        actions: {
+            getConnected: jest.fn(),
+            getSidebarContent,
+            updateRhsState: jest.fn(),
+        },
+    });
+    await act(async () => Promise.resolve());
+
+    const refreshLink = container.querySelector('a[href="#"]');
+    expect(fireEvent.click(refreshLink)).toBe(false);
+    expect(fireEvent.click(refreshLink)).toBe(false);
+
     await act(async () => {
         resolveRequest({});
         await pendingRequest;
