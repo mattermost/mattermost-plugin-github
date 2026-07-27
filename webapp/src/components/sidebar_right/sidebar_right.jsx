@@ -5,9 +5,12 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import Scrollbars from 'react-custom-scrollbars-2';
 
+import {makeStyleFromTheme} from 'mattermost-redux/utils/theme_utils';
+
 import {RHSStates} from '../../constants';
 
 import GithubItems from './github_items';
+import SortDropdown from './sort_dropdown';
 
 export function renderView(props) {
     return (
@@ -81,6 +84,15 @@ export default class SidebarRight extends React.PureComponent {
         }).isRequired,
     };
 
+    constructor(props) {
+        super(props);
+        this.state = {sortBy: 'created'};
+    }
+
+    handleSortChange = (selectedOption) => {
+        this.setState({sortBy: selectedOption ? selectedOption.value : 'created'});
+    };
+
     componentDidMount() {
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
@@ -145,6 +157,25 @@ export default class SidebarRight extends React.PureComponent {
             break;
         }
 
+        // Sort items by selected criteria
+        // Notification threads (UNREADS) don't have created_at, so fall back
+        // to updated_at when created_at is undefined.
+        const {sortBy} = this.state;
+        const sortedItems = (githubItems || []).slice().sort((a, b) => {
+            const dateA = sortBy === 'updated' ? a.updated_at : (a.created_at || a.updated_at);
+            const dateB = sortBy === 'updated' ? b.updated_at : (b.created_at || b.updated_at);
+            return new Date(dateB) - new Date(dateA);
+        });
+
+        // Build sort options
+        const sortOptions = [
+            {value: 'created', label: 'Recently Created'},
+            {value: 'updated', label: 'Recently Updated'},
+        ];
+        const selectedSortOption = sortOptions.find((opt) => opt.value === sortBy) || sortOptions[0];
+
+        const style = getStyle(this.props.theme);
+
         return (
             <React.Fragment>
                 <Scrollbars
@@ -163,10 +194,19 @@ export default class SidebarRight extends React.PureComponent {
                                 rel='noopener noreferrer'
                             >{title}</a>
                         </strong>
+                        <div style={style.sortDropdownContainer}>
+                            <SortDropdown
+                                value={selectedSortOption}
+                                onChange={this.handleSortChange}
+                                options={sortOptions}
+                                theme={this.props.theme}
+                                ariaLabel='Sort items'
+                            />
+                        </div>
                     </div>
                     <div>
                         <GithubItems
-                            items={githubItems}
+                            items={sortedItems}
                             theme={this.props.theme}
                             showReviewSLA={rhsState === RHSStates.REVIEWS}
                             reviewTargetDays={this.props.reviewTargetDays || 0}
@@ -178,8 +218,19 @@ export default class SidebarRight extends React.PureComponent {
     }
 }
 
-const style = {
-    sectionHeader: {
-        padding: '15px',
-    },
-};
+const getStyle = makeStyleFromTheme(() => {
+    return {
+        sectionHeader: {
+            padding: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+        },
+        sortDropdownContainer: {
+            marginLeft: '8px',
+            width: 'fit-content',
+            fontSize: '12px',
+        },
+    };
+});
