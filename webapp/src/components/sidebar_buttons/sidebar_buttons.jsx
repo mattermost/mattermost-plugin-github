@@ -35,9 +35,13 @@ export default class SidebarButtons extends React.PureComponent {
         this.state = {
             refreshing: false,
         };
+        this.mounted = false;
+        this.refreshing = false;
     }
 
     componentDidMount() {
+        this.mounted = true;
+
         if (this.props.connected) {
             this.getData();
             return;
@@ -52,8 +56,16 @@ export default class SidebarButtons extends React.PureComponent {
         }
     }
 
+    componentWillUnmount() {
+        this.mounted = false;
+    }
+
     getData = async (e) => {
-        if (this.state.refreshing) {
+        if (e) {
+            e.preventDefault();
+        }
+
+        if (this.refreshing) {
             return;
         }
 
@@ -66,13 +78,16 @@ export default class SidebarButtons extends React.PureComponent {
             return;
         }
 
-        if (e) {
-            e.preventDefault();
-        }
-
+        this.refreshing = true;
         this.setState({refreshing: true});
-        await this.props.actions.getSidebarContent();
-        this.setState({refreshing: false});
+        try {
+            await this.props.actions.getSidebarContent();
+        } finally {
+            this.refreshing = false;
+            if (this.mounted) {
+                this.setState({refreshing: false});
+            }
+        }
     };
 
     openConnectWindow = (e) => {
@@ -83,6 +98,7 @@ export default class SidebarButtons extends React.PureComponent {
     openRHS = (rhsState) => {
         this.props.actions.updateRhsState(rhsState);
         this.props.showRHSPlugin();
+        this.getData();
     };
 
     render() {

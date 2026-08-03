@@ -4,17 +4,39 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Scrollbars from 'react-custom-scrollbars-2';
+import {OverlayTrigger, Tooltip} from 'react-bootstrap';
+
+import {makeStyleFromTheme, changeOpacity} from 'mattermost-redux/utils/theme_utils';
 
 import {RHSStates} from '../../constants';
 
 import GithubItems from './github_items';
+
+const getStyle = makeStyleFromTheme((theme) => {
+    return {
+        sectionHeader: {
+            padding: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        refreshButton: {
+            color: changeOpacity(theme.centerChannelColor, 0.6),
+            cursor: 'pointer',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+        },
+    };
+});
 
 export function renderView(props) {
     return (
         <div
             {...props}
             className='scrollbar--view'
-        />);
+        />
+    );
 }
 
 export function renderThumbHorizontal(props) {
@@ -22,7 +44,8 @@ export function renderThumbHorizontal(props) {
         <div
             {...props}
             className='scrollbar--horizontal'
-        />);
+        />
+    );
 }
 
 export function renderThumbVertical(props) {
@@ -30,7 +53,8 @@ export function renderThumbVertical(props) {
         <div
             {...props}
             className='scrollbar--vertical'
-        />);
+        />
+    );
 }
 
 function mapGithubItemListToPrList(gilist) {
@@ -78,10 +102,20 @@ export default class SidebarRight extends React.PureComponent {
         actions: PropTypes.shape({
             getYourPrsDetails: PropTypes.func.isRequired,
             getReviewsDetails: PropTypes.func.isRequired,
+            getSidebarContent: PropTypes.func.isRequired,
         }).isRequired,
     };
 
+    constructor(props) {
+        super(props);
+        this.state = {refreshing: false};
+        this.mounted = false;
+        this.refreshing = false;
+    }
+
     componentDidMount() {
+        this.mounted = true;
+
         if (this.props.yourPrs && this.props.rhsState === RHSStates.PRS) {
             this.props.actions.getYourPrsDetails(mapGithubItemListToPrList(this.props.yourPrs));
         }
@@ -90,6 +124,29 @@ export default class SidebarRight extends React.PureComponent {
             this.props.actions.getReviewsDetails(mapGithubItemListToPrList(this.props.reviews));
         }
     }
+
+    componentWillUnmount() {
+        this.mounted = false;
+    }
+
+    handleRefresh = async (e) => {
+        if (e) {
+            e.preventDefault();
+        }
+        if (this.refreshing) {
+            return;
+        }
+        this.refreshing = true;
+        this.setState({refreshing: true});
+        try {
+            await this.props.actions.getSidebarContent();
+        } finally {
+            this.refreshing = false;
+            if (this.mounted) {
+                this.setState({refreshing: false});
+            }
+        }
+    };
 
     componentDidUpdate(prevProps) {
         if (shouldUpdateDetails(this.props.yourPrs, prevProps.yourPrs, RHSStates.PRS, this.props.rhsState, prevProps.rhsState)) {
@@ -102,6 +159,7 @@ export default class SidebarRight extends React.PureComponent {
     }
 
     render() {
+        const style = getStyle(this.props.theme);
         const baseURL = this.props.enterpriseURL ? this.props.enterpriseURL : 'https://github.com';
         let orgQuery = '';
         this.props.orgs.map((org) => {
@@ -116,27 +174,23 @@ export default class SidebarRight extends React.PureComponent {
 
         switch (rhsState) {
         case RHSStates.PRS:
-
             githubItems = yourPrs;
             title = 'Your Open Pull Requests';
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+author%3A' + username + '+archived%3Afalse' + orgQuery;
 
             break;
         case RHSStates.REVIEWS:
-
             githubItems = reviews;
             listUrl = baseURL + '/pulls?q=is%3Aopen+is%3Apr+review-requested%3A' + username + '+archived%3Afalse' + orgQuery;
             title = 'Pull Requests Needing Review';
 
             break;
         case RHSStates.UNREADS:
-
             githubItems = unreads;
             title = 'Unread Messages';
             listUrl = baseURL + '/notifications';
             break;
         case RHSStates.ASSIGNMENTS:
-
             githubItems = yourAssignments;
             title = 'Your Assignments';
             listUrl = baseURL + '/pulls?q=is%3Aopen+archived%3Afalse+assignee%3A' + username + orgQuery;
@@ -163,6 +217,20 @@ export default class SidebarRight extends React.PureComponent {
                                 rel='noopener noreferrer'
                             >{title}</a>
                         </strong>
+                        <OverlayTrigger
+                            key='rhsRefreshButton'
+                            placement='left'
+                            overlay={<Tooltip id='rhsRefreshTooltip'>{'Refresh'}</Tooltip>}
+                        >
+                            <button
+                                type='button'
+                                aria-label='Refresh'
+                                style={style.refreshButton}
+                                onClick={this.handleRefresh}
+                            >
+                                <i className={'fa fa-refresh' + (this.state.refreshing ? ' fa-spin' : '')}/>
+                            </button>
+                        </OverlayTrigger>
                     </div>
                     <div>
                         <GithubItems
@@ -177,9 +245,3 @@ export default class SidebarRight extends React.PureComponent {
         );
     }
 }
-
-const style = {
-    sectionHeader: {
-        padding: '15px',
-    },
-};
