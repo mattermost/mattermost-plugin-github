@@ -68,4 +68,11 @@ func TestSubscriptionRace(t *testing.T) {
 	if silentlyLost > 0 {
 		t.Fatalf("lost-update bug: %d subscriptions were reported as saved but silently dropped", silentlyLost)
 	}
+
+	// Guard against a false pass: if every AddSubscription call failed,
+	// reportedSuccess and persisted are both 0, so silentlyLost is 0 and the
+	// check above passes without actually exercising the race.
+	if reportedSuccess == 0 {
+		t.Fatalf("no AddSubscription calls succeeded; the race was not exercised")
+	}
 }
