@@ -45,6 +45,8 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 	if cfg.OverdueReviewsChannelID == "" || cfg.ReviewTargetDays <= 0 {
 		return
 	}
+	targetDays := cfg.ReviewTargetDays
+	dayType := cfg.reviewTargetDayType()
 
 	day := time.Now().In(time.Local).Format("2006-01-02")
 	var marker []byte
@@ -72,7 +74,7 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		return
 	}
 
-	entries, ok := p.collectAllOverdueSLAItems(ctx)
+	entries, ok := p.collectAllOverdueSLAItems(ctx, targetDays, dayType)
 	if !ok {
 		// Distinguishes "digest could not complete a real scan" (config issue, no service user,
 		// or every configured org's GraphQL fetch failed) from "scan ran and found nothing
@@ -87,7 +89,7 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		return
 	}
 
-	msg := clipSLADigestMessage(buildSLADigestMessage(entries, cfg.ReviewTargetDays, cfg.reviewTargetDayType()))
+	msg := clipSLADigestMessage(buildSLADigestMessage(entries, targetDays, dayType))
 	post := &model.Post{
 		ChannelId: cfg.OverdueReviewsChannelID,
 		UserId:    p.BotUserID,
@@ -192,10 +194,8 @@ func (p *Plugin) pickServiceGitHubUser(ctx context.Context) *GitHubUserInfo {
 // configured org's GraphQL fetch failed); the caller should retry on the next scheduler tick
 // rather than treat that as "ran successfully and found nothing." A successful scan returns
 // ok=true even when entries is empty.
-func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context) ([]slaDigestEntry, bool) {
+func (p *Plugin) collectAllOverdueSLAItems(ctx context.Context, targetDays int, dayType string) ([]slaDigestEntry, bool) {
 	config := p.getConfiguration()
-	targetDays := config.ReviewTargetDays
-	dayType := config.reviewTargetDayType()
 	orgList := config.getOrganizations()
 	now := time.Now()
 
