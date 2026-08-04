@@ -25,6 +25,7 @@ const baseProps = {
     enterpriseURL: '',
     isTeamSidebar: false,
     reviewTargetDays: 0,
+    reviewTargetDayType: 'calendar',
     reviews: [],
     theme: {
         centerChannelBg: '#ffffff',

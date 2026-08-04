@@ -213,7 +213,7 @@ func TestReviewSLAMarkdown(t *testing.T) {
 	ts := github.Timestamp{Time: created}
 
 	t.Run("disabled when target is zero", func(t *testing.T) {
-		s, overdue := reviewSLAMarkdown(ts, 0, time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC))
+		s, overdue := reviewSLAMarkdown(ts, 0, time.Date(2025, 3, 20, 0, 0, 0, 0, time.UTC), slaDayTypeCalendar)
 		assert.Empty(t, s)
 		assert.False(t, overdue)
 	})
@@ -221,7 +221,7 @@ func TestReviewSLAMarkdown(t *testing.T) {
 	t.Run("overdue", func(t *testing.T) {
 		// Due March 15 (10th + 5), today March 19 -> 4 days overdue
 		now := time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC)
-		s, overdue := reviewSLAMarkdown(ts, 5, now)
+		s, overdue := reviewSLAMarkdown(ts, 5, now, slaDayTypeCalendar)
 		assert.True(t, overdue)
 		assert.Contains(t, s, "4 days overdue")
 	})
@@ -229,17 +229,47 @@ func TestReviewSLAMarkdown(t *testing.T) {
 	t.Run("due in future", func(t *testing.T) {
 		// Due March 20 (10th + 10), today March 18 -> 2 days
 		now := time.Date(2025, 3, 18, 12, 0, 0, 0, time.UTC)
-		s, overdue := reviewSLAMarkdown(ts, 10, now)
+		s, overdue := reviewSLAMarkdown(ts, 10, now, slaDayTypeCalendar)
 		assert.False(t, overdue)
 		assert.Contains(t, s, "Due in 2 days")
 	})
 
 	t.Run("due today", func(t *testing.T) {
 		now := time.Date(2025, 3, 20, 23, 59, 0, 0, time.UTC)
-		s, overdue := reviewSLAMarkdown(ts, 10, now)
+		s, overdue := reviewSLAMarkdown(ts, 10, now, slaDayTypeCalendar)
 		assert.False(t, overdue)
 		assert.Contains(t, s, "Due today")
 	})
+}
+
+func TestAddBusinessDays(t *testing.T) {
+	// Friday 2025-03-14
+	fri := time.Date(2025, 3, 14, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, time.Date(2025, 3, 17, 0, 0, 0, 0, time.UTC), addBusinessDays(fri, 1)) // Mon
+	assert.Equal(t, time.Date(2025, 3, 18, 0, 0, 0, 0, time.UTC), addBusinessDays(fri, 2)) // Tue
+	assert.Equal(t, time.Date(2025, 3, 21, 0, 0, 0, 0, time.UTC), addBusinessDays(fri, 5)) // next Fri
+
+	sat := time.Date(2025, 3, 15, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, time.Date(2025, 3, 17, 0, 0, 0, 0, time.UTC), addBusinessDays(sat, 1)) // Mon
+
+	sun := time.Date(2025, 3, 16, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, time.Date(2025, 3, 17, 0, 0, 0, 0, time.UTC), addBusinessDays(sun, 1)) // Mon
+}
+
+func TestSLADiffDaysBusiness(t *testing.T) {
+	// Friday evening request, 2 business-day target → due Tuesday.
+	fri := github.Timestamp{Time: time.Date(2025, 3, 14, 18, 0, 0, 0, time.UTC)}
+	mon := time.Date(2025, 3, 17, 12, 0, 0, 0, time.UTC)
+	assert.Equal(t, 1, slaDiffDays(fri, 2, mon, slaDayTypeBusiness), "Mon should be due in 1 calendar day")
+
+	tue := time.Date(2025, 3, 18, 12, 0, 0, 0, time.UTC)
+	assert.Equal(t, 0, slaDiffDays(fri, 2, tue, slaDayTypeBusiness), "Tue should be due today")
+
+	wed := time.Date(2025, 3, 19, 12, 0, 0, 0, time.UTC)
+	assert.Equal(t, -1, slaDiffDays(fri, 2, wed, slaDayTypeBusiness), "Wed should be 1 calendar day overdue")
+
+	// Same start/target in calendar mode: Fri+2 = Sun → Mon is already overdue.
+	assert.Equal(t, -1, slaDiffDays(fri, 2, mon, slaDayTypeCalendar))
 }
 
 func TestGetToDoDisplayText(t *testing.T) {

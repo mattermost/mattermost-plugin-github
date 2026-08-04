@@ -141,7 +141,7 @@ function GithubItems(props: GithubItemsProps) {
 
         let slaBadge: JSX.Element | null = null;
         if (showReviewSLA) {
-            slaBadge = renderReviewSLABadge(item, props.reviewTargetDays || 0, style);
+            slaBadge = renderReviewSLABadge(item, props.reviewTargetDays || 0, props.reviewTargetDayType || 'calendar', style);
         }
 
         // Status images pasted directly from GitHub. Change to our own version when styles are decided.
@@ -409,8 +409,8 @@ const getStyle = makeStyleFromTheme((theme) => {
     };
 });
 
-function renderReviewSLABadge(item: GithubItem, targetDays: number, style: any): JSX.Element | null {
-    const status = getReviewSLAStatus(item, targetDays);
+function renderReviewSLABadge(item: GithubItem, targetDays: number, dayType: 'calendar' | 'business', style: any): JSX.Element | null {
+    const status = getReviewSLAStatus(item, targetDays, dayType);
     if (!status) {
         return null;
     }

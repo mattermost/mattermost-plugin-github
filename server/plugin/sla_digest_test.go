@@ -130,7 +130,7 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(400, "@e (e-gh)", "owner/repo - [E](url)"),
 		}
 
-		msg := buildSLADigestMessage(entries, 3)
+		msg := buildSLADigestMessage(entries, 3, slaDayTypeCalendar)
 
 		assert.True(t, strings.HasPrefix(msg, "### Pull request reviews past SLA (target: 3 days from most recent review request)"))
 
@@ -152,19 +152,24 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(-2, "@skip2 (skip2-gh)", "owner/repo - [skipped-too](url)"),
 			entry(1, "@keep (keep-gh)", "owner/repo - [kept](url)"),
 		}
-		msg := buildSLADigestMessage(entries, 3)
+		msg := buildSLADigestMessage(entries, 3, slaDayTypeCalendar)
 		assert.Contains(t, msg, "[kept]")
 		assert.NotContains(t, msg, "[skipped]")
 		assert.NotContains(t, msg, "[skipped-too]")
 	})
 
 	t.Run("singular target days uses 'day'", func(t *testing.T) {
-		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 1)
+		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 1, slaDayTypeCalendar)
 		assert.Contains(t, msg, "target: 1 day from")
 	})
 
+	t.Run("business day type uses business day wording", func(t *testing.T) {
+		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 2, slaDayTypeBusiness)
+		assert.Contains(t, msg, "target: 2 business days from")
+	})
+
 	t.Run("zero target days falls back to plain header", func(t *testing.T) {
-		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 0)
+		msg := buildSLADigestMessage([]slaDigestEntry{entry(1, "@x (x-gh)", "owner/repo - [X](url)")}, 0, slaDayTypeCalendar)
 		assert.True(t, strings.HasPrefix(msg, "### Pull request reviews past SLA\n"))
 	})
 
@@ -174,7 +179,7 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(2, "@alpha (alpha-gh)", "owner/repo - [PR-a](url)"),
 			entry(2, "@Mu (mu-gh)", "owner/repo - [PR-m](url)"),
 		}
-		msg := buildSLADigestMessage(entries, 3)
+		msg := buildSLADigestMessage(entries, 3, slaDayTypeCalendar)
 		ai := strings.Index(msg, "@alpha")
 		mi := strings.Index(msg, "@Mu")
 		zi := strings.Index(msg, "@Zeta")
@@ -188,7 +193,7 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(2, reviewer, "owner/repo - [alpha-pr](https://example/pr/1)"),
 			entry(2, reviewer, "owner/repo - [mu-pr](https://example/pr/2)"),
 		}
-		msg := buildSLADigestMessage(entries, 3)
+		msg := buildSLADigestMessage(entries, 3, slaDayTypeCalendar)
 
 		// The reviewer header must appear EXACTLY once in this bucket — that's the whole
 		// point of grouping; otherwise the digest still @-spams the reviewer per-PR.
@@ -212,7 +217,7 @@ func TestBuildSLADigestMessage(t *testing.T) {
 			entry(2, "@alice (alice-gh)", "o/r - [b-pr](url)"),
 			entry(2, "@bob (bob-gh)", "o/r - [c-pr](url)"),
 		}
-		msg := buildSLADigestMessage(entries, 3)
+		msg := buildSLADigestMessage(entries, 3, slaDayTypeCalendar)
 		bucketStart := strings.Index(msg, "#### Overdue\n")
 		require.True(t, bucketStart >= 0)
 		bucket := msg[bucketStart:]

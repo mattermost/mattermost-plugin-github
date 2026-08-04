@@ -3,6 +3,8 @@
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+export type ReviewTargetDayType = 'calendar' | 'business';
+
 // daysFromDue is negative when overdue, 0 when due today, positive when in the future.
 export type ReviewSLAStatus = {
     daysFromDue: number;
@@ -24,15 +26,43 @@ export function getReviewSLAStartIso(item: {review_sla_start?: string | null; cr
     return null;
 }
 
+export function normalizeReviewTargetDayType(dayType?: string | null): ReviewTargetDayType {
+    if (typeof dayType === 'string' && dayType.trim().toLowerCase() === 'business') {
+        return 'business';
+    }
+    return 'calendar';
+}
+
+/** Advance a UTC Y/M/D by n weekdays (Mon–Fri). Returns UTC midnight ms of the due day. */
+export function addBusinessDaysUTC(year: number, month: number, date: number, n: number): number {
+    let y = year;
+    let m = month;
+    let d = date;
+    let remaining = n;
+    while (remaining > 0) {
+        const next = new Date(Date.UTC(y, m, d + 1));
+        y = next.getUTCFullYear();
+        m = next.getUTCMonth();
+        d = next.getUTCDate();
+        const wd = next.getUTCDay(); // 0=Sun … 6=Sat
+        if (wd !== 0 && wd !== 6) {
+            remaining -= 1;
+        }
+    }
+    return Date.UTC(y, m, d);
+}
+
 /**
  * Computes the SLA status for a review item, or null when no useful answer is
- * possible (no target configured, no start date, unparsable date). The "days"
- * are calendar days computed against today's UTC date, matching the server's
- * digest math.
+ * possible (no target configured, no start date, unparsable date). Due date
+ * uses calendar or business days per dayType; daysFromDue is always calendar
+ * days against today's UTC date, matching the server's digest math.
  */
 export function getReviewSLAStatus(
     item: {review_sla_start?: string | null; created_at?: string | null},
     targetDays: number,
+    dayType: ReviewTargetDayType = 'calendar',
+    now: Date = new Date(),
 ): ReviewSLAStatus | null {
     if (!targetDays || targetDays <= 0) {
         return null;
@@ -48,13 +78,14 @@ export function getReviewSLAStatus(
         return null;
     }
 
-    const dueUTC = Date.UTC(
-        start.getUTCFullYear(),
-        start.getUTCMonth(),
-        start.getUTCDate() + targetDays,
-    );
-    const today = new Date();
-    const todayUTC = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+    const y = start.getUTCFullYear();
+    const m = start.getUTCMonth();
+    const d = start.getUTCDate();
+    const dueUTC = normalizeReviewTargetDayType(dayType) === 'business' ?
+        addBusinessDaysUTC(y, m, d, targetDays) :
+        Date.UTC(y, m, d + targetDays);
+
+    const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const daysFromDue = Math.round((dueUTC - todayUTC) / MS_PER_DAY);
 
     return {
@@ -70,12 +101,13 @@ export function getReviewSLAStatus(
 export function reviewsHaveOverdue(
     reviews: Array<{review_sla_start?: string | null; created_at?: string | null}> | null | undefined,
     targetDays: number,
+    dayType: ReviewTargetDayType = 'calendar',
 ): boolean {
     if (!targetDays || !reviews || reviews.length === 0) {
         return false;
     }
     for (const pr of reviews) {
-        const status = getReviewSLAStatus(pr, targetDays);
+        const status = getReviewSLAStatus(pr, targetDays, dayType);
         if (status && status.overdue) {
             return true;
         }

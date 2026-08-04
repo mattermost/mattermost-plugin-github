@@ -367,15 +367,46 @@ func getToDoDisplayText(baseURL, title, url, notifType string, repository *githu
 	return fmt.Sprintf("* %s %s %s\n", repoPart, notifType, titlePart)
 }
 
-// slaCalendarDiffDays returns dueDate minus today in calendar days (negative when the review is overdue).
-func slaCalendarDiffDays(createdAt github.Timestamp, targetDays int, now time.Time) int {
+const (
+	slaDayTypeCalendar = "calendar"
+	slaDayTypeBusiness = "business"
+)
+
+func normalizeSLADayType(dayType string) string {
+	if strings.EqualFold(strings.TrimSpace(dayType), slaDayTypeBusiness) {
+		return slaDayTypeBusiness
+	}
+	return slaDayTypeCalendar
+}
+
+// addBusinessDays returns start advanced by n weekdays (Mon–Fri). Weekends are skipped.
+func addBusinessDays(start time.Time, n int) time.Time {
+	d := start
+	for remaining := n; remaining > 0; {
+		d = d.AddDate(0, 0, 1)
+		wd := d.Weekday()
+		if wd != time.Saturday && wd != time.Sunday {
+			remaining--
+		}
+	}
+	return d
+}
+
+// slaDiffDays returns dueDate minus today in calendar days (negative when the review is overdue).
+// dayType controls how the due date is computed from targetDays; the returned difference is always calendar days.
+func slaDiffDays(createdAt github.Timestamp, targetDays int, now time.Time, dayType string) int {
 	if targetDays <= 0 || createdAt.IsZero() {
 		return 0
 	}
 
 	c := createdAt.UTC()
 	createdDay := time.Date(c.Year(), c.Month(), c.Day(), 0, 0, 0, 0, time.UTC)
-	dueDay := createdDay.AddDate(0, 0, targetDays)
+	var dueDay time.Time
+	if normalizeSLADayType(dayType) == slaDayTypeBusiness {
+		dueDay = addBusinessDays(createdDay, targetDays)
+	} else {
+		dueDay = createdDay.AddDate(0, 0, targetDays)
+	}
 
 	n := now.UTC()
 	todayDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
@@ -438,12 +469,12 @@ func escapeMarkdownLinkText(s string) string {
 }
 
 // reviewSLAMarkdown returns a Markdown SLA suffix for Mattermost posts and whether the review is overdue.
-func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time) (suffix string, overdue bool) {
+func reviewSLAMarkdown(createdAt github.Timestamp, targetDays int, now time.Time, dayType string) (suffix string, overdue bool) {
 	if targetDays <= 0 || createdAt.IsZero() {
 		return "", false
 	}
 
-	diffDays := slaCalendarDiffDays(createdAt, targetDays, now)
+	diffDays := slaDiffDays(createdAt, targetDays, now, dayType)
 
 	if diffDays < 0 {
 		overdueCount := -diffDays

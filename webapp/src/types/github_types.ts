@@ -62,6 +62,9 @@ export type GithubItemsProps = {
 
     /** SLA target in days, used to compute the badge. Falsy disables the badge regardless of showReviewSLA. */
     reviewTargetDays?: number;
+
+    /** calendar (default) or business — how reviewTargetDays advances the due date. */
+    reviewTargetDayType?: 'calendar' | 'business';
 }
 
 export type UserSettingsData = {
@@ -83,6 +86,7 @@ export type ConnectedData = {
 export type ConfigurationData = {
     left_sidebar_enabled: boolean;
     review_target_days?: number;
+    review_target_day_type?: 'calendar' | 'business';
 }
 
 export type PrsDetailsData = {
@@ -179,6 +183,7 @@ export type SidebarData = {
     orgs: string[],
     rhsState?: string | null,
     reviewTargetDays: number,
+    reviewTargetDayType: 'calendar' | 'business',
 }
 
 export type Organization = {

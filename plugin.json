@@ -140,7 +140,24 @@
                 "display_name": "PR review target (days):",
                 "type": "number",
                 "default": "0",
-                "help_text": "Optional. Number of calendar days until a review counts as due. The start time is when you were requested as a reviewer (recorded from GitHub pull_request review_requested webhooks to this server); if unknown, the PR open date is used. When greater than zero, /github todo shows due/overdue text and the sidebar review counter can be color-coded. Set to 0 to disable."
+                "help_text": "Optional. Number of days until a review counts as due (see PR review target day type). The start time is when you were requested as a reviewer (recorded from GitHub pull_request review_requested webhooks to this server); if unknown, the PR open date is used. When greater than zero, /github todo shows due/overdue text and the sidebar review counter can be color-coded. Set to 0 to disable."
+            },
+            {
+                "key": "ReviewTargetDayType",
+                "display_name": "PR review target day type:",
+                "type": "dropdown",
+                "default": "calendar",
+                "help_text": "How PR review target (days) is counted when computing the due date. Calendar days count every day including weekends. Business days count Monday–Friday only (e.g. Friday + 2 business days = Tuesday). Overdue age shown in /github todo, sidebar badges, and digest buckets remains in calendar days either way.",
+                "options": [
+                    {
+                        "display_name": "Calendar days",
+                        "value": "calendar"
+                    },
+                    {
+                        "display_name": "Business days (Mon–Fri)",
+                        "value": "business"
+                    }
+                ]
             },
             {
                 "key": "OverdueReviewsChannelID",
