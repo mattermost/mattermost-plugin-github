@@ -1131,6 +1131,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 	text.WriteString("##### Review Requests\n")
 
 	targetDays := config.ReviewTargetDays
+	dayType := config.reviewTargetDayType()
 	now := time.Now()
 
 	if issueResults.GetTotal() == 0 {
@@ -1141,7 +1142,7 @@ func (p *Plugin) GetToDo(ctx context.Context, info *GitHubUserInfo, githubClient
 		for _, pr := range issueResults.Issues {
 			line := strings.TrimSuffix(getToDoDisplayText(baseURL, pr.GetTitle(), pr.GetHTMLURL(), "", nil), "\n")
 			slaStart := p.effectiveReviewSLAStart(prRefFromIssue(pr, baseURL), info.GitHubUsername)
-			if suffix, _ := reviewSLAMarkdown(slaStart, targetDays, now); suffix != "" {
+			if suffix, _ := reviewSLAMarkdown(slaStart, targetDays, now, dayType); suffix != "" {
 				line += suffix
 			}
 			text.WriteString(line + "\n")

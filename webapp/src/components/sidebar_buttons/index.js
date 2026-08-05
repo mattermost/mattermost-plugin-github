@@ -22,6 +22,7 @@ function mapStateToProps(state) {
         enterpriseURL: state[`plugins-${pluginId}`].enterpriseURL,
         showRHSPlugin: state[`plugins-${pluginId}`].rhsPluginAction,
         reviewTargetDays: state[`plugins-${pluginId}`].configuration.review_target_days || 0,
+        reviewTargetDayType: state[`plugins-${pluginId}`].configuration.review_target_day_type || 'calendar',
     };
 }
 

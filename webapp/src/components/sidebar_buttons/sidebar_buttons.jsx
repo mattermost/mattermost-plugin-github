@@ -17,6 +17,7 @@ export default class SidebarButtons extends React.PureComponent {
         enterpriseURL: PropTypes.string,
         reviews: PropTypes.arrayOf(PropTypes.object),
         reviewTargetDays: PropTypes.number,
+        reviewTargetDayType: PropTypes.string,
         unreads: PropTypes.arrayOf(PropTypes.object),
         yourPrs: PropTypes.arrayOf(PropTypes.object),
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
@@ -137,6 +138,7 @@ export default class SidebarButtons extends React.PureComponent {
 
         const reviews = this.props.reviews || [];
         const reviewTargetDays = this.props.reviewTargetDays || 0;
+        const reviewTargetDayType = this.props.reviewTargetDayType || 'calendar';
         const yourPrs = this.props.yourPrs || [];
         const unreads = this.props.unreads || [];
         const yourAssignments = this.props.yourAssignments || [];
@@ -178,7 +180,7 @@ export default class SidebarButtons extends React.PureComponent {
                 >
                     <a
                         onClick={() => this.openRHS(RHSStates.REVIEWS)}
-                        style={reviewButtonStyle(button, reviews, reviewTargetDays)}
+                        style={reviewButtonStyle(button, reviews, reviewTargetDays, reviewTargetDayType)}
                     >
                         <i className='fa fa-code-fork'/>
                         {' ' + reviews.length}
@@ -228,7 +230,7 @@ export default class SidebarButtons extends React.PureComponent {
     }
 }
 
-function reviewButtonStyle(base, reviews, targetDays) {
+function reviewButtonStyle(base, reviews, targetDays, dayType) {
     // Match getReviewSLAStatus / reviewsHaveOverdue: a non-positive target means SLA
     // is not configured. !targetDays alone would let a negative value through and
     // produce a misleading green indicator.
@@ -239,7 +241,7 @@ function reviewButtonStyle(base, reviews, targetDays) {
     if (list.length === 0) {
         return base;
     }
-    if (reviewsHaveOverdue(list, targetDays)) {
+    if (reviewsHaveOverdue(list, targetDays, dayType || 'calendar')) {
         return {...base, color: 'var(--dnd-indicator)'};
     }
     return {...base, color: 'var(--online-indicator)'};

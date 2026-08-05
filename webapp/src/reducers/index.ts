@@ -66,6 +66,7 @@ function userSettings(state = {
 function configuration(state: ConfigurationData = {
     left_sidebar_enabled: true,
     review_target_days: 0,
+    review_target_day_type: 'calendar',
 }, action: {type: string, data: ConnectedData | ConfigurationData}): ConfigurationData {
     switch (action.type) {
     case ActionTypes.RECEIVED_CONNECTED:

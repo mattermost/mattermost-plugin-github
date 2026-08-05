@@ -98,6 +98,7 @@ export default class SidebarRight extends React.PureComponent {
         yourAssignments: PropTypes.arrayOf(PropTypes.object),
         rhsState: PropTypes.string,
         reviewTargetDays: PropTypes.number,
+        reviewTargetDayType: PropTypes.string,
         theme: PropTypes.object.isRequired,
         actions: PropTypes.shape({
             getYourPrsDetails: PropTypes.func.isRequired,
@@ -238,6 +239,7 @@ export default class SidebarRight extends React.PureComponent {
                             theme={this.props.theme}
                             showReviewSLA={rhsState === RHSStates.REVIEWS}
                             reviewTargetDays={this.props.reviewTargetDays || 0}
+                            reviewTargetDayType={this.props.reviewTargetDayType || 'calendar'}
                         />
                     </div>
                 </Scrollbars>

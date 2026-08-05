@@ -42,8 +42,11 @@ type Configuration struct {
 	UsePreregisteredApplication    bool   `json:"usepreregisteredapplication"`
 	ShowAuthorInCommitNotification bool   `json:"showauthorincommitnotification"`
 	GetNotificationForDraftPRs     bool   `json:"getnotificationfordraftprs"`
-	// ReviewTargetDays is the number of calendar days from PR open until a review is "due" (0 = SLA disabled).
+	// ReviewTargetDays is the number of days from the review-request start until a review is "due" (0 = SLA disabled).
+	// Day counting follows ReviewTargetDayType.
 	ReviewTargetDays int `json:"reviewtargetdays"`
+	// ReviewTargetDayType is "calendar" (default) or "business" (Mon–Fri) for computing the due date.
+	ReviewTargetDayType string `json:"reviewtargetdaytype"`
 	// OverdueReviewsChannelID is an optional channel ID for daily alerts when users have overdue review requests.
 	OverdueReviewsChannelID string `json:"overduereviewschannelid"`
 	// DigestServiceUsername is the Mattermost username whose GitHub connection runs the overdue review digest.
@@ -112,6 +115,7 @@ func (c *Configuration) sanitize() {
 	if c.ReviewTargetDays < 0 {
 		c.ReviewTargetDays = 0
 	}
+	c.ReviewTargetDayType = normalizeSLADayType(c.ReviewTargetDayType)
 
 	// Trim spaces around org and OAuth credentials
 	c.GitHubOrg = strings.TrimSpace(c.GitHubOrg)
@@ -131,9 +135,14 @@ func (c *Configuration) IsSASS() bool {
 
 func (c *Configuration) ClientConfiguration() map[string]any {
 	return map[string]any{
-		"left_sidebar_enabled": c.EnableLeftSidebar,
-		"review_target_days":   c.ReviewTargetDays,
+		"left_sidebar_enabled":   c.EnableLeftSidebar,
+		"review_target_days":     c.ReviewTargetDays,
+		"review_target_day_type": c.reviewTargetDayType(),
 	}
+}
+
+func (c *Configuration) reviewTargetDayType() string {
+	return normalizeSLADayType(c.ReviewTargetDayType)
 }
 
 // Clone shallow copies the configuration. Your implementation may require a deep copy if
