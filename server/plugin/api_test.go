@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
+	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
 	"github.com/mattermost/mattermost/server/public/pluginapi"
@@ -675,6 +676,115 @@ func TestUpdateSettings(t *testing.T) {
 			p.updateSettings(mockGHContext, rec, req)
 
 			tc.assertions(t, rec)
+		})
+	}
+}
+
+func TestCreateIssue(t *testing.T) {
+	mockKvStore, mockAPI, mockLogger, mockLoggerWith, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+	mockGHContext, err := GetMockUserContext(p, mockLogger)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name               string
+		requestBody        string
+		setup              func()
+		expectedStatusCode int
+		expectedMessage    string
+	}{
+		{
+			name:        "Invalid JSON Request Body",
+			requestBody: "invalid-json",
+			setup: func() {
+				mockLogger.EXPECT().WithError(gomock.Any()).Return(mockLoggerWith).Times(1)
+				mockLoggerWith.EXPECT().Warnf("Error decoding JSON body").Times(1)
+			},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedMessage:    "Please provide a JSON object.",
+		},
+		{
+			name:               "Missing Issue Title",
+			requestBody:        `{"repo": "mockOrg/mockRepo", "channel_id": "mockChannelID"}`,
+			setup:              func() {},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedMessage:    "Please provide a valid issue title.",
+		},
+		{
+			name:               "Missing Repo Name",
+			requestBody:        `{"title": "mockTitle", "channel_id": "mockChannelID"}`,
+			setup:              func() {},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedMessage:    "Please provide a valid repo name.",
+		},
+		{
+			name:               "Missing Post ID And Channel ID",
+			requestBody:        `{"title": "mockTitle", "repo": "mockOrg/mockRepo"}`,
+			setup:              func() {},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedMessage:    "Please provide either a postID or a channelID",
+		},
+		{
+			name:        "No Permission To Post In Channel",
+			requestBody: `{"title": "mockTitle", "repo": "mockOrg/mockRepo", "channel_id": "mockChannelID"}`,
+			setup: func() {
+				mockAPI.On("HasPermissionToChannel", MockUserID, MockChannelID, model.PermissionCreatePost).Return(false).Times(1)
+			},
+			expectedStatusCode: http.StatusForbidden,
+			expectedMessage:    "not authorized to post in this channel",
+		},
+		{
+			name:        "Error Loading Attached Post",
+			requestBody: `{"title": "mockTitle", "repo": "mockOrg/mockRepo", "post_id": "mockPostID"}`,
+			setup: func() {
+				mockAPI.On("GetPost", "mockPostID").Return(nil, &model.AppError{Message: "error getting post"}).Times(1)
+			},
+			expectedStatusCode: http.StatusInternalServerError,
+			expectedMessage:    "failed to load post mockPostID",
+		},
+		{
+			name:        "No Permission To Post In Channel Of Attached Post",
+			requestBody: `{"title": "mockTitle", "repo": "mockOrg/mockRepo", "post_id": "mockPostID"}`,
+			setup: func() {
+				mockAPI.On("GetPost", "mockPostID").Return(&model.Post{ChannelId: MockChannelID}, nil).Times(1)
+				mockAPI.On("HasPermissionToChannel", MockUserID, MockChannelID, model.PermissionCreatePost).Return(false).Times(1)
+			},
+			expectedStatusCode: http.StatusForbidden,
+			expectedMessage:    "not authorized to post in this channel",
+		},
+		{
+			name:        "Error Loading Current User",
+			requestBody: `{"title": "mockTitle", "repo": "mockOrg/mockRepo", "channel_id": "mockChannelID"}`,
+			setup: func() {
+				mockAPI.On("HasPermissionToChannel", MockUserID, MockChannelID, model.PermissionCreatePost).Return(true).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(nil, &model.AppError{Message: "error getting user"}).Times(1)
+			},
+			expectedStatusCode: http.StatusInternalServerError,
+			expectedMessage:    "failed to load current user",
+		},
+		{
+			name:        "Repo Missing Owner Prefix",
+			requestBody: `{"title": "mockTitle", "repo": "mockRepo", "channel_id": "mockChannelID"}`,
+			setup: func() {
+				mockAPI.On("HasPermissionToChannel", MockUserID, MockChannelID, model.PermissionCreatePost).Return(true).Times(1)
+				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
+			},
+			expectedStatusCode: http.StatusBadRequest,
+			expectedMessage:    "invalid repository: mockRepo",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/issues", strings.NewReader(tc.requestBody))
+			rec := httptest.NewRecorder()
+
+			p.createIssue(mockGHContext, rec, req)
+
+			assert.Equal(t, tc.expectedStatusCode, rec.Result().StatusCode)
+			body, _ := io.ReadAll(rec.Body)
+			assert.Contains(t, string(body), tc.expectedMessage)
 		})
 	}
 }
