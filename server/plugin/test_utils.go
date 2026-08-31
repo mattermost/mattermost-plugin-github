@@ -303,6 +303,12 @@ func GetMockPullRequestReviewCommentEvent(action, body, sender string) *github.P
 	}
 }
 
+func GetMockPullRequestReviewCommentReplyEvent(action, body, sender string, replyTo int64) *github.PullRequestReviewCommentEvent {
+	event := GetMockPullRequestReviewCommentEvent(action, body, sender)
+	event.Comment.InReplyTo = github.Int64(replyTo)
+	return event
+}
+
 func GetMockIssueCommentEvent(action, body, sender string) *github.IssueCommentEvent {
 	return &github.IssueCommentEvent{
 		Action: github.String(action),

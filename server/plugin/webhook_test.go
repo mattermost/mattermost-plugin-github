@@ -611,12 +611,17 @@ func TestHandleReviewCommentAuthorNotification(t *testing.T) {
 		},
 		{
 			name:  "Sender is the PR author",
-			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockIssueAuthor),
+			event: GetMockPullRequestReviewCommentReplyEvent(actionCreated, "body", MockIssueAuthor, 99),
+			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
+		},
+		{
+			name:  "Top-level review comment is covered by the review submitted notification",
+			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
 			setup: func(_ *plugintest.API, _ *mocks.MockKvStore) {},
 		},
 		{
 			name:  "Author not mapped to Mattermost",
-			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
+			event: GetMockPullRequestReviewCommentReplyEvent(actionCreated, "body", MockUserLogin, 99),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
@@ -625,8 +630,8 @@ func TestHandleReviewCommentAuthorNotification(t *testing.T) {
 			},
 		},
 		{
-			name:  "Successful author notification",
-			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
+			name:  "Successful author notification for thread reply",
+			event: GetMockPullRequestReviewCommentReplyEvent(actionCreated, "body", MockUserLogin, 99),
 			setup: func(mockAPI *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
@@ -646,7 +651,7 @@ func TestHandleReviewCommentAuthorNotification(t *testing.T) {
 		},
 		{
 			name:  "Muted sender suppresses author notification",
-			event: GetMockPullRequestReviewCommentEvent(actionCreated, "body", MockUserLogin),
+			event: GetMockPullRequestReviewCommentReplyEvent(actionCreated, "body", MockUserLogin, 99),
 			setup: func(_ *plugintest.API, mockKVStore *mocks.MockKvStore) {
 				mockKVStore.EXPECT().Get("issueAuthor_githubusername", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(*[]uint8)
