@@ -1151,6 +1151,11 @@ func (p *Plugin) handleReviewCommentAuthorNotification(event *github.PullRequest
 		return
 	}
 
+	// Top-level comments on a submitted review are already DMed via handlePullRequestReviewNotification.
+	if event.GetComment().GetInReplyTo() == 0 {
+		return
+	}
+
 	authorUserID := p.getGitHubToUserIDMapping(author)
 	if authorUserID == "" {
 		return
