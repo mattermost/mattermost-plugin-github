@@ -268,7 +268,12 @@ const getStyle = makeStyleFromTheme((theme) => {
             justifyContent: 'space-around',
             padding: '0 10px',
         },
+
+        // OverlayTrigger may wrap each button, so stack the controls at the
+        // container level instead of relying on the anchors' display style.
         containerTeam: {
+            display: 'flex',
+            flexDirection: 'column',
         },
     };
 });
