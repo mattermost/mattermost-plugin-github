@@ -65,3 +65,7 @@ To trigger a release, follow these steps:
 ### Playwright e2e tests
 
 In order to get your environment set up to run [Playwright](https://playwright.dev) tests, please see the setup guide at [e2e/playwright](/e2e/playwright#readme).
+
+### React 19 compatibility
+
+This plugin requires Mattermost 12.0 or later with the MM-70687 host JSX runtime exports. Webpack externalizes React, ReactDOM (including `react-dom/client`), and both JSX runtimes to the host globals. These mappings also cover runtime imports from dependencies. Rebuild the plugin after changing its configuration.
