@@ -175,7 +175,20 @@ export const LinkTooltip = ({href, connected, show, theme, enterpriseURL}) => {
                                 </p>
                             )}
                             <div className='markdown-text mt-1 mb-1'>
-                                <ReactMarkdown linkTarget='_blank'>{description}</ReactMarkdown>
+                                <ReactMarkdown
+                                    components={{a: ({href: url, children, title}) => (
+                                        <a
+                                            href={url}
+                                            title={title}
+                                            target='_blank'
+                                            rel='noopener noreferrer'
+                                        >
+                                            {children}
+                                        </a>
+                                    )}}
+                                >
+                                    {description}
+                                </ReactMarkdown>
                             </div>
 
                             {/* base <- head */}
