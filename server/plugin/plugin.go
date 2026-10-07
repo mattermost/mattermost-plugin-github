@@ -51,6 +51,7 @@ const (
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
 	settingReminders     = "reminders"
+	settingVacationSync  = "vacation-sync"
 	settingOn            = "on"
 	settingOff           = "off"
 	settingOnChange      = "on-change"
@@ -105,6 +106,8 @@ type Plugin struct {
 	oauthBroker   *OAuthBroker
 
 	slaDigestCancel context.CancelFunc
+
+	vacationSyncJob *cluster.Job
 
 	emojiMap map[string]string
 }
@@ -300,6 +303,12 @@ func (p *Plugin) OnActivate() error {
 		}
 	}()
 
+	vacationSyncJob, err := cluster.Schedule(p.API, vacationSyncJobKey, cluster.MakeWaitForInterval(vacationSyncInterval), p.syncVacationStatuses)
+	if err != nil {
+		return errors.Wrap(err, "failed to schedule vacation status sync")
+	}
+	p.vacationSyncJob = vacationSyncJob
+
 	ctx, cancel := context.WithCancel(context.Background())
 	p.slaDigestCancel = cancel
 	go p.runSLADigestScheduler(ctx)
@@ -310,6 +319,11 @@ func (p *Plugin) OnActivate() error {
 func (p *Plugin) OnDeactivate() error {
 	if p.slaDigestCancel != nil {
 		p.slaDigestCancel()
+	}
+	if p.vacationSyncJob != nil {
+		if err := p.vacationSyncJob.Close(); err != nil {
+			p.client.Log.Warn("Failed to close vacation status sync job", "error", err.Error())
+		}
 	}
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
@@ -544,7 +558,7 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) (*oauth2.Config, error) {
 		// means that asks scope for private repositories
 		repo = github.ScopeRepo
 	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook), string(github.ScopeUser)}
 
 	if config.UsePreregisteredApplication {
 		p.client.Log.Debug("Using Chimera Proxy OAuth configuration")
@@ -655,6 +669,7 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
+	SyncVacationStatus    bool   `json:"sync_vacation_status"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo, encryptionKey string) error {

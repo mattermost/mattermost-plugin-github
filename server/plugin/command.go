@@ -802,8 +802,38 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		default:
 			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
 		}
+	case settingVacationSync:
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.SyncVacationStatus = true
+		case settingOff:
+			userInfo.Settings.SyncVacationStatus = false
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\"."
+		}
 	default:
 		return "Unknown setting " + setting
+	}
+
+	if setting == settingVacationSync {
+		key := vacationSyncKeyPrefix + userInfo.UserID
+		if userInfo.Settings.SyncVacationStatus {
+			if _, err := p.store.Set(key, vacationSyncState{}); err != nil {
+				p.client.Log.Warn("Failed to store vacation sync state", "userID", userInfo.UserID, "error", err.Error())
+				return "Failed to store settings"
+			}
+		} else {
+			var state vacationSyncState
+			if err := p.store.Get(key, &state); err != nil {
+				p.client.Log.Warn("Failed to get vacation sync state", "userID", userInfo.UserID, "error", err.Error())
+			}
+			if state.Applied {
+				if err := p.graphQLConnect(userInfo).ClearStatus(context.Background()); err != nil {
+					p.client.Log.Warn("Failed to clear GitHub busy status", "userID", userInfo.UserID, "error", err.Error())
+				}
+			}
+			p.deleteVacationSyncState(key)
+		}
 	}
 
 	if setting == settingNotifications {
@@ -1300,6 +1330,17 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	}}
 	remainderNotifications.AddStaticListArgument("", true, settingValue)
 	settings.AddCommand(remainderNotifications)
+
+	settingVacationSyncData := model.NewAutocompleteData("vacation-sync", "", "Set your GitHub status to Busy while your Mattermost status is \"On a vacation\"")
+	settingValue = []model.AutocompleteListItem{{
+		HelpText: "Turn vacation sync on",
+		Item:     "on",
+	}, {
+		HelpText: "Turn vacation sync off",
+		Item:     "off",
+	}}
+	settingVacationSyncData.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(settingVacationSyncData)
 
 	github.AddCommand(settings)
 
