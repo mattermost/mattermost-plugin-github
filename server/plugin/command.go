@@ -802,8 +802,30 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 		default:
 			return "Invalid value. Accepted values are: \"on\" or \"off\" or \"on-change\" ."
 		}
+	case settingVacationSync:
+		switch settingValue {
+		case settingOn:
+			userInfo.Settings.SyncVacationStatus = true
+		case settingOff:
+			userInfo.Settings.SyncVacationStatus = false
+		default:
+			return "Invalid value. Accepted values are: \"on\" or \"off\"."
+		}
 	default:
 		return "Unknown setting " + setting
+	}
+
+	if setting == settingVacationSync {
+		onVacation := false
+		if userInfo.Settings.SyncVacationStatus {
+			user, err := p.client.User.Get(userInfo.UserID)
+			if err != nil {
+				p.client.Log.Warn("Failed to get user for vacation status sync", "userID", userInfo.UserID, "error", err.Error())
+			} else {
+				onVacation = isOnVacation(user.GetCustomStatus())
+			}
+		}
+		p.applyVacationStatus(context.Background(), userInfo, onVacation)
 	}
 
 	if setting == settingNotifications {
@@ -1300,6 +1322,17 @@ func getAutocompleteData(config *Configuration) *model.AutocompleteData {
 	}}
 	remainderNotifications.AddStaticListArgument("", true, settingValue)
 	settings.AddCommand(remainderNotifications)
+
+	settingVacationSyncData := model.NewAutocompleteData("vacation-sync", "", "Set your GitHub status to Busy while your Mattermost status is \"On a vacation\"")
+	settingValue = []model.AutocompleteListItem{{
+		HelpText: "Turn vacation sync on",
+		Item:     "on",
+	}, {
+		HelpText: "Turn vacation sync off",
+		Item:     "off",
+	}}
+	settingVacationSyncData.AddStaticListArgument("", true, settingValue)
+	settings.AddCommand(settingVacationSyncData)
 
 	github.AddCommand(settings)
 
