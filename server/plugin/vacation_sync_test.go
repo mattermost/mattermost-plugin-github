@@ -4,7 +4,6 @@
 package plugin
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -48,7 +47,7 @@ func TestIsOnVacation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expected, isOnVacation(vacationUser(t, tc.status)))
+			assert.Equal(t, tc.expected, isOnVacation(tc.status))
 		})
 	}
 }
@@ -136,16 +135,28 @@ func receiveMutationInput(t *testing.T, requests chan map[string]any) map[string
 	}
 }
 
-func TestSyncUserVacationStatus(t *testing.T) {
-	vacationStatus := &model.CustomStatus{Emoji: "palm_tree", Text: "On a vacation"}
+func recentStatusPreference(t *testing.T, statuses ...model.CustomStatus) model.Preference {
+	t.Helper()
+	value, err := json.Marshal(statuses)
+	require.NoError(t, err)
+	return model.Preference{
+		UserId:   MockUserID,
+		Category: model.PreferenceCategoryCustomStatus,
+		Name:     model.PreferenceNameRecentCustomStatuses,
+		Value:    string(value),
+	}
+}
 
-	t.Run("sets Busy when user goes on vacation", func(t *testing.T) {
+func TestPreferencesHaveChanged(t *testing.T) {
+	vacation := model.CustomStatus{Emoji: "palm_tree", Text: "On a vacation"}
+	meeting := model.CustomStatus{Emoji: "calendar", Text: "In a meeting"}
+
+	t.Run("sets Busy when the newest status is vacation", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, true)
 		env.expectState(t, vacationSyncState{})
-		env.expectUser(vacationUser(t, vacationStatus))
 		env.store.EXPECT().Set(env.key, vacationSyncState{Applied: true}).Return(true, nil)
 
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
+		env.p.PreferencesHaveChanged(nil, []model.Preference{recentStatusPreference(t, vacation, meeting)})
 
 		input := receiveMutationInput(t, env.requests)
 		assert.Equal(t, true, input["limitedAvailability"])
@@ -153,96 +164,110 @@ func TestSyncUserVacationStatus(t *testing.T) {
 		assert.Equal(t, ":palm_tree:", input["emoji"])
 	})
 
-	t.Run("clears status when user returns from vacation", func(t *testing.T) {
+	t.Run("clears Busy when a different status is set after vacation", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, true)
 		env.expectState(t, vacationSyncState{Applied: true})
-		env.expectUser(vacationUser(t, nil))
 		env.store.EXPECT().Set(env.key, vacationSyncState{}).Return(true, nil)
 
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
+		env.p.PreferencesHaveChanged(nil, []model.Preference{recentStatusPreference(t, meeting, vacation)})
 
 		input := receiveMutationInput(t, env.requests)
 		assert.Equal(t, false, input["limitedAvailability"])
 		assert.NotContains(t, input, "message")
 	})
 
-	t.Run("does nothing when already applied and still on vacation", func(t *testing.T) {
+	t.Run("does not touch GitHub when Busy was not applied by the plugin", func(t *testing.T) {
+		env := setupVacationSyncTest(t, http.StatusOK, true)
+		env.expectState(t, vacationSyncState{})
+
+		env.p.PreferencesHaveChanged(nil, []model.Preference{recentStatusPreference(t, meeting)})
+
+		assert.Empty(t, env.requests)
+	})
+
+	t.Run("does nothing when already applied and vacation is set again", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, true)
 		env.expectState(t, vacationSyncState{Applied: true})
-		env.expectUser(vacationUser(t, vacationStatus))
 
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
-
-		assert.Empty(t, env.requests)
-	})
-
-	t.Run("does not touch GitHub status when never on vacation", func(t *testing.T) {
-		env := setupVacationSyncTest(t, http.StatusOK, true)
-		env.expectState(t, vacationSyncState{})
-		env.expectUser(vacationUser(t, nil))
-
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
+		env.p.PreferencesHaveChanged(nil, []model.Preference{recentStatusPreference(t, vacation)})
 
 		assert.Empty(t, env.requests)
 	})
 
-	t.Run("removes marker when setting is disabled", func(t *testing.T) {
+	t.Run("ignores users who have not enabled the setting", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, false)
-		env.store.EXPECT().Delete(env.key).Return(nil)
 
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
+		env.p.PreferencesHaveChanged(nil, []model.Preference{recentStatusPreference(t, vacation)})
 
 		assert.Empty(t, env.requests)
 	})
 
-	t.Run("notifies the user once when GitHub rejects the update", func(t *testing.T) {
+	t.Run("ignores unrelated preferences", func(t *testing.T) {
+		env := setupVacationSyncTest(t, http.StatusOK, true)
+
+		env.p.PreferencesHaveChanged(nil, []model.Preference{
+			{UserId: MockUserID, Category: model.PreferenceCategoryTheme, Name: model.PreferenceNameRecentCustomStatuses, Value: "[]"},
+			{UserId: MockUserID, Category: model.PreferenceCategoryCustomStatus, Name: "other", Value: "[]"},
+		})
+
+		assert.Empty(t, env.requests)
+	})
+
+	t.Run("notifies the user when GitHub rejects the update", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusForbidden, true)
 		env.expectState(t, vacationSyncState{})
-		env.expectUser(vacationUser(t, vacationStatus))
-		env.store.EXPECT().Set(env.key, vacationSyncState{Notified: true}).Return(true, nil)
 		env.api.On("LogWarn", "Failed to set GitHub status to busy", "userID", MockUserID, "error", mock.Anything).Once()
 		env.api.On("GetDirectChannel", MockUserID, MockBotID).Return(&model.Channel{Id: MockChannelID}, nil)
 		env.api.On("CreatePost", mock.MatchedBy(func(post *model.Post) bool {
 			return post.ChannelId == MockChannelID && post.UserId == MockBotID
 		})).Return(&model.Post{}, nil)
 
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
+		env.p.PreferencesHaveChanged(nil, []model.Preference{recentStatusPreference(t, vacation)})
 
 		receiveMutationInput(t, env.requests)
 		env.api.AssertExpectations(t)
 	})
-
-	t.Run("does not notify again after a previous failure", func(t *testing.T) {
-		env := setupVacationSyncTest(t, http.StatusForbidden, true)
-		env.expectState(t, vacationSyncState{Notified: true})
-		env.expectUser(vacationUser(t, vacationStatus))
-		env.api.On("LogWarn", "Failed to set GitHub status to busy", "userID", MockUserID, "error", mock.Anything).Once()
-
-		env.p.syncUserVacationStatus(context.Background(), MockUserID)
-
-		receiveMutationInput(t, env.requests)
-		env.api.AssertNotCalled(t, "CreatePost", mock.Anything)
-	})
 }
 
 func TestHandleSettingsVacationSync(t *testing.T) {
-	t.Run("on stores the sync marker", func(t *testing.T) {
+	newInfo := func(enabled bool) *GitHubUserInfo {
+		return &GitHubUserInfo{UserID: MockUserID, GitHubUsername: MockUsername, Token: &oauth2.Token{AccessToken: MockAccessToken}, Settings: &UserSettings{SyncVacationStatus: enabled}}
+	}
+
+	t.Run("on while already on vacation sets Busy", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, false)
-		info := &GitHubUserInfo{UserID: MockUserID, GitHubUsername: MockUsername, Token: &oauth2.Token{AccessToken: MockAccessToken}, Settings: &UserSettings{}}
-		env.store.EXPECT().Set(env.key, vacationSyncState{}).Return(true, nil)
+		info := newInfo(false)
+		env.expectUser(vacationUser(t, &model.CustomStatus{Emoji: "palm_tree", Text: "On a vacation"}))
+		env.expectState(t, vacationSyncState{})
+		env.store.EXPECT().Set(env.key, vacationSyncState{Applied: true}).Return(true, nil)
 		env.store.EXPECT().Set(MockUserID+githubTokenKey, gomock.Any()).Return(true, nil)
 
 		result := env.p.handleSettings(nil, nil, []string{settingVacationSync, settingOn}, info)
 
 		assert.Equal(t, "Settings updated.", result)
 		assert.True(t, info.Settings.SyncVacationStatus)
+		input := receiveMutationInput(t, env.requests)
+		assert.Equal(t, true, input["limitedAvailability"])
 	})
 
-	t.Run("off while Busy is applied clears GitHub status and the marker", func(t *testing.T) {
+	t.Run("on while not on vacation does not touch GitHub", func(t *testing.T) {
+		env := setupVacationSyncTest(t, http.StatusOK, false)
+		info := newInfo(false)
+		env.expectUser(vacationUser(t, nil))
+		env.expectState(t, vacationSyncState{})
+		env.store.EXPECT().Set(MockUserID+githubTokenKey, gomock.Any()).Return(true, nil)
+
+		result := env.p.handleSettings(nil, nil, []string{settingVacationSync, settingOn}, info)
+
+		assert.Equal(t, "Settings updated.", result)
+		assert.Empty(t, env.requests)
+	})
+
+	t.Run("off while Busy is applied clears the GitHub status", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, true)
-		info := &GitHubUserInfo{UserID: MockUserID, GitHubUsername: MockUsername, Token: &oauth2.Token{AccessToken: MockAccessToken}, Settings: &UserSettings{SyncVacationStatus: true}}
+		info := newInfo(true)
 		env.expectState(t, vacationSyncState{Applied: true})
-		env.store.EXPECT().Delete(env.key).Return(nil)
+		env.store.EXPECT().Set(env.key, vacationSyncState{}).Return(true, nil)
 		env.store.EXPECT().Set(MockUserID+githubTokenKey, gomock.Any()).Return(true, nil)
 
 		result := env.p.handleSettings(nil, nil, []string{settingVacationSync, settingOff}, info)
@@ -253,11 +278,10 @@ func TestHandleSettingsVacationSync(t *testing.T) {
 		assert.Equal(t, false, input["limitedAvailability"])
 	})
 
-	t.Run("off without an applied status only removes the marker", func(t *testing.T) {
+	t.Run("off without an applied status does not touch GitHub", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, true)
-		info := &GitHubUserInfo{UserID: MockUserID, GitHubUsername: MockUsername, Token: &oauth2.Token{AccessToken: MockAccessToken}, Settings: &UserSettings{SyncVacationStatus: true}}
+		info := newInfo(true)
 		env.expectState(t, vacationSyncState{})
-		env.store.EXPECT().Delete(env.key).Return(nil)
 		env.store.EXPECT().Set(MockUserID+githubTokenKey, gomock.Any()).Return(true, nil)
 
 		result := env.p.handleSettings(nil, nil, []string{settingVacationSync, settingOff}, info)
@@ -268,9 +292,8 @@ func TestHandleSettingsVacationSync(t *testing.T) {
 
 	t.Run("invalid value", func(t *testing.T) {
 		env := setupVacationSyncTest(t, http.StatusOK, false)
-		info := &GitHubUserInfo{UserID: MockUserID, Settings: &UserSettings{}}
 
-		result := env.p.handleSettings(nil, nil, []string{settingVacationSync, "maybe"}, info)
+		result := env.p.handleSettings(nil, nil, []string{settingVacationSync, "maybe"}, newInfo(false))
 
 		assert.Equal(t, "Invalid value. Accepted values are: \"on\" or \"off\".", result)
 	})

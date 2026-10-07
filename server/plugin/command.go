@@ -816,24 +816,16 @@ func (p *Plugin) handleSettings(_ *plugin.Context, _ *model.CommandArgs, paramet
 	}
 
 	if setting == settingVacationSync {
-		key := vacationSyncKeyPrefix + userInfo.UserID
+		onVacation := false
 		if userInfo.Settings.SyncVacationStatus {
-			if _, err := p.store.Set(key, vacationSyncState{}); err != nil {
-				p.client.Log.Warn("Failed to store vacation sync state", "userID", userInfo.UserID, "error", err.Error())
-				return "Failed to store settings"
+			user, err := p.client.User.Get(userInfo.UserID)
+			if err != nil {
+				p.client.Log.Warn("Failed to get user for vacation status sync", "userID", userInfo.UserID, "error", err.Error())
+			} else {
+				onVacation = isOnVacation(user.GetCustomStatus())
 			}
-		} else {
-			var state vacationSyncState
-			if err := p.store.Get(key, &state); err != nil {
-				p.client.Log.Warn("Failed to get vacation sync state", "userID", userInfo.UserID, "error", err.Error())
-			}
-			if state.Applied {
-				if err := p.graphQLConnect(userInfo).ClearStatus(context.Background()); err != nil {
-					p.client.Log.Warn("Failed to clear GitHub busy status", "userID", userInfo.UserID, "error", err.Error())
-				}
-			}
-			p.deleteVacationSyncState(key)
 		}
+		p.applyVacationStatus(context.Background(), userInfo, onVacation)
 	}
 
 	if setting == settingNotifications {

@@ -107,8 +107,6 @@ type Plugin struct {
 
 	slaDigestCancel context.CancelFunc
 
-	vacationSyncJob *cluster.Job
-
 	emojiMap map[string]string
 }
 
@@ -303,12 +301,6 @@ func (p *Plugin) OnActivate() error {
 		}
 	}()
 
-	vacationSyncJob, err := cluster.Schedule(p.API, vacationSyncJobKey, cluster.MakeWaitForInterval(vacationSyncInterval), p.syncVacationStatuses)
-	if err != nil {
-		return errors.Wrap(err, "failed to schedule vacation status sync")
-	}
-	p.vacationSyncJob = vacationSyncJob
-
 	ctx, cancel := context.WithCancel(context.Background())
 	p.slaDigestCancel = cancel
 	go p.runSLADigestScheduler(ctx)
@@ -319,11 +311,6 @@ func (p *Plugin) OnActivate() error {
 func (p *Plugin) OnDeactivate() error {
 	if p.slaDigestCancel != nil {
 		p.slaDigestCancel()
-	}
-	if p.vacationSyncJob != nil {
-		if err := p.vacationSyncJob.Close(); err != nil {
-			p.client.Log.Warn("Failed to close vacation status sync job", "error", err.Error())
-		}
 	}
 	p.webhookBroker.Close()
 	p.oauthBroker.Close()
