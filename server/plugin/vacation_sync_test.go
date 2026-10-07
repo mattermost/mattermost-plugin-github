@@ -57,7 +57,6 @@ type vacationSyncTestEnv struct {
 	store    *mocks.MockKvStore
 	api      *plugintest.API
 	requests chan map[string]any
-	info     *GitHubUserInfo
 	key      string
 }
 
