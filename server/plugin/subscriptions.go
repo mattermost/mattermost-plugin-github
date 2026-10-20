@@ -304,32 +304,28 @@ func (p *Plugin) GetSubscriptionsByChannel(channelID string) ([]*Subscription, e
 }
 
 func (p *Plugin) AddSubscription(repo string, sub *Subscription) error {
-	subs, err := p.GetSubscriptions()
-	if err != nil {
-		return errors.Wrap(err, "could not get subscriptions")
-	}
+	err := p.modifySubscriptions(func(subs *Subscriptions) error {
+		repoSubs := subs.Repositories[repo]
+		if repoSubs == nil {
+			repoSubs = []*Subscription{sub}
+		} else {
+			exists := false
+			for index, s := range repoSubs {
+				if s.ChannelID == sub.ChannelID {
+					repoSubs[index] = sub
+					exists = true
+					break
+				}
+			}
 
-	repoSubs := subs.Repositories[repo]
-	if repoSubs == nil {
-		repoSubs = []*Subscription{sub}
-	} else {
-		exists := false
-		for index, s := range repoSubs {
-			if s.ChannelID == sub.ChannelID {
-				repoSubs[index] = sub
-				exists = true
-				break
+			if !exists {
+				repoSubs = append(repoSubs, sub)
 			}
 		}
 
-		if !exists {
-			repoSubs = append(repoSubs, sub)
-		}
-	}
-
-	subs.Repositories[repo] = repoSubs
-
-	err = p.StoreSubscriptions(subs)
+		subs.Repositories[repo] = repoSubs
+		return nil
+	})
 	if err != nil {
 		return errors.Wrap(err, "could not store subscriptions")
 	}
@@ -353,9 +349,28 @@ func (p *Plugin) GetSubscriptions() (*Subscriptions, error) {
 	return subscriptions, nil
 }
 
-func (p *Plugin) StoreSubscriptions(s *Subscriptions) error {
-	return p.store.SetAtomicWithRetries(SubscriptionsKey, func(_ []byte) (any, error) {
-		modifiedBytes, err := json.Marshal(s)
+// modifySubscriptions performs an atomic read-modify-write of the whole
+// subscriptions blob. The mutate function runs inside SetAtomicWithRetries'
+// callback, so on every retry it receives the freshly re-read state and
+// re-applies its change on top of it. This prevents concurrent mutations
+// across channels from silently clobbering one another (lost updates).
+func (p *Plugin) modifySubscriptions(mutate func(*Subscriptions) error) error {
+	return p.store.SetAtomicWithRetries(SubscriptionsKey, func(oldValue []byte) (any, error) {
+		subs := &Subscriptions{Repositories: map[string][]*Subscription{}}
+		if len(oldValue) > 0 {
+			if err := json.Unmarshal(oldValue, subs); err != nil {
+				return nil, errors.Wrap(err, "could not unmarshal subscriptions from KV store")
+			}
+			if subs.Repositories == nil {
+				subs.Repositories = map[string][]*Subscription{}
+			}
+		}
+
+		if err := mutate(subs); err != nil {
+			return nil, err
+		}
+
+		modifiedBytes, err := json.Marshal(subs)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not store subscriptions in KV store")
 		}
@@ -419,34 +434,46 @@ func NewSubscriptionError(code int, err error) *SubscriptionError {
 	return &SubscriptionError{Code: code, Error: err}
 }
 
+// errStopModify is a sentinel returned from a modifySubscriptions mutate
+// function to abort the atomic write without treating it as a store failure.
+// SetAtomicWithRetries returns immediately (no retry) when the callback errors,
+// so the caller inspects its own captured result instead of this error.
+var errStopModify = errors.New("stop modifying subscriptions")
+
 func (p *Plugin) Unsubscribe(channelID, repo, owner string) *SubscriptionError {
 	repoWithOwner := fmt.Sprintf("%s/%s", owner, repo)
 
-	subs, err := p.GetSubscriptions()
-	if err != nil {
-		return NewSubscriptionError(InternalServerError, errors.Wrap(err, "could not get subscriptions"))
-	}
+	notFound := NewSubscriptionError(SubscriptionNotFound, errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/")))
 
-	repoSubs := subs.Repositories[repoWithOwner]
-	if repoSubs == nil {
-		return NewSubscriptionError(SubscriptionNotFound, errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/")))
-	}
-
-	removed := false
-	for index, sub := range repoSubs {
-		if sub.ChannelID == channelID {
-			repoSubs = append(repoSubs[:index], repoSubs[index+1:]...)
-			removed = true
-			break
+	var subErr *SubscriptionError
+	err := p.modifySubscriptions(func(subs *Subscriptions) error {
+		repoSubs := subs.Repositories[repoWithOwner]
+		if repoSubs == nil {
+			subErr = notFound
+			return errStopModify
 		}
-	}
 
-	if !removed {
-		return NewSubscriptionError(SubscriptionNotFound, errors.Errorf(SubscriptionUnavailable, strings.TrimSuffix(repoWithOwner, "/")))
-	}
+		removed := false
+		for index, sub := range repoSubs {
+			if sub.ChannelID == channelID {
+				repoSubs = append(repoSubs[:index], repoSubs[index+1:]...)
+				removed = true
+				break
+			}
+		}
 
-	subs.Repositories[repoWithOwner] = repoSubs
-	if err := p.StoreSubscriptions(subs); err != nil {
+		if !removed {
+			subErr = notFound
+			return errStopModify
+		}
+
+		subs.Repositories[repoWithOwner] = repoSubs
+		return nil
+	})
+	if subErr != nil {
+		return subErr
+	}
+	if err != nil {
 		return NewSubscriptionError(InternalServerError, errors.Wrap(err, "could not store subscriptions"))
 	}
 
