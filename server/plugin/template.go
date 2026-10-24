@@ -513,8 +513,9 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 		"* `/github subscriptions delete owner[/repo]` - Unsubscribe the current channel from a repository\n" +
 		"* `/github me` - Display the connected GitHub account\n" +
 		"* `/github settings [setting] [value]` - Update your user settings\n" +
-		"  * `setting` can be `notifications` or `reminders`\n" +
+		"  * `setting` can be `notifications`, `reminders` or `vacation-sync`\n" +
 		"  * `value` can be `on` or `off`\n" +
+		"  * `vacation-sync` sets your GitHub status to Busy (so you are not auto-assigned PRs) while your Mattermost custom status is \"On a vacation\". Off by default.\n" +
 		"* `/github setup` - Setup your Github plugin\n" +
 		"* `/github mute` - Managed muted GitHub users. You'll not receive notifications for comments in your PRs and issues from those users.\n" +
 		"  * `/github mute list` - list your muted GitHub users\n" +

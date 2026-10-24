@@ -51,6 +51,7 @@ const (
 	settingButtonsTeam   = "team"
 	settingNotifications = "notifications"
 	settingReminders     = "reminders"
+	settingVacationSync  = "vacation-sync"
 	settingOn            = "on"
 	settingOff           = "off"
 	settingOnChange      = "on-change"
@@ -544,7 +545,7 @@ func (p *Plugin) getOAuthConfig(privateAllowed bool) (*oauth2.Config, error) {
 		// means that asks scope for private repositories
 		repo = github.ScopeRepo
 	}
-	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook)}
+	scopes := []string{string(repo), string(github.ScopeNotifications), string(github.ScopeReadOrg), string(github.ScopeAdminOrgHook), string(github.ScopeUser)}
 
 	if config.UsePreregisteredApplication {
 		p.client.Log.Debug("Using Chimera Proxy OAuth configuration")
@@ -655,6 +656,7 @@ type UserSettings struct {
 	DailyReminder         bool   `json:"daily_reminder"`
 	DailyReminderOnChange bool   `json:"daily_reminder_on_change"`
 	Notifications         bool   `json:"notifications"`
+	SyncVacationStatus    bool   `json:"sync_vacation_status"`
 }
 
 func (p *Plugin) storeGitHubUserInfo(info *GitHubUserInfo, encryptionKey string) error {
