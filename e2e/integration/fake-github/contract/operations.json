@@ -1,0 +1,62 @@
+{
+  "rest": {
+    "url": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json",
+    "operations": [
+      "GET /user",
+      "GET /users/{username}",
+      "GET /user/orgs",
+      "GET /user/repos",
+      "GET /users/{username}/repos",
+      "GET /orgs/{org}",
+      "GET /orgs/{org}/repos",
+      "GET /orgs/{org}/members/{username}",
+      "GET /orgs/{org}/public_members/{username}",
+      "GET /orgs/{org}/hooks",
+      "POST /orgs/{org}/hooks",
+      "GET /repos/{owner}/{repo}",
+      "GET /repos/{owner}/{repo}/hooks",
+      "POST /repos/{owner}/{repo}/hooks",
+      "GET /repos/{owner}/{repo}/issues/{issue_number}",
+      "POST /repos/{owner}/{repo}/issues",
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+      "GET /repos/{owner}/{repo}/labels",
+      "GET /repos/{owner}/{repo}/assignees",
+      "GET /repos/{owner}/{repo}/milestones",
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+      "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
+      "GET /repos/{owner}/{repo}/commits/{ref}/status",
+      "GET /search/issues",
+      "GET /notifications"
+    ],
+    "webhooks": [
+      "ping",
+      "pull-request-opened",
+      "pull-request-closed",
+      "pull-request-review-requested",
+      "issues-opened",
+      "issue-comment-created",
+      "push"
+    ]
+  },
+  "graphql": {
+    "url": "https://docs.github.com/public/fpt/schema.docs.graphql",
+    "fields": {
+      "Query": ["search"],
+      "SearchResultItemConnection": ["issueCount", "nodes", "pageInfo"],
+      "PageInfo": ["endCursor", "hasNextPage"],
+      "PullRequest": ["additions", "author", "authorAssociation", "body", "changedFiles", "createdAt", "deletions", "labels", "milestone", "number", "repository", "reviewRequests", "state", "title", "updatedAt", "url"],
+      "Issue": ["author", "authorAssociation", "body", "createdAt", "labels", "milestone", "number", "repository", "state", "title", "updatedAt", "url"],
+      "Actor": ["login"],
+      "User": ["login"],
+      "Team": ["slug", "organization"],
+      "Organization": ["login"],
+      "Repository": ["name", "nameWithOwner", "owner", "url"],
+      "RepositoryOwner": ["login"],
+      "LabelConnection": ["nodes"],
+      "Label": ["color", "name"],
+      "Milestone": ["title"],
+      "ReviewRequestConnection": ["nodes"],
+      "ReviewRequest": ["requestedReviewer"]
+    }
+  }
+}

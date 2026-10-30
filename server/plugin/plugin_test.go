@@ -625,3 +625,18 @@ func TestUseGitHubClient_AuthFailureNotifiesUser(t *testing.T) {
 		})
 	}
 }
+
+func TestGetGitHubClientWithTestServerURL(t *testing.T) {
+	original := testOAuthServerURL
+	testOAuthServerURL = "http://fake-github:8093"
+	t.Cleanup(func() { testOAuthServerURL = original })
+
+	client, err := getGitHubClient(http.DefaultClient, &Configuration{})
+	require.NoError(t, err)
+	require.Equal(t, "http://fake-github:8093/api/", client.BaseURL.String())
+	require.Equal(t, "http://fake-github:8093/uploads/", client.UploadURL.String())
+
+	enterprise, err := getGitHubClient(http.DefaultClient, &Configuration{EnterpriseBaseURL: "https://ghe.example.com", EnterpriseUploadURL: "https://ghe.example.com"})
+	require.NoError(t, err)
+	require.Equal(t, "https://ghe.example.com/api/v3/", enterprise.BaseURL.String())
+}

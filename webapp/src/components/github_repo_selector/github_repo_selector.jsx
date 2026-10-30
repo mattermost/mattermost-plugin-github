@@ -63,12 +63,14 @@ export default class GithubRepoSelector extends PureComponent {
         if (prevProps.yourOrgs !== this.props.yourOrgs && this.props.yourOrgs.length > 0) {
             const newOrg = this.props.yourOrgs[0].login;
             if (this.state.org !== newOrg) {
-                this.onChangeForOrg(newOrg);
+                this.selectOrg(newOrg);
             }
         }
     }
 
-    onChangeForOrg = (org) => {
+    onChangeForOrg = (_, org) => this.selectOrg(org);
+
+    selectOrg = (org) => {
         if (this.state.org !== org) {
             this.setState({org});
             this.props.actions.getReposByOrg(org, this.props.currentChannelId);

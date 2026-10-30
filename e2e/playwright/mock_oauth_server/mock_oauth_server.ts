@@ -49,5 +49,34 @@ export const makeOAuthServer = ({
 
     app.use(authorizeURLPrefix, oauthRouter);
 
+    // E2E builds also send REST, GraphQL and upload calls here; this suite expects them to reach GitHub.
+    app.use('/api', forwardTo('https://api.github.com'));
+    app.use('/uploads', forwardTo('https://uploads.github.com'));
+
     return app;
 };
+
+const hopByHopHeaders = ['host', 'connection', 'content-length', 'content-encoding', 'transfer-encoding'];
+
+function forwardTo(target: string): express.RequestHandler[] {
+    return [express.raw({type: () => true, limit: '25mb'}), async (req, res) => {
+        const headers = Object.fromEntries(Object.entries(req.headers).filter(([name]) => !hopByHopHeaders.includes(name))) as Record<string, string>;
+        const hasBody = Buffer.isBuffer(req.body) && req.body.length > 0;
+
+        // Express 4 doesn't catch rejected handlers; an unreachable GitHub would otherwise crash the mock.
+        let upstream: Awaited<ReturnType<typeof fetch>>;
+        try {
+            upstream = await fetch(target + req.url, {method: req.method, headers, body: hasBody ? req.body : undefined});
+        } catch (err) {
+            res.status(502).send(`mock OAuth server could not reach ${target}: ${err}`);
+            return;
+        }
+
+        upstream.headers.forEach((value, name) => {
+            if (!hopByHopHeaders.includes(name)) {
+                res.setHeader(name, value);
+            }
+        });
+        res.status(upstream.status).send(Buffer.from(await upstream.arrayBuffer()));
+    }];
+}

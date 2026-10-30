@@ -1,0 +1,204 @@
+name: e2e
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: playwright (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: min-server
+            image: mattermost/mattermost-enterprise-edition:release-12.0
+          - name: master
+            image: mattermostdevelopment/mattermost-enterprise-edition:master
+    env:
+      CI: true
+      MM_IMAGE: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            webapp/package-lock.json
+            e2e/integration/package-lock.json
+
+      - name: Build E2E plugin bundle
+        run: make e2e-dist
+        env:
+          # Builds only for the runner's OS/arch.
+          MM_SERVICESETTINGS_ENABLEDEVELOPER: true
+
+      - name: Install e2e dependencies
+        working-directory: e2e/integration
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Type-check e2e
+        working-directory: e2e/integration
+        run: npm run tsc
+
+      - name: Start Mattermost
+        working-directory: e2e/integration
+        run: npm run env:up
+
+      - name: Run Playwright
+        working-directory: e2e/integration
+        run: npm run test:ci
+
+      - name: Collect server logs
+        if: failure()
+        working-directory: e2e/integration
+        run: mkdir -p playwright-report && docker compose logs mattermost > playwright-report/mattermost.log 2>&1 || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.name }}
+          path: e2e/integration/playwright-report
+          retention-days: 14
+
+  # Non-blocking: a screenshot diff needs a person to judge whether the change is intended.
+  visual:
+    name: playwright visual
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            webapp/package-lock.json
+            e2e/integration/package-lock.json
+
+      - name: Build E2E plugin bundle
+        run: make e2e-dist
+        env:
+          MM_SERVICESETTINGS_ENABLEDEVELOPER: true
+
+      - name: Install e2e dependencies
+        working-directory: e2e/integration
+        run: npm ci
+
+      - name: Compare screenshots
+        working-directory: e2e/integration
+        run: npm run test:visual
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-visual-diffs
+          path: |
+            e2e/integration/playwright-report
+            e2e/integration/test-results
+          retention-days: 14
+
+  contract-drift:
+    name: fake-github contract drift
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Compare committed specs with GitHub's published REST description and GraphQL schema
+        working-directory: e2e/integration
+        run: npm run contract:check
+
+  real-github:
+    name: real github.com journey
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && vars.REAL_GITHUB_E2E_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The fixtures and hook on the test repository are shared between runs.
+    concurrency:
+      group: real-github-e2e
+      cancel-in-progress: false
+    env:
+      CI: true
+      E2E_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.E2E_GITHUB_OAUTH_CLIENT_ID }}
+      E2E_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.E2E_GITHUB_OAUTH_CLIENT_SECRET }}
+      E2E_GITHUB_REPO: ${{ secrets.E2E_GITHUB_REPO }}
+      E2E_GITHUB_MACHINE_TOKEN: ${{ secrets.E2E_GITHUB_MACHINE_TOKEN }}
+      E2E_GITHUB_LOGIN_USERNAME: ${{ secrets.E2E_GITHUB_LOGIN_USERNAME }}
+      E2E_GITHUB_LOGIN_PASSWORD: ${{ secrets.E2E_GITHUB_LOGIN_PASSWORD }}
+      E2E_GITHUB_LOGIN_TOTP_SECRET: ${{ secrets.E2E_GITHUB_LOGIN_TOTP_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            webapp/package-lock.json
+            e2e/integration/package-lock.json
+
+      - name: Build plugin bundle
+        run: make dist
+        env:
+          MM_SERVICESETTINGS_ENABLEDEVELOPER: true
+
+      - name: Install e2e dependencies
+        working-directory: e2e/integration
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start Mattermost
+        working-directory: e2e/integration
+        run: npm run env:up
+
+      # No report upload: it would carry real tokens and page content.
+      - name: Run journey
+        working-directory: e2e/integration
+        run: npm run test:real
