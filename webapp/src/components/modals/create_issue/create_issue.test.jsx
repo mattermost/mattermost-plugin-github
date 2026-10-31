@@ -36,17 +36,38 @@ jest.mock('@/components/github_repo_selector', () => ({
 
 jest.mock('@/components/github_label_selector', () => ({
     __esModule: true,
-    default: () => <div data-testid='github-label-selector'>{'Label Selector'}</div>,
+    default: ({isDisabled}) => (
+        <div
+            data-testid='github-label-selector'
+            data-disabled={isDisabled}
+        >
+            {'Label Selector'}
+        </div>
+    ),
 }));
 
 jest.mock('@/components/github_assignee_selector', () => ({
     __esModule: true,
-    default: () => <div data-testid='github-assignee-selector'>{'Assignee Selector'}</div>,
+    default: ({isDisabled}) => (
+        <div
+            data-testid='github-assignee-selector'
+            data-disabled={isDisabled}
+        >
+            {'Assignee Selector'}
+        </div>
+    ),
 }));
 
 jest.mock('@/components/github_milestone_selector', () => ({
     __esModule: true,
-    default: () => <div data-testid='github-milestone-selector'>{'Milestone Selector'}</div>,
+    default: ({isDisabled}) => (
+        <div
+            data-testid='github-milestone-selector'
+            data-disabled={isDisabled}
+        >
+            {'Milestone Selector'}
+        </div>
+    ),
 }));
 
 const defaultProps = {
@@ -177,24 +198,28 @@ test('CreateIssueModal should set issueDescription state when post prop is updat
     expect(descriptionInput).toHaveValue('test post');
 });
 
-test('CreateIssueModal should not display attribute selectors when repo does not have push permissions', async () => {
+test('CreateIssueModal should disable attribute selectors when repo does not have push permissions or no repo is selected', async () => {
     render(<CreateIssueModal {...defaultProps}/>);
+
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'true');
 
     const selectNoPushRepoButton = screen.getByText('Select No Push Repo');
     await userEvent.click(selectNoPushRepoButton);
 
-    expect(screen.queryByTestId('github-label-selector')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('github-assignee-selector')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('github-milestone-selector')).not.toBeInTheDocument();
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'true');
 });
 
-test('CreateIssueModal should display attribute selectors when repo has push permissions', async () => {
+test('CreateIssueModal should enable attribute selectors when repo has push permissions', async () => {
     render(<CreateIssueModal {...defaultProps}/>);
 
     const selectRepoButton = screen.getByText('Select Repo');
     await userEvent.click(selectRepoButton);
 
-    expect(screen.getByTestId('github-label-selector')).toBeInTheDocument();
-    expect(screen.getByTestId('github-assignee-selector')).toBeInTheDocument();
-    expect(screen.getByTestId('github-milestone-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'false');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'false');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'false');
 });
