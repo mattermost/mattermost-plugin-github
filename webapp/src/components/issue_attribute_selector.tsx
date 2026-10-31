@@ -23,6 +23,7 @@ export type Props = {
     onChange: (selection: ReactSelectOption | ReactSelectOption[] | null) => void;
     loadOptions: () => Promise<ReactSelectOption[]>;
     selection: ReactSelectOption | string[] | null;
+    isDisabled?: boolean;
 };
 
 type State = {

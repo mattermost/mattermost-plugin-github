@@ -14,6 +14,7 @@ type Props = GitHubLabelSelectorDispatchProps & {
     theme: Theme;
     selectedLabels: string[];
     onChange: (selection: string[]) => void;
+    isDisabled?: boolean;
 };
 
 type Option = {
