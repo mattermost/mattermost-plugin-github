@@ -142,6 +142,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: e2e/integration/package-lock.json
+
+      - name: Install e2e dependencies
+        working-directory: e2e/integration
+        run: npm ci
 
       - name: Compare committed specs with GitHub's published REST description and GraphQL schema
         working-directory: e2e/integration
@@ -158,13 +164,6 @@ jobs:
       cancel-in-progress: false
     env:
       CI: true
-      E2E_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.E2E_GITHUB_OAUTH_CLIENT_ID }}
-      E2E_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.E2E_GITHUB_OAUTH_CLIENT_SECRET }}
-      E2E_GITHUB_REPO: ${{ secrets.E2E_GITHUB_REPO }}
-      E2E_GITHUB_MACHINE_TOKEN: ${{ secrets.E2E_GITHUB_MACHINE_TOKEN }}
-      E2E_GITHUB_LOGIN_USERNAME: ${{ secrets.E2E_GITHUB_LOGIN_USERNAME }}
-      E2E_GITHUB_LOGIN_PASSWORD: ${{ secrets.E2E_GITHUB_LOGIN_PASSWORD }}
-      E2E_GITHUB_LOGIN_TOTP_SECRET: ${{ secrets.E2E_GITHUB_LOGIN_TOTP_SECRET }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -202,3 +201,11 @@ jobs:
       - name: Run journey
         working-directory: e2e/integration
         run: npm run test:real
+        env:
+          E2E_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.E2E_GITHUB_OAUTH_CLIENT_ID }}
+          E2E_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.E2E_GITHUB_OAUTH_CLIENT_SECRET }}
+          E2E_GITHUB_REPO: ${{ secrets.E2E_GITHUB_REPO }}
+          E2E_GITHUB_MACHINE_TOKEN: ${{ secrets.E2E_GITHUB_MACHINE_TOKEN }}
+          E2E_GITHUB_LOGIN_USERNAME: ${{ secrets.E2E_GITHUB_LOGIN_USERNAME }}
+          E2E_GITHUB_LOGIN_PASSWORD: ${{ secrets.E2E_GITHUB_LOGIN_PASSWORD }}
+          E2E_GITHUB_LOGIN_TOTP_SECRET: ${{ secrets.E2E_GITHUB_LOGIN_TOTP_SECRET }}

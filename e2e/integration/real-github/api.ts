@@ -35,8 +35,19 @@ export async function gh<T = any>(method: string, path: string, {body, token = r
                 continue;
             }
         }
-        const text = await res.text();
-        return {status: res.status, body: (text ? JSON.parse(text) : undefined) as T, headers: res.headers};
+        return {status: res.status, body: parseBody(await res.text()) as T, headers: res.headers};
+    }
+}
+
+// GitHub's 5xx pages are HTML or plain text; keep them so callers can still report the status.
+function parseBody(text: string): unknown {
+    if (!text) {
+        return undefined;
+    }
+    try {
+        return JSON.parse(text);
+    } catch {
+        return text;
     }
 }
 

@@ -30,7 +30,7 @@ for (const format of ['uri-template', 'repo.nwo', 'ssh-key', 'ssh-key fingerprin
 }
 ajv.addSchema({components: fromOpenAPI(rest.components)}, 'rest');
 
-type Operation = {method: string; template: string; pattern: RegExp; request?: ValidateFunction; responses: Map<string, ValidateFunction>};
+type Operation = {method: string; template: string; pattern: RegExp; request?: ValidateFunction; responses: Map<string, ValidateFunction>; documented: Set<string>};
 
 const operations: Operation[] = Object.entries(rest.paths as JsonObject).flatMap(([template, methods]) => Object.entries(methods as JsonObject).map(([method, op]) => ({
     method: method.toUpperCase(),
@@ -41,6 +41,7 @@ const operations: Operation[] = Object.entries(rest.paths as JsonObject).flatMap
         const schema = jsonSchema(resolve(response));
         return schema ? [[status, ajv.compile(fromOpenAPI(schema))]] : [];
     })),
+    documented: new Set(Object.keys(op.responses as JsonObject)),
 })));
 
 const webhooks = new Map<string, ValidateFunction>(Object.entries(rest['x-webhooks'] as JsonObject).map(([name, hook]) => [name, ajv.compile(fromOpenAPI(jsonSchema(hook.post.requestBody)))]));
@@ -65,7 +66,7 @@ export function validateResponse(method: string, pathname: string, status: numbe
     }
     const validator = op.responses.get(String(status)) ?? apiWide.get(String(status));
     if (!validator) {
-        if (op.responses.has(String(status)) || status === 204 || status === 304) {
+        if (op.documented.has(String(status)) || status === 204 || status === 304) {
             return [];
         }
         return [`${method} ${op.template}: GitHub does not document a ${status} response`];
