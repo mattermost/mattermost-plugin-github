@@ -14,14 +14,35 @@ make e2e-real      # normal bundle, against github.com. Needs e2e/integration/.e
 
 `make e2e-dist` bakes `http://fake-github:8093` into `testOAuthServerURL`, which now moves the OAuth, REST, GraphQL and upload base URLs together, so the github.com code path is what gets tested. The plugin logs a warning on activation. Never ship that bundle.
 
-Overrides go in the shell or in `e2e/integration/.env` (copy `.env.example`; docker compose reads it too). Real values live in 1Password or GitHub Actions secrets.
+## Environment variables
+
+Set them in the shell or in `e2e/integration/.env` (copy `.env.example`; docker compose reads it too). Real values live in 1Password (search "GitHub plugin E2E") and GitHub Actions secrets; never commit or paste them.
+
+### Fake lane
+
+None are required.
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `MM_IMAGE` | `mattermostdevelopment/mattermost-enterprise-edition:master` | Server image |
 | `MM_PORT` | `8069` | Host port; must match between `e2e-env-up` and `e2e` |
+| `PW_BASE_URL` | `http://127.0.0.1:${MM_PORT}` | Mattermost URL the tests use; leave unset unless the server runs elsewhere |
 | `PW_BROWSER_PORT` | `3336` | Host port of the dockerized visual browser |
 | `PW_HEADLESS` | `true` | `false` to watch the browser |
+| `PW_SLOWMO` | `0` | Delay between browser actions in ms |
+
+`npm run test:visual` sets its own `MM_IMAGE`, `MM_PORT` (8077) and `PW_BROWSER_PORT` (3337); override the ports with `VISUAL_MM_PORT` and `VISUAL_BROWSER_PORT`.
+
+### Real lane
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `E2E_GITHUB_OAUTH_CLIENT_ID`, `E2E_GITHUB_OAUTH_CLIENT_SECRET` | Yes | Classic OAuth app whose callback URL is `http://127.0.0.1:${MM_PORT}/plugins/github/oauth/complete` |
+| `E2E_GITHUB_REPO` | Yes | `owner/name` of a throwaway repository in a test organization; the machine account needs admin on it |
+| `E2E_GITHUB_MACHINE_TOKEN` | Yes | OAuth token or classic PAT of the machine account. Scopes: `repo`, `notifications`, `read:org`, `admin:org_hook`, `admin:repo_hook` |
+| `E2E_GITHUB_LOGIN_USERNAME`, `E2E_GITHUB_LOGIN_PASSWORD`, `E2E_GITHUB_LOGIN_TOTP_SECRET` | No | Browser sign-in test; skipped without them. The account needs 2FA with an authenticator app |
+
+In GitHub Actions these are repository secrets with the same names. The nightly job also needs the variable `REAL_GITHUB_E2E_ENABLED=true`.
 
 ## How GitHub is faked
 
@@ -57,3 +78,7 @@ Writes go through `real-github/rate_limit.ts`, which stays under GitHub's conten
 ## Screenshots
 
 `npm run test:visual` compares `@visual` shots in a dockerized browser against a pinned server image, in its own throwaway stack, and does not fail the PR job. Update baselines with `npm run test:visual-update-snapshots` and commit the PNGs.
+
+## Writing tests
+
+Tests follow the [Mattermost Playwright guidelines](https://github.com/mattermost/mattermost/blob/master/e2e-tests/playwright/CLAUDE.md): a JSDoc `@objective` (and `@precondition` when setup is unusual), an action-oriented title, the `@github_plugin` tag, and `// #` action / `// *` verification comments. Prefer page objects and `getByRole`/`getByText` locators over CSS.

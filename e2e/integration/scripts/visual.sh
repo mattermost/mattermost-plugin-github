@@ -10,6 +10,7 @@ export MM_IMAGE=mattermost/mattermost-enterprise-edition:12.0.1
 # A separate, throwaway stack: the pinned server must not start on a database another image already migrated.
 export COMPOSE_PROJECT_NAME=github-plugin-e2e-visual
 export MM_PORT="${VISUAL_MM_PORT:-8077}"
+export PW_BASE_URL="http://127.0.0.1:${MM_PORT}"
 export PW_BROWSER_PORT="${VISUAL_BROWSER_PORT:-3337}"
 trap 'docker compose --profile visual down -v >/dev/null 2>&1' EXIT
 
