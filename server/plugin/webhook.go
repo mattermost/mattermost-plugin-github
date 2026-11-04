@@ -1587,7 +1587,11 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 		return
 	}
 
-	if event.GetWorkflowJob().GetConclusion() != workflowConclusionFailure && event.GetWorkflowJob().GetConclusion() != workflowConclusionSuccess {
+	conclusion := event.GetWorkflowJob().GetConclusion()
+	isSuccess := conclusion == workflowConclusionSuccess
+	isFailure := conclusion == workflowConclusionFailure
+
+	if !isSuccess && !isFailure {
 		return
 	}
 
@@ -1605,7 +1609,7 @@ func (p *Plugin) postWorkflowJobEvent(event *github.WorkflowJobEvent) {
 	}
 
 	for _, sub := range subs {
-		if !sub.Workflows() {
+		if (isFailure && !sub.WorkflowFailures()) || (isSuccess && !sub.WorkflowSuccesses()) {
 			continue
 		}
 

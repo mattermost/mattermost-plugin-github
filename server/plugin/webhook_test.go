@@ -1639,6 +1639,87 @@ func TestPostDiscussionEvent(t *testing.T) {
 	}
 }
 
+func TestPostWorkflowJobEvent(t *testing.T) {
+	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+	p := getPluginTest(mockAPI, mockKvStore)
+
+	subscriptionsWith := func(features Features) func() {
+		return func() {
+			mockKvStore.EXPECT().Get("subscriptions", mock.MatchedBy(func(val any) bool {
+				_, ok := val.(**Subscriptions)
+				return ok
+			})).DoAndReturn(setupMockSubscriptions(map[string][]*Subscription{
+				"mockorg/mockrepo": {
+					{ChannelID: MockChannelID, CreatorID: MockCreatorID, Features: features, Repository: MockRepo},
+				},
+			})).Times(1)
+		}
+	}
+
+	tests := []struct {
+		name  string
+		event *github.WorkflowJobEvent
+		setup func()
+	}{
+		{
+			name:  "action is not completed, event ignored",
+			event: GetMockWorkflowJobEvent("in_progress", "success", MockRepo, MockOrg, MockSender),
+			setup: func() {},
+		},
+		{
+			name:  "unsupported conclusion, event ignored",
+			event: GetMockWorkflowJobEvent(actionCompleted, "skipped", MockRepo, MockOrg, MockSender),
+			setup: func() {},
+		},
+		{
+			name:  "subscription does not include workflow features",
+			event: GetMockWorkflowJobEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: subscriptionsWith(Features(featurePulls)),
+		},
+		{
+			name:  "workflow_failure subscription ignores job success",
+			event: GetMockWorkflowJobEvent(actionCompleted, "success", MockRepo, MockOrg, MockSender),
+			setup: subscriptionsWith(Features(featureWorkflowFailure)),
+		},
+		{
+			name:  "workflow_success subscription ignores job failure",
+			event: GetMockWorkflowJobEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: subscriptionsWith(Features(featureWorkflowSuccess)),
+		},
+		{
+			name:  "workflow_run_success subscription ignores job success",
+			event: GetMockWorkflowJobEvent(actionCompleted, "success", MockRepo, MockOrg, MockSender),
+			setup: subscriptionsWith(Features(featureWorkflowRunSuccess)),
+		},
+		{
+			name:  "successful workflow job failure notification",
+			event: GetMockWorkflowJobEvent(actionCompleted, "failure", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				subscriptionsWith(Features(featureWorkflowFailure))()
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+		{
+			name:  "successful workflow job success notification",
+			event: GetMockWorkflowJobEvent(actionCompleted, "success", MockRepo, MockOrg, MockSender),
+			setup: func() {
+				subscriptionsWith(Features(featureWorkflowSuccess))()
+				mockAPI.On("CreatePost", mock.Anything).Return(&model.Post{}, nil).Times(1)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockAPI.ExpectedCalls = nil
+			tc.setup()
+
+			p.postWorkflowJobEvent(tc.event)
+
+			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
 func TestPostWorkflowRunEvent(t *testing.T) {
 	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKvStore)
