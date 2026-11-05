@@ -1,0 +1,4 @@
+/* Core UI that overlaps plugin posts and changes between runs. */
+.post .status {
+    visibility: hidden !important;
+}

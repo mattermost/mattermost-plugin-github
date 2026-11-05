@@ -63,7 +63,8 @@ const (
 	invalidTokenError = "401 Bad credentials" //#nosec G101 -- False positive
 )
 
-// testOAuthServerURL is the URL for the oauthServer used for testing purposes
+// testOAuthServerURL is the URL of a fake GitHub used for testing purposes. When set, it replaces
+// github.com for OAuth, api.github.com (under /api) and uploads.github.com (under /uploads).
 // It should be set through ldflags when compiling for E2E, and keep it blank otherwise
 var testOAuthServerURL = ""
 
@@ -181,6 +182,9 @@ func (p *Plugin) githubConnectUser(_ context.Context, info *GitHubUserInfo) *git
 
 func (p *Plugin) graphQLConnect(info *GitHubUserInfo) *graphql.Client {
 	conf := p.getConfiguration()
+	if testOAuthServerURL != "" && conf.EnterpriseBaseURL == "" {
+		return graphql.NewClientWithURL(p.client.Log, p.configuration.getOrganizations, *info.Token, info.GitHubUsername, conf.GitHubOrg, testOAuthServerURL+"/api/graphql")
+	}
 	return graphql.NewClient(p.client.Log, p.configuration.getOrganizations, *info.Token, info.GitHubUsername, conf.GitHubOrg, conf.EnterpriseBaseURL)
 }
 
@@ -205,7 +209,17 @@ func GetGitHubClient(token oauth2.Token, config *Configuration) (*github.Client,
 
 func getGitHubClient(authenticatedClient *http.Client, config *Configuration) (*github.Client, error) {
 	if config.EnterpriseBaseURL == "" || config.EnterpriseUploadURL == "" {
-		return github.NewClient(authenticatedClient), nil
+		client := github.NewClient(authenticatedClient)
+		if testOAuthServerURL != "" {
+			var err error
+			if client.BaseURL, err = url.Parse(testOAuthServerURL + "/api/"); err != nil {
+				return nil, err
+			}
+			if client.UploadURL, err = url.Parse(testOAuthServerURL + "/uploads/"); err != nil {
+				return nil, err
+			}
+		}
+		return client, nil
 	}
 	baseURL, err := url.JoinPath(config.EnterpriseBaseURL, "api", "v3")
 	if err != nil {
@@ -250,6 +264,10 @@ func (p *Plugin) setDefaultConfiguration() error {
 
 func (p *Plugin) OnActivate() error {
 	p.ensurePluginAPIClient()
+
+	if testOAuthServerURL != "" {
+		p.client.Log.Warn("GitHub OAuth, REST and GraphQL endpoints are overridden; this build is for E2E testing only", "url", testOAuthServerURL)
+	}
 
 	_, err := getSiteURL(p.client)
 	if err != nil {
