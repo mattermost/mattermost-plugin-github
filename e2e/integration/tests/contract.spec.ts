@@ -221,9 +221,13 @@ test.describe('contract', () => {
         for (const request of [
             {event: 'pull_request', action: 'opened', number: 1},
             {event: 'pull_request', action: 'review_requested', number: 1, requestedReviewer: 'bob'},
+            {event: 'pull_request_review', action: 'submitted', number: 1, comment: 'Looks good'},
             {event: 'issues', action: 'opened', number: 2},
+            {event: 'issues', action: 'closed', number: 2},
+            {event: 'issues', action: 'labeled', number: 2, label: 'bug'},
             {event: 'issue_comment', action: 'created', number: 2},
             {event: 'push'},
+            {event: 'create'},
         ]) {
             const payload = buildPayload(state, {repo: 'acme/widgets', sender: 'alice', ...request});
             expect(validateWebhook(request.event, payload), `${request.event}.${request.action}`).toEqual([]);

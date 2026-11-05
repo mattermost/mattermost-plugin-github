@@ -4,9 +4,12 @@
 import crypto from 'node:crypto';
 
 import {merge, skeleton, webhookSchemaName, webhookSkeleton} from './contract/validator';
-import {type Hook, type Item, type Repo, type State, WEB, fullName, sha} from './state';
+import {type Hook, type Item, type Repo, type Review, type State, WEB, fullName, sha} from './state';
 
-export type WebhookRequest = {event: string; action?: string; repo: string; number?: number; sender: string; requestedReviewer?: string; comment?: string; commentId?: number; ref?: string; overrides?: Record<string, unknown>};
+export type WebhookRequest = {
+    event: string; action?: string; repo: string; number?: number; sender: string; requestedReviewer?: string; comment?: string; commentId?: number; ref?: string;
+    label?: string; reviewState?: Review['state']; overrides?: Record<string, unknown>;
+};
 
 export function buildPayload(state: State, req: WebhookRequest): Record<string, unknown> {
     const [owner, name] = req.repo.split('/');
@@ -33,8 +36,30 @@ export function buildPayload(state: State, req: WebhookRequest): Record<string, 
             ...(req.requestedReviewer ? {requested_reviewer: state.userJSON(state.login(req.requestedReviewer))} : {}),
         };
         break;
-    case 'issues':
-        specific = {action: req.action, issue: issueWebhook(state, item!)};
+    case 'issues': {
+        const label = repo.labels.find((l) => l.name === req.label);
+        if (req.label && !label) {
+            throw new Error(`unknown label ${req.label} in ${req.repo}`);
+        }
+        specific = {action: req.action, issue: issueWebhook(state, item!), ...(label ? {label: merge(skeleton('webhooks_label'), state.labelJSON(repo, label))} : {})};
+        break;
+    }
+    case 'pull_request_review': {
+        const review: Review = {id: state.id(), author: req.sender, state: req.reviewState ?? 'APPROVED', submittedAt: state.now()};
+        item!.reviews.push(review);
+        const pull = state.pullJSON(item!, null);
+
+        // This event's head/base repos require fields the REST repository omits.
+        const refRepo = {...repositoryWebhook(state, repo), topics: [], has_discussions: false};
+        specific = {
+            action: req.action,
+            pull_request: {...pull, head: {...pull.head, repo: refRepo}, base: {...pull.base, repo: refRepo}},
+            review: {...state.reviewJSON(item!, review), state: review.state.toLowerCase(), body: req.comment ?? ''},
+        };
+        break;
+    }
+    case 'create':
+        specific = {ref: req.ref ?? 'polish-widgets', ref_type: 'branch', master_branch: 'main', description: repo.description, pusher_type: 'user'};
         break;
     case 'issue_comment': {
         let comment = item!.comments.find((c) => c.id === req.commentId);

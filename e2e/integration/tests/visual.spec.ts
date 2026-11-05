@@ -9,7 +9,7 @@ import {webhookSecret, webhookURL} from '../support/constants';
 import {expect, test, type GitHubFixture} from '../support/fixture';
 import {fakeGitHub} from '../support/fake_github';
 import {longTitle, repo, seedWork} from '../support/seed';
-import {channelPosts, openChannel, openCreateIssueModal, postWithText, replaceText, runSlashCommand, sidebarButton, sidebarButtonBar, waitForPost} from '../support/ui';
+import {botDMPosts, channelPosts, openChannel, openCreateIssueModal, postWithText, replaceText, runSlashCommand, selectField, sidebarButton, sidebarButtonBar, waitForPost} from '../support/ui';
 
 test.describe('visual', {tag: '@visual'}, () => {
     // eslint-disable-next-line no-process-env
@@ -58,9 +58,9 @@ test.describe('visual', {tag: '@visual'}, () => {
         return list;
     }
 
-    async function webhookPost(pw: PlaywrightExtended, github: GitHubFixture, request: Omit<WebhookRequest, 'repo' | 'sender'>, marker: string) {
+    async function webhookPost(pw: PlaywrightExtended, github: GitHubFixture, request: Omit<WebhookRequest, 'repo' | 'sender'>, marker: string, features = 'pulls,issues,issue_comments,pushes') {
         await fakeGitHub.createHook('acme', 'widgets', webhookURL, webhookSecret);
-        await github.userClient.executeCommand(`/github subscriptions add ${repo} --features pulls,issues,issue_comments,pushes`, {channel_id: github.channel.id, team_id: github.team.id});
+        await github.userClient.executeCommand(`/github subscriptions add ${repo} --features ${features}`, {channel_id: github.channel.id, team_id: github.team.id});
         await fakeGitHub.webhook({repo, sender: github.login, ...request});
         const post = await waitForPost(() => channelPosts(github.adminClient, github.channel.id), (p) => p.message.includes(marker), `webhook post containing "${marker}"`);
         const opened = await openChannel(pw, github.user, github.team.name);
@@ -141,6 +141,24 @@ test.describe('visual', {tag: '@visual'}, () => {
     });
 
     /**
+     * @objective Verify the empty open pull requests list in the right-hand panel renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for empty RHS', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Connect GitHub with no work and open the open pull requests tab in the RHS
+        await github.connect();
+        const {page} = await openChannel(pw, github.user, github.team.name);
+        await sidebarButton(page, 'fa-compress').click();
+
+        // * Verify the empty state matches the baseline
+        const list = page.locator('#rhsContainer .scrollbar--view');
+        await expect(list).toContainText('You have no active items');
+        await shoot(pw, github, list, 'rhs-empty.png');
+    });
+
+    /**
      * @objective Verify the tooltip shown when hovering a pull request link renders like the baseline.
      *
      * @precondition
@@ -212,6 +230,38 @@ test.describe('visual', {tag: '@visual'}, () => {
     });
 
     /**
+     * @objective Verify the post for a pull request closed without merging renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for closed pull request webhook post', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Close the pull request without merging and deliver a pull request closed webhook
+        const pr = await seedWork(github);
+        await fakeGitHub.updateItem(repo, pr.number, {state: 'closed'});
+        const {message} = await webhookPost(pw, github, {event: 'pull_request', action: 'closed', number: pr.number}, 'was closed by');
+
+        // * Verify the post matches the baseline
+        await shoot(pw, github, message, 'webhook-closed-pull.png');
+    });
+
+    /**
+     * @objective Verify the post for an approving pull request review webhook renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for pull request review webhook post', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Deliver a pull request review submitted webhook approving the review request
+        await seedWork(github);
+        const comment = 'Looks good. One nit: rename `polish()` to **buff()**.';
+        const {message} = await webhookPost(pw, github, {event: 'pull_request_review', action: 'submitted', number: 2, reviewState: 'APPROVED', comment}, ' approved ', 'pull_reviews');
+
+        // * Verify the post matches the baseline
+        await shoot(pw, github, message, 'webhook-pull-review.png');
+    });
+
+    /**
      * @objective Verify the post for an issue opened webhook renders like the baseline.
      *
      * @precondition
@@ -224,6 +274,38 @@ test.describe('visual', {tag: '@visual'}, () => {
 
         // * Verify the post matches the baseline
         await shoot(pw, github, message, 'webhook-new-issue.png');
+    });
+
+    /**
+     * @objective Verify the post for an issue closed webhook renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for closed issue webhook post', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Close the issue and deliver an issue closed webhook
+        await seedWork(github);
+        await fakeGitHub.updateItem(repo, 3, {state: 'closed'});
+        const {message} = await webhookPost(pw, github, {event: 'issues', action: 'closed', number: 3}, 'closed by');
+
+        // * Verify the post matches the baseline
+        await shoot(pw, github, message, 'webhook-closed-issue.png');
+    });
+
+    /**
+     * @objective Verify the post for an issue labeled with the subscription's label renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for labeled issue webhook post', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Label the issue and deliver an issue labeled webhook to a label-filtered subscription
+        await seedWork(github);
+        await fakeGitHub.updateItem(repo, 3, {labels: ['bug']});
+        const {message} = await webhookPost(pw, github, {event: 'issues', action: 'labeled', number: 3, label: 'bug'}, '#issue-labeled', 'issues,label:"bug"');
+
+        // * Verify the post matches the baseline
+        await shoot(pw, github, message, 'webhook-labeled-issue.png');
     });
 
     /**
@@ -258,6 +340,21 @@ test.describe('visual', {tag: '@visual'}, () => {
     });
 
     /**
+     * @objective Verify the post for a branch created webhook renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for branch created webhook post', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Deliver a create webhook for a branch
+        await seedWork(github);
+        const {message} = await webhookPost(pw, github, {event: 'create', ref: 'polish-widgets'}, 'created by', 'creates');
+
+        // * Verify the post matches the baseline
+        await shoot(pw, github, message, 'webhook-create-branch.png');
+    });
+
+    /**
      * @objective Verify a webhook post in the reply thread renders like the baseline.
      *
      * @precondition
@@ -272,6 +369,25 @@ test.describe('visual', {tag: '@visual'}, () => {
 
         // * Verify the thread post matches the baseline
         await shoot(pw, github, rhsPost.container.locator('.post-message__text'), 'reply-thread.png');
+    });
+
+    /**
+     * @objective Verify the review request DM from the bot renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for review request DM', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Deliver a review requested webhook naming the connected user and open the bot DM
+        await seedWork(github);
+        await fakeGitHub.createHook('acme', 'widgets', webhookURL, webhookSecret);
+        await fakeGitHub.webhook({event: 'pull_request', action: 'review_requested', repo, number: 2, sender: 'octo-author', requestedReviewer: github.login});
+        const dm = await waitForPost(() => botDMPosts(github.adminClient, github.user.id), (p) => p.message.includes('requested your review'), 'review request DM');
+        const {channelsPage} = await openChannel(pw, github.user, github.team.name, '@github');
+
+        // * Verify the DM matches the baseline
+        const post = await channelsPage.centerView.getPostById(dm.id);
+        await shoot(pw, github, post.container.locator('.post-message__text'), 'review-request-dm.png');
     });
 
     /**
@@ -310,6 +426,26 @@ test.describe('visual', {tag: '@visual'}, () => {
     });
 
     /**
+     * @objective Verify the create issue modal with a missing title error renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for create issue modal with validation error', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Open the create issue modal from a post and submit it empty
+        await seedWork(github);
+        await github.userClient.createPost({channel_id: github.channel.id, message: 'Submit me without a title'} as any);
+        const {channelsPage, page} = await openChannel(pw, github.user, github.team.name);
+        const modal = await openCreateIssueModal(channelsPage, page);
+        await modal.getByRole('button', {name: 'Submit'}).click();
+
+        // * Verify the missing title error is shown and the modal matches the baseline
+        await expect(selectField(modal, 'Repository')).toContainText('widgets');
+        await expect(modal.getByText('This field is required.')).toBeVisible();
+        await shoot(pw, github, modal.locator('.modal-content'), 'create-issue-modal-errors.png');
+    });
+
+    /**
      * @objective Verify the attach to issue modal opened from a post renders like the baseline.
      *
      * @precondition
@@ -345,5 +481,26 @@ test.describe('visual', {tag: '@visual'}, () => {
 
         // * Verify the reply matches the baseline
         await shoot(pw, github, postWithText(page, 'Unread Messages').locator('.post-message__text'), 'todo.png');
+    });
+
+    /**
+     * @objective Verify the /github subscriptions list reply renders like the baseline.
+     *
+     * @precondition
+     * Runs in the pinned dockerized browser (npm run test:visual).
+     */
+    test('matches baseline for /github subscriptions list reply', {tag: '@github_plugin'}, async ({pw, github}) => {
+        // # Subscribe the channel to the repository and the organization, then run /github subscriptions list
+        await seedWork(github);
+        const args = {channel_id: github.channel.id, team_id: github.team.id};
+        await github.userClient.executeCommand(`/github subscriptions add ${repo} --features pulls,issues,label:"bug" --render-style collapsed`, args);
+        await github.userClient.executeCommand('/github subscriptions add acme --features creates,deletes,releases', args);
+        const {channelsPage, page} = await openChannel(pw, github.user, github.team.name);
+        await runSlashCommand(channelsPage, '/github subscriptions list');
+
+        // * Verify the reply matches the baseline
+        const reply = postWithText(page, 'Subscriptions in this channel').locator('.post-message__text');
+        await expect(reply).toContainText('acme/widgets');
+        await shoot(pw, github, reply, 'subscriptions-list.png');
     });
 });

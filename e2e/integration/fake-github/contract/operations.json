@@ -33,9 +33,13 @@
       "pull-request-opened",
       "pull-request-closed",
       "pull-request-review-requested",
+      "pull-request-review-submitted",
       "issues-opened",
+      "issues-closed",
+      "issues-labeled",
       "issue-comment-created",
-      "push"
+      "push",
+      "create"
     ]
   },
   "graphql": {
