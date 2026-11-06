@@ -98,4 +98,65 @@ describe('IssueAttributeSelector', () => {
         // The stale options from RepoA should have been discarded, only RepoB options remain
         expect(screen.queryByText('RepoA-Label')).not.toBeInTheDocument();
     });
+
+    test('should discard earlier options on rapid A -> B -> A repo transitions', async () => {
+        let resolveFirstA: (value: any) => void;
+        const firstAPromise = new Promise((resolve) => {
+            resolveFirstA = resolve;
+        });
+
+        const loadOptions = jest.fn().
+            mockImplementationOnce(() => firstAPromise).
+            mockImplementationOnce(() => Promise.resolve([{label: 'RepoB-Label', value: 'b'}])).
+            mockImplementationOnce(() => Promise.resolve([{label: 'RepoA-Latest-Label', value: 'a-latest'}]));
+
+        const onChange = jest.fn();
+
+        const {rerender} = render(
+            <IssueAttributeSelector
+                {...defaultProps}
+                isMulti={true}
+                selection={['a-latest']}
+                onChange={onChange}
+                repoName='repoA'
+                loadOptions={loadOptions}
+            />,
+        );
+
+        rerender(
+            <IssueAttributeSelector
+                {...defaultProps}
+                isMulti={true}
+                selection={['a-latest']}
+                onChange={onChange}
+                repoName='repoB'
+                loadOptions={loadOptions}
+            />,
+        );
+
+        rerender(
+            <IssueAttributeSelector
+                {...defaultProps}
+                isMulti={true}
+                selection={['a-latest']}
+                onChange={onChange}
+                repoName='repoA'
+                loadOptions={loadOptions}
+            />,
+        );
+
+        // Resolve the first repoA request after switching back to repoA
+        resolveFirstA!([{label: 'RepoA-Stale-Label', value: 'a-latest'}]);
+
+        await waitFor(() => {
+            expect(loadOptions).toHaveBeenCalledTimes(3);
+        });
+
+        // The latest load should apply matching options, never the stale one
+        await waitFor(() => {
+            expect(onChange).toHaveBeenLastCalledWith([
+                {label: 'RepoA-Latest-Label', value: 'a-latest'},
+            ]);
+        });
+    });
 });

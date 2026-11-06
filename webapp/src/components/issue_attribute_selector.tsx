@@ -33,6 +33,8 @@ type State = {
 };
 
 export default class IssueAttributeSelector extends PureComponent<Props, State> {
+    private loadGeneration = 0;
+
     constructor(props: Props) {
         super(props);
 
@@ -51,6 +53,7 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
 
     componentDidUpdate(prevProps: Props) {
         if (prevProps.repoName !== this.props.repoName) {
+            this.loadGeneration++;
             if (this.props.repoName) {
                 this.loadOptions();
             } else {
@@ -64,12 +67,12 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
     }
 
     loadOptions = async () => {
-        const repoName = this.props.repoName;
+        const generation = ++this.loadGeneration;
         this.setState({isLoading: true});
 
         try {
             const options = await this.props.loadOptions();
-            if (this.props.repoName !== repoName) {
+            if (this.loadGeneration !== generation) {
                 return;
             }
             this.filterSelection(options);
@@ -79,7 +82,7 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
                 error: null,
             });
         } catch (err) {
-            if (this.props.repoName !== repoName) {
+            if (this.loadGeneration !== generation) {
                 return;
             }
             this.filterSelection([]);
