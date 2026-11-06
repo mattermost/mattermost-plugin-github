@@ -36,12 +36,18 @@ jest.mock('@/components/github_repo_selector', () => ({
 
 jest.mock('@/components/github_label_selector', () => ({
     __esModule: true,
-    default: ({isDisabled}) => (
+    default: ({onChange, isDisabled}) => (
         <div
             data-testid='github-label-selector'
             data-disabled={isDisabled}
         >
             {'Label Selector'}
+            <button
+                type='button'
+                onClick={() => onChange && onChange(['test-label'])}
+            >
+                {'Change Labels'}
+            </button>
         </div>
     ),
 }));
@@ -222,4 +228,31 @@ test('CreateIssueModal should enable attribute selectors when repo has push perm
     expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'false');
     expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'false');
     expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'false');
+});
+
+test('CreateIssueModal should reset attributes and not submit stale attributes when repo changes', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const titleInput = screen.getByRole('textbox', {name: /title for the github issue/i});
+    await userEvent.type(titleInput, 'Test Issue');
+
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
+
+    const changeLabelsButton = screen.getByText('Change Labels');
+    await userEvent.click(changeLabelsButton);
+
+    const selectNoPushRepoButton = screen.getByText('Select No Push Repo');
+    await userEvent.click(selectNoPushRepoButton);
+
+    const submitButton = screen.getByRole('button', {name: 'Submit'});
+    await userEvent.click(submitButton);
+
+    await waitFor(() => expect(defaultProps.create).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Issue',
+        repo: 'no-push-repo',
+        labels: [],
+        assignees: [],
+        milestone: null,
+    })));
 });
