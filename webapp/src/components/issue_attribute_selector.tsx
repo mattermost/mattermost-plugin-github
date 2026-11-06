@@ -23,6 +23,7 @@ export type Props = {
     onChange: (selection: ReactSelectOption | ReactSelectOption[] | null) => void;
     loadOptions: () => Promise<ReactSelectOption[]>;
     selection: ReactSelectOption | string[] | null;
+    isDisabled?: boolean;
 };
 
 type State = {
@@ -32,6 +33,8 @@ type State = {
 };
 
 export default class IssueAttributeSelector extends PureComponent<Props, State> {
+    private loadGeneration = 0;
+
     constructor(props: Props) {
         super(props);
 
@@ -49,16 +52,29 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
     }
 
     componentDidUpdate(prevProps: Props) {
-        if (this.props.repoName && prevProps.repoName !== this.props.repoName) {
-            this.loadOptions();
+        if (prevProps.repoName !== this.props.repoName) {
+            this.loadGeneration++;
+            if (this.props.repoName) {
+                this.loadOptions();
+            } else {
+                this.setState({ // eslint-disable-line react/no-did-update-set-state
+                    options: [],
+                    isLoading: false,
+                    error: null,
+                });
+            }
         }
     }
 
     loadOptions = async () => {
+        const generation = ++this.loadGeneration;
         this.setState({isLoading: true});
 
         try {
             const options = await this.props.loadOptions();
+            if (this.loadGeneration !== generation) {
+                return;
+            }
             this.filterSelection(options);
             this.setState({
                 options,
@@ -66,6 +82,9 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
                 error: null,
             });
         } catch (err) {
+            if (this.loadGeneration !== generation) {
+                return;
+            }
             this.filterSelection([]);
             const error = err instanceof Error ? err : new Error('An unexpected error occurred');
             this.setState({

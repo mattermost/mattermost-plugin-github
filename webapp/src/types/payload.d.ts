@@ -17,5 +17,5 @@ type CreateIssuePayload = {
     channel_id: string;
     labels: string[];
     assignees: string[];
-    milestone: number;
+    milestone: number | null;
 }

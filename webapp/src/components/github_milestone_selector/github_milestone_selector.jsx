@@ -15,6 +15,7 @@ export default class GithubMilestoneSelector extends PureComponent {
         actions: PropTypes.shape({
             getMilestoneOptions: PropTypes.func.isRequired,
         }).isRequired,
+        isDisabled: PropTypes.bool,
     };
 
     loadMilestones = async () => {

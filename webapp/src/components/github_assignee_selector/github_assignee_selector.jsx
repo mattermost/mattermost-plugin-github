@@ -15,6 +15,7 @@ export default class GithubAssigneeSelector extends PureComponent {
         actions: PropTypes.shape({
             getAssigneeOptions: PropTypes.func.isRequired,
         }).isRequired,
+        isDisabled: PropTypes.bool,
     };
 
     loadAssignees = async () => {
