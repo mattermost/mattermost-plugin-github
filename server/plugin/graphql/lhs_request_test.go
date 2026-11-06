@@ -85,20 +85,17 @@ func TestGetLHSData_ConcurrentUsersGetOwnData(t *testing.T) {
 	defer server.Close()
 
 	var wg sync.WaitGroup
-	for i := 0; i < users; i++ {
+	for i := range users {
 		username := fmt.Sprintf("user%d", i)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			reviews, assignees, prs, err := newTestClient(server.URL, username).GetLHSData(context.Background())
-			assert.NoError(t, err)
-			require.Len(t, reviews, 1)
-			require.Len(t, assignees, 1)
-			require.Len(t, prs, 1)
+			if !assert.NoError(t, err) || !assert.Len(t, reviews, 1) || !assert.Len(t, assignees, 1) || !assert.Len(t, prs, 1) {
+				return
+			}
 			assert.Equal(t, "title-"+username, reviews[0].GetTitle())
 			assert.Equal(t, "title-"+username, assignees[0].GetTitle())
 			assert.Equal(t, "title-"+username, prs[0].GetTitle())
-		}()
+		})
 	}
 	wg.Wait()
 }
