@@ -50,16 +50,28 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
     }
 
     componentDidUpdate(prevProps: Props) {
-        if (this.props.repoName && prevProps.repoName !== this.props.repoName) {
-            this.loadOptions();
+        if (prevProps.repoName !== this.props.repoName) {
+            if (this.props.repoName) {
+                this.loadOptions();
+            } else {
+                this.setState({ // eslint-disable-line react/no-did-update-set-state
+                    options: [],
+                    isLoading: false,
+                    error: null,
+                });
+            }
         }
     }
 
     loadOptions = async () => {
+        const repoName = this.props.repoName;
         this.setState({isLoading: true});
 
         try {
             const options = await this.props.loadOptions();
+            if (this.props.repoName !== repoName) {
+                return;
+            }
             this.filterSelection(options);
             this.setState({
                 options,
@@ -67,6 +79,9 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
                 error: null,
             });
         } catch (err) {
+            if (this.props.repoName !== repoName) {
+                return;
+            }
             this.filterSelection([]);
             const error = err instanceof Error ? err : new Error('An unexpected error occurred');
             this.setState({
