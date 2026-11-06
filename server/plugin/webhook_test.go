@@ -1395,10 +1395,11 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
 				mockAPI.On("LogWarn", "Couldn't get bot's DM channel", "userID", "authorUserID", "error", "error getting channel")
+				// Once to fetch the review's inline comments, once to send the refresh event.
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
-				})).Return(nil).Times(1)
+				})).Return(nil).Times(2)
 			},
 		},
 		{
