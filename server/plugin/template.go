@@ -469,7 +469,9 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 {{- else if eq .GetReview.GetState "commented" }} commented on your pull request
 {{- end }} {{template "reviewRepoPullRequestWithTitle" .}}
 {{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
-{{else}}{{end}}`))
+{{else}}{{end}}
+{{- range .Comments}}* [View comment{{with .GetPath}} on ` + "`{{.}}`" + `{{end}}]({{.GetHTMLURL}})
+{{end}}`))
 
 	template.Must(masterTemplate.New("helpText").Parse("" +
 		"* `/github connect{{if .EnablePrivateRepo}}{{if not .ConnectToPrivateByDefault}} [private]{{end}}{{end}}` - Connect your Mattermost account to your GitHub account.\n" +
