@@ -12,7 +12,7 @@ make e2e-env-down
 make e2e-real      # normal bundle, against github.com. Needs e2e/integration/.env
 ```
 
-`make e2e-dist` bakes `http://fake-github:8093` into `testOAuthServerURL`, which now moves the OAuth, REST, GraphQL and upload base URLs together, so the github.com code path is what gets tested. The plugin logs a warning on activation. Never ship that bundle.
+`make e2e-dist` writes `dist/e2e/<id>-<version>-e2e.tar.gz`, apart from release bundles, and bakes `http://fake-github:8093` into `testOAuthServerURL`, which now moves the OAuth, REST, GraphQL and upload base URLs together, so the github.com code path is what gets tested. The plugin logs a warning on activation. Never ship that bundle.
 
 ## Environment variables
 

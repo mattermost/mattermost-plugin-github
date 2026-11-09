@@ -18,7 +18,7 @@ export default async function globalSetup() {
     await baseGlobalSetup();
 
     const adminClient = await loginAdmin();
-    await installPlugin(adminClient, {
+    await installPlugin(adminClient, 'release', {
         githuboauthclientid: realGitHub.oauth.clientId,
         githuboauthclientsecret: realGitHub.oauth.clientSecret,
         webhooksecret: state.webhookSecret,

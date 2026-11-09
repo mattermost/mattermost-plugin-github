@@ -10,9 +10,13 @@ deploy-e2e: dist
 E2E_DIR = e2e/integration
 E2E_FAKE_GITHUB_URL ?= http://fake-github:8093
 
+# The bundle leaves dist/ under an -e2e name so it can't be mistaken for, or deployed as, a release bundle.
 .PHONY: e2e-dist
-e2e-dist: ## Builds dist/ with GitHub OAuth, REST and GraphQL pointed at the E2E fake. Never ship this bundle.
+e2e-dist: ## Builds dist/e2e/ with GitHub OAuth, REST and GraphQL pointed at the E2E fake. Never ship this bundle.
 	$(MAKE) dist PLUGIN_E2E_MOCK_OAUTH_SERVER_URL=$(E2E_FAKE_GITHUB_URL)
+	mkdir -p dist/e2e
+	mv dist/$(BUNDLE_NAME) dist/e2e/$(PLUGIN_ID)-$(PLUGIN_VERSION)-e2e.tar.gz
+	rm -rf dist/$(PLUGIN_ID)
 
 $(E2E_DIR)/node_modules: $(E2E_DIR)/package-lock.json
 	cd $(E2E_DIR) && $(NPM) ci && npx playwright install chromium
