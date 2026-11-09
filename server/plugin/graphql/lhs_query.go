@@ -93,7 +93,7 @@ type (
 	}
 )
 
-var mainQuery struct {
+type lhsSearchQuery struct {
 	ReviewRequests struct {
 		IssueCount int
 		Nodes      []prSearchNodes

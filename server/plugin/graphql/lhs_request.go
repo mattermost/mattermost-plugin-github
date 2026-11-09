@@ -80,51 +80,54 @@ func (c *Client) fetchLHSData(
 
 	allReviewRequestsFetched, allAssignmentsFetched, allOpenPRsFetched := false, false, false
 
+	// See MM-71643
+	var q lhsSearchQuery
+
 	for !allReviewRequestsFetched || !allAssignmentsFetched || !allOpenPRsFetched {
-		if err := c.executeQuery(ctx, &mainQuery, params); err != nil {
+		if err := c.executeQuery(ctx, &q, params); err != nil {
 			return nil, nil, nil, errors.Wrap(err, "Not able to execute the query")
 		}
 
 		if !allReviewRequestsFetched {
-			for i := range mainQuery.ReviewRequests.Nodes {
-				resp := mainQuery.ReviewRequests.Nodes[i]
+			for i := range q.ReviewRequests.Nodes {
+				resp := q.ReviewRequests.Nodes[i]
 				pr := getPR(&resp)
 				resultReview = append(resultReview, pr)
 			}
 
-			if !mainQuery.ReviewRequests.PageInfo.HasNextPage {
+			if !q.ReviewRequests.PageInfo.HasNextPage {
 				allReviewRequestsFetched = true
 			}
 
-			params[queryParamReviewsCursor] = githubv4.NewString(mainQuery.ReviewRequests.PageInfo.EndCursor)
+			params[queryParamReviewsCursor] = githubv4.NewString(q.ReviewRequests.PageInfo.EndCursor)
 		}
 
 		if !allAssignmentsFetched {
-			for i := range mainQuery.Assignments.Nodes {
-				resp := mainQuery.Assignments.Nodes[i]
+			for i := range q.Assignments.Nodes {
+				resp := q.Assignments.Nodes[i]
 				issue := newIssueFromAssignmentResponse(&resp)
 				resultAssignee = append(resultAssignee, issue)
 			}
 
-			if !mainQuery.Assignments.PageInfo.HasNextPage {
+			if !q.Assignments.PageInfo.HasNextPage {
 				allAssignmentsFetched = true
 			}
 
-			params[queryParamAssignmentsCursor] = githubv4.NewString(mainQuery.Assignments.PageInfo.EndCursor)
+			params[queryParamAssignmentsCursor] = githubv4.NewString(q.Assignments.PageInfo.EndCursor)
 		}
 
 		if !allOpenPRsFetched {
-			for i := range mainQuery.OpenPullRequests.Nodes {
-				resp := mainQuery.OpenPullRequests.Nodes[i]
+			for i := range q.OpenPullRequests.Nodes {
+				resp := q.OpenPullRequests.Nodes[i]
 				pr := getPR(&resp)
 				resultOpenPR = append(resultOpenPR, pr)
 			}
 
-			if !mainQuery.OpenPullRequests.PageInfo.HasNextPage {
+			if !q.OpenPullRequests.PageInfo.HasNextPage {
 				allOpenPRsFetched = true
 			}
 
-			params[queryParamOpenPRsCursor] = githubv4.NewString(mainQuery.OpenPullRequests.PageInfo.EndCursor)
+			params[queryParamOpenPRsCursor] = githubv4.NewString(q.OpenPullRequests.PageInfo.EndCursor)
 		}
 	}
 
