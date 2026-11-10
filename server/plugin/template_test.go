@@ -1486,6 +1486,34 @@ func TestPullRequestReviewNotification(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
+	t.Run("commented with more inline comments than linked", func(t *testing.T) {
+		expected := `
+[panda](https://github.com/panda) commented on your pull request [mattermost-plugin-github#42](https://github.com/mattermost/mattermost-plugin-github/pull/42#pullrequestreview-123456) - Leverage git-get-head
+* [View comment on ` + "`README.md`" + `](https://github.com/mattermost/mattermost-plugin-github/pull/42#discussion_r1)
+* […and more comments](https://github.com/mattermost/mattermost-plugin-github/pull/42#pullrequestreview-123456)
+`
+
+		actual, err := renderTemplate("pullRequestReviewNotification", &pullRequestReviewNotification{
+			PullRequestReviewEvent: &github.PullRequestReviewEvent{
+				Repo:        &repo,
+				PullRequest: &pullRequest,
+				Sender:      &user,
+				Review: &github.PullRequestReview{
+					HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#pullrequestreview-123456"),
+					State:   sToP("commented"),
+				},
+			},
+			Comments: []*github.PullRequestComment{
+				{
+					Path:    sToP("README.md"),
+					HTMLURL: sToP("https://github.com/mattermost/mattermost-plugin-github/pull/42#discussion_r1"),
+				},
+			},
+			MoreComments: true,
+		})
+		require.NoError(t, err)
+		require.Equal(t, expected, actual)
+	})
 }
 
 func TestReleaseNotification(t *testing.T) {

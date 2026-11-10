@@ -471,6 +471,8 @@ Reviewers: {{range $i, $el := .RequestedReviewers -}} {{- if $i}}, {{end}}{{temp
 {{if .GetReview.GetBody}}{{.Review.GetBody | trimBody | quote | replaceAllGitHubUsernames}}
 {{else}}{{end}}
 {{- range .Comments}}* [View comment{{with .GetPath}} on ` + "`{{.}}`" + `{{end}}]({{.GetHTMLURL}})
+{{end}}
+{{- if .MoreComments}}* […and more comments]({{.GetReview.GetHTMLURL}})
 {{end}}`))
 
 	template.Must(masterTemplate.New("helpText").Parse("" +
