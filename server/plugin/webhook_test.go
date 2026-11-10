@@ -10,10 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/google/go-github/v54/github"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 
 	"github.com/mattermost/mattermost/server/public/model"
@@ -1395,10 +1397,11 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 				})).Return(nil).Times(1)
 				mockAPI.On("GetDirectChannel", "authorUserID", "mockBotID").Return(nil, &model.AppError{Message: "error getting channel"}).Times(1)
 				mockAPI.On("LogWarn", "Couldn't get bot's DM channel", "userID", "authorUserID", "error", "error getting channel")
+				// Once to fetch the review's inline comments, once to send the refresh event.
 				mockKvStore.EXPECT().Get("authorUserID_githubtoken", mock.MatchedBy(func(val any) bool {
 					_, ok := val.(**GitHubUserInfo)
 					return ok
-				})).Return(nil).Times(1)
+				})).Return(nil).Times(2)
 			},
 		},
 		{
@@ -1436,6 +1439,202 @@ func TestHandlePullRequestReviewNotification(t *testing.T) {
 				tc.assertDMs(t)
 			}
 			mockAPI.AssertExpectations(t)
+		})
+	}
+}
+
+// reviewCommentsPath is the GitHub API path the review comments of the mock review event are fetched from.
+const reviewCommentsPath = "/api/v3/repos/mockOrg/mockRepo/pulls/42/reviews/7/comments"
+
+// getMockReviewEventWithIDs returns a review event that identifies its repository owner,
+// pull request and review, as needed to fetch the review's inline comments.
+func getMockReviewEventWithIDs() *github.PullRequestReviewEvent {
+	event := GetMockPullRequestReviewEvent(actionSubmitted, "commented", MockRepo, false, "reviewerUser", "authorUser")
+	event.Repo.Owner = &github.User{Login: github.String(MockOrg)}
+	event.PullRequest.Number = github.Int(42)
+	event.Review.ID = github.Int64(7)
+	event.Review.HTMLURL = github.String("https://github.com/mockOrg/mockRepo/pull/42#pullrequestreview-7")
+	return event
+}
+
+// setUpReviewCommentsServer points the plugin at a fake GitHub server that answers the
+// review comments request with handler.
+func setUpReviewCommentsServer(t *testing.T, p *Plugin, handler http.HandlerFunc) {
+	t.Helper()
+	ts := httptest.NewServer(handler)
+	t.Cleanup(ts.Close)
+
+	config := p.getConfiguration().Clone()
+	config.EnterpriseBaseURL = ts.URL
+	config.EnterpriseUploadURL = ts.URL
+	p.setConfiguration(config)
+}
+
+// expectConnectedUser makes the KV store return a connected GitHub user for userID.
+func expectConnectedUser(t *testing.T, p *Plugin, mockKvStore *mocks.MockKvStore, userID string, times int) {
+	t.Helper()
+	encryptedToken, err := encrypt([]byte(p.getConfiguration().EncryptionKey), MockAccessToken)
+	require.NoError(t, err)
+
+	mockKvStore.EXPECT().Get(userID+githubTokenKey, mock.MatchedBy(func(val any) bool {
+		_, ok := val.(**GitHubUserInfo)
+		return ok
+	})).DoAndReturn(func(_ string, value any) error {
+		*value.(**GitHubUserInfo) = &GitHubUserInfo{
+			UserID: userID,
+			Token:  &oauth2.Token{AccessToken: encryptedToken},
+		}
+		return nil
+	}).Times(times)
+}
+
+func writeReviewComments(t *testing.T, w http.ResponseWriter, urls ...string) {
+	t.Helper()
+	var body []string
+	for _, u := range urls {
+		body = append(body, fmt.Sprintf(`{"path":"server/plugin/webhook.go","html_url":%q}`, u))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, err := w.Write([]byte("[" + strings.Join(body, ",") + "]"))
+	assert.NoError(t, err)
+}
+
+func TestGetReviewComments(t *testing.T) {
+	const commentURL = "https://github.com/mockOrg/mockRepo/pull/42#discussion_r1"
+
+	t.Run("author not connected", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		setUpReviewCommentsServer(t, p, func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("unexpected request to %s", r.URL.Path)
+		})
+		mockKvStore.EXPECT().Get("authorUserID"+githubTokenKey, gomock.Any()).Return(nil).Times(1)
+
+		comments, more := p.getReviewComments("authorUserID", getMockReviewEventWithIDs())
+		assert.Nil(t, comments)
+		assert.False(t, more)
+	})
+
+	t.Run("token lookup fails", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		setUpReviewCommentsServer(t, p, func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("unexpected request to %s", r.URL.Path)
+		})
+		mockKvStore.EXPECT().Get("authorUserID"+githubTokenKey, gomock.Any()).Return(errors.New("kv error")).Times(1)
+
+		comments, more := p.getReviewComments("authorUserID", getMockReviewEventWithIDs())
+		assert.Nil(t, comments)
+		assert.False(t, more)
+	})
+
+	t.Run("GitHub request fails", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		setUpReviewCommentsServer(t, p, func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "boom", http.StatusInternalServerError)
+		})
+		expectConnectedUser(t, p, mockKvStore, "authorUserID", 1)
+		mockAPI.On("LogWarn", "Error occurred while using the Github client", "error", mock.Anything).Times(1)
+
+		comments, more := p.getReviewComments("authorUserID", getMockReviewEventWithIDs())
+		assert.Nil(t, comments)
+		assert.False(t, more)
+		mockAPI.AssertExpectations(t)
+	})
+
+	t.Run("fetches the review's comments", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		setUpReviewCommentsServer(t, p, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, reviewCommentsPath, r.URL.Path)
+			assert.Equal(t, "20", r.URL.Query().Get("per_page"))
+			assert.Equal(t, "Bearer "+MockAccessToken, r.Header.Get("Authorization"))
+			writeReviewComments(t, w, commentURL)
+		})
+		expectConnectedUser(t, p, mockKvStore, "authorUserID", 1)
+
+		comments, more := p.getReviewComments("authorUserID", getMockReviewEventWithIDs())
+		require.Len(t, comments, 1)
+		assert.Equal(t, commentURL, comments[0].GetHTMLURL())
+		assert.False(t, more)
+	})
+
+	t.Run("reports more comments past the first page", func(t *testing.T) {
+		mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+		p := getPluginTest(mockAPI, mockKvStore)
+		setUpReviewCommentsServer(t, p, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Link", fmt.Sprintf(`<http://%s%s?page=2&per_page=20>; rel="next"`, r.Host, reviewCommentsPath))
+			writeReviewComments(t, w, commentURL)
+		})
+		expectConnectedUser(t, p, mockKvStore, "authorUserID", 1)
+
+		comments, more := p.getReviewComments("authorUserID", getMockReviewEventWithIDs())
+		require.Len(t, comments, 1)
+		assert.True(t, more)
+	})
+}
+
+func TestHandlePullRequestReviewNotificationCommentLinks(t *testing.T) {
+	const commentURL = "https://github.com/mockOrg/mockRepo/pull/42#discussion_r1"
+
+	tests := []struct {
+		name     string
+		handler  http.HandlerFunc
+		logWarn  bool
+		contains []string
+		excludes []string
+	}{
+		{
+			name: "links fetched comments in the DM",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				writeReviewComments(t, w, commentURL)
+			},
+			contains: []string{"* [View comment on `server/plugin/webhook.go`](" + commentURL + ")"},
+			excludes: []string{"and more comments"},
+		},
+		{
+			name: "sends the DM without links when the fetch fails",
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				http.Error(w, "boom", http.StatusInternalServerError)
+			},
+			logWarn:  true,
+			contains: []string{"commented on your pull request"},
+			excludes: []string{"View comment", "and more comments"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKvStore)
+			setUpReviewCommentsServer(t, p, tc.handler)
+
+			mockKvStore.EXPECT().Get("authorUser_githubusername", gomock.Any()).DoAndReturn(setByteValue("authorUserID")).Times(1)
+			mockKvStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
+			// Once to fetch the review's inline comments, once to send the refresh event.
+			expectConnectedUser(t, p, mockKvStore, "authorUserID", 2)
+			if tc.logWarn {
+				mockAPI.On("LogWarn", "Error occurred while using the Github client", "error", mock.Anything).Times(1)
+			}
+			mockAPI.On("GetDirectChannel", "authorUserID", MockBotID).Return(&model.Channel{Id: "dmChannelID"}, nil).Times(1)
+			var message string
+			mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Run(func(args mock.Arguments) {
+				post := args.Get(0).(*model.Post)
+				assert.Equal(t, "dmChannelID", post.ChannelId)
+				assert.Equal(t, "custom_git_review", post.Type)
+				message = post.Message
+			}).Return(&model.Post{}, nil).Times(1)
+			mockAPI.On("PublishWebSocketEvent", wsEventRefresh, mock.Anything, mock.Anything).Return().Times(1)
+
+			p.handlePullRequestReviewNotification(getMockReviewEventWithIDs())
+
+			mockAPI.AssertExpectations(t)
+			for _, s := range tc.contains {
+				assert.Contains(t, message, s)
+			}
+			for _, s := range tc.excludes {
+				assert.NotContains(t, message, s)
+			}
 		})
 	}
 }

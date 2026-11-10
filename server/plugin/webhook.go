@@ -52,6 +52,11 @@ const (
 	githubObjectTypeIssueComment      = "issue_comment"
 	githubObjectTypePRReviewComment   = "pr_review_comment"
 	githubObjectTypeDiscussionComment = "discussion_comment"
+
+	// reviewCommentsReqTimeout bounds the request fetching a review's inline comments.
+	reviewCommentsReqTimeout = 5 * time.Second
+	// maxReviewCommentLinks is the maximum number of inline comment links in a review DM.
+	maxReviewCommentLinks = 20
 )
 
 // RenderConfig holds various configuration options to be used in a template
@@ -1535,7 +1540,12 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 		return
 	}
 
-	message, err := renderTemplate("pullRequestReviewNotification", event)
+	comments, moreComments := p.getReviewComments(authorUserID, event)
+	message, err := renderTemplate("pullRequestReviewNotification", &pullRequestReviewNotification{
+		PullRequestReviewEvent: event,
+		Comments:               comments,
+		MoreComments:           moreComments,
+	})
 	if err != nil {
 		p.client.Log.Warn("Failed to render template", "error", err.Error())
 		return
@@ -1543,6 +1553,55 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)
+}
+
+// pullRequestReviewNotification is the data rendered by the pullRequestReviewNotification template.
+type pullRequestReviewNotification struct {
+	*github.PullRequestReviewEvent
+
+	// Comments are the inline comments submitted as part of the review. The webhook
+	// payload doesn't include them, so they are fetched separately.
+	Comments []*github.PullRequestComment
+	// MoreComments is set when the review has more inline comments than Comments holds.
+	MoreComments bool
+}
+
+// getReviewComments fetches up to maxReviewCommentLinks inline comments of the review in
+// the event, using the GitHub token of the given user, and reports whether the review has
+// more. It returns nil, false if the comments can't be fetched.
+func (p *Plugin) getReviewComments(userID string, event *github.PullRequestReviewEvent) ([]*github.PullRequestComment, bool) {
+	info, apiErr := p.getGitHubUserInfo(userID)
+	if apiErr != nil {
+		return nil, false
+	}
+
+	githubClient := p.githubConnectUser(context.Background(), info)
+	if githubClient == nil {
+		return nil, false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), reviewCommentsReqTimeout)
+	defer cancel()
+
+	var comments []*github.PullRequestComment
+	var resp *github.Response
+	err := p.useGitHubClient(info, func(_ *GitHubUserInfo, _ *oauth2.Token) error {
+		var err error
+		comments, resp, err = githubClient.PullRequests.ListReviewComments(
+			ctx,
+			event.GetRepo().GetOwner().GetLogin(),
+			event.GetRepo().GetName(),
+			event.GetPullRequest().GetNumber(),
+			event.GetReview().GetID(),
+			&github.ListOptions{PerPage: maxReviewCommentLinks},
+		)
+		return err
+	})
+	if err != nil {
+		return nil, false
+	}
+
+	return comments, resp != nil && resp.NextPage != 0
 }
 
 func (p *Plugin) postStarEvent(event *github.StarEvent) {
