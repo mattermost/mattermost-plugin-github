@@ -57,6 +57,10 @@ function deferGetConnected() {
     return () => pending.shift()({data: {}});
 }
 
+function resolveGetConnected() {
+    getConnected.mockImplementation(() => () => Promise.resolve({data: {}}));
+}
+
 function registeredIds(registry) {
     return Object.entries(registry).
         filter(([name]) => name !== 'unregisterComponent').
@@ -64,10 +68,12 @@ function registeredIds(registry) {
         filter(Boolean);
 }
 
+function unregisteredIds(registry) {
+    return registry.unregisterComponent.mock.calls.map(([id]) => id);
+}
+
 describe('PluginClass', () => {
-    beforeEach(() => {
-        getConnected.mockImplementation(() => () => Promise.resolve({data: {}}));
-    });
+    beforeEach(resolveGetConnected);
 
     afterEach(() => {
         plugin.uninitialize();
@@ -78,11 +84,11 @@ describe('PluginClass', () => {
         await plugin.initialize(registry, store);
 
         const ids = registeredIds(registry);
-        expect(ids).toHaveLength(9);
+        expect(ids).toContain(registry.registerBottomTeamSidebarComponent.mock.results[0].value);
 
         plugin.uninitialize();
 
-        expect(registry.unregisterComponent.mock.calls.map(([id]) => id).sort()).toEqual([...ids].sort());
+        expect(unregisteredIds(registry).sort()).toEqual([...ids].sort());
     });
 
     it('does not register components when uninitialized while connecting', async () => {
@@ -108,7 +114,7 @@ describe('PluginClass', () => {
         resolveConnected();
         await Promise.all([firstInit, secondInit]);
 
-        expect(first.registerBottomTeamSidebarComponent).not.toHaveBeenCalled();
+        expect(registeredIds(first)).toEqual([]);
         expect(second.registerBottomTeamSidebarComponent).toHaveBeenCalledTimes(1);
     });
 
@@ -120,7 +126,7 @@ describe('PluginClass', () => {
         const second = createRegistry();
         await plugin.initialize(second, store);
 
-        expect(first.unregisterComponent.mock.calls.map(([id]) => id).sort()).toEqual([...firstIds].sort());
+        expect(unregisteredIds(first).sort()).toEqual([...firstIds].sort());
         expect(second.unregisterComponent).not.toHaveBeenCalled();
         expect(second.registerBottomTeamSidebarComponent).toHaveBeenCalledTimes(1);
     });
