@@ -1,0 +1,22 @@
+{
+  "name": "mattermost-plugin-github",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "user": "ubuntu",
+  "install": ".cursor/install.sh",
+  "start": ".cursor/start.sh",
+  "terminals": [
+    {
+      "name": "github-stack",
+      "command": "make e2e-env-up && echo 'E2E stack is healthy' && cd e2e/integration && npx --yes tsx@4.23.15 ../../.cursor/fake-github.ts",
+      "description": "Boots Mattermost and Postgres from e2e/integration/docker-compose.yml, then runs the fake GitHub (.cursor/fake-github.ts, built on e2e/integration/fake-github/) in the foreground. Wait for '[fake-github] Listening'. There is no real GitHub here: never use `make e2e-real`, `npm run test:real` or GitHub credentials. Open Mattermost at http://127.0.0.1:8069 (use 127.0.0.1, not localhost: it is the SiteURL and the OAuth callback). The server starts with no users; create the admin with `cd e2e/integration && docker compose exec mattermost /mattermost/bin/mmctl --local user create --email sysadmin@example.com --username sysadmin --password 'Sys@dmin-sample1' --system-admin --email-verified`, then a team from the browser. Build and install the plugin with `make e2e-dist && MM_SERVICESETTINGS_SITEURL=http://127.0.0.1:8069 MM_ADMIN_USERNAME=sysadmin MM_ADMIN_PASSWORD='Sys@dmin-sample1' ./build/bin/pluginctl deploy github dist/e2e/github-*-e2e.tar.gz` (the e2e bundle sends GitHub OAuth, REST and GraphQL to http://fake-github:8093; `make dist` and `make deploy` would talk to real GitHub). Rerun it after every change. In System Console > Plugins > GitHub set GitHub OAuth Client ID Iv1.e2e0123456789abc, Client Secret e2e-github-oauth-client-secret-0000000000, Webhook Secret e2e-github-webhook-secret, and generate the At Rest Encryption Key. `/github connect` opens the fake's Authorize page, already signed in as octo-agent. The fake is seeded with org acme, repos acme/widgets (two PRs, an issue and a webhook to the plugin) and octo-agent/sandbox. Shape it with the control API at http://localhost:8093/__control/ (see e2e/integration/support/fake_github.ts: users, repos, items, threads, sign-in, faults) and, after subscribing a channel with `/github subscriptions add acme/widgets`, send webhook events with POST /__control/webhooks, e.g. `{\"event\": \"issues\", \"action\": \"opened\", \"repo\": \"acme/widgets\", \"number\": 3, \"sender\": \"octo-author\"}` (see e2e/integration/fake-github/webhooks.ts). Reset and reseed with `cd e2e/integration && npx --yes tsx@4.23.15 ../../.cursor/fake-github.ts --seed`. Server logs: `cd e2e/integration && docker compose logs mattermost`. GitHub calls the plugin made: http://localhost:8093/__control/requests; responses that break GitHub's API contract: http://localhost:8093/__control/contract-violations. Tests: stop the fake first (Ctrl-C here; the suite starts its own on 8093), then `make e2e` or `cd e2e/integration && npx playwright test tests/<spec>.spec.ts`. The suite reinstalls the plugin with its own settings and creates sysadmin / Sys@dmin-sample1 if missing. Reset all data with `make e2e-env-down && make e2e-env-up`."
+    }
+  ],
+  "ports": [
+    {
+      "name": "Mattermost",
+      "port": 8069
+    }
+  ]
+}
