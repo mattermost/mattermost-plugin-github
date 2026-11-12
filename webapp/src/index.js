@@ -29,17 +29,33 @@ const activityTimeout = 60 * 60 * 1000; // 1 hour
 const {id: pluginId} = manifest;
 
 class PluginClass {
+    generation = 0;
+    registry = null;
+    componentIds = [];
+
     async initialize(registry, store) {
+        this.uninitialize();
+        const generation = this.generation;
+        this.registry = registry;
+
         registry.registerReducer(Reducer);
         Client.setServerRoute(getServerRoute(store.getState()));
 
         await getConnected(true)(store.dispatch, store.getState);
 
-        registry.registerLeftSidebarHeaderComponent(SidebarHeader);
-        registry.registerBottomTeamSidebarComponent(TeamSidebar);
-        registry.registerPopoverUserAttributesComponent(UserAttribute);
-        registry.registerRootComponent(CreateIssueModal);
-        registry.registerPostDropdownMenuAction({
+        // The webapp may uninitialize or re-initialize the plugin while the request above is in
+        // flight, e.g. during a plugin upgrade. Registering now would duplicate the components.
+        if (generation !== this.generation) {
+            return;
+        }
+
+        this.componentIds.push(
+            registry.registerLeftSidebarHeaderComponent(SidebarHeader),
+            registry.registerBottomTeamSidebarComponent(TeamSidebar),
+            registry.registerPopoverUserAttributesComponent(UserAttribute),
+            registry.registerRootComponent(CreateIssueModal),
+        );
+        this.componentIds.push(registry.registerPostDropdownMenuAction({
             text: CreateIssuePostMenuAction,
             action: (postId) => {
                 store.dispatch(openCreateIssueModal(postId));
@@ -51,9 +67,9 @@ class PluginClass {
 
                 return state[`plugins-${manifest.id}`].connected && !systemMessage;
             },
-        });
-        registry.registerRootComponent(AttachCommentToIssueModal);
-        registry.registerPostDropdownMenuAction({
+        }));
+        this.componentIds.push(registry.registerRootComponent(AttachCommentToIssueModal));
+        this.componentIds.push(registry.registerPostDropdownMenuAction({
             text: AttachCommentToIssuePostMenuAction,
             action: (postId) => {
                 store.dispatch(openAttachCommentToIssueModal(postId));
@@ -65,10 +81,11 @@ class PluginClass {
 
                 return state[`plugins-${manifest.id}`].connected && !systemMessage;
             },
-        });
-        registry.registerLinkTooltipComponent(LinkTooltip);
+        }));
+        this.componentIds.push(registry.registerLinkTooltipComponent(LinkTooltip));
 
-        const {showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
+        const {id: rhsId, showRHSPlugin} = registry.registerRightHandSidebarComponent(SidebarRight, 'GitHub');
+        this.componentIds.push(rhsId);
         store.dispatch(setShowRHSAction(() => store.dispatch(showRHSPlugin)));
 
         if (registry.registerRHSPluginPopoutListener) {
@@ -108,8 +125,11 @@ class PluginClass {
         document.addEventListener('click', activityFunc);
     }
 
-    deinitialize() {
+    uninitialize() {
+        this.generation++;
         document.removeEventListener('click', activityFunc);
+        this.componentIds.forEach((id) => this.registry.unregisterComponent(id));
+        this.componentIds = [];
     }
 }
 
