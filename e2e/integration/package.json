@@ -1,0 +1,30 @@
+{
+  "name": "mattermost-plugin-github-e2e",
+  "private": true,
+  "scripts": {
+    "env:up": "docker compose up -d --wait",
+    "env:down": "docker compose --profile visual down -v",
+    "test": "playwright test",
+    "test:ci": "cross-env CI=true playwright test --grep-invert @visual",
+    "test:visual": "./scripts/visual.sh",
+    "test:visual-update-snapshots": "./scripts/visual.sh --update-snapshots",
+    "test:headed": "cross-env PW_HEADLESS=false playwright test",
+    "show-report": "playwright show-report",
+    "tsc": "tsc --noEmit",
+    "contract:update": "node fake-github/contract/update_specs.mjs",
+    "contract:check": "node fake-github/contract/update_specs.mjs --check",
+    "test:real": "playwright test -c playwright.real.config.ts"
+  },
+  "devDependencies": {
+    "@mattermost/client": "11.3.0",
+    "@mattermost/playwright-lib": "11.4.0",
+    "@mattermost/types": "11.3.0",
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.20.5",
+    "ajv": "8.17.1",
+    "ajv-formats": "3.0.1",
+    "cross-env": "7.0.3",
+    "graphql": "16.14.2",
+    "typescript": "5.9.3"
+  }
+}

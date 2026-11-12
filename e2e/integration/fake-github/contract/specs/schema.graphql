@@ -1,0 +1,153 @@
+interface Actor {
+  login: String!
+}
+
+enum CommentAuthorAssociation {
+  COLLABORATOR
+  CONTRIBUTOR
+  FIRST_TIMER
+  FIRST_TIME_CONTRIBUTOR
+  MANNEQUIN
+  MEMBER
+  NONE
+  OWNER
+}
+
+scalar DateTime
+
+type Issue {
+  author: Actor
+  authorAssociation: CommentAuthorAssociation!
+  body: String!
+  createdAt: DateTime!
+  labels(after: String, before: String, first: Int, last: Int, orderBy: LabelOrder = {direction: ASC, field: CREATED_AT}): LabelConnection
+  milestone: Milestone
+  number: Int!
+  repository: Repository!
+  state: IssueState!
+  title: String!
+  updatedAt: DateTime!
+  url: URI!
+}
+
+enum IssueState {
+  CLOSED
+  OPEN
+}
+
+type Label {
+  color: String!
+  name: String!
+}
+
+type LabelConnection {
+  nodes: [Label]
+}
+
+input LabelOrder {
+  direction: OrderDirection!
+  field: LabelOrderField!
+}
+
+enum LabelOrderField {
+  CREATED_AT
+  ISSUE_COUNT
+  NAME
+}
+
+type Milestone {
+  title: String!
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+type Organization implements Actor & RepositoryOwner {
+  login: String!
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+type PullRequest {
+  additions: Int!
+  author: Actor
+  authorAssociation: CommentAuthorAssociation!
+  body: String!
+  changedFiles: Int!
+  createdAt: DateTime!
+  deletions: Int!
+  labels(after: String, before: String, first: Int, last: Int, orderBy: LabelOrder = {direction: ASC, field: CREATED_AT}): LabelConnection
+  milestone: Milestone
+  number: Int!
+  repository: Repository!
+  reviewRequests(after: String, before: String, first: Int, last: Int): ReviewRequestConnection
+  state: PullRequestState!
+  title: String!
+  updatedAt: DateTime!
+  url: URI!
+}
+
+enum PullRequestState {
+  CLOSED
+  MERGED
+  OPEN
+}
+
+type Query {
+  search(after: String, before: String, first: Int, last: Int, query: String!, type: SearchType!): SearchResultItemConnection!
+}
+
+type Repository {
+  name: String!
+  nameWithOwner: String!
+  owner: RepositoryOwner!
+  url: URI!
+}
+
+interface RepositoryOwner {
+  login: String!
+}
+
+union RequestedReviewer = Team | User
+
+type ReviewRequest {
+  requestedReviewer: RequestedReviewer
+}
+
+type ReviewRequestConnection {
+  nodes: [ReviewRequest]
+}
+
+union SearchResultItem = Issue | Organization | PullRequest | Repository | User
+
+type SearchResultItemConnection {
+  issueCount: Int!
+  nodes: [SearchResultItem]
+  pageInfo: PageInfo!
+}
+
+enum SearchType {
+  DISCUSSION
+  ISSUE
+  ISSUE_ADVANCED
+  ISSUE_HYBRID
+  ISSUE_SEMANTIC
+  REPOSITORY
+  USER
+}
+
+type Team {
+  organization: Organization!
+  slug: String!
+}
+
+scalar URI
+
+type User implements Actor & RepositoryOwner {
+  login: String!
+}

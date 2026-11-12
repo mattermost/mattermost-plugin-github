@@ -1,0 +1,62 @@
+name: github-plugin-e2e
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mmuser
+      POSTGRES_PASSWORD: mostest
+      POSTGRES_DB: mattermost_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmuser -d mattermost_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  mattermost:
+    image: ${MM_IMAGE:-mattermostdevelopment/mattermost-enterprise-edition:master}
+    # Server images are published for amd64 only; Apple Silicon runs them under emulation.
+    platform: linux/amd64
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${MM_PORT:-8069}:${MM_PORT:-8069}"
+      - "127.0.0.1:${PW_BROWSER_PORT:-3336}:3333"
+    extra_hosts:
+      - "fake-github:host-gateway"
+    environment:
+      MM_SQLSETTINGS_DRIVERNAME: postgres
+      MM_SQLSETTINGS_DATASOURCE: postgres://mmuser:mostest@postgres:5432/mattermost_test?sslmode=disable&connect_timeout=10
+      MM_SERVICESETTINGS_SITEURL: http://127.0.0.1:${MM_PORT:-8069}
+      MM_SERVICESETTINGS_LISTENADDRESS: ":${MM_PORT:-8069}"
+      MM_SERVICESETTINGS_ENABLELOCALMODE: "true"
+      MM_PLUGINSETTINGS_ENABLE: "true"
+      MM_PLUGINSETTINGS_ENABLEUPLOADS: "true"
+      MM_PLUGINSETTINGS_AUTOMATICPREPACKAGEDPLUGINS: "false"
+      MM_TEAMSETTINGS_ENABLEOPENSERVER: "true"
+      MM_ANNOUNCEMENTSETTINGS_ADMINNOTICESENABLED: "false"
+      MM_ANNOUNCEMENTSETTINGS_USERNOTICESENABLED: "false"
+      MM_LOGSETTINGS_CONSOLELEVEL: INFO
+    healthcheck:
+      test: ["CMD", "/mattermost/bin/mmctl", "--local", "system", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  # Shares Mattermost's network so the page origin matches the URL the tests use from the host.
+  visual-browser:
+    profiles: [visual]
+    image: mcr.microsoft.com/playwright:v${PW_VERSION:-1.64.1}-noble
+    network_mode: service:mattermost
+    # Chromium rasterizes text differently per CPU architecture; CI runners are amd64.
+    platform: linux/amd64
+    init: true
+    command: npx -y playwright@${PW_VERSION:-1.64.1} run-server --port 3333 --host 0.0.0.0
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(3333, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
