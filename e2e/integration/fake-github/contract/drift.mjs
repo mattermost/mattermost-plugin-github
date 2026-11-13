@@ -71,8 +71,8 @@ function diff(a, b, at, key, out, inNames = false) {
 // Unordered: variants with an exact match on the other side are set aside first, so a reordered list
 // is no change. When the same number of variants remain unmatched, they were edited in place and are
 // compared pairwise. Otherwise a removed variant is breaking, and so is an added one, except for anyOf:
-// an added allOf variant is one more constraint, and an added oneOf variant can overlap an existing
-// one and make values that matched it invalid.
+// an added allOf variant is one more constraint. For oneOf, any change beyond reordering is breaking:
+// an added or edited variant can overlap another, and values matching both become invalid.
 function diffVariants(a, b, at, key, out) {
     const unmatchedA = [...a];
     const unmatchedB = [];
@@ -83,6 +83,12 @@ function diffVariants(a, b, at, key, out) {
         } else {
             unmatchedB.push(variant);
         }
+    }
+    // Whether an edited oneOf variant still matches exclusively can't be decided by diffing, so any
+    // change to oneOf beyond reordering is breaking.
+    if (key === 'oneOf' && (unmatchedA.length || unmatchedB.length)) {
+        out.breaking.push(`${at}: ${unmatchedA.length} variant(s) changed or removed, ${unmatchedB.length} changed or added`);
+        return;
     }
     if (unmatchedA.length && unmatchedA.length === unmatchedB.length) {
         unmatchedA.forEach((variant, i) => diff(variant, unmatchedB[i], `${at}[${i}]`, '', out));

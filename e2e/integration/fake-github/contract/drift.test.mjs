@@ -69,6 +69,14 @@ test('REST: variants reordered, with a reordered required list, are no change', 
     assert.deepEqual(compareRest(base, next), {breaking: [], additive: []});
 });
 
+test('REST: an edited oneOf variant is breaking, even when the edit only adds an enum value', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.state.oneOf = [{enum: ['open']}, {enum: ['closed']}];
+    const next = structuredClone(base);
+    issue(next).properties.state.oneOf = [{enum: ['open', 'closed']}, {enum: ['closed']}];
+    assert.notDeepEqual(compareRest(base, next).breaking, []);
+});
+
 test('GraphQL: a removed field is breaking and an added enum value is additive', () => {
     assert.match(compareGraphQL(graphql, graphql.replace(/\n {2}changedFiles: Int!/, '')).breaking.join('\n'), /changedFiles was removed/);
     const [firstEnum] = /enum \w+ \{\n {2}\w+/.exec(graphql);
