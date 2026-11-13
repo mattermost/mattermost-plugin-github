@@ -13,6 +13,7 @@
     "tsc": "tsc --noEmit",
     "contract:update": "node fake-github/contract/update_specs.mjs",
     "contract:check": "node fake-github/contract/update_specs.mjs --check",
+    "contract:test": "node --test fake-github/contract/drift.test.mjs",
     "test:real": "playwright test -c playwright.real.config.ts"
   },
   "devDependencies": {
