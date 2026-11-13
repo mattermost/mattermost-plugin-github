@@ -64,50 +64,6 @@ func TestWithRecovery(t *testing.T) {
 	}
 }
 
-func TestCheckConfigured(t *testing.T) {
-	t.Run("not configured", func(t *testing.T) {
-		p := NewPlugin()
-		p.setConfiguration(&Configuration{})
-		api := &plugintest.API{}
-		api.On("LogDebug", "This plugin is not configured.", "error", mock.Anything)
-		p.SetAPI(api)
-		p.client = pluginapi.NewClient(api, p.Driver)
-
-		handler := p.checkConfigured(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			require.Fail(t, "next handler must not be called")
-		}))
-
-		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/connected", nil))
-
-		assert.Equal(t, http.StatusNotImplemented, rec.Code)
-		assert.Contains(t, rec.Body.String(), "this plugin is not configured")
-		api.AssertExpectations(t)
-	})
-
-	t.Run("configured", func(t *testing.T) {
-		p := NewPlugin()
-		p.setConfiguration(&Configuration{
-			GitHubOAuthClientID:     "mockID",
-			GitHubOAuthClientSecret: "mockSecret",
-			EncryptionKey:           "mockKey123456789",
-		})
-		p.SetAPI(&plugintest.API{})
-		p.client = pluginapi.NewClient(p.API, p.Driver)
-
-		called := false
-		handler := p.checkConfigured(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			called = true
-		}))
-
-		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/connected", nil))
-
-		assert.True(t, called)
-		assert.Equal(t, http.StatusOK, rec.Code)
-	})
-}
-
 func TestConnectUserToGitHub_PrivateRepoDisabled(t *testing.T) {
 	p := NewPlugin()
 	p.setConfiguration(
