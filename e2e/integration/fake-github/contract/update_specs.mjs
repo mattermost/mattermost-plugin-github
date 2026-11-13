@@ -4,7 +4,9 @@
 // Trims GitHub's published REST description (OpenAPI, with webhook payloads) and GraphQL schema
 // down to what fake-github serves.
 //   node update_specs.mjs          rewrite specs/ from upstream
-//   node update_specs.mjs --check  exit 1 if upstream drifted from the committed copies
+//   node update_specs.mjs --check  compare upstream with the committed copies: exit 1 on breaking
+//                                  changes (drift.mjs), 2 when a download fails, and 0 with additive
+//                                  changes listed for the next update
 
 /* eslint-disable no-console */
 
@@ -14,34 +16,94 @@ import {fileURLToPath} from 'node:url';
 
 import {Kind, assertValidSchema, buildASTSchema, lexicographicSortSchema, parse, printSchema, specifiedScalarTypes} from 'graphql';
 
+import {compareGraphQL, compareRest} from './drift.mjs';
+
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const specsDir = path.join(dir, 'specs');
 const check = process.argv.includes('--check');
 const manifest = JSON.parse(await fs.readFile(path.join(dir, 'operations.json'), 'utf8'));
 
-const outputs = {
-    'rest.json': `${JSON.stringify(trimRest(await download(manifest.rest.url, 'json'), manifest.rest), null, 2)}\n`,
-    'schema.graphql': trimGraphQL(await download(manifest.graphql.url, 'text'), manifest.graphql.fields),
-};
-
-let drifted = false;
-for (const [file, next] of Object.entries(outputs)) {
-    const outPath = path.join(specsDir, file);
-    if (check) {
-        if (await fs.readFile(outPath, 'utf8').catch(() => '') !== next) {
-            drifted = true;
-            console.error(`${file}: GitHub changed what fake-github serves`);
-        }
-        continue;
-    }
-    await fs.mkdir(specsDir, {recursive: true});
-    await fs.writeFile(outPath, next);
-    console.log(`${file}: updated`);
+// A download failure says nothing about drift, so it gets its own exit code; the nightly workflow
+// only opens a drift issue on exit 1.
+let restSpec;
+let graphqlSdl;
+try {
+    restSpec = await download(manifest.rest.url, 'json');
+    graphqlSdl = await download(manifest.graphql.url, 'text');
+} catch (err) {
+    console.error(err.message);
+    process.exit(2);
 }
 
-if (drifted) {
-    console.error('Run `npm run contract:update`, review the diff, and update fake-github to match.');
-    process.exit(1);
+// trimRest and trimGraphQL throw a ContractGone when an operation, webhook, type or field the fake
+// serves is gone upstream. That is breaking drift. Any other error (say, an unexpected document
+// shape) is a script failure: exit 2, so it doesn't open a drift issue.
+class ContractGone extends Error {}
+
+const breaking = [];
+const additive = [];
+const outputs = {};
+for (const [file, trim] of [
+    ['rest.json', () => `${JSON.stringify(trimRest(restSpec, manifest.rest), null, 2)}\n`],
+    ['schema.graphql', () => trimGraphQL(graphqlSdl, manifest.graphql.fields)],
+]) {
+    try {
+        outputs[file] = trim();
+    } catch (err) {
+        if (!check) {
+            throw err;
+        }
+        if (!(err instanceof ContractGone)) {
+            console.error(`${file}: trimming failed: ${err.stack}`);
+            process.exit(2);
+        }
+        breaking.push(`${file}: ${err.message}`);
+    }
+}
+
+for (const [file, next] of Object.entries(outputs)) {
+    const outPath = path.join(specsDir, file);
+    if (!check) {
+        await fs.mkdir(specsDir, {recursive: true});
+        await fs.writeFile(outPath, next);
+        console.log(`${file}: updated`);
+        continue;
+    }
+    const current = await fs.readFile(outPath, 'utf8').catch(() => null);
+    if (current === null) {
+        breaking.push(`${file}: no committed copy; run \`npm run contract:update\``);
+        continue;
+    }
+    if (current === next) {
+        continue;
+    }
+    let drift;
+    try {
+        drift = file === 'rest.json' ? compareRest(JSON.parse(current), JSON.parse(next)) : compareGraphQL(current, next);
+    } catch (err) {
+        // A bug in the comparison is not drift: exit 2 so it doesn't open a drift issue.
+        console.error(`${file}: comparing failed: ${err.stack}`);
+        process.exit(2);
+    }
+    breaking.push(...drift.breaking.map((line) => `${file}: ${line}`));
+    additive.push(...drift.additive.map((line) => `${file}: ${line}`));
+    if (!drift.breaking.length && !drift.additive.length) {
+        additive.push(`${file}: changed, but only in key order or formatting`);
+    }
+}
+
+if (check) {
+    for (const line of breaking) {
+        console.error(`BREAKING ${line}`);
+    }
+    for (const line of additive) {
+        console.log(`additive ${line}`);
+    }
+    if (breaking.length) {
+        console.error(`\n${breaking.length} breaking change(s). Run \`npm run contract:update\`, review the diff, and update fake-github and the plugin to match.`);
+        process.exit(1);
+    }
+    console.log(additive.length ? `\n${additive.length} additive change(s); run \`npm run contract:update\` to pull them in.` : 'No drift.');
 }
 
 async function download(url, as) {
@@ -58,7 +120,7 @@ function trimRest(spec, {operations, webhooks}) {
         const [method, opPath] = operation.split(' ');
         const op = spec.paths[opPath]?.[method.toLowerCase()];
         if (!op) {
-            throw new Error(`rest: ${operation} is not in the upstream description`);
+            throw new ContractGone(`rest: ${operation} is not in the upstream description`);
         }
         paths[opPath] = {...paths[opPath], [method.toLowerCase()]: stripDocs({requestBody: op.requestBody, responses: op.responses})};
     }
@@ -67,7 +129,7 @@ function trimRest(spec, {operations, webhooks}) {
     for (const name of webhooks) {
         const op = spec['x-webhooks'][name]?.post;
         if (!op) {
-            throw new Error(`rest: webhook ${name} is not in the upstream description`);
+            throw new ContractGone(`rest: webhook ${name} is not in the upstream description`);
         }
         hooks[name] = {post: stripDocs({requestBody: op.requestBody})};
     }
@@ -144,19 +206,19 @@ function trimGraphQL(sdl, fields) {
         }
         const def = definitions.get(name);
         if (!def) {
-            throw new Error(`graphql: ${name} is not in the upstream schema`);
+            throw new ContractGone(`graphql: ${name} is not in the upstream schema`);
         }
 
         let trimmed = stripDirectives({...def, description: undefined});
         if (def.kind === Kind.OBJECT_TYPE_DEFINITION || def.kind === Kind.INTERFACE_TYPE_DEFINITION) {
             const wanted = fields[name];
             if (!wanted) {
-                throw new Error(`graphql: ${name} is reachable from a listed field; add it to operations.json`);
+                throw new ContractGone(`graphql: ${name} is reachable from a listed field; add it to operations.json`);
             }
             const fieldDefs = def.fields.filter((f) => wanted.includes(f.name.value));
             const missing = wanted.filter((f) => !fieldDefs.some((d) => d.name.value === f));
             if (missing.length) {
-                throw new Error(`graphql: ${name} has no field(s) ${missing.join(', ')}`);
+                throw new ContractGone(`graphql: ${name} has no field(s) ${missing.join(', ')}`);
             }
             trimmed = {
                 ...trimmed,

@@ -61,7 +61,7 @@ Every request and response is checked, and each test fails at teardown if anythi
 - **REST:** validated against [github/rest-api-description](https://github.com/github/rest-api-description) (`api.github.com.json`), trimmed to the operations in `fake-github/contract/operations.json`. A route that isn't listed fails the run.
 - **GraphQL:** queries are validated and executed against GitHub's [public schema](https://docs.github.com/en/graphql/overview/public-schema), trimmed to the types the plugin uses. graphql-js rejects `... on Issue { state } ... on PullRequest { state }` as a field conflict while GitHub answers it, so that one message is ignored. The real lane checks GitHub still accepts it.
 - **Webhooks:** validated against the `x-webhooks` schemas in the same REST description. These replaced [octokit/webhooks](https://github.com/octokit/webhooks), which is deprecated and no longer updated.
-- Nightly, `npm run contract:check` fails if GitHub changed the committed specs. `npm run contract:update` refreshes them.
+- Nightly, `npm run contract:check` compares the committed specs with what GitHub publishes. It fails only on breaking changes (a removed operation, webhook, field or enum value, a changed type, or a field that became or stopped being required) and lists additive ones, like new optional fields, for the next `npm run contract:update`. Breaking drift opens a "GitHub API contract drift" issue, or comments on the open one. `npm run contract:test` checks the classification (`fake-github/contract/drift.mjs`).
 
 ## Real GitHub
 
