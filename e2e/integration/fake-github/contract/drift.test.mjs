@@ -17,6 +17,7 @@ const graphql = fs.readFileSync(path.join(specsDir, 'schema.graphql'), 'utf8');
 
 const issue = (s) => s.components.schemas.issue;
 const createIssue = (s) => s.paths['/repos/{owner}/{repo}/issues'].post;
+const userResponse = (s) => s.paths['/user'].get.responses['200'].content['application/json'].schema;
 
 // [description, edit to a copy of the committed spec, expected result]
 const restCases = [
@@ -30,6 +31,12 @@ const restCases = [
     ['an enum value added', (s) => { issue(s).properties.state.enum = ['open', 'closed', 'archived']; }, 'additive'],
     ['an operation removed', (s) => { delete s.paths['/repos/{owner}/{repo}/issues'].post; }, 'breaking'],
     ['a webhook removed', (s) => { delete s['x-webhooks'][Object.keys(s['x-webhooks'])[0]]; }, 'breaking'],
+    ['an optional field named like a keyword added', (s) => { issue(s).properties.items = {type: 'array', items: {type: 'string'}}; }, 'additive'],
+    ['a constraint added through allOf', (s) => { issue(s).properties.title.allOf = [{enum: ['open']}]; }, 'breaking'],
+    ['a not constraint added', (s) => { issue(s).properties.title.not = {enum: ['']}; }, 'breaking'],
+    ['oneOf variants reordered', (s) => { userResponse(s).oneOf.reverse(); }, 'none'],
+    ['a oneOf variant added', (s) => { userResponse(s).oneOf.push({type: 'string'}); }, 'additive'],
+    ['a oneOf variant removed', (s) => { userResponse(s).oneOf.pop(); }, 'breaking'],
 ];
 
 for (const [name, edit, expected] of restCases) {
