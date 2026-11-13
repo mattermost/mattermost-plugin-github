@@ -22,7 +22,7 @@ const VARIANTS = new Set(['allOf', 'anyOf', 'oneOf']);
  * Compares two trimmed REST descriptions as JSON trees: anything removed or changed is breaking,
  * anything added is additive unless it is a restriction keyword. In `required`, any change is
  * breaking (a request may now lack a field, or a response may omit one); in `enum`, only removals
- * are. allOf/anyOf/oneOf variants are compared regardless of order.
+ * are. allOf/anyOf/oneOf variants are compared regardless of order (see diffVariants).
  * @returns {{breaking: string[], additive: string[]}}
  */
 export function compareRest(current, next) {
@@ -68,23 +68,31 @@ function diff(a, b, at, key, out, inNames = false) {
     }
 }
 
-// Unordered: a reordered list is no change. A removed variant is breaking; an added one is breaking
-// for allOf (one more constraint) and additive for anyOf/oneOf (one more accepted shape). When the
-// same number of variants differ, they were edited in place, so compare them by position.
+// Unordered: variants with an exact match on the other side are set aside first, so a reordered list
+// is no change. When the same number of variants remain unmatched, they were edited in place and are
+// compared pairwise. Otherwise a removed variant is breaking, and so is an added one, except for anyOf:
+// an added allOf variant is one more constraint, and an added oneOf variant can overlap an existing
+// one and make values that matched it invalid.
 function diffVariants(a, b, at, key, out) {
-    const as = a.map(canonical);
-    const bs = b.map(canonical);
-    const removed = as.filter((v) => !bs.includes(v));
-    const added = bs.filter((v) => !as.includes(v));
-    if (a.length === b.length && removed.length) {
-        a.forEach((variant, i) => diff(variant, b[i], `${at}.${i}`, '', out));
+    const unmatchedA = [...a];
+    const unmatchedB = [];
+    for (const variant of b) {
+        const i = unmatchedA.findIndex((v) => canonical(v) === canonical(variant));
+        if (i >= 0) {
+            unmatchedA.splice(i, 1);
+        } else {
+            unmatchedB.push(variant);
+        }
+    }
+    if (unmatchedA.length && unmatchedA.length === unmatchedB.length) {
+        unmatchedA.forEach((variant, i) => diff(variant, unmatchedB[i], `${at}[${i}]`, '', out));
         return;
     }
-    if (removed.length) {
-        out.breaking.push(`${at}: ${removed.length} variant(s) removed`);
+    if (unmatchedA.length) {
+        out.breaking.push(`${at}: ${unmatchedA.length} variant(s) removed`);
     }
-    if (added.length) {
-        (key === 'allOf' ? out.breaking : out.additive).push(`${at}: ${added.length} variant(s) added`);
+    if (unmatchedB.length) {
+        (key === 'anyOf' ? out.additive : out.breaking).push(`${at}: ${unmatchedB.length} variant(s) added`);
     }
 }
 
@@ -100,14 +108,17 @@ export function compareGraphQL(currentSdl, nextSdl) {
     return {breaking: findBreakingChanges(current, next).map(describe), additive: findDangerousChanges(current, next).map(describe)};
 }
 
-function canonical(value) {
+// A stable string for a schema: object keys sorted, and `required`/`enum` lists sorted too, since their
+// order carries no meaning.
+function canonical(value, key = '') {
     if (!isContainer(value)) {
         return JSON.stringify(value);
     }
     if (Array.isArray(value)) {
-        return `[${value.map(canonical).join(',')}]`;
+        const items = value.map((v) => canonical(v));
+        return `[${(key === 'required' || key === 'enum' ? items.sort() : items).join(',')}]`;
     }
-    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(',')}}`;
+    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonical(value[k], k)}`).join(',')}}`;
 }
 
 function isContainer(value) {

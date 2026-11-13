@@ -35,7 +35,8 @@ const restCases = [
     ['a constraint added through allOf', (s) => { issue(s).properties.title.allOf = [{enum: ['open']}]; }, 'breaking'],
     ['a not constraint added', (s) => { issue(s).properties.title.not = {enum: ['']}; }, 'breaking'],
     ['oneOf variants reordered', (s) => { userResponse(s).oneOf.reverse(); }, 'none'],
-    ['a oneOf variant added', (s) => { userResponse(s).oneOf.push({type: 'string'}); }, 'additive'],
+    ['a oneOf variant added', (s) => { userResponse(s).oneOf.push({type: 'string'}); }, 'breaking'],
+    ['an anyOf variant added', (s) => { issue(s).properties.title.anyOf = [{type: 'string'}]; }, 'breaking'],
     ['a oneOf variant removed', (s) => { userResponse(s).oneOf.pop(); }, 'breaking'],
 ];
 
@@ -58,6 +59,14 @@ test('REST: a removed enum value is breaking', () => {
     const next = structuredClone(base);
     issue(next).properties.state.enum = ['open'];
     assert.match(compareRest(base, next).breaking.join('\n'), /state\.enum removed: closed/);
+});
+
+test('REST: variants reordered, with a reordered required list, are no change', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.title.oneOf = [{type: 'object', required: ['a', 'b']}, {type: 'string'}];
+    const next = structuredClone(base);
+    issue(next).properties.title.oneOf = [{type: 'string'}, {type: 'object', required: ['b', 'a']}];
+    assert.deepEqual(compareRest(base, next), {breaking: [], additive: []});
 });
 
 test('GraphQL: a removed field is breaking and an added enum value is additive', () => {
