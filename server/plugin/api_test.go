@@ -64,6 +64,25 @@ func TestWithRecovery(t *testing.T) {
 	}
 }
 
+func TestCheckConfigured_NotConfigured(t *testing.T) {
+	p := NewPlugin()
+	p.setConfiguration(&Configuration{})
+	api := &plugintest.API{}
+	api.On("LogDebug", "This plugin is not configured.", "error", mock.Anything)
+	p.SetAPI(api)
+	p.client = pluginapi.NewClient(api, p.Driver)
+
+	handler := p.checkConfigured(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Fail(t, "next handler must not be called")
+	}))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/connected", nil))
+
+	assert.Equal(t, http.StatusNotImplemented, rec.Code)
+	api.AssertExpectations(t)
+}
+
 func TestConnectUserToGitHub_PrivateRepoDisabled(t *testing.T) {
 	p := NewPlugin()
 	p.setConfiguration(

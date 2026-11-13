@@ -528,7 +528,7 @@ func buildPluginURL(client *pluginapi.Client, elem ...string) (string, error) {
 
 func getSiteURL(client *pluginapi.Client) (string, error) {
 	siteURL := client.Configuration.GetConfig().ServiceSettings.SiteURL
-	if siteURL == nil {
+	if siteURL == nil || *siteURL == "" {
 		return "", errors.New("siteURL is not set. Please set it and restart the plugin")
 	}
 

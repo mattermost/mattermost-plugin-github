@@ -207,7 +207,7 @@ func (p *Plugin) checkConfigured(next http.Handler) http.Handler {
 		config := p.getConfiguration()
 
 		if err := config.IsValid(); err != nil {
-			p.client.Log.Error("This plugin is not configured.", "error", err)
+			p.client.Log.Debug("This plugin is not configured.", "error", err)
 			p.writeAPIError(w, &APIErrorResponse{Message: "this plugin is not configured", StatusCode: http.StatusNotImplemented})
 			return
 		}
