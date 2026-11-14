@@ -68,7 +68,7 @@ export default class IssueAttributeSelector extends PureComponent<Props, State> 
 
     loadOptions = async () => {
         const generation = ++this.loadGeneration;
-        this.setState({isLoading: true});
+        this.setState({isLoading: true, options: []});
 
         try {
             const options = await this.props.loadOptions();

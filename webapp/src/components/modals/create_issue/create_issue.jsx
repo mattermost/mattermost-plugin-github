@@ -73,7 +73,7 @@ export default class CreateIssueModal extends PureComponent {
         const {post} = this.props;
         const postId = post ? post.id : '';
 
-        const hasPushPermission = Boolean(this.state.repo && (!this.state.repo.permissions || this.state.repo.permissions.push));
+        const hasPushPermission = this.hasPushPermission();
         const labels = hasPushPermission ? this.state.labels : [];
         const assignees = hasPushPermission ? this.state.assignees : [];
         const milestone = hasPushPermission && this.state.milestone ? this.state.milestone.value : null;
@@ -111,7 +111,19 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
+    hasPushPermission = () => {
+        return Boolean(this.state.repo && (!this.state.repo.permissions || this.state.repo.permissions.push));
+    };
+
     handleRepoChange = (repo) => {
+        const prevRepoName = this.state.repo ? this.state.repo.name : '';
+        const nextRepoName = repo ? repo.name : '';
+
+        if (prevRepoName === nextRepoName) {
+            this.setState({repo});
+            return;
+        }
+
         this.setState({
             repo,
             labels: [],
@@ -132,8 +144,8 @@ export default class CreateIssueModal extends PureComponent {
         this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        const hasPushPermission = Boolean(this.state.repo && (!this.state.repo.permissions || this.state.repo.permissions.push));
-        const repoName = this.state.repo ? this.state.repo.name : '';
+        const hasPushPermission = this.hasPushPermission();
+        const repoName = hasPushPermission && this.state.repo ? this.state.repo.name : '';
 
         return (
             <>
