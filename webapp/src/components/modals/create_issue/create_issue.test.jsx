@@ -36,17 +36,47 @@ jest.mock('@/components/github_repo_selector', () => ({
 
 jest.mock('@/components/github_label_selector', () => ({
     __esModule: true,
-    default: () => <div data-testid='github-label-selector'>{'Label Selector'}</div>,
+    default: ({onChange, isDisabled, repoName}) => (
+        <div
+            data-testid='github-label-selector'
+            data-disabled={isDisabled}
+            data-repo={repoName}
+        >
+            {'Label Selector'}
+            <button
+                type='button'
+                onClick={() => onChange && onChange(['test-label'])}
+            >
+                {'Change Labels'}
+            </button>
+        </div>
+    ),
 }));
 
 jest.mock('@/components/github_assignee_selector', () => ({
     __esModule: true,
-    default: () => <div data-testid='github-assignee-selector'>{'Assignee Selector'}</div>,
+    default: ({isDisabled, repoName}) => (
+        <div
+            data-testid='github-assignee-selector'
+            data-disabled={isDisabled}
+            data-repo={repoName}
+        >
+            {'Assignee Selector'}
+        </div>
+    ),
 }));
 
 jest.mock('@/components/github_milestone_selector', () => ({
     __esModule: true,
-    default: () => <div data-testid='github-milestone-selector'>{'Milestone Selector'}</div>,
+    default: ({isDisabled, repoName}) => (
+        <div
+            data-testid='github-milestone-selector'
+            data-disabled={isDisabled}
+            data-repo={repoName}
+        >
+            {'Milestone Selector'}
+        </div>
+    ),
 }));
 
 const defaultProps = {
@@ -177,24 +207,105 @@ test('CreateIssueModal should set issueDescription state when post prop is updat
     expect(descriptionInput).toHaveValue('test post');
 });
 
-test('CreateIssueModal should not display attribute selectors when repo does not have push permissions', async () => {
+test('CreateIssueModal should disable attribute selectors when repo does not have push permissions or no repo is selected', async () => {
     render(<CreateIssueModal {...defaultProps}/>);
+
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'true');
 
     const selectNoPushRepoButton = screen.getByText('Select No Push Repo');
     await userEvent.click(selectNoPushRepoButton);
 
-    expect(screen.queryByTestId('github-label-selector')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('github-assignee-selector')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('github-milestone-selector')).not.toBeInTheDocument();
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'true');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'true');
 });
 
-test('CreateIssueModal should display attribute selectors when repo has push permissions', async () => {
+test('CreateIssueModal should enable attribute selectors when repo has push permissions', async () => {
     render(<CreateIssueModal {...defaultProps}/>);
 
     const selectRepoButton = screen.getByText('Select Repo');
     await userEvent.click(selectRepoButton);
 
-    expect(screen.getByTestId('github-label-selector')).toBeInTheDocument();
-    expect(screen.getByTestId('github-assignee-selector')).toBeInTheDocument();
-    expect(screen.getByTestId('github-milestone-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-disabled', 'false');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-disabled', 'false');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-disabled', 'false');
+});
+
+test('CreateIssueModal should reset attributes and not submit stale attributes when repo changes', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const titleInput = screen.getByRole('textbox', {name: /title for the github issue/i});
+    await userEvent.type(titleInput, 'Test Issue');
+
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
+
+    const changeLabelsButton = screen.getByText('Change Labels');
+    await userEvent.click(changeLabelsButton);
+
+    const selectNoPushRepoButton = screen.getByText('Select No Push Repo');
+    await userEvent.click(selectNoPushRepoButton);
+
+    const submitButton = screen.getByRole('button', {name: 'Submit'});
+    await userEvent.click(submitButton);
+
+    await waitFor(() => expect(defaultProps.create).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Issue',
+        repo: 'no-push-repo',
+        labels: [],
+        assignees: [],
+        milestone: null,
+    })));
+});
+
+test('CreateIssueModal should not pass repoName to attribute selectors when repo does not have push permissions', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    // Initial state: no repo selected -> empty repoName
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-repo', '');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-repo', '');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-repo', '');
+
+    // Select a repository without push permissions -> still empty repoName
+    const selectNoPushRepoButton = screen.getByText('Select No Push Repo');
+    await userEvent.click(selectNoPushRepoButton);
+
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-repo', '');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-repo', '');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-repo', '');
+
+    // Select a repository with push permissions -> passes real repoName
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
+
+    expect(screen.getByTestId('github-label-selector')).toHaveAttribute('data-repo', 'test-repo');
+    expect(screen.getByTestId('github-assignee-selector')).toHaveAttribute('data-repo', 'test-repo');
+    expect(screen.getByTestId('github-milestone-selector')).toHaveAttribute('data-repo', 'test-repo');
+});
+
+test('CreateIssueModal should not reset attribute selections when selecting the same repository', async () => {
+    render(<CreateIssueModal {...defaultProps}/>);
+
+    const titleInput = screen.getByRole('textbox', {name: /title for the github issue/i});
+    await userEvent.type(titleInput, 'Test Issue');
+
+    const selectRepoButton = screen.getByText('Select Repo');
+    await userEvent.click(selectRepoButton);
+
+    const changeLabelsButton = screen.getByText('Change Labels');
+    await userEvent.click(changeLabelsButton);
+
+    // Selecting the same repository should preserve current attribute selections
+    await userEvent.click(selectRepoButton);
+
+    const submitButton = screen.getByRole('button', {name: 'Submit'});
+    await userEvent.click(submitButton);
+
+    await waitFor(() => expect(defaultProps.create).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Test Issue',
+        repo: 'test-repo',
+        labels: ['test-label'],
+    })));
 });
