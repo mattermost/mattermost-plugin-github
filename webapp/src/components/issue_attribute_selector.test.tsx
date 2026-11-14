@@ -159,4 +159,51 @@ describe('IssueAttributeSelector', () => {
             ]);
         });
     });
+
+    test('should clear options while loading after a repo change', async () => {
+        let resolveSecondRepo: (value: any) => void;
+        const secondLoadPromise = new Promise((resolve) => {
+            resolveSecondRepo = resolve;
+        });
+
+        const loadOptions = jest.fn().
+            mockImplementationOnce(() => Promise.resolve([
+                {label: 'RepoA-Label', value: 'repoa-label'},
+            ])).
+            mockImplementationOnce(() => secondLoadPromise);
+
+        const {rerender} = render(
+            <IssueAttributeSelector
+                {...defaultProps}
+                repoName='repoA'
+                loadOptions={loadOptions}
+            />,
+        );
+
+        // Wait for first repo options to load and be present
+        await waitFor(() => {
+            expect(loadOptions).toHaveBeenCalledTimes(1);
+        });
+
+        // Change repository to repoB, triggering a pending loadOptions
+        rerender(
+            <IssueAttributeSelector
+                {...defaultProps}
+                repoName='repoB'
+                loadOptions={loadOptions}
+            />,
+        );
+
+        // While repoB options are still loading, repoA options should be cleared immediately
+        expect(screen.queryByText('RepoA-Label')).not.toBeInTheDocument();
+
+        // Resolve second repo options
+        resolveSecondRepo!([
+            {label: 'RepoB-Label', value: 'repob-label'},
+        ]);
+
+        await waitFor(() => {
+            expect(loadOptions).toHaveBeenCalledTimes(2);
+        });
+    });
 });
