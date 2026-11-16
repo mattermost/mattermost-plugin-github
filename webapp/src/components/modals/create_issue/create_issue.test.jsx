@@ -55,26 +55,38 @@ jest.mock('@/components/github_label_selector', () => ({
 
 jest.mock('@/components/github_assignee_selector', () => ({
     __esModule: true,
-    default: ({isDisabled, repoName}) => (
+    default: ({onChange, isDisabled, repoName}) => (
         <div
             data-testid='github-assignee-selector'
             data-disabled={isDisabled}
             data-repo={repoName}
         >
             {'Assignee Selector'}
+            <button
+                type='button'
+                onClick={() => onChange && onChange(['test-assignee'])}
+            >
+                {'Change Assignees'}
+            </button>
         </div>
     ),
 }));
 
 jest.mock('@/components/github_milestone_selector', () => ({
     __esModule: true,
-    default: ({isDisabled, repoName}) => (
+    default: ({onChange, isDisabled, repoName}) => (
         <div
             data-testid='github-milestone-selector'
             data-disabled={isDisabled}
             data-repo={repoName}
         >
             {'Milestone Selector'}
+            <button
+                type='button'
+                onClick={() => onChange && onChange({value: 1, label: 'v1.0.0'})}
+            >
+                {'Change Milestone'}
+            </button>
         </div>
     ),
 }));
@@ -294,8 +306,9 @@ test('CreateIssueModal should not reset attribute selections when selecting the 
     const selectRepoButton = screen.getByText('Select Repo');
     await userEvent.click(selectRepoButton);
 
-    const changeLabelsButton = screen.getByText('Change Labels');
-    await userEvent.click(changeLabelsButton);
+    await userEvent.click(screen.getByText('Change Labels'));
+    await userEvent.click(screen.getByText('Change Assignees'));
+    await userEvent.click(screen.getByText('Change Milestone'));
 
     // Selecting the same repository should preserve current attribute selections
     await userEvent.click(selectRepoButton);
@@ -307,5 +320,7 @@ test('CreateIssueModal should not reset attribute selections when selecting the 
         title: 'Test Issue',
         repo: 'test-repo',
         labels: ['test-label'],
+        assignees: ['test-assignee'],
+        milestone: 1,
     })));
 });
