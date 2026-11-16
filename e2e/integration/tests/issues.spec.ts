@@ -95,20 +95,33 @@ test.describe('create issue from a post', () => {
         expect(reply.message).toContain(`https://github.com/${repo}/issues/${created!.number}`);
     });
 
-    // GitHub silently drops labels, assignees and milestones from users without push access; the modal hides them.
+    // GitHub silently drops labels, assignees and milestones from users without push access; the modal disables them.
     /**
-     * @objective Verify the create issue modal hides labels and assignees for a repository the user cannot push to.
+     * @objective Verify the create issue modal disables labels, assignees and milestone for a repository the user cannot push to.
      */
-    test('hides issue attributes in the create issue modal for a repository the user cannot push to', {tag: '@github_plugin'}, async ({pw, github}) => {
+    test('disables issue attributes in the create issue modal for a repository the user cannot push to', {tag: '@github_plugin'}, async ({pw, github}) => {
         // # Open the create issue modal and pick a read-only repository
         await seedRepo(github, {canPush: false});
         await github.connect();
         const {page, modal} = await openCreateIssue(pw, github, 'Read-only repo message');
         await chooseOption(page, selectField(modal, 'Repository'), 'widgets');
 
-        // * Verify the labels and assignees fields are hidden
-        await expect(modal.getByText('Labels', {exact: true})).toHaveCount(0);
-        await expect(modal.getByText('Assignees', {exact: true})).toHaveCount(0);
+        // * Verify the labels, assignees and milestone fields are present but not interactive.
+        // A disabled react-select renders the placeholder without a combobox input.
+        const labels = selectField(modal, 'Labels');
+        await expect(labels).toHaveCount(1);
+        await expect(labels).toContainText('Select...');
+        await expect(labels.getByRole('combobox')).toHaveCount(0);
+
+        const assignees = selectField(modal, 'Assignees');
+        await expect(assignees).toHaveCount(1);
+        await expect(assignees).toContainText('Select...');
+        await expect(assignees.getByRole('combobox')).toHaveCount(0);
+
+        const milestone = selectField(modal, 'Milestone');
+        await expect(milestone).toHaveCount(1);
+        await expect(milestone).toContainText('Select...');
+        await expect(milestone.getByRole('combobox')).toHaveCount(0);
 
         // # Fill in the title and submit
         await modal.getByLabel('Title for the GitHub Issue').fill('Filed without push access');

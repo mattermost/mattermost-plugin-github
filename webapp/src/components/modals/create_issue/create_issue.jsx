@@ -73,13 +73,18 @@ export default class CreateIssueModal extends PureComponent {
         const {post} = this.props;
         const postId = post ? post.id : '';
 
+        const hasPushPermission = this.hasPushPermission();
+        const labels = hasPushPermission ? this.state.labels : [];
+        const assignees = hasPushPermission ? this.state.assignees : [];
+        const milestone = hasPushPermission && this.state.milestone ? this.state.milestone.value : null;
+
         const issue = {
             title: this.state.issueTitle,
             body: this.state.issueDescription,
             repo: this.state.repo && this.state.repo.name,
-            labels: this.state.labels,
-            assignees: this.state.assignees,
-            milestone: this.state.milestone && this.state.milestone.value,
+            labels,
+            assignees,
+            milestone,
             post_id: postId,
             channel_id: this.props.channelId,
         };
@@ -106,7 +111,26 @@ export default class CreateIssueModal extends PureComponent {
         this.setState(initialState, this.props.close);
     };
 
-    handleRepoChange = (repo) => this.setState({repo});
+    hasPushPermission = () => {
+        return Boolean(this.state.repo && (!this.state.repo.permissions || this.state.repo.permissions.push));
+    };
+
+    handleRepoChange = (repo) => {
+        const prevRepoName = this.state.repo ? this.state.repo.name : '';
+        const nextRepoName = repo ? repo.name : '';
+
+        if (prevRepoName === nextRepoName) {
+            this.setState({repo});
+            return;
+        }
+
+        this.setState({
+            repo,
+            labels: [],
+            assignees: [],
+            milestone: null,
+        });
+    };
 
     handleLabelsChange = (labels) => this.setState({labels});
 
@@ -120,31 +144,33 @@ export default class CreateIssueModal extends PureComponent {
         this.setState({issueDescription});
 
     renderIssueAttributeSelectors = () => {
-        if (!this.state.repo || (this.state.repo.permissions && !this.state.repo.permissions.push)) {
-            return null;
-        }
+        const hasPushPermission = this.hasPushPermission();
+        const repoName = hasPushPermission && this.state.repo ? this.state.repo.name : '';
 
         return (
             <>
                 <GithubLabelSelector
-                    repoName={this.state.repo.name}
+                    repoName={repoName}
                     theme={this.props.theme}
                     selectedLabels={this.state.labels}
                     onChange={this.handleLabelsChange}
+                    isDisabled={!hasPushPermission}
                 />
 
                 <GithubAssigneeSelector
-                    repoName={this.state.repo.name}
+                    repoName={repoName}
                     theme={this.props.theme}
                     selectedAssignees={this.state.assignees}
                     onChange={this.handleAssigneesChange}
+                    isDisabled={!hasPushPermission}
                 />
 
                 <GithubMilestoneSelector
-                    repoName={this.state.repo.name}
+                    repoName={repoName}
                     theme={this.props.theme}
                     selectedMilestone={this.state.milestone}
                     onChange={this.handleMilestoneChange}
+                    isDisabled={!hasPushPermission}
                 />
             </>
         );
