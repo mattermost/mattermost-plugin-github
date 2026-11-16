@@ -106,18 +106,22 @@ test.describe('create issue from a post', () => {
         const {page, modal} = await openCreateIssue(pw, github, 'Read-only repo message');
         await chooseOption(page, selectField(modal, 'Repository'), 'widgets');
 
-        // * Verify the labels, assignees and milestone fields are present but disabled
+        // * Verify the labels, assignees and milestone fields are present but not interactive.
+        // A disabled react-select renders the placeholder without a combobox input.
         const labels = selectField(modal, 'Labels');
         await expect(labels).toHaveCount(1);
-        await expect(labels.getByRole('combobox')).toBeDisabled();
+        await expect(labels).toContainText('Select...');
+        await expect(labels.getByRole('combobox')).toHaveCount(0);
 
         const assignees = selectField(modal, 'Assignees');
         await expect(assignees).toHaveCount(1);
-        await expect(assignees.getByRole('combobox')).toBeDisabled();
+        await expect(assignees).toContainText('Select...');
+        await expect(assignees.getByRole('combobox')).toHaveCount(0);
 
         const milestone = selectField(modal, 'Milestone');
         await expect(milestone).toHaveCount(1);
-        await expect(milestone.getByRole('combobox')).toBeDisabled();
+        await expect(milestone).toContainText('Select...');
+        await expect(milestone.getByRole('combobox')).toHaveCount(0);
 
         // # Fill in the title and submit
         await modal.getByLabel('Title for the GitHub Issue').fill('Filed without push access');
