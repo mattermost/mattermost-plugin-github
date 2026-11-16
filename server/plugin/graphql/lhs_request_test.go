@@ -124,3 +124,21 @@ func TestGetLHSData_AccumulatesPages(t *testing.T) {
 	assert.Len(t, prs, 1)
 	assert.Equal(t, []any{nil, "next"}, cursors)
 }
+
+func TestNewGithubIssue_EmptyURLsDoNotPanic(t *testing.T) {
+	issue := newGithubIssue(0, "", "", githubv4.URI{}, githubv4.URI{}, githubv4.DateTime{}, githubv4.DateTime{}, nil, "")
+
+	require.NotNil(t, issue)
+	assert.Empty(t, *issue.RepositoryURL)
+	assert.Empty(t, *issue.HTMLURL)
+}
+
+func TestGetPR_EmptyURLsDoNotPanic(t *testing.T) {
+	var node prSearchNodes
+
+	pr := getPR(&node)
+
+	require.NotNil(t, pr)
+	assert.Empty(t, *pr.RepositoryURL)
+	assert.Empty(t, *pr.HTMLURL)
+}
