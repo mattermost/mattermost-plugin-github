@@ -11,8 +11,11 @@ import (
 
 	"github.com/google/go-github/v54/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin/plugintest"
+	"github.com/mattermost/mattermost/server/public/pluginapi"
 )
 
 func TestParseGitHubUsernameFromText(t *testing.T) {
@@ -457,6 +460,35 @@ func TestValidateOAuthScopes(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestGetSiteURL(t *testing.T) {
+	for name, tc := range map[string]struct {
+		siteURL     *string
+		expectedURL string
+		expectErr   bool
+	}{
+		"nil SiteURL":        {siteURL: nil, expectErr: true},
+		"empty SiteURL":      {siteURL: model.NewPointer(""), expectErr: true},
+		"valid SiteURL":      {siteURL: model.NewPointer("https://example.com"), expectedURL: "https://example.com"},
+		"trailing slash cut": {siteURL: model.NewPointer("https://example.com/"), expectedURL: "https://example.com"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			api := &plugintest.API{}
+			api.On("GetConfig").Return(&model.Config{
+				ServiceSettings: model.ServiceSettings{SiteURL: tc.siteURL},
+			})
+			client := pluginapi.NewClient(api, nil)
+
+			siteURL, err := getSiteURL(client)
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedURL, siteURL)
 		})
 	}
 }
