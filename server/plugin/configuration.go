@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -141,6 +142,10 @@ func (c *Configuration) ClientConfiguration() map[string]any {
 		"review_target_days":     c.ReviewTargetDays,
 		"review_target_day_type": c.reviewTargetDayType(),
 	}
+}
+
+func (c *Configuration) slaDigestPausedAt(t time.Time) bool {
+	return c.PauseSLADigestOnWeekends && isWeekend(t)
 }
 
 func (c *Configuration) reviewTargetDayType() string {

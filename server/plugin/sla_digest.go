@@ -49,7 +49,7 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 	dayType := cfg.reviewTargetDayType()
 
 	now := time.Now().In(time.Local)
-	if cfg.PauseSLADigestOnWeekends && isWeekend(now) {
+	if cfg.slaDigestPausedAt(now) {
 		return
 	}
 	day := now.Format("2006-01-02")
@@ -84,6 +84,10 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 		// or every configured org's GraphQL fetch failed) from "scan ran and found nothing
 		// overdue." We deliberately do NOT advance slaDigestDayKVKey here so the 5-minute
 		// scheduler retries within the same local day instead of skipping until tomorrow.
+		return
+	}
+	// The lock wait and scan can cross midnight into a weekend.
+	if cfg.slaDigestPausedAt(time.Now().In(time.Local)) {
 		return
 	}
 	if len(entries) == 0 {
