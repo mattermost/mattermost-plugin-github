@@ -49,6 +49,8 @@ type Configuration struct {
 	ReviewTargetDayType string `json:"reviewtargetdaytype"`
 	// OverdueReviewsChannelID is an optional channel ID for daily alerts when users have overdue review requests.
 	OverdueReviewsChannelID string `json:"overduereviewschannelid"`
+	// PauseSLADigestOnWeekends skips the overdue review digest on Saturdays and Sundays (server local timezone).
+	PauseSLADigestOnWeekends bool `json:"pausesladigestonweekends"`
 	// DigestServiceUsername is the Mattermost username whose GitHub connection runs the overdue review digest.
 	// When empty, the plugin falls back to the lexicographically-first connected user.
 	DigestServiceUsername string `json:"digestserviceusername"`

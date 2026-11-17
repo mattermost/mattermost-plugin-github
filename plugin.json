@@ -166,6 +166,13 @@
                 "help_text": "Optional. Paste a channel ID (Channel menu > View Info). When set together with PR review target (days) and GitHub Organizations, the plugin posts one aggregated overdue-review digest for those orgs to this channel each day shortly after midnight in the server local timezone. Requires digest service user (below) to be connected via /github connect. The GitHub bot must be a member of the channel."
             },
             {
+                "key": "PauseSLADigestOnWeekends",
+                "display_name": "Pause overdue review digest on weekends:",
+                "type": "bool",
+                "help_text": "When true, the overdue review digest is not posted on Saturdays and Sundays (server local timezone). The next weekday digest still lists everything that is overdue.",
+                "default": true
+            },
+            {
                 "key": "DigestServiceUsername",
                 "display_name": "Digest service user (Mattermost username):",
                 "type": "text",

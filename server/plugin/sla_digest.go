@@ -48,7 +48,11 @@ func (p *Plugin) maybePostDailyOverdueSLADigest(ctx context.Context) {
 	targetDays := cfg.ReviewTargetDays
 	dayType := cfg.reviewTargetDayType()
 
-	day := time.Now().In(time.Local).Format("2006-01-02")
+	now := time.Now().In(time.Local)
+	if cfg.PauseSLADigestOnWeekends && isWeekend(now) {
+		return
+	}
+	day := now.Format("2006-01-02")
 	var marker []byte
 	if err := p.store.Get(slaDigestDayKVKey, &marker); err != nil {
 		p.client.Log.Warn("Failed to read SLA digest day marker", "key", slaDigestDayKVKey, "error", err.Error())
