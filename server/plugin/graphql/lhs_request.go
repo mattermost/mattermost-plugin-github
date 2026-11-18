@@ -234,10 +234,7 @@ func getGithubLabels(labels []labelNode) []*github.Label {
 	return githubLabels
 }
 
-// uriString renders a GraphQL URI as a string. githubv4.URI embeds *url.URL, so calling
-// String on the zero value dereferences a nil pointer and panics. A search node can come back
-// without a url or repository.url when the token can no longer resolve it, which is how the
-// lhs-content endpoint ended up recovering from a panic in production.
+// githubv4.URI embeds *url.URL, so String panics on the zero value.
 func uriString(u githubv4.URI) string {
 	if u.URL == nil {
 		return ""
