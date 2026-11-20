@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -49,6 +50,8 @@ type Configuration struct {
 	ReviewTargetDayType string `json:"reviewtargetdaytype"`
 	// OverdueReviewsChannelID is an optional channel ID for daily alerts when users have overdue review requests.
 	OverdueReviewsChannelID string `json:"overduereviewschannelid"`
+	// PauseSLADigestOnWeekends skips the overdue review digest on Saturdays and Sundays (server local timezone).
+	PauseSLADigestOnWeekends bool `json:"pausesladigestonweekends"`
 	// DigestServiceUsername is the Mattermost username whose GitHub connection runs the overdue review digest.
 	// When empty, the plugin falls back to the lexicographically-first connected user.
 	DigestServiceUsername string `json:"digestserviceusername"`
@@ -139,6 +142,10 @@ func (c *Configuration) ClientConfiguration() map[string]any {
 		"review_target_days":     c.ReviewTargetDays,
 		"review_target_day_type": c.reviewTargetDayType(),
 	}
+}
+
+func (c *Configuration) slaDigestPausedAt(t time.Time) bool {
+	return c.PauseSLADigestOnWeekends && isWeekend(t)
 }
 
 func (c *Configuration) reviewTargetDayType() string {

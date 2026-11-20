@@ -259,6 +259,28 @@ func TestAddBusinessDays(t *testing.T) {
 	assert.Equal(t, time.Date(2025, 3, 17, 0, 0, 0, 0, time.UTC), addBusinessDays(sun, 1)) // Mon
 }
 
+func TestIsWeekend(t *testing.T) {
+	// 2025-03-14 is a Friday.
+	fri := time.Date(2025, 3, 14, 23, 59, 0, 0, time.UTC)
+	assert.False(t, isWeekend(fri))
+	assert.True(t, isWeekend(fri.AddDate(0, 0, 1)))  // Sat
+	assert.True(t, isWeekend(fri.AddDate(0, 0, 2)))  // Sun
+	assert.False(t, isWeekend(fri.AddDate(0, 0, 3))) // Mon
+}
+
+func TestSLADigestPausedAt(t *testing.T) {
+	// 2025-03-15 is a Saturday.
+	sat := time.Date(2025, 3, 15, 0, 1, 0, 0, time.UTC)
+	mon := sat.AddDate(0, 0, 2)
+
+	paused := &Configuration{PauseSLADigestOnWeekends: true}
+	assert.True(t, paused.slaDigestPausedAt(sat))
+	assert.False(t, paused.slaDigestPausedAt(mon))
+
+	unpaused := &Configuration{}
+	assert.False(t, unpaused.slaDigestPausedAt(sat))
+}
+
 func TestSLADiffDaysBusiness(t *testing.T) {
 	// Friday evening request, 2 business-day target → due Tuesday.
 	fri := github.Timestamp{Time: time.Date(2025, 3, 14, 18, 0, 0, 0, time.UTC)}

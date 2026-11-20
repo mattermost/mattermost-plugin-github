@@ -379,13 +379,17 @@ func normalizeSLADayType(dayType string) string {
 	return slaDayTypeCalendar
 }
 
+func isWeekend(t time.Time) bool {
+	wd := t.Weekday()
+	return wd == time.Saturday || wd == time.Sunday
+}
+
 // addBusinessDays returns start advanced by n weekdays (Mon–Fri). Weekends are skipped.
 func addBusinessDays(start time.Time, n int) time.Time {
 	d := start
 	for remaining := n; remaining > 0; {
 		d = d.AddDate(0, 0, 1)
-		wd := d.Weekday()
-		if wd != time.Saturday && wd != time.Sunday {
+		if !isWeekend(d) {
 			remaining--
 		}
 	}
