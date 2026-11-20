@@ -1541,6 +1541,13 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 	}
 
 	comments, moreComments := p.getReviewComments(authorUserID, event)
+
+	// Replying to a review thread submits a review without a body that holds only the reply.
+	// handleReviewCommentAuthorNotification already DMs each reply with its body.
+	if isThreadRepliesOnlyReview(event.GetReview(), comments, moreComments) {
+		return
+	}
+
 	message, err := renderTemplate("pullRequestReviewNotification", &pullRequestReviewNotification{
 		PullRequestReviewEvent: event,
 		Comments:               comments,
@@ -1553,6 +1560,26 @@ func (p *Plugin) handlePullRequestReviewNotification(event *github.PullRequestRe
 
 	p.CreateBotDMPost(authorUserID, message, "custom_git_review")
 	p.sendRefreshEvent(authorUserID)
+}
+
+// isThreadRepliesOnlyReview reports whether review is a comment-only review without a body
+// whose inline comments are all replies to existing review threads.
+func isThreadRepliesOnlyReview(review *github.PullRequestReview, comments []*github.PullRequestComment, moreComments bool) bool {
+	if review.GetState() != "commented" || strings.TrimSpace(review.GetBody()) != "" {
+		return false
+	}
+
+	if len(comments) == 0 || moreComments {
+		return false
+	}
+
+	for _, comment := range comments {
+		if comment.GetInReplyTo() == 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // pullRequestReviewNotification is the data rendered by the pullRequestReviewNotification template.
