@@ -170,7 +170,7 @@
                 "display_name": "Pause overdue review digest on weekends:",
                 "type": "bool",
                 "help_text": "When true, the overdue review digest is not posted on Saturdays and Sundays (server local timezone). The next weekday digest still lists everything that is overdue.",
-                "default": true
+                "default": false
             },
             {
                 "key": "DigestServiceUsername",
