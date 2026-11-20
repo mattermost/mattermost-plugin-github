@@ -46,6 +46,9 @@ export function buildPayload(state: State, req: WebhookRequest): Record<string, 
     }
     case 'pull_request_review': {
         const review = findOrAddReview(state, item!, req, req.reviewState ?? 'APPROVED');
+        if (req.reviewState) {
+            review.state = req.reviewState;
+        }
         specific = {
             action: req.action,
             pull_request: pullRequestReviewWebhook(state, repo, item!),

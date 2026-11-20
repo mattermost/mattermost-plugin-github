@@ -273,7 +273,7 @@ export class State {
             requested_teams: item.teamReviewers.map((slug) => this.teamJSON(this.teams.find((t) => t.org.toLowerCase() === repo.owner.toLowerCase() && t.slug === slug)!)),
             merged: item.merged, merged_at: item.merged ? item.updatedAt : null, mergeable: item.state === 'open' ? true : null, mergeable_state: 'clean',
             merge_commit_sha: null, draft: item.draft, auto_merge: null, merged_by: null,
-            additions: item.additions, deletions: item.deletions, changed_files: item.changedFiles, commits: 1, review_comments: 0, maintainer_can_modify: false,
+            additions: item.additions, deletions: item.deletions, changed_files: item.changedFiles, commits: 1, review_comments: item.reviews.reduce((n, r) => n + r.comments.length, 0), maintainer_can_modify: false,
         });
     }
 
