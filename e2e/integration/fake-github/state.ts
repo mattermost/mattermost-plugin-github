@@ -26,7 +26,8 @@ export type Item = {
     additions: number; deletions: number; changedFiles: number; comments: Comment[]; createdAt: string; updatedAt: string;
     reviews: Review[]; ciState: 'success' | 'pending' | 'failure';
 };
-export type Review = {id: number; author: string; state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED'; submittedAt: string};
+export type Review = {id: number; author: string; state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED'; submittedAt: string; comments: ReviewComment[]};
+export type ReviewComment = {id: number; author: string; body: string; path: string; inReplyTo: number | null; createdAt: string};
 export type Thread = {id: string; login: string; repo: string; number: number | null; title: string; type: 'Issue' | 'PullRequest' | 'Commit' | 'Release'; reason: string; unread: boolean; updatedAt: string};
 export type Token = {value: string; login: string; clientId: string; scopes: string[]; revoked: boolean};
 export type AuthCode = {code: string; login: string; clientId: string; redirectUri: string; scopes: string[]; expiresAt: number; used: boolean};
@@ -272,7 +273,7 @@ export class State {
             requested_teams: item.teamReviewers.map((slug) => this.teamJSON(this.teams.find((t) => t.org.toLowerCase() === repo.owner.toLowerCase() && t.slug === slug)!)),
             merged: item.merged, merged_at: item.merged ? item.updatedAt : null, mergeable: item.state === 'open' ? true : null, mergeable_state: 'clean',
             merge_commit_sha: null, draft: item.draft, auto_merge: null, merged_by: null,
-            additions: item.additions, deletions: item.deletions, changed_files: item.changedFiles, commits: 1, review_comments: 0, maintainer_can_modify: false,
+            additions: item.additions, deletions: item.deletions, changed_files: item.changedFiles, commits: 1, review_comments: item.reviews.reduce((n, r) => n + r.comments.length, 0), maintainer_can_modify: false,
         });
     }
 
@@ -283,6 +284,19 @@ export class State {
             html_url: html, pull_request_url: `${API}/repos/${item.repo}/pulls/${item.number}`, submitted_at: review.submittedAt, commit_id: sha(item, 'head'),
             author_association: this.association(this.repoOf(item), review.author),
             _links: {html: {href: html}, pull_request: {href: `${API}/repos/${item.repo}/pulls/${item.number}`}},
+        });
+    }
+
+    reviewCommentJSON(item: Item, review: Review, comment: ReviewComment) {
+        const pullURL = `${API}/repos/${item.repo}/pulls/${item.number}`;
+        const url = `${API}/repos/${item.repo}/pulls/comments/${comment.id}`;
+        const html = `${WEB}/${item.repo}/pull/${item.number}#discussion_r${comment.id}`;
+        return merge(skeleton('review-comment'), {
+            id: comment.id, node_id: nodeId('PRRC', comment.id), url, pull_request_review_id: review.id, diff_hunk: '@@ -1 +1 @@', path: comment.path,
+            position: 1, original_position: 1, commit_id: sha(item, 'head'), original_commit_id: sha(item, 'head'), user: this.userJSON(this.login(comment.author)),
+            body: comment.body, created_at: comment.createdAt, updated_at: comment.createdAt, html_url: html, pull_request_url: pullURL,
+            author_association: this.association(this.repoOf(item), comment.author), ...(comment.inReplyTo ? {in_reply_to_id: comment.inReplyTo} : {}),
+            _links: {self: {href: url}, html: {href: html}, pull_request: {href: pullURL}},
         });
     }
 

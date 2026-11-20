@@ -63,6 +63,13 @@ test.describe('contract', () => {
             expect((await api(path)).status, path).toBe(200);
         }
 
+        // # Leave a review comment and list the comments of its review
+        // * Verify the list answers 200 with the comment
+        const {payload} = await control('/webhooks', {event: 'pull_request_review_comment', action: 'created', repo: 'acme/widgets', number: 1, sender: 'bob', comment: 'Nit', deliver: false});
+        const reviewComments = await api(`/repos/acme/widgets/pulls/1/reviews/${payload.comment.pull_request_review_id}/comments`);
+        expect(reviewComments.status).toBe(200);
+        expect((await reviewComments.json()).map((c: {body: string}) => c.body)).toEqual(['Nit']);
+
         // # Check org membership and create an issue and a comment
         // * Verify the membership check and both writes succeed
         expect((await api('/orgs/acme/members/bob')).status).toBe(204);
@@ -222,6 +229,7 @@ test.describe('contract', () => {
             {event: 'pull_request', action: 'opened', number: 1},
             {event: 'pull_request', action: 'review_requested', number: 1, requestedReviewer: 'bob'},
             {event: 'pull_request_review', action: 'submitted', number: 1, comment: 'Looks good'},
+            {event: 'pull_request_review_comment', action: 'created', number: 1, comment: 'Nit', inReplyTo: 1},
             {event: 'issues', action: 'opened', number: 2},
             {event: 'issues', action: 'closed', number: 2},
             {event: 'issues', action: 'labeled', number: 2, label: 'bug'},

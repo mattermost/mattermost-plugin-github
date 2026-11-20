@@ -4,11 +4,11 @@
 import crypto from 'node:crypto';
 
 import {merge, skeleton, webhookSchemaName, webhookSkeleton} from './contract/validator';
-import {type Hook, type Item, type Repo, type Review, type State, WEB, fullName, sha} from './state';
+import {type Hook, type Item, type Repo, type Review, type ReviewComment, type State, WEB, fullName, sha} from './state';
 
 export type WebhookRequest = {
     event: string; action?: string; repo: string; number?: number; sender: string; requestedReviewer?: string; comment?: string; commentId?: number; ref?: string;
-    label?: string; reviewState?: Review['state']; overrides?: Record<string, unknown>;
+    label?: string; reviewState?: Review['state']; reviewId?: number; inReplyTo?: number; overrides?: Record<string, unknown>;
 };
 
 export function buildPayload(state: State, req: WebhookRequest): Record<string, unknown> {
@@ -45,16 +45,27 @@ export function buildPayload(state: State, req: WebhookRequest): Record<string, 
         break;
     }
     case 'pull_request_review': {
-        const review: Review = {id: state.id(), author: req.sender, state: req.reviewState ?? 'APPROVED', submittedAt: state.now()};
-        item!.reviews.push(review);
-        const pull = state.pullJSON(item!, null);
-
-        // This event's head/base repos require fields the REST repository omits.
-        const refRepo = {...repositoryWebhook(state, repo), topics: [], has_discussions: false};
+        const review = findOrAddReview(state, item!, req, req.reviewState ?? 'APPROVED');
+        if (req.reviewState) {
+            review.state = req.reviewState;
+        }
         specific = {
             action: req.action,
-            pull_request: {...pull, head: {...pull.head, repo: refRepo}, base: {...pull.base, repo: refRepo}},
+            pull_request: pullRequestReviewWebhook(state, repo, item!),
             review: {...state.reviewJSON(item!, review), state: review.state.toLowerCase(), body: req.comment ?? ''},
+        };
+        break;
+    }
+    case 'pull_request_review_comment': {
+        // Like GitHub's "Add single comment" and thread replies, a comment outside a given review gets its own review.
+        const review = findOrAddReview(state, item!, req, 'COMMENTED');
+        const comment: ReviewComment = {id: state.id(), author: req.sender, body: req.comment ?? 'A review comment', path: 'README.md', inReplyTo: req.inReplyTo ?? null, createdAt: state.now()};
+        review.comments.push(comment);
+        const commentJSON = state.reviewCommentJSON(item!, review, comment);
+        specific = {
+            action: req.action,
+            pull_request: pullRequestReviewWebhook(state, repo, item!),
+            comment: {...commentJSON, line: 1, original_line: 1, side: 'RIGHT', reactions: merge(skeleton('reaction-rollup'), {url: `${commentJSON.url}/reactions`})},
         };
         break;
     }
@@ -128,6 +139,26 @@ export function signatures(secret: string, body: string) {
 
 function repositoryWebhook(state: State, repo: Repo) {
     return merge(skeleton('repository-webhooks'), state.repoJSON(repo, null));
+}
+
+function findOrAddReview(state: State, item: Item, req: WebhookRequest, reviewState: Review['state']): Review {
+    if (req.reviewId !== undefined) {
+        const existing = item.reviews.find((r) => r.id === req.reviewId);
+        if (!existing) {
+            throw new Error(`unknown review ${req.reviewId} on ${req.repo}#${item.number}`);
+        }
+        return existing;
+    }
+    const review: Review = {id: state.id(), author: req.sender, state: reviewState, submittedAt: state.now(), comments: []};
+    item.reviews.push(review);
+    return review;
+}
+
+// The review events' head/base repos require fields the REST repository omits.
+function pullRequestReviewWebhook(state: State, repo: Repo, item: Item) {
+    const pull = state.pullJSON(item, null);
+    const refRepo = {...repositoryWebhook(state, repo), topics: [], has_discussions: false};
+    return {...pull, head: {...pull.head, repo: refRepo}, base: {...pull.base, repo: refRepo}};
 }
 
 function issueWebhook(state: State, item: Item) {

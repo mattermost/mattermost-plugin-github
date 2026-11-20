@@ -168,6 +168,33 @@ test.describe('webhook events', () => {
         const dm = await waitForPost(() => botDMPosts(github.adminClient, reviewer.id), (p) => p.message.includes('requested your review'), 'review request DM');
         expect(dm.message).toContain('Review my widget');
     });
+
+    /**
+     * @objective Verify a reply in a review thread DMs the pull request author once, with the reply's body.
+     *
+     * @precondition
+     * GitHub delivers a thread reply as a pull_request_review_comment event plus a pull_request_review event
+     * for a body-less review that holds only the reply.
+     */
+    test('DMs the pull request author once, with the body, for a review thread reply', {tag: ['@github_plugin', '@synthetic-inbound']}, async ({github}) => {
+        const repo = await subscribedRepo(github);
+        const reviewerLogin = `reviewer-${github.login}`;
+        await fakeGitHub.createUser(reviewerLogin);
+        const pr = await fakeGitHub.createItem(repo, {kind: 'pull', title: 'Polish the widgets', author: github.login});
+        const {payload: thread} = await fakeGitHub.webhook({event: 'pull_request_review_comment', action: 'created', repo, number: pr.number, sender: github.login, comment: 'Listing the files here.', deliver: false});
+        const reply = 'Should we include preAuthManager.ts in the file list above?';
+
+        // # Deliver the reply's pull_request_review_comment and pull_request_review submitted webhooks
+        const {payload} = await fakeGitHub.webhook({event: 'pull_request_review_comment', action: 'created', repo, number: pr.number, sender: reviewerLogin, comment: reply, inReplyTo: (thread.comment as {id: number}).id});
+        const reviewId = (payload.comment as {pull_request_review_id: number}).pull_request_review_id;
+        await fakeGitHub.webhook({event: 'pull_request_review', action: 'submitted', repo, number: pr.number, sender: reviewerLogin, reviewState: 'COMMENTED', reviewId});
+
+        // * Verify the plugin looked up the review's comments and the author got a single DM quoting the reply
+        expect(await fakeGitHub.calls()).toContain(`GET /api/repos/${repo}/pulls/${pr.number}/reviews/${reviewId}/comments`);
+        const dms = (await botDMPosts(github.adminClient, github.user.id)).filter((p) => p.message.includes('commented on your pull request'));
+        expect(dms).toHaveLength(1);
+        expect(dms[0].message).toContain(reply);
+    });
 });
 
 test.describe('webhook signatures', () => {

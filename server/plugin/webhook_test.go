@@ -1639,6 +1639,88 @@ func TestHandlePullRequestReviewNotificationCommentLinks(t *testing.T) {
 	}
 }
 
+func TestHandlePullRequestReviewNotificationThreadReplies(t *testing.T) {
+	const (
+		reply      = `{"path":"server/plugin/webhook.go","html_url":"https://github.com/mockOrg/mockRepo/pull/42#discussion_r2","in_reply_to_id":1}`
+		newComment = `{"path":"server/plugin/webhook.go","html_url":"https://github.com/mockOrg/mockRepo/pull/42#discussion_r3"}`
+	)
+
+	tests := []struct {
+		name     string
+		comments []string
+		expectDM bool
+	}{
+		{
+			name:     "skips the DM for a review holding only a thread reply",
+			comments: []string{reply},
+		},
+		{
+			name:     "sends the DM for a review mixing a thread reply and a new comment",
+			comments: []string{reply, newComment},
+			expectDM: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
+			p := getPluginTest(mockAPI, mockKvStore)
+			setUpReviewCommentsServer(t, p, func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, err := w.Write([]byte("[" + strings.Join(tc.comments, ",") + "]"))
+				assert.NoError(t, err)
+			})
+
+			mockKvStore.EXPECT().Get("authorUser_githubusername", gomock.Any()).DoAndReturn(setByteValue("authorUserID")).Times(1)
+			mockKvStore.EXPECT().Get("authorUserID-muted-users", gomock.Any()).Return(nil).Times(1)
+			if tc.expectDM {
+				// Once to fetch the review's inline comments, once to send the refresh event.
+				expectConnectedUser(t, p, mockKvStore, "authorUserID", 2)
+				mockAPI.On("GetDirectChannel", "authorUserID", MockBotID).Return(&model.Channel{Id: "dmChannelID"}, nil).Times(1)
+				mockAPI.On("CreatePost", mock.AnythingOfType("*model.Post")).Return(&model.Post{}, nil).Times(1)
+				mockAPI.On("PublishWebSocketEvent", wsEventRefresh, mock.Anything, mock.Anything).Return().Times(1)
+			} else {
+				expectConnectedUser(t, p, mockKvStore, "authorUserID", 1)
+			}
+
+			p.handlePullRequestReviewNotification(getMockReviewEventWithIDs())
+
+			mockAPI.AssertExpectations(t)
+			if !tc.expectDM {
+				mockAPI.AssertNotCalled(t, "CreatePost", mock.Anything)
+			}
+		})
+	}
+}
+
+func TestIsThreadRepliesOnlyReview(t *testing.T) {
+	reply := &github.PullRequestComment{InReplyTo: github.Int64(1)}
+	newComment := &github.PullRequestComment{}
+
+	tests := []struct {
+		name         string
+		state        string
+		body         string
+		comments     []*github.PullRequestComment
+		moreComments bool
+		expected     bool
+	}{
+		{name: "comment-only review of thread replies", state: "commented", comments: []*github.PullRequestComment{reply, reply}, expected: true},
+		{name: "review with a whitespace-only body", state: "commented", body: " \n", comments: []*github.PullRequestComment{reply}, expected: true},
+		{name: "review with a body", state: "commented", body: "Looks good", comments: []*github.PullRequestComment{reply}},
+		{name: "approving review", state: "approved", comments: []*github.PullRequestComment{reply}},
+		{name: "review requesting changes", state: "changes_requested", comments: []*github.PullRequestComment{reply}},
+		{name: "review with a new comment", state: "commented", comments: []*github.PullRequestComment{reply, newComment}},
+		{name: "review without fetched comments", state: "commented"},
+		{name: "review with more comments than fetched", state: "commented", comments: []*github.PullRequestComment{reply}, moreComments: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			review := &github.PullRequestReview{State: github.String(tc.state), Body: github.String(tc.body)}
+			assert.Equal(t, tc.expected, isThreadRepliesOnlyReview(review, tc.comments, tc.moreComments))
+		})
+	}
+}
+
 func TestPostStarEvent(t *testing.T) {
 	mockKvStore, mockAPI, _, _, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKvStore)
