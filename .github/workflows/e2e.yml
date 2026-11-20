@@ -129,11 +129,16 @@ jobs:
             e2e/integration/test-results
           retention-days: 14
 
+  # Fails only on breaking drift (exit 1); additive changes are listed in the log. A failed download
+  # exits 2 and fails the run without opening an issue.
   contract-drift:
     name: fake-github contract drift
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      drift: ${{ steps.check.outputs.drift }}
+      report: ${{ steps.check.outputs.report }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -149,9 +154,53 @@ jobs:
         working-directory: e2e/integration
         run: npm ci
 
-      - name: Compare committed specs with GitHub's published REST description and GraphQL schema
+      - name: Test the drift classification
         working-directory: e2e/integration
-        run: npm run contract:check
+        run: npm run contract:test
+
+      - name: Compare committed specs with GitHub's published REST description and GraphQL schema
+        id: check
+        working-directory: e2e/integration
+        run: |
+          set +e
+          npm run --silent contract:check > "$RUNNER_TEMP/drift.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/drift.log"
+          echo "drift=$([ "$status" -eq 1 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          delimiter="report_$(openssl rand -hex 16)"
+          {
+            echo "report<<$delimiter"
+            tail -c 60000 "$RUNNER_TEMP/drift.log"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+          exit $status
+
+  # Breaking drift opens a "GitHub API contract drift" issue, or comments on the open one, so it
+  # reaches people instead of only turning a scheduled run red.
+  contract-drift-report:
+    name: report contract drift
+    needs: contract-drift
+    if: failure() && github.event_name == 'schedule' && needs.contract-drift.outputs.drift == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update the drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPORT: ${{ needs.contract-drift.outputs.report }}
+        run: |
+          title="GitHub API contract drift"
+          body=$(printf 'The nightly e2e contract check found breaking changes in GitHub'"'"'s published REST description or GraphQL schema: %s\n\n```\n%s\n```\n\nRun `npm run contract:update` in e2e/integration, review the diff, and update fake-github and the plugin to match.' "$RUN_URL" "$REPORT")
+          existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
 
   real-github:
     name: real github.com journey
