@@ -143,8 +143,12 @@ func (s *Subscription) Stars() bool {
 	return strings.Contains(s.Features.String(), featureStars)
 }
 
-func (s *Subscription) Workflows() bool {
-	return strings.Contains(s.Features.String(), featureWorkflowFailure) || strings.Contains(s.Features.String(), featureWorkflowSuccess)
+func (s *Subscription) WorkflowFailures() bool {
+	return strings.Contains(s.Features.String(), featureWorkflowFailure)
+}
+
+func (s *Subscription) WorkflowSuccesses() bool {
+	return strings.Contains(s.Features.String(), featureWorkflowSuccess)
 }
 
 func (s *Subscription) WorkflowRunFailures() bool {

@@ -459,6 +459,24 @@ func GetMockWorkflowRunEvent(action, conclusion, repo, org, sender string) *gith
 	}
 }
 
+func GetMockWorkflowJobEvent(action, conclusion, repo, org, sender string) *github.WorkflowJobEvent {
+	return &github.WorkflowJobEvent{
+		Action: github.String(action),
+		Repo: &github.Repository{
+			Name:     github.String(repo),
+			Owner:    &github.User{Login: github.String(org)},
+			FullName: github.String(fmt.Sprintf("%s/%s", org, repo)),
+			HTMLURL:  github.String(fmt.Sprintf("%s%s/%s", GithubBaseURL, org, repo)),
+		},
+		Sender: &github.User{Login: github.String(sender)},
+		WorkflowJob: &github.WorkflowJob{
+			Conclusion:   github.String(conclusion),
+			WorkflowName: github.String("CI Pipeline"),
+			HeadSHA:      github.String("abc1234567"),
+		},
+	}
+}
+
 func GetMockDiscussionCommentEvent(repo, org, action, sender string) *github.DiscussionCommentEvent {
 	return &github.DiscussionCommentEvent{
 		Action: &action,
