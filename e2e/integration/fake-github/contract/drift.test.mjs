@@ -93,6 +93,20 @@ test('REST: an added anyOf variant is additive', () => {
     assert.deepEqual(compareRest(base, next), {breaking: [], additive: ['.components.schemas.issue.properties.title.anyOf: 1 variant(s) added']});
 });
 
+test('REST: an enum value added inside not is breaking, and a field named not is just a field', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.state.not = {enum: ['blocked']};
+    const next = structuredClone(base);
+    issue(next).properties.state.not = {enum: ['blocked', 'archived']};
+    assert.deepEqual(compareRest(base, next).breaking, ['.components.schemas.issue.properties.state.not changed']);
+
+    const withField = structuredClone(rest);
+    issue(withField).properties.not = {type: 'string'};
+    const edited = structuredClone(withField);
+    issue(edited).properties.not.enum = ['x'];
+    assert.match(compareRest(withField, edited).breaking.join('\n'), /properties\.not\.enum added/);
+});
+
 test('REST: a component renamed without changing its shape is no change', () => {
     assert.deepEqual(compareRest(rest, renameSchema(rest, 'author-association', 'author-association-renamed')), {breaking: [], additive: []});
 });

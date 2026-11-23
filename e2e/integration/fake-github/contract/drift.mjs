@@ -78,7 +78,13 @@ function diff(a, b, at, key, ctx, inNames = false) {
         return;
     }
     for (const k of Object.keys(a)) {
-        if (k in b) {
+        if (k in b && k === 'not' && !inNames) {
+            // `not` flips what an edit means (an enum value added inside it rejects that value), so
+            // any change within it is breaking.
+            if (canonical(a.not, ctx.current) !== canonical(b.not, ctx.next)) {
+                out.breaking.push(`${at}.not changed`);
+            }
+        } else if (k in b) {
             diff(a[k], b[k], `${at}.${k}`, k, ctx, !inNames && NAME_MAPS.has(k));
         } else {
             out.breaking.push(`${at}.${k} removed`);
