@@ -71,8 +71,9 @@ for (const [file, next] of Object.entries(outputs)) {
     }
     const current = await fs.readFile(outPath, 'utf8').catch(() => null);
     if (current === null) {
-        breaking.push(`${file}: no committed copy; run \`npm run contract:update\``);
-        continue;
+        // A repo problem, not drift at GitHub: exit 2 so it doesn't open a drift issue.
+        console.error(`${file}: no committed copy; run \`npm run contract:update\``);
+        process.exit(2);
     }
     if (current === next) {
         continue;

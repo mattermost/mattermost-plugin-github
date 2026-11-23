@@ -19,6 +19,14 @@ const issue = (s) => s.components.schemas.issue;
 const createIssue = (s) => s.paths['/repos/{owner}/{repo}/issues'].post;
 const userResponse = (s) => s.paths['/user'].get.responses['200'].content['application/json'].schema;
 
+/** Renames a schema component and every reference to it, as GitHub sometimes does. */
+function renameSchema(spec, from, to) {
+    const renamed = JSON.parse(JSON.stringify(spec).replaceAll(`"#/components/schemas/${from}"`, `"#/components/schemas/${to}"`));
+    renamed.components.schemas[to] = renamed.components.schemas[from];
+    delete renamed.components.schemas[from];
+    return renamed;
+}
+
 // [description, edit to a copy of the committed spec, expected result]
 const restCases = [
     ['nothing changed', () => {}, 'none'],
@@ -36,7 +44,7 @@ const restCases = [
     ['a not constraint added', (s) => { issue(s).properties.title.not = {enum: ['']}; }, 'breaking'],
     ['oneOf variants reordered', (s) => { userResponse(s).oneOf.reverse(); }, 'none'],
     ['a oneOf variant added', (s) => { userResponse(s).oneOf.push({type: 'string'}); }, 'breaking'],
-    ['an anyOf variant added', (s) => { issue(s).properties.title.anyOf = [{type: 'string'}]; }, 'breaking'],
+    ['an anyOf constraint added', (s) => { issue(s).properties.title.anyOf = [{type: 'string'}]; }, 'breaking'],
     ['a oneOf variant removed', (s) => { userResponse(s).oneOf.pop(); }, 'breaking'],
 ];
 
@@ -75,6 +83,29 @@ test('REST: an edited oneOf variant is breaking, even when the edit only adds an
     const next = structuredClone(base);
     issue(next).properties.state.oneOf = [{enum: ['open', 'closed']}, {enum: ['closed']}];
     assert.notDeepEqual(compareRest(base, next).breaking, []);
+});
+
+test('REST: an added anyOf variant is additive', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.title.anyOf = [{type: 'string'}];
+    const next = structuredClone(base);
+    issue(next).properties.title.anyOf.push({type: 'integer'});
+    assert.deepEqual(compareRest(base, next), {breaking: [], additive: ['.components.schemas.issue.properties.title.anyOf: 1 variant(s) added']});
+});
+
+test('REST: a component renamed without changing its shape is no change', () => {
+    assert.deepEqual(compareRest(rest, renameSchema(rest, 'author-association', 'author-association-renamed')), {breaking: [], additive: []});
+});
+
+test('REST: a component renamed and changed is breaking where it is referenced', () => {
+    const next = renameSchema(rest, 'author-association', 'author-association-renamed');
+    next.components.schemas['author-association-renamed'] = {type: 'integer'};
+    assert.match(compareRest(rest, next).breaking.join('\n'), /author-association -> #\/components\/schemas\/author-association-renamed\)/);
+});
+
+test('GraphQL: a field becoming deprecated is additive', () => {
+    const deprecated = graphql.replace('  changedFiles: Int!', '  changedFiles: Int! @deprecated(reason: "Use files")');
+    assert.deepEqual(compareGraphQL(graphql, deprecated), {breaking: [], additive: ['PullRequest.changedFiles deprecated: Use files']});
 });
 
 test('GraphQL: a removed field is breaking and an added enum value is additive', () => {

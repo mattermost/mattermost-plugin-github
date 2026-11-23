@@ -176,7 +176,8 @@ jobs:
           exit $status
 
   # Breaking drift opens a "GitHub API contract drift" issue, or comments on the open one, so it
-  # reaches people instead of only turning a scheduled run red.
+  # reaches people instead of only turning a scheduled run red. While the same report stays unfixed it
+  # comments at most once a week; a different report is commented on the same night.
   contract-drift-report:
     name: report contract drift
     needs: contract-drift
@@ -195,12 +196,25 @@ jobs:
         run: |
           title="GitHub API contract drift"
           body=$(printf 'The nightly e2e contract check found breaking changes in GitHub'"'"'s published REST description or GraphQL schema: %s\n\n```\n%s\n```\n\nRun `npm run contract:update` in e2e/integration, review the diff, and update fake-github and the plugin to match.' "$RUN_URL" "$REPORT")
+          # A hidden hash of the report marks each post, so an unchanged report can be recognised.
+          marker="<!-- drift-report: $(printf '%s' "$REPORT" | sha256sum | cut -c1-16) -->"
+          body="$body"$'\n\n'"$marker"
           existing=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
-          if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "$body"
-          else
+          if [ -z "$existing" ]; then
             gh issue create --title "$title" --body "$body"
+            exit 0
           fi
+          # The latest post (last comment, or the issue itself) and its age in days. If the lookup
+          # fails, both stay empty and the comment is posted anyway, so an error can't hide a report.
+          latest=$(gh issue view "$existing" --json body,createdAt,comments \
+            --jq '(.comments[-1] // {body: .body, createdAt: .createdAt}) | "\(.createdAt)\t\(.body)"' || true)
+          latest_at=${latest%%$'\t'*}
+          age_days=$(( ( $(date +%s) - $(date -d "${latest_at:-1970-01-01}" +%s) ) / 86400 ))
+          if [[ "$latest" == *"$marker"* ]] && [ "$age_days" -lt 7 ]; then
+            echo "Same report as the latest post on #$existing, ${age_days} day(s) ago; not commenting again."
+            exit 0
+          fi
+          gh issue comment "$existing" --body "$body"
 
   real-github:
     name: real github.com journey
