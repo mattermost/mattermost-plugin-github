@@ -1,0 +1,144 @@
+// Copyright (c) 2018-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+// Self-tests for drift.mjs: the nightly check must fail on breaking changes and only report additive ones.
+
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+import {fileURLToPath} from 'node:url';
+
+import {compareGraphQL, compareRest} from './drift.mjs';
+
+const specsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'specs');
+const rest = JSON.parse(fs.readFileSync(path.join(specsDir, 'rest.json'), 'utf8'));
+const graphql = fs.readFileSync(path.join(specsDir, 'schema.graphql'), 'utf8');
+
+const issue = (s) => s.components.schemas.issue;
+const createIssue = (s) => s.paths['/repos/{owner}/{repo}/issues'].post;
+const userResponse = (s) => s.paths['/user'].get.responses['200'].content['application/json'].schema;
+
+/** Renames a schema component and every reference to it, as GitHub sometimes does. */
+function renameSchema(spec, from, to) {
+    const renamed = JSON.parse(JSON.stringify(spec).replaceAll(`"#/components/schemas/${from}"`, `"#/components/schemas/${to}"`));
+    renamed.components.schemas[to] = renamed.components.schemas[from];
+    delete renamed.components.schemas[from];
+    return renamed;
+}
+
+// [description, edit to a copy of the committed spec, expected result]
+const restCases = [
+    ['nothing changed', () => {}, 'none'],
+    ['an optional field added', (s) => { issue(s).properties.zzz_added = {type: 'object', nullable: true}; }, 'additive'],
+    ['a field removed', (s) => { delete issue(s).properties.title; }, 'breaking'],
+    ['a field type changed', (s) => { issue(s).properties.number = {type: 'string'}; }, 'breaking'],
+    ['a field made nullable', (s) => { issue(s).properties.title.nullable = true; }, 'breaking'],
+    ['a field no longer required', (s) => { issue(s).required = issue(s).required.slice(1); }, 'breaking'],
+    ['a request field newly required', (s) => { createIssue(s).requestBody.content['application/json'].schema.required.push('body'); }, 'breaking'],
+    ['an enum value added', (s) => { issue(s).properties.state.enum = ['open', 'closed', 'archived']; }, 'additive'],
+    ['an operation removed', (s) => { delete s.paths['/repos/{owner}/{repo}/issues'].post; }, 'breaking'],
+    ['a webhook removed', (s) => { delete s['x-webhooks'][Object.keys(s['x-webhooks'])[0]]; }, 'breaking'],
+    ['an optional field named like a keyword added', (s) => { issue(s).properties.items = {type: 'array', items: {type: 'string'}}; }, 'additive'],
+    ['a constraint added through allOf', (s) => { issue(s).properties.title.allOf = [{enum: ['open']}]; }, 'breaking'],
+    ['a not constraint added', (s) => { issue(s).properties.title.not = {enum: ['']}; }, 'breaking'],
+    ['oneOf variants reordered', (s) => { userResponse(s).oneOf.reverse(); }, 'none'],
+    ['a oneOf variant added', (s) => { userResponse(s).oneOf.push({type: 'string'}); }, 'breaking'],
+    ['an anyOf constraint added', (s) => { issue(s).properties.title.anyOf = [{type: 'string'}]; }, 'breaking'],
+    ['a oneOf variant removed', (s) => { userResponse(s).oneOf.pop(); }, 'breaking'],
+];
+
+for (const [name, edit, expected] of restCases) {
+    test(`REST: ${name} is ${expected}`, () => {
+        // Give `state` an enum on both sides, so the enum case compares two lists.
+        const base = structuredClone(rest);
+        issue(base).properties.state.enum = ['open', 'closed'];
+        const next = structuredClone(base);
+        edit(next);
+        const {breaking, additive} = compareRest(base, next);
+        assert.equal(breaking.length > 0, expected === 'breaking', `breaking: ${breaking.join('; ')}`);
+        assert.equal(additive.length > 0, expected === 'additive', `additive: ${additive.join('; ')}`);
+    });
+}
+
+test('REST: a removed enum value is breaking', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.state.enum = ['open', 'closed'];
+    const next = structuredClone(base);
+    issue(next).properties.state.enum = ['open'];
+    assert.match(compareRest(base, next).breaking.join('\n'), /state\.enum removed: closed/);
+});
+
+test('REST: variants reordered, with a reordered required list, are no change', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.title.oneOf = [{type: 'object', required: ['a', 'b']}, {type: 'string'}];
+    const next = structuredClone(base);
+    issue(next).properties.title.oneOf = [{type: 'string'}, {type: 'object', required: ['b', 'a']}];
+    assert.deepEqual(compareRest(base, next), {breaking: [], additive: []});
+});
+
+test('REST: an edited oneOf variant is breaking, even when the edit only adds an enum value', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.state.oneOf = [{enum: ['open']}, {enum: ['closed']}];
+    const next = structuredClone(base);
+    issue(next).properties.state.oneOf = [{enum: ['open', 'closed']}, {enum: ['closed']}];
+    assert.notDeepEqual(compareRest(base, next).breaking, []);
+});
+
+test('REST: an added anyOf variant is additive', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.title.anyOf = [{type: 'string'}];
+    const next = structuredClone(base);
+    issue(next).properties.title.anyOf.push({type: 'integer'});
+    assert.deepEqual(compareRest(base, next), {breaking: [], additive: ['.components.schemas.issue.properties.title.anyOf: 1 variant(s) added']});
+});
+
+test('REST: an enum value added inside not is breaking, and a field named not is just a field', () => {
+    const base = structuredClone(rest);
+    issue(base).properties.state.not = {enum: ['blocked']};
+    const next = structuredClone(base);
+    issue(next).properties.state.not = {enum: ['blocked', 'archived']};
+    assert.deepEqual(compareRest(base, next).breaking, ['.components.schemas.issue.properties.state.not changed']);
+
+    const withField = structuredClone(rest);
+    issue(withField).properties.not = {type: 'string'};
+    const edited = structuredClone(withField);
+    issue(edited).properties.not.enum = ['x'];
+    assert.match(compareRest(withField, edited).breaking.join('\n'), /properties\.not\.enum added/);
+});
+
+test('REST: a component renamed without changing its shape is no change', () => {
+    assert.deepEqual(compareRest(rest, renameSchema(rest, 'author-association', 'author-association-renamed')), {breaking: [], additive: []});
+});
+
+test('REST: a referenced schema moved inline, or an inline one moved into components, is no change', () => {
+    const withRef = structuredClone(rest);
+    issue(withRef).properties.zzz_moved = {$ref: '#/components/schemas/author-association'};
+    const inline = structuredClone(rest);
+    issue(inline).properties.zzz_moved = structuredClone(rest.components.schemas['author-association']);
+    assert.deepEqual(compareRest(withRef, inline), {breaking: [], additive: []});
+    assert.deepEqual(compareRest(inline, withRef), {breaking: [], additive: []});
+
+    // Inlined with a changed shape is still breaking.
+    issue(inline).properties.zzz_moved = {type: 'integer'};
+    assert.notDeepEqual(compareRest(withRef, inline).breaking, []);
+});
+
+test('REST: a component renamed and changed is breaking where it is referenced', () => {
+    const next = renameSchema(rest, 'author-association', 'author-association-renamed');
+    next.components.schemas['author-association-renamed'] = {type: 'integer'};
+    assert.match(compareRest(rest, next).breaking.join('\n'), /author-association -> #\/components\/schemas\/author-association-renamed\)/);
+});
+
+test('GraphQL: a field becoming deprecated is additive', () => {
+    const deprecated = graphql.replace('  changedFiles: Int!', '  changedFiles: Int! @deprecated(reason: "Use files")');
+    assert.deepEqual(compareGraphQL(graphql, deprecated), {breaking: [], additive: ['PullRequest.changedFiles deprecated: Use files']});
+});
+
+test('GraphQL: a removed field is breaking and an added enum value is additive', () => {
+    assert.match(compareGraphQL(graphql, graphql.replace(/\n {2}changedFiles: Int!/, '')).breaking.join('\n'), /changedFiles was removed/);
+    const [firstEnum] = /enum \w+ \{\n {2}\w+/.exec(graphql);
+    const added = compareGraphQL(graphql, graphql.replace(firstEnum, `${firstEnum}\n  ZZZ_ADDED`));
+    assert.deepEqual(added.breaking, []);
+    assert.match(added.additive.join('\n'), /ZZZ_ADDED was added/);
+});
