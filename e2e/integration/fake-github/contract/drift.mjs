@@ -47,12 +47,15 @@ export function compareRest(current, next) {
 // `key` is the keyword `a` and `b` sit under; `inNames` says their own keys are names, not keywords.
 function diff(a, b, at, key, ctx, inNames = false) {
     const {out} = ctx;
-    if (isContainer(a) && isContainer(b) && typeof a.$ref === 'string' && typeof b.$ref === 'string' && a.$ref !== b.$ref) {
-        // Follow each pair of refs once: that also stops recursive schemas from looping.
-        const pair = `${a.$ref} ${b.$ref}`;
+    const refA = isContainer(a) && typeof a.$ref === 'string' ? a.$ref : undefined;
+    const refB = isContainer(b) && typeof b.$ref === 'string' ? b.$ref : undefined;
+    if (isContainer(a) && isContainer(b) && (refA || refB) && refA !== refB) {
+        // A ref renamed, or a schema moved inline or into components: compare what each side resolves
+        // to. Follow each pair once: that also stops recursive schemas from looping.
+        const pair = `${refA ?? at} ${refB ?? at}`;
         if (!ctx.followed.has(pair)) {
             ctx.followed.add(pair);
-            diff(resolve(ctx.current, a.$ref), resolve(ctx.next, b.$ref), `${at} (${a.$ref} -> ${b.$ref})`, key, ctx);
+            diff(refA ? resolve(ctx.current, refA) : a, refB ? resolve(ctx.next, refB) : b, `${at} (${refA ?? 'inline'} -> ${refB ?? 'inline'})`, key, ctx);
         }
         return;
     }

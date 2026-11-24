@@ -177,7 +177,8 @@ jobs:
 
   # Breaking drift opens a "GitHub API contract drift" issue, or comments on the open one, so it
   # reaches people instead of only turning a scheduled run red. While the same report stays unfixed it
-  # comments at most once a week; a different report is commented on the same night.
+  # comments at most once a week; a different report is commented on the same night. Only scheduled runs
+  # report: a manual workflow_dispatch run still fails on breaking drift but leaves the issue alone.
   contract-drift-report:
     name: report contract drift
     needs: contract-drift

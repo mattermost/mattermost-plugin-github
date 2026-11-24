@@ -111,6 +111,19 @@ test('REST: a component renamed without changing its shape is no change', () => 
     assert.deepEqual(compareRest(rest, renameSchema(rest, 'author-association', 'author-association-renamed')), {breaking: [], additive: []});
 });
 
+test('REST: a referenced schema moved inline, or an inline one moved into components, is no change', () => {
+    const withRef = structuredClone(rest);
+    issue(withRef).properties.zzz_moved = {$ref: '#/components/schemas/author-association'};
+    const inline = structuredClone(rest);
+    issue(inline).properties.zzz_moved = structuredClone(rest.components.schemas['author-association']);
+    assert.deepEqual(compareRest(withRef, inline), {breaking: [], additive: []});
+    assert.deepEqual(compareRest(inline, withRef), {breaking: [], additive: []});
+
+    // Inlined with a changed shape is still breaking.
+    issue(inline).properties.zzz_moved = {type: 'integer'};
+    assert.notDeepEqual(compareRest(withRef, inline).breaking, []);
+});
+
 test('REST: a component renamed and changed is breaking where it is referenced', () => {
     const next = renameSchema(rest, 'author-association', 'author-association-renamed');
     next.components.schemas['author-association-renamed'] = {type: 'integer'};
