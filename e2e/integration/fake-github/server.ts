@@ -371,6 +371,15 @@ export async function startFakeGitHub({port, publicURL, app}: {port: number; pub
         }
     });
 
+    route('GET', '/api/repos/:owner/:repo/pulls/:number/reviews/:review_id/comments', (ctx) => {
+        const repo = visibleRepo(ctx, ctx.params[0], ctx.params[1]);
+        const item = repo && state.item(repo.owner, repo.name, Number(ctx.params[2]));
+        const review = item?.kind === 'pull' ? item.reviews.find((r) => r.id === Number(ctx.params[3])) : undefined;
+        if (repo) {
+            return review ? sendPage(ctx, review.comments.map((c) => state.reviewCommentJSON(item!, review, c))) : notFound(ctx);
+        }
+    });
+
     route('GET', '/api/repos/:owner/:repo/commits/:ref/status', (ctx) => {
         const repo = visibleRepo(ctx, ctx.params[0], ctx.params[1]);
         const item = repo && state.items.find((i) => i.repo === fullName(repo) && [sha(i, 'head'), i.head].includes(ctx.params[2]));
