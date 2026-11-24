@@ -105,7 +105,7 @@ func (c *Client) GetOpenPRsWithRequestedReviewers(ctx context.Context, org strin
 				Repo:      string(node.PullRequest.Repository.Name),
 				Number:    int(node.PullRequest.Number),
 				Title:     string(node.PullRequest.Title),
-				URL:       node.PullRequest.URL.String(),
+				URL:       uriString(node.PullRequest.URL),
 				CreatedAt: node.PullRequest.CreatedAt.Time,
 			}
 			for _, rr := range node.PullRequest.ReviewRequests.Nodes {

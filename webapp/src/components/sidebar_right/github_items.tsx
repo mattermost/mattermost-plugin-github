@@ -64,8 +64,10 @@ function GithubItems(props: GithubItemsProps) {
 
             let icon;
             let title;
-            const url = new URL(item.html_url);
-            const segments = url.pathname.split('/').filter(Boolean);
+
+            // A search node can come back without a url, in which case the server sends an
+            // empty html_url. Parsing that throws, which would take the whole list down.
+            const segments = item.html_url ? new URL(item.html_url).pathname.split('/').filter(Boolean) : [];
             const typeSegment = segments[2];
 
             if (typeSegment === 'pull') {

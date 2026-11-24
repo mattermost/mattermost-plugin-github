@@ -183,11 +183,11 @@ func getPR(prResp *prSearchNodes) *GithubPRDetails {
 	labels := getGithubLabels(resp.Labels.Nodes)
 
 	number := int(resp.Number)
-	repoURL := resp.Repository.URL.String()
+	repoURL := uriString(resp.Repository.URL)
 	issuetitle := string(resp.Title)
 	userLogin := string(resp.Author.Login)
 	milestoneTitle := string(resp.Milestone.Title)
-	url := resp.URL.String()
+	url := uriString(resp.URL)
 	createdAtTime := github.Timestamp{Time: resp.CreatedAt.Time}
 	updatedAtTime := github.Timestamp{Time: resp.UpdatedAt.Time}
 
@@ -234,13 +234,22 @@ func getGithubLabels(labels []labelNode) []*github.Label {
 	return githubLabels
 }
 
+// githubv4.URI embeds *url.URL, so String panics on the zero value.
+func uriString(u githubv4.URI) string {
+	if u.URL == nil {
+		return ""
+	}
+
+	return u.String()
+}
+
 func newGithubIssue(prNumber githubv4.Int, title, login githubv4.String, repositoryURL, htmlURL githubv4.URI, createdAt, updatedAt githubv4.DateTime, labels []*github.Label, milestone githubv4.String) *github.Issue {
 	number := int(prNumber)
-	repoURL := repositoryURL.String()
+	repoURL := uriString(repositoryURL)
 	issuetitle := string(title)
 	userLogin := string(login)
 	milestoneTitle := string(milestone)
-	url := htmlURL.String()
+	url := uriString(htmlURL)
 	createdAtTime := github.Timestamp{Time: createdAt.Time}
 	updatedAtTime := github.Timestamp{Time: updatedAt.Time}
 
