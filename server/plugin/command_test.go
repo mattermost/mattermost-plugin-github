@@ -5,6 +5,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -1095,6 +1096,26 @@ func TestCreatePost(t *testing.T) {
 	}
 }
 
+// expectSubscriptionModify sets up the mock KV store so a single
+// SetAtomicWithRetries call invokes the provided callback with the JSON
+// encoding of initial as the old value, mirroring the real store's
+// read-modify-write. It returns whatever error the callback returns.
+func expectSubscriptionModify(mockKVStore *mocks.MockKvStore, initial *Subscriptions) {
+	mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).DoAndReturn(
+		func(_ string, valueFunc func(oldValue []byte) (any, error)) error {
+			var oldValue []byte
+			if initial != nil {
+				b, err := json.Marshal(initial)
+				if err != nil {
+					return err
+				}
+				oldValue = b
+			}
+			_, err := valueFunc(oldValue)
+			return err
+		}).Times(1)
+}
+
 func TestHandleUnsubscribe(t *testing.T) {
 	mockKVStore, mockAPI, _, _, _ := GetTestSetup(t)
 	p := getPluginTest(mockAPI, mockKVStore)
@@ -1131,8 +1152,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "Failed to unsubscribe",
 			parameters: []string{"owner/repo"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).Return(errors.New("error occurred getting subscriptions"))
-				mockAPI.On("LogWarn", "Failed to unsubscribe", "repo", "repo", "error", "could not get subscriptions: could not get subscriptions from KVStore: error occurred getting subscriptions")
+				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(errors.New("error occurred setting subscriptions")).Times(1)
+				mockAPI.On("LogWarn", "Failed to unsubscribe", "repo", "repo", "error", "could not store subscriptions: error occurred setting subscriptions")
 			},
 			assertions: func(result string) {
 				assert.Equal(t, "Encountered an error trying to unsubscribe. Please try again.", result)
@@ -1142,13 +1163,7 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "No subscription exists for repo in the channel",
 			parameters: []string{"owner/repo"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
-					*value = &Subscriptions{Repositories: map[string][]*Subscription{}}
-					return nil
-				}).Times(1)
-				mockAPI.On("GetUser", MockUserID).Return(nil, &model.AppError{Message: "error getting user"}).Times(1)
-				mockAPI.On("LogWarn", "Error while fetching user details", "error", "error getting user").Times(1)
-				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
+				expectSubscriptionModify(mockKVStore, &Subscriptions{Repositories: map[string][]*Subscription{}})
 			},
 			assertions: func(result string) {
 				assert.Equal(t, "no subscription exists for `owner/repo` in the channel", result)
@@ -1158,15 +1173,11 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "Error getting user details",
 			parameters: []string{"owner/repo"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
-					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
-					}}
-					return nil
-				}).Times(1)
+				expectSubscriptionModify(mockKVStore, &Subscriptions{Repositories: map[string][]*Subscription{
+					"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
+				}})
 				mockAPI.On("GetUser", MockUserID).Return(nil, &model.AppError{Message: "error getting user"}).Times(1)
 				mockAPI.On("LogWarn", "Error while fetching user details", "error", "error getting user").Times(1)
-				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 			assertions: func(result string) {
 				assert.Equal(t, "error while fetching user details: error getting user", result)
@@ -1176,17 +1187,13 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "Error creating post of unsubscribe with no repo",
 			parameters: []string{"owner"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
-					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner"}},
-					}}
-					return nil
-				}).Times(1)
+				expectSubscriptionModify(mockKVStore, &Subscriptions{Repositories: map[string][]*Subscription{
+					"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner"}},
+				}})
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				post.Message = "@mockUsername unsubscribed this channel from [owner](https://github.com/owner)"
 				mockAPI.On("LogWarn", "Error while creating post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
-				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 			assertions: func(result string) {
 				assert.Equal(t, "@mockUsername unsubscribed this channel from [owner](https://github.com/owner) error creating the public post: error creating post", result)
@@ -1196,15 +1203,11 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "Success unsubscribing with no repo",
 			parameters: []string{"owner"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
-					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: ""}},
-					}}
-					return nil
-				}).Times(1)
+				expectSubscriptionModify(mockKVStore, &Subscriptions{Repositories: map[string][]*Subscription{
+					"owner/": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: ""}},
+				}})
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(post, nil).Times(1)
-				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 			assertions: func(result string) {
 				assert.Empty(t, result)
@@ -1214,17 +1217,13 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "Error creating post of unsubscribe with no repo",
 			parameters: []string{"owner/repo"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
-					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
-					}}
-					return nil
-				}).Times(1)
+				expectSubscriptionModify(mockKVStore, &Subscriptions{Repositories: map[string][]*Subscription{
+					"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
+				}})
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(nil, &model.AppError{Message: "error creating post"}).Times(1)
 				post.Message = "@mockUsername Unsubscribed this channel from [owner/repo](https://github.com/owner/repo)\n Please delete the [webhook](https://github.com/owner/repo/settings/hooks) for this subscription unless it's required for other subscriptions."
 				mockAPI.On("LogWarn", "Error while creating post", "channel_id", mock.Anything, "error", "error creating post").Times(1)
-				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 			},
 			assertions: func(result string) {
 				assert.Equal(t, "@mockUsername Unsubscribed this channel from [owner/repo](https://github.com/owner/repo)\n Please delete the [webhook](https://github.com/owner/repo/settings/hooks) for this subscription unless it's required for other subscriptions. error creating the public post: error creating post", result)
@@ -1234,16 +1233,12 @@ func TestHandleUnsubscribe(t *testing.T) {
 			name:       "Success unsubscribing with repo",
 			parameters: []string{"owner/repo"},
 			setup: func() {
-				mockKVStore.EXPECT().Get(SubscriptionsKey, gomock.Any()).DoAndReturn(func(key string, value **Subscriptions) error {
-					*value = &Subscriptions{Repositories: map[string][]*Subscription{
-						"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
-					}}
-					return nil
-				}).Times(1)
+				expectSubscriptionModify(mockKVStore, &Subscriptions{Repositories: map[string][]*Subscription{
+					"owner/repo": {{ChannelID: MockChannelID, CreatorID: MockCreatorID, Repository: "owner/repo"}},
+				}})
 				mockAPI.ExpectedCalls = nil
 				mockAPI.On("GetUser", MockUserID).Return(&model.User{Username: MockUsername}, nil).Times(1)
 				mockAPI.On("CreatePost", mock.Anything).Return(post, nil).Times(1)
-				mockKVStore.EXPECT().SetAtomicWithRetries(SubscriptionsKey, gomock.Any()).Return(nil).Times(1)
 				post.Message = ""
 			},
 			assertions: func(result string) {
